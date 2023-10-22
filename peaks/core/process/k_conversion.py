@@ -6,12 +6,12 @@
 import numpy as np
 import xarray as xr
 import warnings
-from peaks.utils.metadata import update_hist
+from peaks.core.utils.metadata import update_hist
 from peaks.core.process.fermi_level_corrections import apply_fermi
-from peaks.utils.E_shift import Eshift_from_correction
-from peaks.utils.get_angles import get_angles, set_normals
-from peaks.utils.misc import warning_simple, warning_standard
-from peaks.utils.consts import const
+from peaks.core.utils.E_shift import Eshift_from_correction
+from peaks.core.utils.get_angles import get_angles, set_normals
+from peaks.core.utils.misc import warning_simple, warning_standard
+from peaks.core.utils.consts import const
 from peaks.core.fileIO.fileIO_opts import BL_angles
 
 ###################################################################################################################################################

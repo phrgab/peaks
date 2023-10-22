@@ -22,9 +22,8 @@ def load_APE_data(file, logbook):
     Returns
     ------------
     if logbook == False:
-        data : chunked(xr.DataArray)
+        data : xr.DataArray
             xarray DataArray or DataSet with loaded data <br>
-            Returned with arrays as dask objects or list of these
     else:
         sample_upload : list
             List of relevant metadata

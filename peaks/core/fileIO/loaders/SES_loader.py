@@ -3,11 +3,11 @@
 
 import numpy as np
 import xarray as xr
-import dask.array as da
 import zipfile
 
 from peaks.core.fileIO.loaders.igor_pro_to_xarray import load_ibw, read_ibw_Wnote
-from peaks.utils.misc import ana_warn
+from peaks.core.utils.misc import ana_warn
+
 
 def SES_load(file, logbook, ext):
     '''Load data from Scienta SES file formats<br>
@@ -26,9 +26,8 @@ def SES_load(file, logbook, ext):
     Returns
     ------------
     if logbook == False:
-        data : chunked(xr.DataArray)
+        data : xr.DataArray
             xarray DataArray or DataSet with loaded data <br>
-            Returned with arrays as dask objects or list of these
 
         meta_lines : list
             Raw metadata from file
@@ -63,9 +62,8 @@ def SES_txt_load(file, logbook):
     Returns
     ------------
     if logbook == False:
-        data : chunked(xr.DataArray)
+        data : xr.DataArray
             xarray DataArray or DataSet with loaded data <br>
-            Returned with arrays as dask objects or list of these
 
         meta_lines : list
             Raw metadata from file
@@ -91,7 +89,7 @@ def SES_txt_load(file, logbook):
    # load data
     data_to_be_loaded = np.loadtxt(file, skiprows=len(meta_lines))
     data_cube = data_to_be_loaded[:, 1:]
-    spectrum = da.from_array(data_cube)
+    spectrum = data_cube
     eK_axis = data_to_be_loaded[:, 0]
     analyzer_axis = np.fromstring(my_find_SES(meta_lines,'Dimension 2 scale='), dtype=np.float64, sep=" ")  # convert to array
 
@@ -116,9 +114,8 @@ def SES_ibw_load(file, logbook):
     Returns
     ------------
     if logbook == False:
-        data : chunked(xr.DataArray)
+        data : xr.DataArray
             xarray DataArray or DataSet with loaded data <br>
-            Returned with arrays as dask objects or list of these
 
         meta_lines : list
             Raw metadata from file
@@ -155,7 +152,10 @@ def SES_ibw_load(file, logbook):
             elif 'photon' in i.lower() or 'hv' in i.lower():  # Should be an hv scan
                 # Add KE_delta coordinate (shift with photon energy) - for an hv scan taken in this way, this should be just the hv shift
                 KE_delta = data[i] - data[i][0]  # Change in KE value of detector as a function of hv
-                data.coords['KE_delta'] = (i, KE_delta)
+                try:
+                    data.coords['KE_delta'] = (i, KE_delta.data)
+                except:
+                    data.coords['KE_delta'] = (i, KE_delta)
                 data.coords['KE_delta'].attrs = {'units': 'eV'}  # Set units
                 # Give a notification that this is how the data is stored
                 warn = "Note: single xarray dataarray returned. The kinetic energy coordinate is that of the first scan; corresponding offsets for successive scans are included in the KE_delta coordinate. Run .pipe(disp_from_hv, hv) where hv is the relevant photon energy to extract a dispersion with the proper KE scaling for that photon energy."
@@ -184,7 +184,6 @@ def SES_ibw_load(file, logbook):
 def SES_zip_load(file, logbook):
     '''Load data from SES .zip file format, used for deflector maps <br>
     Adapted from the PESTO file loader of Craig Polley (BLOCH) with some speed ups
-    and updated for returning dask and xarray data
 
     Parameters
     ------------
@@ -197,9 +196,8 @@ def SES_zip_load(file, logbook):
     Returns
     ------------
     if logbook == False:
-        data : chunked(xr.DataArray)
+        data : xr.DataArray
             xarray DataArray or DataSet with loaded data <br>
-            Returned with arrays as dask objects or list of these
 
         meta_lines : list
             Raw metadata from file
@@ -257,7 +255,7 @@ def SES_zip_load(file, logbook):
 
         with z.open(filename, 'r') as f:
             data_cube = np.frombuffer(f.read(), dtype=np.dtype(np.float32))
-            data_cube = da.from_array(data_cube.reshape((len(eK_axis), len(analyzer_axis), len(deflector_axis)), order='F'), chunks='auto')
+            data_cube = data_cube.reshape((len(eK_axis), len(analyzer_axis), len(deflector_axis)), order='F')
 
     # create xarray
     data = xr.DataArray(data_cube, dims=("eV", "theta_par", "defl_perp"),

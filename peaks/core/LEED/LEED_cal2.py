@@ -6,32 +6,23 @@
 #
 # WARNING! All changes made in this file will be lost!
 
-from .LEED_load import *
+from peaks.core.fileIO.loaders.LEED_load import *
 
-from PIL import Image
 import xarray as xr
 
 from .plotwidgetsignal import PlotWidgetSig
 #from .rot_disorder import rotation_disorder
 
-from functools import partial
-
 import numpy as np
 
-from PyQt5 import QtCore, QtGui, QtWidgets
-import sys
-from PyQt5.QtWidgets import QApplication, QGraphicsView, QGraphicsScene, QGraphicsEllipseItem
-from PyQt5.QtCore import Qt, QPointF
+from PyQt5 import QtCore, QtGui
 
 from PyQt5 import QtWidgets
 #from pyqtgraph import PlotWidget, plot
 #import pyqtgraph as pg
 import sys  # We need sys so that we can pass argv to QApplication
-import os
-from PyQt5.QtWidgets import QApplication, QGraphicsView, QGraphicsScene, QGraphicsEllipseItem, QGridLayout, QGraphicsLineItem
+from PyQt5.QtWidgets import QGraphicsEllipseItem, QGraphicsLineItem
 from PyQt5.QtCore import Qt, QPointF
-import cv2
-from PyQt5.QtGui import QIcon, QBrush, QColor, QPainter, QPixmap, QImage
 
 import cv2
 from skimage.feature import blob_log
@@ -41,9 +32,8 @@ from scipy.spatial import KDTree
 import pyqtgraph as pg
 
 from IPython.display import display, Javascript
-import IPython
 
-import urllib.parse
+
 def cell_below(text):
     text = text.replace("\n", "\\n").replace("'", "\\'")
     display(Javascript("""

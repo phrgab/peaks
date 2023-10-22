@@ -4,8 +4,8 @@
 import numpy as np 
 from scipy.ndimage import gaussian_filter
 import warnings
-from peaks.utils.metadata import update_hist
-from peaks.utils.OOP_method import add_methods
+from peaks.core.utils.metadata import update_hist
+from peaks.core.utils.OOP_method import add_methods
 import xarray as xr
 
 @add_methods(xr.DataArray)

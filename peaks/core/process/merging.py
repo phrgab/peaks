@@ -4,8 +4,8 @@
 import numpy as np
 import xarray as xr
 import warnings
-from peaks.utils.metadata import update_hist
-from peaks.utils.misc import warning_simple
+from peaks.core.utils.metadata import update_hist
+from peaks.core.utils.misc import warning_simple
 
 def merge_data(data_in, **kwargs):
     '''This function sets up the merging of the input xarrays

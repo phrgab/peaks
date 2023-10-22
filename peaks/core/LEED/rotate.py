@@ -8,7 +8,7 @@ Created on Fri Jul  9 14:59:38 2021
 import numpy as np
 import xarray as xr
 from scipy.ndimage.interpolation import rotate
-from peaks.utils.OOP_method import add_methods
+from peaks.core.utils.OOP_method import add_methods
 
 @add_methods(xr.DataArray)
 def LEED_rotate(file, angle):

@@ -15,7 +15,7 @@ import gc
 
 from peaks.core.fileIO.loaders.SES_loader import SES_zip_load, my_find_SES
 from peaks.core.fileIO.data_loading import h5py_str
-from peaks.utils.misc import ana_warn
+from peaks.core.utils.misc import ana_warn
 
 def load_i05nano_data(file, logbook):
     '''Loads ARPES data from I05-nano beamline
@@ -31,9 +31,9 @@ def load_i05nano_data(file, logbook):
     Returns
     ------------
     if logbook == False:
-        data : chunked(xr.DataArray)
+        data : xr.DataArray
             xarray DataArray or DataSet with loaded data <br>
-            Returned with arrays as dask objects or list of these
+            Returned with arrays as dask objects for spatial mapping data
     else:
         sample_upload : list
             List of relevant metadata
@@ -102,17 +102,17 @@ def load_i05nano_data(file, logbook):
         #Now read in the spectrum
 
         if 'analyser_total' in analyser_keys:
-            data_loc = f['entry1/instrument/analyser_total/analyser_total'] # pointer to the actual (cube) of data
+            data_loc = f['entry1/instrument/analyser_total/analyser_total'][()] # pointer to the actual (cube) of data
 
-            # Data as Dask Array
-            spectrum = da.from_array(data_loc, chunks='auto')
+            # Data as regular np array
+            spectrum = data_loc
             # Add dummy angle and energy axes to make compatible with our analysis scripts
             spectrum = spectrum[..., np.newaxis, np.newaxis]
             angles = [0]
-        elif 'da30_z' in analyser_keys:
-            spectrum = da.from_array(f['entry1/instrument/analyser/data'], chunks='auto') #dask da of data cube
+        elif scan_type == 'spatial map':  # For a spatial map, return as a dask array chunked along the spatial directions
+            spectrum = da.from_array(f['entry1/instrument/analyser/data'], chunks={0: 'auto', 1: 'auto', 2: -1, 3: -1})
         else:
-            spectrum = da.from_array(f['entry1/instrument/analyser/data'], chunks='auto') #dask da of data cube
+            spectrum = f['entry1/instrument/analyser/data'] #numpy array
 
         if 'energy' in analyser_keys:
             # read relevant data from file

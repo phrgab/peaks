@@ -28,9 +28,8 @@ def load_Artemis_data(fname, **kwargs):
 
     Returns
     ------------
-    data : chunked(xr.DataArray)
+    data : xr.DataArray
         xarray DataArray with loaded data <br>
-        Returned with arrays as dask objects
     '''
     if 'Ang_Offset_px' in kwargs:
         Ang_Offset_px = kwargs.pop('Ang_Offset_px')
@@ -358,8 +357,5 @@ def load_Artemis_data(fname, **kwargs):
     for i in meta_list:
         spectrum.attrs[i] = meta_list[i]
     spectrum.name = meta_list['scan_name']
-
-    # Convert to dask array
-    spectrum = spectrum.chunk()
 
     return spectrum

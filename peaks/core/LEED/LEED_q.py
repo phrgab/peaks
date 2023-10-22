@@ -8,7 +8,7 @@ Created on Tue Jul 20 11:01:43 2021
 import numpy as np
 import xarray as xr
 from math import sqrt
-from peaks.utils.OOP_method import add_methods
+from peaks.core.utils.OOP_method import add_methods
 
 @add_methods(xr.Dataset)
 def LEED_q_convert(file, dqx = None, dqy = None):

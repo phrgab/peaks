@@ -4,8 +4,8 @@
 import numpy as np
 import xarray as xr
 
-from peaks.utils.metadata import update_hist
-from peaks.utils.OOP_method import add_methods
+from peaks.core.utils.metadata import update_hist
+from peaks.core.utils.OOP_method import add_methods
 
 # Set t0
 @add_methods(xr.DataArray)

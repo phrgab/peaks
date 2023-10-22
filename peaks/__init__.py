@@ -18,7 +18,7 @@ For documentation, please see /docs/index.html in root folder.
 Suggest to create a dedicated virtual environment.
 If using conda, in a terminal (or windows equivalent) type:
 
-    `conda create –-name peaks python=3.11`
+    `conda create –-name peaks python=3.10`
     `conda activate peaks`
 
 Then set current directory to the package root directory and run::
@@ -53,24 +53,24 @@ import dask
 import matplotlib.pyplot as plt
 import gc
 
-# Import core functions from peaks modules to namespace
-from peaks.core.fileIO import *
-from peaks.core.process import *
-from peaks.core.fit import *
-from peaks.core.display import *
-#from peaks.ptab import *
-#from .LEED import *  #TODO Need to update LEED to PyQt6
-#from peaks.logbook import *
-from peaks.core.GUI import *
-#from peaks.ML import *
-
-# To avoid circular imports, import relevant utilities directly
-from peaks.utils.estimate_EF import *
-from peaks.utils.align_util import *
-from peaks.utils.sum_spectra import *
-#from peaks.utils.structure import structure, crystal, get_structure
-from peaks.utils.plotting import colours, publish
-from peaks.utils.nano_slant_correct import slant_correct
+# # Import core functions from peaks modules to namespace
+# from peaks.core.fileIO import *
+# from peaks.core.process import *
+# from peaks.core.fit import *
+# from peaks.core.display import *
+# #from peaks.ptab import *
+# #from .LEED import *  #TODO Need to update LEED to PyQt6
+# #from peaks.logbook import *
+# from peaks.core.GUI import *
+# #from peaks.ML import *
+#
+# # Import some useful utilities (also to avoid circular imports)
+# from peaks.utils.estimate_EF import *
+# from peaks.utils.align_util import *
+# from peaks.utils.sum_spectra import *
+# #from peaks.utils.structure import structure, crystal, get_structure
+# from peaks.utils.plotting import colours, publish
+# from peaks.utils.nano_slant_correct import slant_correct
 
 # Set default cmap option
 xr.set_options(cmap_sequential='Purples')

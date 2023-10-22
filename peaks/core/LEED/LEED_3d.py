@@ -8,7 +8,7 @@ Created on Mon Aug 23 14:08:59 2021
 import matplotlib.pyplot as plt
 from matplotlib import cm
 import numpy as np
-from peaks.utils.OOP_method import add_methods
+from peaks.core.utils.OOP_method import add_methods
 import xarray as xr
 
 @add_methods(xr.DataArray)

@@ -5,8 +5,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import xarray as xr
 from matplotlib.path import Path
-from peaks.utils.metadata import update_hist
-from peaks.utils.OOP_method import add_methods
+from peaks.core.utils.metadata import update_hist
+from peaks.core.utils.OOP_method import add_methods
 
 
 # Function to select a 2D region of interest from data, defined by a specified polygon

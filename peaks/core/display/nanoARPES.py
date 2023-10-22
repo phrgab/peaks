@@ -11,7 +11,7 @@ from peaks.core.process import smooth
 from peaks.core.display.DC_select import plot_DCs
 from peaks.core.display.plot_2d import plot_grid
 #from peaks.ML.denoise import denoise
-from peaks.utils.OOP_method import add_methods
+from peaks.core.utils.OOP_method import add_methods
 import xarray as xr
 
 #Script for focussing scans in nano-ARPES (essentially looking for increased sharpness as the beam is scanned across some feature)

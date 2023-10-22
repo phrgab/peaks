@@ -3,8 +3,8 @@
 
 import xarray as xr
 import numpy as np
-from peaks.utils.metadata import update_hist
-from peaks.utils.OOP_method import add_methods
+from peaks.core.utils.metadata import update_hist
+from peaks.core.utils.OOP_method import add_methods
 
 @add_methods(xr.DataArray)
 def rotation(xarray, rotation):

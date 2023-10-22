@@ -7,7 +7,7 @@ import os
 import numpy as np
 
 from peaks.core.fileIO.loaders.SES_loader import SES_load, my_find_SES, manip_from_SES_metadata
-from peaks.utils.misc import ana_warn
+from peaks.core.utils.misc import ana_warn
 
 def load_bloch_data(file, logbook):
     '''Loads ARPES data from BLOCH (A-branch) beamline @ Max-IV
@@ -23,9 +23,9 @@ def load_bloch_data(file, logbook):
     Returns
     ------------
     if logbook == False:
-        data : chunked(xr.DataArray)
+        data : xr.DataArray
             xarray DataArray or DataSet with loaded data <br>
-            Returned with arrays as dask objects or list of these
+            Returned with arrays as dask objects for spatial mapping data
     else:
         sample_upload : list
             List of relevant metadata
@@ -179,7 +179,15 @@ def load_bloch_data(file, logbook):
         if be_flag == 1:
             data.attrs['eV_type'] = 'binding'
 
-
+        # If a spatial map, chunk the data and return as a dask-backed array
+        if scan_type == 'spatial map':
+            try:
+                data = data.chunk({'x1': 'auto', 'x2': 'auto'})
+            except:  # Catch for when the dims are not properly defined
+                try:
+                    data = data.chunk({'dim0': 'auto', 'dim1': 'auto'})
+                except:
+                    pass
     return data
         
 

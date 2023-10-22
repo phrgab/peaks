@@ -7,7 +7,7 @@ from IPython.display import display, clear_output
 from ipywidgets import widgets, interactive_output, VBox, HBox
 from ipywidgets.widgets import Layout
 import xarray as xr
-from peaks.utils.OOP_method import add_methods
+from peaks.core.utils.OOP_method import add_methods
 
 
 @add_methods(xr.DataArray)

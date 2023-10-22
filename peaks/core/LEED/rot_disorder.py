@@ -7,7 +7,7 @@ Created on Sat Jul 31 11:00:13 2021
 
 import xarray as xr
 import numpy as np
-from peaks.utils.OOP_method import add_methods
+from peaks.core.utils.OOP_method import add_methods
 
 @add_methods(xr.DataArray)
 def rotation_disorder(data, bragg, center):

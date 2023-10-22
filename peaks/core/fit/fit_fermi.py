@@ -9,7 +9,7 @@ import xarray as xr
 from lmfit import Model
 from lmfit.models import LinearModel, PolynomialModel
 from tqdm.notebook import tqdm
-from peaks.utils.OOP_method import add_methods
+from peaks.core.utils.OOP_method import add_methods
 
 def FermiFunction(x, EF, T):
     '''This function defines the fermi function used for fitting

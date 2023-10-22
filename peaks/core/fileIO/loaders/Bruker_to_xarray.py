@@ -4,7 +4,7 @@
 import numpy as np
 import os
 import xarray as xr
-from peaks.utils.consts import const
+from peaks.core.utils.consts import const
 
 def load_Bruker_data(file, **kwargs):
     '''This function loads x-ray diffraction data from a Bruker D8 Discover
@@ -73,7 +73,5 @@ def load_Bruker_data(file, **kwargs):
         dwell = float(lines[0].split('TimePerStep: "')[1].split('"')[0])
         data.attrs['dwell'] = dwell
         data.attrs['units'] = 'c.p.s.'
-
-        data = data.chunk()
 
     return data

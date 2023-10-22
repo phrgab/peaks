@@ -9,7 +9,6 @@ import natsort
 import itertools
 import numpy as np
 import xarray as xr
-import dask.array as da
 import gc
 
 from peaks.core.fileIO.loaders.SES_loader import SES_load, my_find_SES
@@ -29,9 +28,8 @@ def load_cassiopee_data(file, logbook):
     Returns
     ------------
     if logbook == False:
-        data : chunked(xr.DataArray)
+        data : xr.DataArray
             xarray DataArray or DataSet with loaded data <br>
-            Returned with arrays as dask objects or list of these
     else:
         sample_upload : list
             List of relevant metadata
@@ -107,7 +105,7 @@ def load_cassiopee_data(file, logbook):
 
         # create xarray
         if scan_type == 'hv scan':
-            data = xr.DataArray(da.from_array(spectrum, chunks='auto'), dims=("theta_par", "eV", "hv"),
+            data = xr.DataArray(spectrum, dims=("theta_par", "eV", "hv"),
                                 coords={"hv": hv, "theta_par": theta_par_values, "eV": eK_axis})
             data.coords['hv'].attrs = {'units': 'eV'}
             data.coords['theta_par'].attrs = {'units': 'deg'}
@@ -116,7 +114,7 @@ def load_cassiopee_data(file, logbook):
             data.coords['KE_delta'] = (i, KE_delta)
             data.coords['KE_delta'].attrs = {'units': 'eV'}  # Set units
         else:
-            data = xr.DataArray(da.from_array(spectrum,chunks='auto'), dims=("theta_par", "eV", "polar"),
+            data = xr.DataArray(spectrum, dims=("theta_par", "eV", "polar"),
                                 coords={"polar": theta_perp_values, "theta_par": theta_par_values, "eV": eK_axis})
             data.coords['polar'].attrs = {'units': 'deg'}
             data.coords['theta_par'].attrs = {'units': 'deg'}
@@ -199,7 +197,6 @@ def get_cassiopee_metadata(file,lines,scan_type,logbook,*args):
     meta_list['beamline'] = 'SOLEIL CASSIOPEE'
     meta_list['analysis_history'] = []
     meta_list['EF_correction'] = None
-    print(my_find_SES(lines, 'Pass Energy'))
     meta_list['PE'] = float(my_find_SES(lines, 'Pass Energy'))
     hv = my_find_SES(lines, 'Excitation Energy')
     try:

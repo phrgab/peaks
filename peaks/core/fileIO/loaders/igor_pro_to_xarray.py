@@ -7,7 +7,6 @@
 import os
 import numpy as np
 import xarray as xr
-import dask.array as da
 from .igor import binarywave
 import warnings
 
@@ -81,9 +80,8 @@ def load_ibw(file):
 
         Returns
         ------------
-        data : chunked(xr.DataArray)
+        data : xr.DataArray
             xarray DataArray or DataSet with loaded data <br>
-            Returned with arrays as dask objects or list of these
 
         meta_lines : list
             Raw metadata from file
@@ -102,8 +100,6 @@ def load_ibw(file):
     #
     # print(spectrum.dtype)
 
-    # Convert to Dask array format
-    spectrum = da.from_array(spectrum, chunks='auto')
 
     # Get relevant number of dimensions
     ndim = spectrum.ndim

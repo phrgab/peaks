@@ -6,7 +6,6 @@ import os
 import numpy as np
 from decimal import Decimal
 import xarray as xr
-import dask.array as da
 
 def load_StA_MBS_data(file, logbook, **kwargs):
     '''This function loads ARPES data from the St Andrews MBS spin-ARPES system
@@ -166,7 +165,7 @@ def load_StA_MBS_data(file, logbook, **kwargs):
             # Convert to a faster dtype for future processing
             spectrum = spectrum.newbyteorder().newbyteorder()
 
-            spectrum = da.from_array(spectrum, chunks='auto')
+            #spectrum = da.from_array(spectrum, chunks='auto')
 
             # Make the xarray
             data = xr.DataArray(spectrum, dims=(mapping_dim, "theta_par", "eV"), coords={mapping_dim: mapping_values, "theta_par": theta_par_values, "eV": eV_values})
@@ -176,7 +175,7 @@ def load_StA_MBS_data(file, logbook, **kwargs):
             # Convert to a faster dtype ordering for future processing
             data = data.astype('<f8', casting='equiv')
         else:
-            spectrum = da.from_array(spectrum, chunks='auto')
+            #spectrum = da.from_array(spectrum, chunks='auto')
 
             # Make the xarray
             data = xr.DataArray(spectrum, dims=("theta_par", "eV"),

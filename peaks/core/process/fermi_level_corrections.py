@@ -7,12 +7,12 @@ import numpy as np
 import warnings
 import xarray as xr
 from tqdm.notebook import tqdm
-from peaks.utils.metadata import update_hist
-from peaks.utils.misc import warning_simple, warning_standard
+from peaks.core.utils.metadata import update_hist
+from peaks.core.utils.misc import warning_simple, warning_standard
 from peaks.core.display import disp_from_hv
-from peaks.utils.estimate_EF import estimate_EF
-from peaks.utils.E_shift import Eshift_from_correction
-from peaks.utils.OOP_method import add_methods
+from peaks.core.utils import estimate_EF
+from peaks.core.utils.E_shift import Eshift_from_correction
+from peaks.core.utils.OOP_method import add_methods
 
 
 

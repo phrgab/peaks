@@ -3,13 +3,15 @@
 # make_hv_scan function update Brendan Edwards 28/06/21
 # Lewis Hart q_conv modification 15/06/2021
 
+import gc
+
 from peaks.core.process.q_conversion import *
 from peaks.core.process.merging import merge_data
 from peaks.core.process.fermi_level_corrections import apply_fermi, hv_align
-from peaks.utils.estimate_EF import estimate_EF
-from peaks.utils.metadata import update_hist
-from peaks.utils.misc import warning_simple, warning_standard
-from peaks.utils.OOP_method import add_methods
+from peaks.core.utils.estimate_EF import estimate_EF
+from peaks.core.utils.metadata import update_hist
+from peaks.core.utils.misc import warning_simple, warning_standard
+from peaks.core.utils.OOP_method import add_methods
 
 
 

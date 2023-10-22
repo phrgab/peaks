@@ -8,7 +8,7 @@ from PyQt6 import QtWidgets
 from peaks.core.GUI.pyqt_WindowItem import WindowItem
 from peaks.core.GUI.align.align_FS_panel import Ui_AlignFS_panel
 from peaks.core.GUI.align.align_disp_panel import Ui_Aligndisp_panel
-from peaks.utils.OOP_method import add_methods
+from peaks.core.utils.OOP_method import add_methods
 import sys
 
 @add_methods(xr.DataArray)
@@ -23,9 +23,9 @@ def align(data):
                 null - opens the relevant data alignment panel '''
     ndim = len(data.dims)
     if ndim == 2:
-        align_disp(data.compute())
+        align_disp(data)
     elif ndim == 3:
-        align_FS(data.transpose(...,'theta_par','eV').compute())  # NB Transposition required to get array ordering right for quick scrolling in the GUI
+        align_FS(data.transpose(...,'theta_par','eV'))  # NB Transposition required to get array ordering right for quick scrolling in the GUI
     else:
         print('Data type not currently supported for interactive display')
 

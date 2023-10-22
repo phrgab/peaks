@@ -9,10 +9,14 @@ loc_opts = ['ALBA LOREA',
             'Diamond I05-nano',
             'Elettra APE',
             'MAX IV Bloch',
+            'MAX IV Bloch spin',
             'netCDF file',
             'SOLEIL CASSIOPEE',
             'St Andrews - Phoibos',
             'St Andrews - MBS',
+            'structure',
+            'LEED',
+            'RHEED'
             ]
 
 class fname:
@@ -23,6 +27,7 @@ class fname:
 
     path = None
     ext = None
+    loc = None
 
 class BL_angles:
     '''Definitions of relative angle signs between manipulator and detector, useful in angle conversions, merging
@@ -199,6 +204,25 @@ class BL_angles:
     angles['MAX IV Bloch']['x1 name'] = 'X'
     angles['MAX IV Bloch']['x2 name'] = 'Y'
     angles['MAX IV Bloch']['x3 name'] = 'Z'
+
+    # MAX IV Bloch spin
+    angles['MAX IV Bloch spin'] = {}
+    angles['MAX IV Bloch spin']['ana_type'] = 'Ip'
+    angles['MAX IV Bloch spin']['theta_par'] = -1
+    angles['MAX IV Bloch spin']['defl_par'] = 1
+    angles['MAX IV Bloch spin']['defl_perp'] = 1
+    angles['MAX IV Bloch spin']['polar'] = 1
+    angles['MAX IV Bloch spin']['tilt'] = 1
+    angles['MAX IV Bloch spin']['azi'] = -1
+    angles['MAX IV Bloch spin']['ana_polar'] = 0
+    angles['MAX IV Bloch spin']['polar_name'] = 'P'
+    angles['MAX IV Bloch spin']['tilt_name'] = 'T'
+    angles['MAX IV Bloch spin']['azi_name'] = 'A'
+    angles['MAX IV Bloch spin']['defl_par_name'] = 'theta_x'
+    angles['MAX IV Bloch spin']['defl_perp_name'] = 'theta_y'
+    angles['MAX IV Bloch spin']['x1 name'] = 'X'
+    angles['MAX IV Bloch spin']['x2 name'] = 'Y'
+    angles['MAX IV Bloch spin']['x3 name'] = 'Z'
 
     # SOLEIL CASSIOPEE
     angles['SOLEIL CASSIOPEE'] = {}

@@ -8,8 +8,8 @@ from sklearn.cluster import KMeans
 from skfuzzy.cluster import cmeans
 from sklearn.decomposition import PCA
 
-from peaks.utils.metadata import update_hist
-from peaks.utils.OOP_method import add_methods
+from peaks.core.utils import update_hist
+from peaks.core.utils.OOP_method import add_methods
 
 @add_methods(xr.DataArray)
 def clustering_pre_proc(data):
