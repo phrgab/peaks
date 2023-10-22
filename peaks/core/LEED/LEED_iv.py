@@ -7,7 +7,7 @@ Created on Wed Aug 18 11:51:12 2021
 
 import xarray as xr
 import numpy as np
-from peaks.utils.OOP_method import add_methods
+from peaks.core.utils.OOP_method import add_methods
 
 @add_methods(xr.DataArray)
 def LEED_iv(data, Bragg = None):

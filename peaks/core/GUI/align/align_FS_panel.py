@@ -15,7 +15,7 @@ from peaks.core.GUI.pyqt_ZoomItem import ZoomItem
 from peaks.core.GUI.pyqt_PlotWidgetKP import PlotWidgetKP
 from peaks.core.GUI.pyqt_ResizeItem import ResizeItem
 from peaks.core.GUI.align.feedfromLoaders import feedfromLoaders
-from peaks.utils.misc import cell_above
+from peaks.core.utils.misc import cell_above
 
 # Class to create a Fermi surface alignment panel object
 class Ui_AlignFS_panel(object):

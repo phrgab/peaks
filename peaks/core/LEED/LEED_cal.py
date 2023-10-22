@@ -6,7 +6,7 @@
 #
 # WARNING! All changes made in this file will be lost!
 
-from .LEED_load import *
+from peaks.core.fileIO.loaders.LEED_load import *
 from .LEED_q import *
 
 import xarray as xr

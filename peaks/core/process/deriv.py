@@ -5,8 +5,8 @@ import numpy as np
 from scipy.ndimage import gaussian_gradient_magnitude
 import warnings
 from peaks.core.process.smooth import smooth
-from peaks.utils.metadata import update_hist
-from peaks.utils.OOP_method import add_methods
+from peaks.core.utils.metadata import update_hist
+from peaks.core.utils.OOP_method import add_methods
 import xarray as xr
 
 #Perform a double differential in the momentum direction, applying smoothing

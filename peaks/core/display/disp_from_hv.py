@@ -3,8 +3,8 @@
 
 import numpy as np
 import xarray as xr
-from peaks.utils.E_shift import Eshift_from_correction
-from peaks.utils.OOP_method import add_methods
+from peaks.core.utils.E_shift import Eshift_from_correction
+from peaks.core.utils.OOP_method import add_methods
 
 # Function to extract a dispersion from an hv-dep cube of data
 @add_methods(xr.DataArray)
@@ -30,6 +30,9 @@ def disp_from_hv(data, hv, correct_EF_curve=False):
     ------------
     data_out : xr.DataArray
         Single dispersion at photon energy closest to requested one
+
+    Example
+    ------------
 
         '''
 

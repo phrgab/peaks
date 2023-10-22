@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 import numpy as np
 from decimal import Decimal
 import xarray as xr
-import dask.array as da
 
 def load_StA_phoibos_data(file, logbook, **kwargs):
     '''This function loads ARPES data from the St Andrews Phoibos ARPES system
@@ -73,7 +72,7 @@ def load_StA_phoibos_data(file, logbook, **kwargs):
             for j in range(len(energy_values)):
                 spectrum[i][j] = counts[(i*len(energy_values))+j]
 
-        spectrum = da.from_array(spectrum)
+        #spectrum = da.from_array(spectrum)
         
         #create xarray
         data = xr.DataArray(spectrum, dims=("theta_par","eV"), coords={"theta_par": theta_par_values,"eV": energy_values})
@@ -112,7 +111,7 @@ def load_StA_phoibos_data(file, logbook, **kwargs):
         spectrum = np.asarray(spectrum, dtype=np.float64)
         spectrum = spectrum.newbyteorder().newbyteorder()
 
-        spectrum = da.from_array(spectrum, chunks='auto')
+        #spectrum = da.from_array(spectrum, chunks='auto')
 
         #create xarray
         data = xr.DataArray(spectrum, dims=("tilt","theta_par","eV"), coords={"tilt": theta_perp_values, "theta_par": theta_par_values,"eV": energy_values})
@@ -142,7 +141,7 @@ def load_StA_phoibos_data(file, logbook, **kwargs):
                 total_count = total_count + float(counts[i+(j*number_of_energies)])
             spectrum.append(total_count)
 
-        spectrum = da.from_array(spectrum)
+        #spectrum = da.from_array(spectrum)
         
         #create xarray
         data = xr.DataArray(spectrum, dims=("eV"), coords={"eV": energy_values})

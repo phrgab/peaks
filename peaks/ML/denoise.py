@@ -13,8 +13,8 @@ import os
 import cv2
 import math
 from tqdm.notebook import tqdm
-from peaks.utils.metadata import update_hist
-from peaks.utils.OOP_method import add_methods
+from peaks.core.utils import update_hist
+from peaks.core.utils.OOP_method import add_methods
 
 
 # define neural network. Used skip connection for smooth training a deep neural network.

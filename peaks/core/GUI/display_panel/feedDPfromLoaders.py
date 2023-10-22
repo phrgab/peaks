@@ -7,22 +7,24 @@ def feedDPfromLoaders(a):
     # If data is 2D
     if len(a.dims) == 2:
 
+        aT = a.T
+
         # Extract (x,y) dimensions
-        xdim=a.dims[0]
-        ydim=a.dims[1]
+        xdim=aT.dims[0]
+        ydim=aT.dims[1]
 
         # Define z dimension
         zdim='counts'
 
         # Extract x units
-        if 'units' in a.coords[xdim].attrs:
-            xuts=a.coords[xdim].attrs['units']
+        if 'units' in aT.coords[xdim].attrs:
+            xuts=aT.coords[xdim].attrs['units']
         else:
             xuts=''
 
         # Extract y units
-        if 'units' in a.coords[ydim].attrs:
-            yuts=a.coords[ydim].attrs['units']
+        if 'units' in aT.coords[ydim].attrs:
+            yuts=aT.coords[ydim].attrs['units']
         else:
             yuts=''
 
@@ -30,9 +32,9 @@ def feedDPfromLoaders(a):
         zuts=None
 
         # Extract data
-        x=a.coords[xdim].data
-        y=a.coords[ydim].data
-        z=a.data
+        x=aT.coords[xdim].data
+        y=aT.coords[ydim].data
+        z=aT.data
 
         DP_dict={'x':x,'y':y,'z':z,'xdim':xdim,'ydim':ydim,'zdim':zdim,'xuts':xuts,'yuts':yuts,'zuts':zuts}
 

@@ -7,11 +7,11 @@ from datetime import datetime
 import numpy as np
 import math
 import xarray as xr
-import dask.array as da
 import h5py
+import dask.array as da
 
 from peaks.core.fileIO.data_loading import h5py_str
-from peaks.utils.misc import ana_warn
+from peaks.core.utils.misc import ana_warn
 
 def load_i05HR_data(file, logbook, **kwargs):
     '''Loads ARPES data from I05-HR beamline
@@ -27,9 +27,9 @@ def load_i05HR_data(file, logbook, **kwargs):
     Returns
     ------------
     if logbook == False:
-        data : chunked(xr.DataArray)
+        data : xr.DataArray
             xarray DataArray or DataSet with loaded data <br>
-            Returned with arrays as dask objects or list of these
+            Returned with arrays as dask objects for spatial mapping data
     else:
         sample_upload : list
             List of relevant metadata
@@ -82,7 +82,11 @@ def load_i05HR_data(file, logbook, **kwargs):
         return sample_upload, scan_timestamp
 
     #read some core data from file
-    spectrum = da.from_array(f['entry1/instrument/analyser/data'], chunks='auto') #the actual (cube) of measured spectra
+    # For a spatial map, return as a dask array chunked along the spatial directions
+    if scan_type == 'spatial map':
+        spectrum = da.from_array(f['entry1/instrument/analyser/data'],chunks={0: 'auto', 1: 'auto', 2: -1, 3: -1})  # the actual (cube) of measured spectra, as a dask array
+    else:
+        spectrum = f['entry1/instrument/analyser/data'] #the actual (cube) of measured spectra as np array
     theta = f['entry1/instrument/analyser/angles'][()] #the analyser angle scale readout
 
     #determine type of scan from heirarchy of driven/secondary axes and load data accordingly

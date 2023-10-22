@@ -2,8 +2,8 @@
 # Phil King (based on code from Edgar Abarca Morales)
 # 19/6/21
 
-from peaks.utils.estimate_EF import estimate_EF
-from peaks.utils.get_angles import get_angles
+from peaks.core.utils.estimate_EF import estimate_EF
+from peaks.core.utils.get_angles import get_angles
 from peaks.core.fileIO.fileIO_opts import BL_angles
 
 # Create align panel input dictionary from xarray data

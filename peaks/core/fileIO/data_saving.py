@@ -4,7 +4,7 @@
 from ipywidgets import Layout, widgets
 from IPython.display import display, clear_output
 from ipyfilechooser import FileChooser
-from peaks.utils.OOP_method import add_methods
+from peaks.core.utils.OOP_method import add_methods
 import xarray as xr
 
 @add_methods(xr.DataArray)

@@ -4,7 +4,7 @@
 import xarray as xr
 import dask
 
-from peaks.utils.OOP_method import add_methods
+from peaks.core.utils.OOP_method import add_methods
 from .display_panel.disp2d_GUI import disp2d
 from .spatial_map.disp4d_GUI import disp4d
 from .align.align_GUI import align
@@ -22,13 +22,13 @@ def disp(data):
 
 
     if type(data) is list:
-        disp2d(dask.compute(*data))
+        disp2d(data)
     else:
         if 1 in data.shape:  # Check if there is a dummy axis that can be squeezed
             data = data.squeeze()
         ndim = len(data.dims)
         if ndim == 2:
-            disp2d([data.compute()])
+            disp2d([data])
         elif ndim == 3:
             align(data)
         elif ndim == 4:

@@ -4,7 +4,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import warnings
-from peaks.utils.OOP_method import add_methods
+from peaks.core.utils.OOP_method import add_methods
 import xarray as xr
 
 
@@ -92,7 +92,7 @@ def plot_grid(data, ncols=3, nrows=None, titles=None, titles_col=None, sharex=Fa
     if titles:
         if len(titles) == nplots: #Check the correct number are provided
             title_flag = 1
-            if len(titles_col) != 0:
+            if titles_col:
                 title_col_flag = 1
         else: #If not, don't use them and give a warning
             warnings.warn('Length of supplied titles list does not match number of plots. Supplied titles have not been used.')

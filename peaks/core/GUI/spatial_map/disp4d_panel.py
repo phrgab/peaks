@@ -16,7 +16,7 @@ from peaks.core.GUI.pyqt_CursorItem import CursorItem
 from peaks.core.GUI.pyqt_ZoomItem import ZoomItem
 from peaks.core.GUI.pyqt_PlotWidgetKP import PlotWidgetKP
 from peaks.core.GUI.pyqt_ResizeItem import ResizeItem
-from peaks.utils.misc import cell_above
+from peaks.core.utils.misc import cell_above
 
 # Class to create 4d display panel object
 class Ui_disp4d_Panel(object):

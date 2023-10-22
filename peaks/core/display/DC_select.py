@@ -9,9 +9,9 @@ from cycler import cycler
 import numpy as np
 import xarray as xr
 
-from peaks.utils.metadata import update_hist
-from peaks.utils.OOP_method import add_methods
-from peaks.utils.misc import ana_warn
+from peaks.core.utils.metadata import update_hist
+from peaks.core.utils.OOP_method import add_methods
+from peaks.core.utils.misc import ana_warn
 
 
 

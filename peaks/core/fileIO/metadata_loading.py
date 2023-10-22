@@ -6,7 +6,7 @@ import random
 import time
 from IPython.display import clear_output
 from peaks.logbook.logbook_fns import authentication
-from peaks.utils.OOP_method import add_methods
+from peaks.core.utils.OOP_method import add_methods
 
 @add_methods(xr.DataArray)
 def load_metadata(*args, **kwargs):

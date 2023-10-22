@@ -15,9 +15,9 @@ import dask
 from peaks.core.fileIO.loaders.SES_loader import SES_txt_load, SES_zip_load, my_find_SES
 from peaks.core.fileIO.loaders.igor_pro_to_xarray import read_ibw_Wnote
 from peaks.core.process import merge_data
-from peaks.utils.sum_spectra import sum_spec
-from peaks.utils.metadata import update_hist
-from peaks.utils.misc import ana_warn
+from peaks.core.utils.sum_spectra import sum_spec
+from peaks.core.utils.metadata import update_hist
+from peaks.core.utils.misc import ana_warn
 from peaks.core.fileIO import fileIO_opts
 
 
@@ -64,8 +64,10 @@ def load(fname, **kwargs):
     '''
 
     try:
+        # Default options for files
         fpath = fileIO_opts.fname.path
         ext = fileIO_opts.fname.ext
+        loc = fileIO_opts.fname.loc
 
         if isinstance(ext, list):
             ext = tuple(ext)
@@ -92,6 +94,11 @@ def load(fname, **kwargs):
 
         # Limit to files containing specified file identifier
         file_list = [os.path.join(path, item) for item in file_list if any(word in item for word in fname)]
+
+        # Set default location unless specified in kwargs
+        if 'loc' not in kwargs:
+            if loc:
+                kwargs['loc'] = loc
 
         return (load_data(file_list, **kwargs))
     except:
@@ -238,13 +245,6 @@ def load_data(fname, loc=None, extension=None, sum_scans=False, merge_scans=Fals
         else:  # Just a single file was passed
             file_list = [fname]
 
-    # # If not specified, determine whether to use parallel loading based on numbers of files to load and load data
-    # if not parallel:
-    #     if len(file_list) > 9:
-    #         parallel = True
-    #     else:
-    #         parallel = False
-
     # Load data
     data = []
 
@@ -262,6 +262,21 @@ def load_data(fname, loc=None, extension=None, sum_scans=False, merge_scans=Fals
             data.append(load_single_data(file=scan, loc=loc, Artemis_kw=Artemis_kw))
 
     nscan = len(data)
+
+    # For non-standard data, return at this point
+    ret_flag = None
+    for i in range(nscan):
+        if isinstance(data[i],ase.atoms.Atoms):
+            ret_flag = True
+        elif data[i].attrs['scan_type'] == 'LEED' or data[i].attrs['scan_type'] == 'RHEED':
+            ret_flag = True
+    if ret_flag:
+        # Clear the trash
+        gc.collect()
+        gc.collect()
+
+        # Return list of loaded files, or if only a single file loaded, return that entry not contained within a list
+        return data if nscan > 1 else data[0]
 
     # Apply any range selection if called
     if slice_kwargs:  # If function is called with range selection
@@ -340,13 +355,15 @@ def load_data(fname, loc=None, extension=None, sum_scans=False, merge_scans=Fals
     if merge_scans:
         data = merge_data(data, **merge_kwargs)
 
+    # If data is returned in the form of dask-backed xarrays, then persit if spec'd in fn call
     if persist:
         for i in range(nscan):
-            if data[i].size > 1e7:
-                with TqdmCallback(desc="Persisting data to memory"):  # For larger files, use a progressbar
+            if isinstance(data[i].data, dask.array.core.Array):
+                if data[i].size > 1e7:
+                    with TqdmCallback(desc="Persisting data to memory"):  # For larger files, use a progressbar
+                        data[i] = data[i].persist()
+                else:
                     data[i] = data[i].persist()
-            else:
-                data[i] = data[i].persist()
 
     # Clear the trash
     gc.collect()
@@ -411,6 +428,10 @@ def load_single_data(file, loc, Artemis_kw=None, **kwargs):
         from .loaders.bloch_to_xarray import load_bloch_data
         data = load_bloch_data(file, logbook)
 
+    elif BL == 'MAX IV Bloch spin':
+        from .loaders.bloch_spin_to_xarray import load_bloch_spin_data
+        data = load_bloch_spin_data(file, logbook, **kwargs)
+
     elif BL == 'SOLEIL CASSIOPEE':
         from .loaders.cassiopee_to_xarray import load_cassiopee_data
         data = load_cassiopee_data(file, logbook)
@@ -434,6 +455,17 @@ def load_single_data(file, loc, Artemis_kw=None, **kwargs):
         else:
             data = load_Artemis_data(file)
 
+    elif BL == 'structure':
+        data = load_structure(file)
+
+    elif BL == 'RHEED':
+        from .loaders.RHEED_load import RHEED_load
+        data = RHEED_load(file, **kwargs)
+
+    elif BL == 'LEED':
+        from .loaders.LEED_load import LEED_load
+        data = LEED_load(file, **kwargs)
+
     else:
         err_str = 'Data source is not supported or could not be identified. Currently suppoted options are:<br>' + str(
             fileIO_opts.loc_opts)
@@ -441,15 +473,16 @@ def load_single_data(file, loc, Artemis_kw=None, **kwargs):
         return None
 
     # Do a check that all dimensions are ordered low to high
-    for i in data.dims:
-        if len(data[i]) > 1:
-            if data[i].data[1] - data[i].data[0] < 0:  # Array currently has decreasing order
-                data = data.reindex({i: data[i][::-1]})
+    if BL != 'structure':
+        for i in data.dims:
+            if len(data[i]) > 1:
+                if data[i].data[1] - data[i].data[0] < 0:  # Array currently has decreasing order
+                    data = data.reindex({i: data[i][::-1]})
 
-    # Put dimensions into a standard order
-    data = data.transpose('t', 'hv', 'temp_sample', 'defocus', 'focus', 'x1', 'x2', 'x3', 'polar', 'ana_polar', 'tilt',
-                          'azi', 'defl_perp', 'defl_par', 'da30_z', 'dim0', 'dim1', 'eV', 'theta_par', 'k_par',
-                          'y_scale', 'phi', 'two_th', 'scan_no', missing_dims='ignore')
+        # Put dimensions into a standard order
+        data = data.transpose('t', 'hv', 'temp_sample', 'defocus', 'focus', 'x1', 'x2', 'x3', 'polar', 'ana_polar', 'tilt',
+                              'azi', 'defl_perp', 'defl_par', 'da30_z', 'dim0', 'dim1', 'eV', 'theta_par', 'k_par',
+                              'y_scale', 'phi', 'two_th', 'scan_no', ..., missing_dims='ignore')
 
     # Clean up the memory
     gc.collect()
@@ -484,10 +517,20 @@ def get_beamline(file):
         with open(file) as f:
             line0 = f.readline()  # Read first line of file
         if 'SpecsLab' in line0:
-            # St Andrews ARPES system using SpecsLab Prodigy uses xy files
-            BL = 'St Andrews - Phoibos'
+            # Check if this is the Bloch spin system
+            with open(file) as f:
+                for i in range(30):
+                    if 'PhoibosSpin' in f.readline():
+                        BL = 'MAX IV Bloch spin'
+            if BL == 'Undefined':
+                # St Andrews ARPES system using SpecsLab Prodigy uses xy files
+                BL = 'St Andrews - Phoibos'
         elif 'Anode' in line0:  # Bruker XRD also often saved in .xy
             BL = 'Bruker XRD'
+
+    # Only BLOCH Phiobos currently using sp2
+    elif file_extension == '.sp2':
+        BL = 'MAX IV Bloch spin'
 
     # St Andrews spin-ARPES system is the only one to use krx files
     elif file_extension == '.krx':
@@ -536,7 +579,7 @@ def get_beamline(file):
             BL = 'Elettra APE'
         elif 'cassiopee' in location.lower() or 'soleil' in location.lower():
             BL = 'SOLEIL CASSIOPEE'
-        elif 'i05' in location or 'diamond' in location:
+        elif 'i05' in location or 'diamond' in location or 'I05' in location:
             BL = 'Diamond I05-nano'
 
     elif file_extension == '.nxs':
@@ -555,6 +598,14 @@ def get_beamline(file):
     # .nc files are netCDF files
     elif file_extension == '.nc':
         BL = 'netCDF file'
+
+    # Structure files are .cif files
+    elif file_extension == '.cif':
+        BL = 'structure'
+
+    # LEED files are .tiff files
+    elif file_extension == '.tiff':
+        BL = 'LEED'
 
     return BL
 
