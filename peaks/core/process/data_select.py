@@ -506,14 +506,12 @@ def ROI_select(data, ROI_in, return_mean=True):
 
     if return_mean:  # Data should be averaged over the ROI dimensions
         ROI_selected_data = data_bounded.where(mask).mean(dims, keep_attrs=True)
-        hist = 'Data averaged over region of interest defined by polygon with vertices: ' + str(
-            ROI_in)  # Update history string
+        hist = 'Data averaged over region of interest defined by polygon with vertices: ' + str(ROI_in)
     else:  # Masked data to be returned
         ROI_selected_data = data_bounded.where(mask)
-        hist = 'Data masked by region of interest defined by polygon with vertices: ' + str(
-            ROI_in)  # Update history string
+        hist = 'Data masked by region of interest defined by polygon with vertices: ' + str(ROI_in)
 
-    # Update history
+    # Update analysis history
     ROI_selected_data.update_hist(hist)
 
     return ROI_selected_data
