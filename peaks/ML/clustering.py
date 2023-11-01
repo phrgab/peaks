@@ -581,5 +581,3 @@ def PCA_explore(data, PCs_range=range(1, 6), threshold=0.95, extract='dispersion
     plt.ylabel('Explained variance fraction')
     plt.title(r'Minimum number of required principal axes$=$' + str(num_principal_axes))
     plt.show()
-
-
