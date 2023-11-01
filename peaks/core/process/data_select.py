@@ -423,3 +423,97 @@ def radial_cuts(data, num_azi=361, num_points=200, radius=2, **kwargs):
     data_to_return.update_hist('Radial cuts taken as a function of azi')
 
     return data_to_return
+
+
+@add_methods(xr.DataArray)
+def ROI_select(data, ROI_in, return_mean=True):
+    """This function takes a multidimensional DataArray, and applies a polygon region of interest (ROI) as a mask. By
+    default, the function will then extract the mean over the two dimensions defined by the ROI. For a rectangular
+    ROI, this is equivalent to a simple .sel over those dimensions followed by a mean, but an arbitrary polygon can
+    be used to define the ROI.
+
+    Parameters
+    ------------
+    data : xr.DataArray
+        The multidimensional data to apply the ROI selection to.
+
+    ROI_in : dict
+        A dictionary of two lists which contains the vertices of the polygon for the ROI definition, in the form
+        {'dim1': [pt1, pt2, pt3, ...], 'dim2'=[pt1', pt2', pt3', ...]}. As many points can be specified as required,
+        but this should be given with the same number of points for each dimension.
+
+    return_mean : Boolean (optional)
+        Whether to mean the data confined within ROI region over the ROI dimensions, or instead return the masked data.
+        Defaults to True.
+
+    Returns
+    ------------
+    ROI_selected_data : xr.DataArray
+        The input data with the ROI applied as a mask, and (if return_mean=True) the mean taken over those remaining
+        dimensions.
+
+    Examples
+    ------------
+    from peaks import *
+
+    SM = load('SM.ibw')
+
+    ROI = {'theta_par': [-8, -5.5, -3.1, -5.6], 'eV': [95.45, 95.45, 95.77, 95.77]}  # Define ROI
+
+    ROI_SM = SM.ROI_select(ROI)  # Extract SM consisting of the integrated spectral weight confined within the ROI
+
+    ROI_SM = SM.ROI_select(ROI, return_mean=False)  # Extract SM consisting of the input data with the ROI applied
+                                                      as a mask
+
+    """
+
+    # Check function has been fed with suitable dictionary for ROI generation
+    err_str = ('ROI must be a dictionary containing two entries for the relevant axes. Each of these entries should '
+               'be a list of the vertices of the polygon for the labelled axis of the ROI. These must be of equal '
+               'length for the two axes.')
+    if type(ROI_in) != dict or len(ROI_in) != 2:
+        raise Exception(err_str)
+    else:  # Seems correct format
+        dims = list(ROI_in)  # Determine relevant dimensions for ROI
+
+        # Check lengths match
+        if len(ROI_in[dims[0]]) != len(ROI_in[dims[1]]):
+            raise Exception(err_str)
+
+    # Define ROI and make a polygon path defining the ROI
+    ROI = []
+    for i in range(len(ROI_in[dims[0]])):
+        ROI.append((ROI_in[dims[0]][i], ROI_in[dims[1]][i]))
+    p = Path(ROI)  # Make a polygon defining the ROI
+
+    # Restrict the data cube down to the minimum possible size (making this a copy to avoid overwriting problems)
+    data_bounded = data.sel({dims[0]: slice(min(ROI_in[dims[0]]), max(ROI_in[dims[0]])),
+                             dims[1]: slice(min(ROI_in[dims[1]]), max(ROI_in[dims[1]]))}).copy(deep=True)
+
+    # Broadcast coordinate data
+    b, dim0 = xr.broadcast(data_bounded, data_bounded[dims[0]])
+    b, dim1 = xr.broadcast(data_bounded, data_bounded[dims[1]])
+
+    # Convert coordinate data into a format for passing to matplotlib path function for identifying which points are
+    # in the relevant ROI
+    points = np.vstack((dim0.data.flatten(), dim1.data.flatten())).T
+
+    # Check which of these points fall within our ROI
+    grid = p.contains_points(points, radius=0.01)
+
+    # Reshape to make a data mask
+    mask = grid.reshape(data_bounded.shape)
+
+    if return_mean:  # Data should be averaged over the ROI dimensions
+        ROI_selected_data = data_bounded.where(mask).mean(dims, keep_attrs=True)
+        hist = 'Data averaged over region of interest defined by polygon with vertices: ' + str(
+            ROI_in)  # Update history string
+    else:  # Masked data to be returned
+        ROI_selected_data = data_bounded.where(mask)
+        hist = 'Data masked by region of interest defined by polygon with vertices: ' + str(
+            ROI_in)  # Update history string
+
+    # Update history
+    ROI_selected_data.update_hist(hist)
+
+    return ROI_selected_data
