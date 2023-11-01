@@ -123,7 +123,7 @@ def xarray_to_ML_format(data, extract='dispersion', E=0, dE=0, k=0, dk=0, scale=
     return df
 
 
-def perform_k_means(data, k):
+def perform_k_means(data, k=3, n_init="auto"):
     """Perform k-means clustering using scikit-learn
 
     Parameters
@@ -131,8 +131,15 @@ def perform_k_means(data, k):
     data : pd.DataFrame
         The data represented as a tabular pandas dataframe to perform clustering analysis on
 
-    k : int
-        Number of clusters
+    k : int (optional)
+        Number of clusters. Defaults to 3
+
+    n_init : int, string (optional)
+        Number of times the k-means algorithm will be run with different centroid seeds. The final results will be the
+        best output of n_init consecutive runs in terms of inertia. Required since the kmeans algorithm can fall into
+        local minima, so repeats are required to check for this. Defaults to 'auto' (note: if an outdated sklearn
+        package is installed where 'auto' is not yet implemented, an error will arise. In this case set n_init=10, or
+        similar)
 
     Returns
     ------------
@@ -156,7 +163,7 @@ def perform_k_means(data, k):
 
     """
 
-    model = KMeans(n_clusters=k)  # Create a k-means clustering model
+    model = KMeans(n_clusters=k, n_init=n_init)  # Create a k-means clustering model
     model.fit(data)  # Fit the model to the sampling data
     labels = model.predict(data)  # Predict the labels of the samples, i.e. which cluster they belong to
 
@@ -164,8 +171,8 @@ def perform_k_means(data, k):
 
 
 @add_methods(xr.DataArray)
-def clusters_explore(data, cluster_range=range(1, 7), use_PCA=True, PCs=3, extract='dispersion', E=0, dE=0, k=0, dk=0,
-                     scale=False, norm=False):
+def clusters_explore(data, cluster_range=range(1, 7), n_init="auto", use_PCA=True, PCs=3, extract='dispersion', E=0,
+                     dE=0, k=0, dk=0, scale=False, norm=False):
     """Perform an exploratory k-means clustering analysis on a spatial map for a range of number of clusters
 
     Parameters
@@ -175,6 +182,13 @@ def clusters_explore(data, cluster_range=range(1, 7), use_PCA=True, PCs=3, extra
 
     cluster_range : range (optional)
         Range of number of clusters to perform k-means clustering analysis for. Defaults to range(1,7)
+
+    n_init : int, string (optional)
+        Number of times the k-means algorithm will be run with different centroid seeds. The final results will be the
+        best output of n_init consecutive runs in terms of inertia. Required since the kmeans algorithm can fall into
+        local minima, so repeats are required to check for this. Defaults to 'auto' (note: if an outdated sklearn
+        package is installed where 'auto' is not yet implemented, an error will arise. In this case set n_init=10, or
+        similar)
 
     use_PCA : Boolean (optional)
         Whether to apply a principal component analysis to the data. Defaults to True
@@ -241,7 +255,7 @@ def clusters_explore(data, cluster_range=range(1, 7), use_PCA=True, PCs=3, extra
     inertias = []  # Empty list to store model inertias (a metric that defines spread of a cluster)
     classification_maps = []  # Empty list to store classification maps (spatial maps of cluster labels)
     for num_clusters in tqdm(cluster_range, desc='Calculating', colour='CYAN'):
-        model, labels = perform_k_means(data=df, k=num_clusters)  # Perform k-means clustering
+        model, labels = perform_k_means(data=df, k=num_clusters, n_init=n_init)  # Perform k-means clustering
         inertias.append(model.inertia_)
         classification_map_data = labels.reshape(len(data.x1), len(data.x2))  # Reshape 1D labels to 2D
         classification_map = xr.DataArray(classification_map_data, dims=("x1", "x2"),
@@ -278,8 +292,8 @@ def clusters_explore(data, cluster_range=range(1, 7), use_PCA=True, PCs=3, extra
 
 
 @add_methods(xr.DataArray)
-def clusters(data, num_clusters=3, use_PCA=True, PCs=3, extract='dispersion', E=0, dE=0, k=0, dk=0, scale=False,
-             norm=False, robust=False, vmin=None, vmax=None):
+def clusters(data, num_clusters=3, n_init="auto", use_PCA=True, PCs=3, extract='dispersion', E=0, dE=0, k=0, dk=0,
+             scale=False, norm=False, robust=False, vmin=None, vmax=None):
     """Perform a k-means clustering analysis on a spatial map
 
     Parameters
@@ -289,6 +303,13 @@ def clusters(data, num_clusters=3, use_PCA=True, PCs=3, extract='dispersion', E=
 
     num_clusters : int (optional)
         Number of clusters to perform k-means clustering analysis for. Defaults to 3
+
+    n_init : int, string (optional)
+        Number of times the k-means algorithm will be run with different centroid seeds. The final results will be the
+        best output of n_init consecutive runs in terms of inertia. Required since the kmeans algorithm can fall into
+        local minima, so repeats are required to check for this. Defaults to 'auto' (note: if an outdated sklearn
+        package is installed where 'auto' is not yet implemented, an error will arise. In this case set n_init=10, or
+        similar)
 
     use_PCA : Boolean (optional)
         Whether to apply a principal component analysis to the data. Defaults to True
@@ -367,7 +388,7 @@ def clusters(data, num_clusters=3, use_PCA=True, PCs=3, extract='dispersion', E=
         df = pd.DataFrame(data=principal_components)  # Get principal components in tabular pandas dataframe format
 
     # Perform k-means clustering analysis for the number of clusters (k) requested
-    model, labels = perform_k_means(data=df, k=num_clusters)
+    model, labels = perform_k_means(data=df, k=num_clusters, n_init=n_init)
     classification_map_data = labels.reshape(len(data.x1), len(data.x2))  # Reshape 1D labels to 2D
     classification_map = xr.DataArray(classification_map_data, dims=("x1", "x2"), coords={"x1": data.x1, "x2": data.x2})
 
