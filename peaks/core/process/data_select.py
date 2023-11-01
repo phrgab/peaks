@@ -426,7 +426,7 @@ def radial_cuts(data, num_azi=361, num_points=200, radius=2, **kwargs):
 
 
 @add_methods(xr.DataArray)
-def ROI_select(data, ROI_in, return_mean=True):
+def select_ROI(data, ROI_in, return_mean=True):
     """This function takes a multidimensional DataArray, and applies a polygon region of interest (ROI) as a mask. By
     default, the function will then extract the mean over the two dimensions defined by the ROI. For a rectangular
     ROI, this is equivalent to a simple .sel over those dimensions followed by a mean, but an arbitrary polygon can
@@ -460,9 +460,9 @@ def ROI_select(data, ROI_in, return_mean=True):
 
     ROI = {'theta_par': [-8, -5.5, -3.1, -5.6], 'eV': [95.45, 95.45, 95.77, 95.77]}  # Define ROI
 
-    ROI_SM = SM.ROI_select(ROI)  # Extract SM consisting of the integrated spectral weight confined within the ROI
+    ROI_SM = SM.select_ROI(ROI)  # Extract SM consisting of the integrated spectral weight confined within the ROI
 
-    ROI_SM = SM.ROI_select(ROI, return_mean=False)  # Extract SM consisting of the input data with the ROI applied
+    ROI_SM = SM.select_ROI(ROI, return_mean=False)  # Extract SM consisting of the input data with the ROI applied
                                                       as a mask
 
     """

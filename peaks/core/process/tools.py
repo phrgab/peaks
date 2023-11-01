@@ -1,4 +1,4 @@
-"""Functions that apply general operations on DataArrays.
+"""Functions that apply general operations on data.
 
 """
 
