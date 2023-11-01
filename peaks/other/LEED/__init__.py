@@ -1,3 +1,3 @@
-"""Functions used for low-energy electron diffraction data
+"""Functions used for low-energy electron diffraction data.
 
 """

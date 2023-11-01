@@ -1,4 +1,4 @@
-"""Functions used to extract selections of data
+"""Functions used to extract selections of data.
 
 """
 
@@ -8,34 +8,35 @@
 
 import numpy as np
 import xarray as xr
+from matplotlib.path import Path
 from peaks.core.utils.OOP_method import add_methods
 
 
 @add_methods(xr.DataArray)
 def DC(data, coord='eV', val=0, dval=0, ana_hist=True):
-    """General function to extract DCs from data along any coordinate
+    """General function to extract DCs from data along any coordinate.
 
     Parameters
     ------------
     data : xr.DataArray
-        The data to extract DCs from
+        The data to extract DCs from.
 
     coord : str (optional)
-        Coordinate to extract DC at. Defaults to eV
+        Coordinate to extract DC at. Defaults to eV.
 
     val : float, list, np.ndarray, tuple (optional)
-        DC value(s) to select. If tuple, must be in the format (start, end, step). Defaults to 0
+        DC value(s) to select. If tuple, must be in the format (start, end, step). Defaults to 0.
 
     dval : float (optional)
-        Integration range (represents the total range, i.e. integrates over +/- dval/2). Defaults to 0
+        Integration range (represents the total range, i.e. integrates over +/- dval/2). Defaults to 0.
 
     ana_hist : Boolean (optional)
-        Defines whether the function appends information to the analysis history metadata. Defaults to True
+        Defines whether the function appends information to the analysis history metadata. Defaults to True.
 
     Returns
     ------------
     dc : xr.DataArray
-        Xarray of DC
+        Xarray of DC.
 
     Examples
     ------------
@@ -95,23 +96,23 @@ def DC(data, coord='eV', val=0, dval=0, ana_hist=True):
 
 @add_methods(xr.DataArray)
 def MDC(data, E=0, dE=0):
-    """Extract MDCs from xarrays
+    """Extract MDCs from DataArrays.
 
     Parameters
     ------------
     data : xr.DataArray
-        The dispersion to extract an MDC from
+        The dispersion to extract an MDC from.
 
     E : float, list, np.ndarray, tuple (optional)
-        Energy (or energies) of MDC(s) to extract. If tuple, must be in the format (start, end, step). Defaults to 0
+        Energy (or energies) of MDC(s) to extract. If tuple, must be in the format (start, end, step). Defaults to 0.
 
     dE : float (optional)
-        Integration range (represents the total range, i.e. integrates over +/- dE/2). Defaults to 0
+        Integration range (represents the total range, i.e. integrates over +/- dE/2). Defaults to 0.
 
     Returns
     ------------
     mdc : xr.DataArray
-        Xarray of extracted MDC
+        Xarray of extracted MDC.
 
     Examples
     ------------
@@ -144,23 +145,23 @@ def MDC(data, E=0, dE=0):
 
 @add_methods(xr.DataArray)
 def EDC(data, k=0, dk=0):
-    """Extract EDCs from xarrays
+    """Extract EDCs from DataArrays.
 
     Parameters
     ------------
     data : xr.DataArray
-        The dispersion to extract an EDC from
+        The dispersion to extract an EDC from/
 
     k : float, list, np.ndarray, tuple (optional)
-        k or theta_par value(s) of EDC(s) to extract. If tuple, must be in the format (start, end, step). Defaults to 0
+        k or theta_par value(s) of EDC(s) to extract. If tuple, must be in the format (start, end, step). Defaults to 0.
 
     dk : float (optional)
-        Integration range (represents the total range, i.e. integrates over +/- dk/2). Defaults to 0
+        Integration range (represents the total range, i.e. integrates over +/- dk/2). Defaults to 0.
 
     Returns
     ------------
     edc : xr.DataArray
-        Xarray of extracted EDC
+        Xarray of extracted EDC.
 
     Examples
     ------------
@@ -198,23 +199,23 @@ def EDC(data, k=0, dk=0):
 
 @add_methods(xr.DataArray)
 def FS(data, E=0, dE=0):
-    """Extract constant energy slices, e.g. Fermi surfaces, from 3D xarrays
+    """Extract constant energy slices, e.g. Fermi surfaces, from 3D DataArrays.
 
     Parameters
     ------------
     data : xr.DataArray
-        The 3D Fermi map to extract a FS from
+        The 3D Fermi map to extract a FS from.
 
     E : float, list, np.ndarray, tuple (optional)
-        Energy (or energies) of slice(s) to extract. If tuple, must be in the format (start, end, step). Defaults to 0
+        Energy (or energies) of slice(s) to extract. If tuple, must be in the format (start, end, step). Defaults to 0.
 
     dE : float (optional)
-        Integration range (represents the total range, i.e. integrates over +/- dE/2). Defaults to 0
+        Integration range (represents the total range, i.e. integrates over +/- dE/2). Defaults to 0.
 
     Returns
     ------------
     fs : xr.DataArray
-        Xarray of extracted constant energy slice
+        Xarray of extracted constant energy slice.
 
     Examples
     ------------
@@ -251,17 +252,17 @@ def FS(data, E=0, dE=0):
 
 @add_methods(xr.DataArray)
 def DOS(data):
-    """Integrate over all but the energy axis to return the best approximation to the DOS possible from the data
+    """Integrate over all but the energy axis to return the best approximation to the DOS possible from the data.
 
     Parameters
     ------------
     data : xr.DataArray
-        Data to extract DOS from
+        Data to extract DOS from.
 
     Returns
     ------------
     dos : xr.DataArray
-        xarray of extracted DOS
+        xarray of extracted DOS.
 
     Examples
     ------------
@@ -292,20 +293,20 @@ def DOS(data):
 
 @add_methods(xr.DataArray)
 def tot(data, spatial_int=False):
-    """Integrate spatial map data over all non-spatial (energy and angle/k) or all spatial dimensions
+    """Integrate spatial map data over all non-spatial (energy and angle/k) or all spatial dimensions.
 
     Parameters
     ------------
     data : xr.DataArray
-        Spatial map data
+        Spatial map data.
 
     spatial_int : Boolean (optional)
-        Determines whether integration is performed over spatial or non-spatial dimensions. Defaults to False
+        Determines whether integration is performed over spatial or non-spatial dimensions. Defaults to False.
 
     Returns
     ------------
     data_tot : xr.DataArray
-        The integrated data
+        The integrated data.
 
     Examples
     ------------
@@ -339,21 +340,21 @@ def tot(data, spatial_int=False):
 
 @add_methods(xr.DataArray)
 def radial_cuts(data, num_azi=361, num_points=200, radius=2, **kwargs):
-    """Extract radial cuts of a Fermi surface as a function of azimuthal angle
+    """Extract radial cuts of a Fermi surface as a function of azimuthal angle.
 
     Parameters
     ------------
     data : xr.DataArray
-        Data to extract radial cuts from
+        Data to extract radial cuts from.
 
     num_azi : float (optional)
-        Number of evenly spaced azi values between 0 and 360 degrees to take radial cuts. Defaults to 361
+        Number of evenly spaced azi values between 0 and 360 degrees to take radial cuts. Defaults to 361.
 
     num_points : float (optional)
-        Number of evenly spaced points to sample along a cut. Defaults to 200
+        Number of evenly spaced points to sample along a cut. Defaults to 200.
 
     radius : float (optional)
-        Maximum radius to take cuts up to. Defaults to 2
+        Maximum radius to take cuts up to. Defaults to 2.
 
     **kwargs : float (optional)
         Used to define centre of rotations in the format coord = num, e.g. k_par = 1.2 sets the k_par centre as 1.2.
@@ -362,7 +363,7 @@ def radial_cuts(data, num_azi=361, num_points=200, radius=2, **kwargs):
     Returns
     ------------
     data_to_return : xr.DataArray
-        xarray of radial cuts against azi
+        xarray of radial cuts against azi.
 
     Examples
     ------------

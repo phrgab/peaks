@@ -1,4 +1,4 @@
-"""Functions used for in-line displays
+"""Functions used for in-line displays.
 
 """
 

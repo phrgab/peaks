@@ -1,4 +1,4 @@
-"""Miscellaneous helper functions
+"""Miscellaneous helper functions.
 
 """
 
@@ -16,7 +16,7 @@ def analysis_warning(text, warn_type='info', title='Analysis info'):
     Parameters
     ------------
     text : str
-        Text string to be displayed
+        Text string to be displayed.
 
     warn_type : str (optional)
         Warning box type:
@@ -26,7 +26,7 @@ def analysis_warning(text, warn_type='info', title='Analysis info'):
             danger : red box
 
     title : str (optional)
-        Title to be displayed in box. Defaults to `Analysis info`
+        Title to be displayed in box. Defaults to `Analysis info`.
 
     Examples
     ------------
@@ -48,7 +48,7 @@ def make_docs(folder=None):
     ------------
     folder : str (optional)
         Defines the folder where the documentation is created. Defaults to a folder `docs` in the parent
-        directory of the code
+        directory of the code.
 
     Examples
     ------------
@@ -95,23 +95,23 @@ def cell_below(text, execute=True):
     Parameters
     ------------
     text : str
-        Code to be generated in new cell
+        Code to be generated in new cell.
 
     execute : Boolean (optional)
-        Determines whether the newly generated cell is automatically executed. Defaults to True
+        Determines whether the newly generated cell is automatically executed. Defaults to True.
 
     Examples
     ------------
     from peaks import *
 
-    cell_below('a=2')  # Generate a cell which creates a variable a
+    cell_below('a=2')  # Generate a cell which creates variable a that is equal to 2
 
     """
 
     # Ensure text is in an appropriate format
     text = text.replace("\n", "\\n").replace("'", "\\'")
 
-    if execute == True:
+    if execute:
         # Generate and execute new cell
         display(Javascript("""
         var cell = IPython.notebook.insert_cell_below('code')

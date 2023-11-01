@@ -1,8 +1,9 @@
-"""Functions that apply general operations on DataArrays
+"""Functions that apply general operations on DataArrays.
 
 """
 
 # Phil King 17/04/2021
+# Brendan Edwards 01/11/2023
 
 import xarray as xr
 from peaks.core.utils.OOP_method import add_methods

@@ -1,4 +1,4 @@
-"""Functions that utilise machine learning techniques to denoise data
+"""Functions that utilise machine learning techniques to denoise data.
 
 """
 
@@ -10,7 +10,7 @@ from peaks.core.utils.OOP_method import add_methods
 
 
 @add_methods(xr.DataArray)
-def SM_PCA(data, PCs=3):
+def SM_PCA(data, PCs=10):
     """Perform a principal component analysis on a spatial map, and then reconstruct the spatial map using the reduced
     dimensionality dataset and PCA eigenvectors. Results in a reduction in the information retained by the spatial map,
     but this lost information can just be noise. Thus, this function can act to markedly denoise spatial mapping data.
@@ -19,10 +19,10 @@ def SM_PCA(data, PCs=3):
     Parameters
     ------------
     data : xr.DataArray
-        The spatial mapping data to perform a principal component analysis on
+        The spatial mapping data to perform a principal component analysis on.
 
     PCs : int (optional)
-        The number of principal components used to perform PCA. Defaults to 3
+        The number of principal components used to perform PCA. Defaults to 10.
 
     Examples
     ------------
@@ -30,10 +30,10 @@ def SM_PCA(data, PCs=3):
 
     SM = load('SM.ibw')
 
-    reconstructed_SM1 = SM.SM_PCA()  # Use a 3 principal component PCA to reduce the information contained a spatial
+    reconstructed_SM1 = SM.SM_PCA()  # Use a 10 principal components PCA to reduce the information contained a spatial
                                      map, effectively denoising it
 
-    reconstructed_SM2 = SM.SM_PCA(PCs=10)  # Use a 10 principal component PCA to reduce the information contained a
+    reconstructed_SM2 = SM.SM_PCA(PCs=30)  # Use a 30 principal components PCA to reduce the information contained a
                                            spatial map, effectively denoising it
 
     """

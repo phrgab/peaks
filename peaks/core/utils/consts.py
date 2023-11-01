@@ -1,4 +1,4 @@
-"""Common physical constants
+"""Common physical constants.
 
 """
 
@@ -7,7 +7,7 @@
 
 
 class consts(object):
-    """Class used to store constants used throughout the peaks package
+    """Class used to store constants used throughout the peaks package.
 
     """
 

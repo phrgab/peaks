@@ -1,3 +1,3 @@
-"""Functions used for time-resolved ARPES data
+"""Functions used for time-resolved ARPES data.
 
 """

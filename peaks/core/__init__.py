@@ -1,4 +1,4 @@
-"""Core functions within the peaks package
+"""Core functions within the peaks package.
 
 """
 

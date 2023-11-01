@@ -1,3 +1,3 @@
-"""Functions used for atomic force microscopy data
+"""Functions used for atomic force microscopy data.
 
 """

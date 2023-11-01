@@ -1,3 +1,3 @@
-"""Functions used for reflection high-energy electron diffraction data
+"""Functions used for reflection high-energy electron diffraction data.
 
 """

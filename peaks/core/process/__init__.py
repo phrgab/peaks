@@ -1,4 +1,4 @@
-"""Functions used to process data
+"""Functions used to process data.
 
 """
 

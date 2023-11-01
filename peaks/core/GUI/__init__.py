@@ -1,3 +1,3 @@
-"""Functions used to generate graphical user interfaces
+"""Functions used to generate graphical user interfaces.
 
 """

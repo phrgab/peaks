@@ -1,4 +1,4 @@
-"""Utility functions used throughout the peaks package
+"""Utility functions used throughout the peaks package.
 
 """
 

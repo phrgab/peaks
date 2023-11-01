@@ -1,4 +1,4 @@
-"""Static in-line plotting functions
+"""Static in-line plotting functions.
 
 """
 
@@ -11,33 +11,33 @@ from peaks.core.utils.misc import analysis_warning
 
 
 def plot_grid(data, ncols=3, nrows=None, titles=None, sharex=False, sharey=False, figsize=None, **kwargs):
-    """Plots an array of 2D DataArrays on a grid
+    """Plots an array of 2D DataArrays on a grid.
 
     Parameters
     ------------
     data : list
-         List containing the 2D items (in xr.DataArray format) to be plotted
+         List containing the 2D items (in xr.DataArray format) to be plotted.
 
     ncols : int (optional)
-        Number of columns. Ignored if nrows is specified. Defaults to 3 (or lower if <3 plots)
+        Number of columns. Ignored if nrows is specified. Defaults to 3 (or lower if <3 plots).
 
     nrows : int (optional)
-        Number of rows. Overwrites ncols. Defaults to None (i.e. ncols is used)
+        Number of rows. Overwrites ncols. Defaults to None (i.e. ncols is used).
 
     titles : list (optional)
-        List of subtitles to be supplied on the plots. Length must match length of the data list. Defaults to None
+        List of subtitles to be supplied on the plots. Length must match length of the data list. Defaults to None.
 
     sharex : Boolean (optional)
-        Whether to have the plots share an x-axis. Defaults to False
+        Whether to have the plots share an x-axis. Defaults to False.
 
     sharey : Boolean (optional)
-        Whether to have the plots share a y-axis. Defaults to False
+        Whether to have the plots share a y-axis. Defaults to False.
 
     figsize : tuple (optional)
-        Size of figure to be plotted. Defaults to None
+        Size of figure to be plotted. Defaults to None.
 
     **kwargs (optional)
-        Additional standard matplotlib calls arguments to pass to the plot
+        Additional standard matplotlib calls arguments to pass to the plot.
 
     Examples
     ------------
@@ -54,7 +54,7 @@ def plot_grid(data, ncols=3, nrows=None, titles=None, sharex=False, sharey=False
     plot_grid(disps_to_plot)  # Plots dispersions on a 2D grid
 
     plot_grid(disps_to_plot, titles=disp_titles, sharex=True, add_colorbar=False)  # Plots dispersions on a 2D grid,
-                    where each dispersion has a title, all dispersions share an x-axis, and colourbars are not shown
+                    where each dispersion has a title, all dispersions share an x-axis, and colour bars are not shown
 
     """
 

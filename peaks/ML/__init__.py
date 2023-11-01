@@ -1,4 +1,4 @@
-"""Functions that utilise machine learning techniques for analysis
+"""Functions that utilise machine learning techniques for analysis.
 
 """
 
