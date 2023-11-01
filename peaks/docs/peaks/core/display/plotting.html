@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
 <title>peaks.core.display.plotting API documentation</title>
-<meta name="description" content="Static in-line plotting functions" />
+<meta name="description" content="Static in-line plotting functions." />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -22,14 +22,127 @@
 <h1 class="title">Module <code>peaks.core.display.plotting</code></h1>
 </header>
 <section id="section-intro">
-<p>Static in-line plotting functions</p>
+<p>Static in-line plotting functions.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">&#34;&#34;&#34;Static in-line plotting functions
+<pre><code class="python">&#34;&#34;&#34;Static in-line plotting functions.
 
-&#34;&#34;&#34;</code></pre>
+&#34;&#34;&#34;
+
+# Phil King 03/05/2021
+# Brendan Edwards 31/10/2023
+
+import numpy as np
+import matplotlib.pyplot as plt
+from peaks.core.utils.misc import analysis_warning
+
+
+def plot_grid(data, ncols=3, nrows=None, titles=None, sharex=False, sharey=False, figsize=None, **kwargs):
+    &#34;&#34;&#34;Plots an array of 2D DataArrays on a grid.
+
+    Parameters
+    ------------
+    data : list
+         List containing the 2D items (in xr.DataArray format) to be plotted.
+
+    ncols : int (optional)
+        Number of columns. Ignored if nrows is specified. Defaults to 3 (or lower if &lt;3 plots).
+
+    nrows : int (optional)
+        Number of rows. Overwrites ncols. Defaults to None (i.e. ncols is used).
+
+    titles : list (optional)
+        List of subtitles to be supplied on the plots. Length must match length of the data list. Defaults to None.
+
+    sharex : Boolean (optional)
+        Whether to have the plots share an x-axis. Defaults to False.
+
+    sharey : Boolean (optional)
+        Whether to have the plots share a y-axis. Defaults to False.
+
+    figsize : tuple (optional)
+        Size of figure to be plotted. Defaults to None.
+
+    **kwargs (optional)
+        Additional standard matplotlib calls arguments to pass to the plot.
+
+    Examples
+    ------------
+    from peaks import *
+
+    disp1 = load(&#39;disp1.ibw&#39;)
+    disp2 = load(&#39;disp2.ibw&#39;)
+    disp3 = load(&#39;disp3.ibw&#39;)
+    disp4 = load(&#39;disp4.ibw&#39;)
+
+    disps_to_plot = [disp1, disp2, disp3, disp4]
+    disp_titles = [&#39;10 K&#39;, &#39;20 K&#39;, &#39;30 K&#39;, &#39;40 K&#39;]
+
+    plot_grid(disps_to_plot)  # Plots dispersions on a 2D grid
+
+    plot_grid(disps_to_plot, titles=disp_titles, sharex=True, add_colorbar=False)  # Plots dispersions on a 2D grid,
+                    where each dispersion has a title, all dispersions share an x-axis, and colour bars are not shown
+
+    &#34;&#34;&#34;
+
+    # Number of plots
+    nplots = len(data)
+
+    # Check default columns is sensible
+    if nplots &lt; ncols:
+        ncols = nplots
+
+    # Number of rows required
+    if nrows:  # If nrows specified in call
+        ncols = int(np.ceil(nplots / nrows))  # Overwrite default columns call
+    else:
+        nrows = int(np.ceil(nplots / ncols))  # Set nrows based on ncols and nplots
+
+    # If figsize not specified, set a default based on number of rows and columns
+    if figsize == None:
+        figsize = (5 * ncols, 5 * nrows)
+
+    # Make the figure layout
+    fig, axes = plt.subplots(ncols=ncols, nrows=nrows, figsize=figsize, sharex=sharex, sharey=sharey)
+
+    # Clear any remaining subplot axes
+    if nrows * ncols &gt; nplots:
+        for i in range(nplots, nrows * ncols):
+            # Work out grid positions
+            j0 = int(np.floor((i) / ncols))
+            j1 = int(i - ncols * j0)
+            axes[j0][j1].axis(&#39;off&#39;)
+
+    # Check for whether plot titles are to be displayed
+    plot_titles = False
+    if titles:
+        if len(titles) == nplots:  # Check the correct number are provided
+            plot_titles = True
+        else:  # If not, don&#39;t use them and give a warning
+            analysis_warning(
+                &#39;Length of supplied titles list does not match number of plots. Supplied titles have not been used&#39;,
+                title=&#39;Plotting info&#39;, warn_type=&#39;danger&#39;)
+
+    # Make the plots
+    if nrows &lt; 2 or ncols == 1:  # Figure out whether this is a 1D or 2D grid
+        for count, value in enumerate(data):
+            value.plot(ax=axes[count], **kwargs)  # Plot data
+            if plot_titles:  # If plot titles to be displayed, update them here
+                axes[count].set_title(titles[count])
+    else:  # 2D grid to display on
+        j0 = 0
+        j1 = 0  # Some counters
+        for count, value in enumerate(data):
+            j0 = int(np.floor(count / ncols))  # Work out grid positions
+            j1 = int(count - ncols * j0)
+            value.plot(ax=axes[j0][j1], **kwargs)  # Plot data
+            if plot_titles:  # If plot titles to be displayed, update them here
+                axes[j0][j1].set_title(titles[count])
+
+    # Tidy up the layout
+    plt.tight_layout()</code></pre>
 </details>
 </section>
 <section>
@@ -37,6 +150,156 @@
 <section>
 </section>
 <section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="peaks.core.display.plotting.plot_grid"><code class="name flex">
+<span>def <span class="ident">plot_grid</span></span>(<span>data, ncols=3, nrows=None, titles=None, sharex=False, sharey=False, figsize=None, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Plots an array of 2D DataArrays on a grid.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>data</code></strong> :&ensp;<code>list</code></dt>
+<dd>List containing the 2D items (in xr.DataArray format) to be plotted.</dd>
+<dt><strong><code>ncols</code></strong> :&ensp;<code>int (optional)</code></dt>
+<dd>Number of columns. Ignored if nrows is specified. Defaults to 3 (or lower if &lt;3 plots).</dd>
+<dt><strong><code>nrows</code></strong> :&ensp;<code>int (optional)</code></dt>
+<dd>Number of rows. Overwrites ncols. Defaults to None (i.e. ncols is used).</dd>
+<dt><strong><code>titles</code></strong> :&ensp;<code>list (optional)</code></dt>
+<dd>List of subtitles to be supplied on the plots. Length must match length of the data list. Defaults to None.</dd>
+<dt><strong><code>sharex</code></strong> :&ensp;<code>Boolean (optional)</code></dt>
+<dd>Whether to have the plots share an x-axis. Defaults to False.</dd>
+<dt><strong><code>sharey</code></strong> :&ensp;<code>Boolean (optional)</code></dt>
+<dd>Whether to have the plots share a y-axis. Defaults to False.</dd>
+<dt><strong><code>figsize</code></strong> :&ensp;<code>tuple (optional)</code></dt>
+<dd>Size of figure to be plotted. Defaults to None.</dd>
+</dl>
+<p>**kwargs (optional)
+Additional standard matplotlib calls arguments to pass to the plot.</p>
+<h2 id="examples">Examples</h2>
+<p>from peaks import *</p>
+<p>disp1 = load('disp1.ibw')
+disp2 = load('disp2.ibw')
+disp3 = load('disp3.ibw')
+disp4 = load('disp4.ibw')</p>
+<p>disps_to_plot = [disp1, disp2, disp3, disp4]
+disp_titles = ['10 K', '20 K', '30 K', '40 K']</p>
+<p>plot_grid(disps_to_plot)
+# Plots dispersions on a 2D grid</p>
+<p>plot_grid(disps_to_plot, titles=disp_titles, sharex=True, add_colorbar=False)
+# Plots dispersions on a 2D grid,
+where each dispersion has a title, all dispersions share an x-axis, and colour bars are not shown</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def plot_grid(data, ncols=3, nrows=None, titles=None, sharex=False, sharey=False, figsize=None, **kwargs):
+    &#34;&#34;&#34;Plots an array of 2D DataArrays on a grid.
+
+    Parameters
+    ------------
+    data : list
+         List containing the 2D items (in xr.DataArray format) to be plotted.
+
+    ncols : int (optional)
+        Number of columns. Ignored if nrows is specified. Defaults to 3 (or lower if &lt;3 plots).
+
+    nrows : int (optional)
+        Number of rows. Overwrites ncols. Defaults to None (i.e. ncols is used).
+
+    titles : list (optional)
+        List of subtitles to be supplied on the plots. Length must match length of the data list. Defaults to None.
+
+    sharex : Boolean (optional)
+        Whether to have the plots share an x-axis. Defaults to False.
+
+    sharey : Boolean (optional)
+        Whether to have the plots share a y-axis. Defaults to False.
+
+    figsize : tuple (optional)
+        Size of figure to be plotted. Defaults to None.
+
+    **kwargs (optional)
+        Additional standard matplotlib calls arguments to pass to the plot.
+
+    Examples
+    ------------
+    from peaks import *
+
+    disp1 = load(&#39;disp1.ibw&#39;)
+    disp2 = load(&#39;disp2.ibw&#39;)
+    disp3 = load(&#39;disp3.ibw&#39;)
+    disp4 = load(&#39;disp4.ibw&#39;)
+
+    disps_to_plot = [disp1, disp2, disp3, disp4]
+    disp_titles = [&#39;10 K&#39;, &#39;20 K&#39;, &#39;30 K&#39;, &#39;40 K&#39;]
+
+    plot_grid(disps_to_plot)  # Plots dispersions on a 2D grid
+
+    plot_grid(disps_to_plot, titles=disp_titles, sharex=True, add_colorbar=False)  # Plots dispersions on a 2D grid,
+                    where each dispersion has a title, all dispersions share an x-axis, and colour bars are not shown
+
+    &#34;&#34;&#34;
+
+    # Number of plots
+    nplots = len(data)
+
+    # Check default columns is sensible
+    if nplots &lt; ncols:
+        ncols = nplots
+
+    # Number of rows required
+    if nrows:  # If nrows specified in call
+        ncols = int(np.ceil(nplots / nrows))  # Overwrite default columns call
+    else:
+        nrows = int(np.ceil(nplots / ncols))  # Set nrows based on ncols and nplots
+
+    # If figsize not specified, set a default based on number of rows and columns
+    if figsize == None:
+        figsize = (5 * ncols, 5 * nrows)
+
+    # Make the figure layout
+    fig, axes = plt.subplots(ncols=ncols, nrows=nrows, figsize=figsize, sharex=sharex, sharey=sharey)
+
+    # Clear any remaining subplot axes
+    if nrows * ncols &gt; nplots:
+        for i in range(nplots, nrows * ncols):
+            # Work out grid positions
+            j0 = int(np.floor((i) / ncols))
+            j1 = int(i - ncols * j0)
+            axes[j0][j1].axis(&#39;off&#39;)
+
+    # Check for whether plot titles are to be displayed
+    plot_titles = False
+    if titles:
+        if len(titles) == nplots:  # Check the correct number are provided
+            plot_titles = True
+        else:  # If not, don&#39;t use them and give a warning
+            analysis_warning(
+                &#39;Length of supplied titles list does not match number of plots. Supplied titles have not been used&#39;,
+                title=&#39;Plotting info&#39;, warn_type=&#39;danger&#39;)
+
+    # Make the plots
+    if nrows &lt; 2 or ncols == 1:  # Figure out whether this is a 1D or 2D grid
+        for count, value in enumerate(data):
+            value.plot(ax=axes[count], **kwargs)  # Plot data
+            if plot_titles:  # If plot titles to be displayed, update them here
+                axes[count].set_title(titles[count])
+    else:  # 2D grid to display on
+        j0 = 0
+        j1 = 0  # Some counters
+        for count, value in enumerate(data):
+            j0 = int(np.floor(count / ncols))  # Work out grid positions
+            j1 = int(count - ncols * j0)
+            value.plot(ax=axes[j0][j1], **kwargs)  # Plot data
+            if plot_titles:  # If plot titles to be displayed, update them here
+                axes[j0][j1].set_title(titles[count])
+
+    # Tidy up the layout
+    plt.tight_layout()</code></pre>
+</details>
+</dd>
+</dl>
 </section>
 <section>
 </section>
@@ -50,6 +313,11 @@
 <li><h3>Super-module</h3>
 <ul>
 <li><code><a title="peaks.core.display" href="index.html">peaks.core.display</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="peaks.core.display.plotting.plot_grid" href="#peaks.core.display.plotting.plot_grid">plot_grid</a></code></li>
 </ul>
 </li>
 </ul>

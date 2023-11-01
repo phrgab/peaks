@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
 <title>peaks.core.utils.misc API documentation</title>
-<meta name="description" content="Miscellaneous helper functions" />
+<meta name="description" content="Miscellaneous helper functions." />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -22,12 +22,12 @@
 <h1 class="title">Module <code>peaks.core.utils.misc</code></h1>
 </header>
 <section id="section-intro">
-<p>Miscellaneous helper functions</p>
+<p>Miscellaneous helper functions.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">&#34;&#34;&#34;Miscellaneous helper functions
+<pre><code class="python">&#34;&#34;&#34;Miscellaneous helper functions.
 
 &#34;&#34;&#34;
 
@@ -45,7 +45,7 @@ def analysis_warning(text, warn_type=&#39;info&#39;, title=&#39;Analysis info&#3
     Parameters
     ------------
     text : str
-        Text string to be displayed
+        Text string to be displayed.
 
     warn_type : str (optional)
         Warning box type:
@@ -55,7 +55,7 @@ def analysis_warning(text, warn_type=&#39;info&#39;, title=&#39;Analysis info&#3
             danger : red box
 
     title : str (optional)
-        Title to be displayed in box. Defaults to `Analysis info`
+        Title to be displayed in box. Defaults to `Analysis info`.
 
     Examples
     ------------
@@ -76,12 +76,14 @@ def make_docs(folder=None):
     Parameters
     ------------
     folder : str (optional)
-        Defines the folder where the documentation is created. Defaults to a folder `docs` in the parent
-        directory of the code
+        Defines the folder where the documentation is created. Defaults to None (creating a folder `docs` in the parent
+        directory of the code).
 
     Examples
     ------------
     from peaks import *
+
+    make_docs()  # Create module documentation at default location in peaks package
 
     make_docs(folder=&#39;C:/User/Documents/docs&#39;)  # Create module documentation in the docs folder at &#39;C:/User/Documents&#39;
 
@@ -118,41 +120,62 @@ def make_docs(folder=None):
                 f.close()
 
 
-def cell_below(text, execute=True):
+def make_cell(text, below=True, execute=True):
     &#34;&#34;&#34;Generate a new cell in the Jupyter notebook, directly below the currently running cell.
 
     Parameters
     ------------
     text : str
-        Code to be generated in new cell
+        Code to be generated in new cell.
 
-    execute : boolean (optional)
-        Determines whether the newly generated cell is automatically executed. Defaults to True
+    below : Boolean (optional)
+        Determines whether the new cell is generated below the currently running cell (as opposed to above).
+        Defaults to True.
+
+    execute : Boolean (optional)
+        Determines whether the newly generated cell is automatically executed. Defaults to True.
 
     Examples
     ------------
     from peaks import *
 
-    cell_below(&#39;a=2&#39;)  # Generate a cell which creates a variable a
+    make_cell(&#39;a=2&#39;)  # Generate a cell below which creates variable a that is equal to 2, and execute it
+
+    make_cell(&#39;5+7&#39;, below=False, execute=False)  # Generate a cell above which calculates 5+7, but do not execute it
 
     &#34;&#34;&#34;
 
     # Ensure text is in an appropriate format
     text = text.replace(&#34;\n&#34;, &#34;\\n&#34;).replace(&#34;&#39;&#34;, &#34;\\&#39;&#34;)
 
-    if execute == True:
-        # Generate and execute new cell
-        display(Javascript(&#34;&#34;&#34;
-        var cell = IPython.notebook.insert_cell_below(&#39;code&#39;)
-        cell.set_text(&#39;&#34;&#34;&#34; + text + &#34;&#34;&#34;&#39;)
-        cell.execute()
-        &#34;&#34;&#34;))
+    if below:
+        if execute:
+            # Generate and execute new cell below
+            display(Javascript(&#34;&#34;&#34;
+            var cell = IPython.notebook.insert_cell_below(&#39;code&#39;)
+            cell.set_text(&#39;&#34;&#34;&#34; + text + &#34;&#34;&#34;&#39;)
+            cell.execute()
+            &#34;&#34;&#34;))
+        else:
+            # Generate but do not execute new cell below
+            display(Javascript(&#34;&#34;&#34;
+            var cell = IPython.notebook.insert_cell_below(&#39;code&#39;)
+            cell.set_text(&#39;&#34;&#34;&#34; + text + &#34;&#34;&#34;&#39;)
+            &#34;&#34;&#34;))
     else:
-        # Generate but do not execute new cell
-        display(Javascript(&#34;&#34;&#34;
-        var cell = IPython.notebook.insert_cell_below(&#39;code&#39;)
-        cell.set_text(&#39;&#34;&#34;&#34; + text + &#34;&#34;&#34;&#39;)
-        &#34;&#34;&#34;))</code></pre>
+        if execute:
+            # Generate and execute new cell above
+            display(Javascript(&#34;&#34;&#34;
+            var cell = IPython.notebook.insert_cell_above(&#39;code&#39;)
+            cell.set_text(&#39;&#34;&#34;&#34; + text + &#34;&#34;&#34;&#39;)
+            cell.execute()
+            &#34;&#34;&#34;))
+        else:
+            # Generate but do not execute new cell above
+            display(Javascript(&#34;&#34;&#34;
+            var cell = IPython.notebook.insert_cell_above(&#39;code&#39;)
+            cell.set_text(&#39;&#34;&#34;&#34; + text + &#34;&#34;&#34;&#39;)
+            &#34;&#34;&#34;))</code></pre>
 </details>
 </section>
 <section>
@@ -170,7 +193,7 @@ def cell_below(text, execute=True):
 <h2 id="parameters">Parameters</h2>
 <dl>
 <dt><strong><code>text</code></strong> :&ensp;<code>str</code></dt>
-<dd>Text string to be displayed</dd>
+<dd>Text string to be displayed.</dd>
 <dt><strong><code>warn_type</code></strong> :&ensp;<code>str (optional)</code></dt>
 <dd>Warning box type:
 info : blue box (default)
@@ -178,7 +201,7 @@ warning : yellow box
 success : green box
 danger : red box</dd>
 <dt><strong><code>title</code></strong> :&ensp;<code>str (optional)</code></dt>
-<dd>Title to be displayed in box. Defaults to <code>Analysis info</code></dd>
+<dd>Title to be displayed in box. Defaults to <code>Analysis info</code>.</dd>
 </dl>
 <h2 id="examples">Examples</h2>
 <p>from peaks import *</p>
@@ -195,7 +218,7 @@ warning box informing the user that the fitting analysis failed</p></div>
     Parameters
     ------------
     text : str
-        Text string to be displayed
+        Text string to be displayed.
 
     warn_type : str (optional)
         Warning box type:
@@ -205,7 +228,7 @@ warning box informing the user that the fitting analysis failed</p></div>
             danger : red box
 
     title : str (optional)
-        Title to be displayed in box. Defaults to `Analysis info`
+        Title to be displayed in box. Defaults to `Analysis info`.
 
     Examples
     ------------
@@ -220,61 +243,87 @@ warning box informing the user that the fitting analysis failed</p></div>
     display(Markdown(&#39;&lt;div class=&#34;alert alert-block alert-%s&#34;&gt;&lt;b&gt;%s: &lt;/b&gt; %s &lt;/div&gt;&#39; % (warn_type, title, text)))</code></pre>
 </details>
 </dd>
-<dt id="peaks.core.utils.misc.cell_below"><code class="name flex">
-<span>def <span class="ident">cell_below</span></span>(<span>text, execute=True)</span>
+<dt id="peaks.core.utils.misc.make_cell"><code class="name flex">
+<span>def <span class="ident">make_cell</span></span>(<span>text, below=True, execute=True)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Generate a new cell in the Jupyter notebook, directly below the currently running cell.</p>
 <h2 id="parameters">Parameters</h2>
 <dl>
 <dt><strong><code>text</code></strong> :&ensp;<code>str</code></dt>
-<dd>Code to be generated in new cell</dd>
-<dt><strong><code>execute</code></strong> :&ensp;<code>boolean (optional)</code></dt>
-<dd>Determines whether the newly generated cell is automatically executed. Defaults to True</dd>
+<dd>Code to be generated in new cell.</dd>
+<dt><strong><code>below</code></strong> :&ensp;<code>Boolean (optional)</code></dt>
+<dd>Determines whether the new cell is generated below the currently running cell (as opposed to above).
+Defaults to True.</dd>
+<dt><strong><code>execute</code></strong> :&ensp;<code>Boolean (optional)</code></dt>
+<dd>Determines whether the newly generated cell is automatically executed. Defaults to True.</dd>
 </dl>
 <h2 id="examples">Examples</h2>
 <p>from peaks import *</p>
-<p>cell_below('a=2')
-# Generate a cell which creates a variable a</p></div>
+<p>make_cell('a=2')
+# Generate a cell below which creates variable a that is equal to 2, and execute it</p>
+<p>make_cell('5+7', below=False, execute=False)
+# Generate a cell above which calculates 5+7, but do not execute it</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def cell_below(text, execute=True):
+<pre><code class="python">def make_cell(text, below=True, execute=True):
     &#34;&#34;&#34;Generate a new cell in the Jupyter notebook, directly below the currently running cell.
 
     Parameters
     ------------
     text : str
-        Code to be generated in new cell
+        Code to be generated in new cell.
 
-    execute : boolean (optional)
-        Determines whether the newly generated cell is automatically executed. Defaults to True
+    below : Boolean (optional)
+        Determines whether the new cell is generated below the currently running cell (as opposed to above).
+        Defaults to True.
+
+    execute : Boolean (optional)
+        Determines whether the newly generated cell is automatically executed. Defaults to True.
 
     Examples
     ------------
     from peaks import *
 
-    cell_below(&#39;a=2&#39;)  # Generate a cell which creates a variable a
+    make_cell(&#39;a=2&#39;)  # Generate a cell below which creates variable a that is equal to 2, and execute it
+
+    make_cell(&#39;5+7&#39;, below=False, execute=False)  # Generate a cell above which calculates 5+7, but do not execute it
 
     &#34;&#34;&#34;
 
     # Ensure text is in an appropriate format
     text = text.replace(&#34;\n&#34;, &#34;\\n&#34;).replace(&#34;&#39;&#34;, &#34;\\&#39;&#34;)
 
-    if execute == True:
-        # Generate and execute new cell
-        display(Javascript(&#34;&#34;&#34;
-        var cell = IPython.notebook.insert_cell_below(&#39;code&#39;)
-        cell.set_text(&#39;&#34;&#34;&#34; + text + &#34;&#34;&#34;&#39;)
-        cell.execute()
-        &#34;&#34;&#34;))
+    if below:
+        if execute:
+            # Generate and execute new cell below
+            display(Javascript(&#34;&#34;&#34;
+            var cell = IPython.notebook.insert_cell_below(&#39;code&#39;)
+            cell.set_text(&#39;&#34;&#34;&#34; + text + &#34;&#34;&#34;&#39;)
+            cell.execute()
+            &#34;&#34;&#34;))
+        else:
+            # Generate but do not execute new cell below
+            display(Javascript(&#34;&#34;&#34;
+            var cell = IPython.notebook.insert_cell_below(&#39;code&#39;)
+            cell.set_text(&#39;&#34;&#34;&#34; + text + &#34;&#34;&#34;&#39;)
+            &#34;&#34;&#34;))
     else:
-        # Generate but do not execute new cell
-        display(Javascript(&#34;&#34;&#34;
-        var cell = IPython.notebook.insert_cell_below(&#39;code&#39;)
-        cell.set_text(&#39;&#34;&#34;&#34; + text + &#34;&#34;&#34;&#39;)
-        &#34;&#34;&#34;))</code></pre>
+        if execute:
+            # Generate and execute new cell above
+            display(Javascript(&#34;&#34;&#34;
+            var cell = IPython.notebook.insert_cell_above(&#39;code&#39;)
+            cell.set_text(&#39;&#34;&#34;&#34; + text + &#34;&#34;&#34;&#39;)
+            cell.execute()
+            &#34;&#34;&#34;))
+        else:
+            # Generate but do not execute new cell above
+            display(Javascript(&#34;&#34;&#34;
+            var cell = IPython.notebook.insert_cell_above(&#39;code&#39;)
+            cell.set_text(&#39;&#34;&#34;&#34; + text + &#34;&#34;&#34;&#39;)
+            &#34;&#34;&#34;))</code></pre>
 </details>
 </dd>
 <dt id="peaks.core.utils.misc.make_docs"><code class="name flex">
@@ -285,11 +334,13 @@ warning box informing the user that the fitting analysis failed</p></div>
 <h2 id="parameters">Parameters</h2>
 <dl>
 <dt><strong><code>folder</code></strong> :&ensp;<code>str (optional)</code></dt>
-<dd>Defines the folder where the documentation is created. Defaults to a folder <code>docs</code> in the parent
-directory of the code</dd>
+<dd>Defines the folder where the documentation is created. Defaults to None (creating a folder <code>docs</code> in the parent
+directory of the code).</dd>
 </dl>
 <h2 id="examples">Examples</h2>
 <p>from peaks import *</p>
+<p>make_docs()
+# Create module documentation at default location in peaks package</p>
 <p>make_docs(folder='C:/User/Documents/docs')
 # Create module documentation in the docs folder at 'C:/User/Documents'</p></div>
 <details class="source">
@@ -302,12 +353,14 @@ directory of the code</dd>
     Parameters
     ------------
     folder : str (optional)
-        Defines the folder where the documentation is created. Defaults to a folder `docs` in the parent
-        directory of the code
+        Defines the folder where the documentation is created. Defaults to None (creating a folder `docs` in the parent
+        directory of the code).
 
     Examples
     ------------
     from peaks import *
+
+    make_docs()  # Create module documentation at default location in peaks package
 
     make_docs(folder=&#39;C:/User/Documents/docs&#39;)  # Create module documentation in the docs folder at &#39;C:/User/Documents&#39;
 
@@ -363,7 +416,7 @@ directory of the code</dd>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
 <li><code><a title="peaks.core.utils.misc.analysis_warning" href="#peaks.core.utils.misc.analysis_warning">analysis_warning</a></code></li>
-<li><code><a title="peaks.core.utils.misc.cell_below" href="#peaks.core.utils.misc.cell_below">cell_below</a></code></li>
+<li><code><a title="peaks.core.utils.misc.make_cell" href="#peaks.core.utils.misc.make_cell">make_cell</a></code></li>
 <li><code><a title="peaks.core.utils.misc.make_docs" href="#peaks.core.utils.misc.make_docs">make_docs</a></code></li>
 </ul>
 </li>
