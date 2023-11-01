@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
-<title>peaks.ML API documentation</title>
-<meta name="description" content="Functions that utilise machine learning techniques for analysis." />
+<title>peaks.core.process.tools API documentation</title>
+<meta name="description" content="Functions that apply general operations on DataArrays." />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -19,38 +19,58 @@
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>peaks.ML</code></h1>
+<h1 class="title">Module <code>peaks.core.process.tools</code></h1>
 </header>
 <section id="section-intro">
-<p>Functions that utilise machine learning techniques for analysis.</p>
+<p>Functions that apply general operations on DataArrays.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">&#34;&#34;&#34;Functions that utilise machine learning techniques for analysis.
+<pre><code class="python">&#34;&#34;&#34;Functions that apply general operations on DataArrays.
 
 &#34;&#34;&#34;
 
-from .clustering import xarray_to_ML_format, perform_k_means, clusters_explore, clusters, PCA_explore
-from .denoise import SM_PCA</code></pre>
+# Phil King 17/04/2021
+# Brendan Edwards 01/11/2023
+
+import xarray as xr
+from peaks.core.utils.OOP_method import add_methods
+
+
+@add_methods(xr.DataArray)
+def norm(dispersion, *args, **kwargs):
+    # Temp function
+    norm_dispersion = dispersion.copy(deep=True)
+    norm_dispersion = norm_dispersion/float(norm_dispersion.max())
+    return norm_dispersion</code></pre>
 </details>
 </section>
 <section>
-<h2 class="section-title" id="header-submodules">Sub-modules</h2>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt><code class="name"><a title="peaks.ML.clustering" href="clustering.html">peaks.ML.clustering</a></code></dt>
+<dt id="peaks.core.process.tools.norm"><code class="name flex">
+<span>def <span class="ident">norm</span></span>(<span>dispersion, *args, **kwargs)</span>
+</code></dt>
 <dd>
-<div class="desc"><p>Unsupervised clustering functions.</p></div>
-</dd>
-<dt><code class="name"><a title="peaks.ML.denoise" href="denoise.html">peaks.ML.denoise</a></code></dt>
-<dd>
-<div class="desc"><p>Functions that utilise machine learning techniques to denoise data.</p></div>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@add_methods(xr.DataArray)
+def norm(dispersion, *args, **kwargs):
+    # Temp function
+    norm_dispersion = dispersion.copy(deep=True)
+    norm_dispersion = norm_dispersion/float(norm_dispersion.max())
+    return norm_dispersion</code></pre>
+</details>
 </dd>
 </dl>
-</section>
-<section>
-</section>
-<section>
 </section>
 <section>
 </section>
@@ -63,13 +83,12 @@ from .denoise import SM_PCA</code></pre>
 <ul id="index">
 <li><h3>Super-module</h3>
 <ul>
-<li><code><a title="peaks" href="../index.html">peaks</a></code></li>
+<li><code><a title="peaks.core.process" href="index.html">peaks.core.process</a></code></li>
 </ul>
 </li>
-<li><h3><a href="#header-submodules">Sub-modules</a></h3>
-<ul>
-<li><code><a title="peaks.ML.clustering" href="clustering.html">peaks.ML.clustering</a></code></li>
-<li><code><a title="peaks.ML.denoise" href="denoise.html">peaks.ML.denoise</a></code></li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="peaks.core.process.tools.norm" href="#peaks.core.process.tools.norm">norm</a></code></li>
 </ul>
 </li>
 </ul>

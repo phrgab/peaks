@@ -29,7 +29,7 @@ various functions for efficient log keeping and experimental system monitoring.<
 <p>It has been developed by the King group in St Andrews, with contributions from the following group members: Phil King,
 Brendan Edwards, Tommaso Antonelli, Edgar Abarca Morales, Liam Trzaska, Lewis Hart and Andela Zivanovic</p>
 <p>This version of peaks is the result of a complete restructuring of the package that was completed in late 2023 by
-Brendan Edwards.</p>
+Brendan Edwards and Phil King.</p>
 <p>Copyright the above authors. Contact pdk6@st-andrews.ac.uk for further information, to contribute,
 and for bug reporting.</p>
 <p>For documentation, please see /docs/index.html in root folder.</p>
@@ -74,7 +74,7 @@ It has been developed by the King group in St Andrews, with contributions from t
 Brendan Edwards, Tommaso Antonelli, Edgar Abarca Morales, Liam Trzaska, Lewis Hart and Andela Zivanovic
 
 This version of peaks is the result of a complete restructuring of the package that was completed in late 2023 by
-Brendan Edwards.
+Brendan Edwards and Phil King.
 
 Copyright the above authors. Contact pdk6@st-andrews.ac.uk for further information, to contribute,
 and for bug reporting.
@@ -124,6 +124,7 @@ import xarray as xr
 
 # Import core modules from to namespace
 from peaks.core import *
+from peaks.ML import *
 
 # Set default cmap option
 xr.set_options(cmap_sequential=&#39;binary&#39;)</code></pre>
@@ -134,31 +135,31 @@ xr.set_options(cmap_sequential=&#39;binary&#39;)</code></pre>
 <dl>
 <dt><code class="name"><a title="peaks.ML" href="ML/index.html">peaks.ML</a></code></dt>
 <dd>
-<div class="desc"><p>Functions that utilise machine learning techniques for analysis</p></div>
+<div class="desc"><p>Functions that utilise machine learning techniques for analysis.</p></div>
 </dd>
 <dt><code class="name"><a title="peaks.core" href="core/index.html">peaks.core</a></code></dt>
 <dd>
-<div class="desc"><p>Core functions within the peaks package</p></div>
+<div class="desc"><p>Core functions within the peaks package.</p></div>
 </dd>
 <dt><code class="name"><a title="peaks.lab" href="lab/index.html">peaks.lab</a></code></dt>
 <dd>
-<div class="desc"><p>Functions used to control lab instrumentation at St Andrews</p></div>
+<div class="desc"><p>Functions used to control lab instrumentation at St Andrews.</p></div>
 </dd>
 <dt><code class="name"><a title="peaks.logbook" href="logbook/index.html">peaks.logbook</a></code></dt>
 <dd>
-<div class="desc"><p>Functions used to for automatic logging of measurements and procedures</p></div>
+<div class="desc"><p>Functions used to for automatic logging of measurements and procedures.</p></div>
 </dd>
 <dt><code class="name"><a title="peaks.other" href="other/index.html">peaks.other</a></code></dt>
 <dd>
-<div class="desc"><p>Additional experimental technique-specific functions used for analysis</p></div>
+<div class="desc"><p>Additional experimental technique-specific functions used for analysis.</p></div>
 </dd>
 <dt><code class="name"><a title="peaks.ptab" href="ptab/index.html">peaks.ptab</a></code></dt>
 <dd>
-<div class="desc"><p>Functions used to generate an interactive periodic table that is utilised during XPS or MBE</p></div>
+<div class="desc"><p>Functions used to generate an interactive periodic table that is utilised during XPS or MBE.</p></div>
 </dd>
 <dt><code class="name"><a title="peaks.structure" href="structure/index.html">peaks.structure</a></code></dt>
 <dd>
-<div class="desc"><p>Functions used for crystal structure and Brillouin zone displays</p></div>
+<div class="desc"><p>Functions used for crystal structure and Brillouin zone displays.</p></div>
 </dd>
 </dl>
 </section>
