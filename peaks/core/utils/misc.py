@@ -92,7 +92,7 @@ def make_docs(folder=None):
 
 
 def make_cell(text, below=True, execute=True):
-    """Generate a new cell in the Jupyter notebook, directly below the currently running cell.
+    """Generate a new cell in the Jupyter notebook, directly below or above the currently running cell.
 
     Parameters
     ------------
