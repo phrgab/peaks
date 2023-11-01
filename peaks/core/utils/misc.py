@@ -47,12 +47,14 @@ def make_docs(folder=None):
     Parameters
     ------------
     folder : str (optional)
-        Defines the folder where the documentation is created. Defaults to a folder `docs` in the parent
-        directory of the code.
+        Defines the folder where the documentation is created. Defaults to None (creating a folder `docs` in the parent
+        directory of the code).
 
     Examples
     ------------
     from peaks import *
+
+    make_docs()  # Create module documentation at default location in peaks package
 
     make_docs(folder='C:/User/Documents/docs')  # Create module documentation in the docs folder at 'C:/User/Documents'
 
@@ -89,13 +91,17 @@ def make_docs(folder=None):
                 f.close()
 
 
-def cell_below(text, execute=True):
+def make_cell(text, below=True, execute=True):
     """Generate a new cell in the Jupyter notebook, directly below the currently running cell.
 
     Parameters
     ------------
     text : str
         Code to be generated in new cell.
+
+    below : Boolean (optional)
+        Determines whether the new cell is generated below the currently running cell (as opposed to above).
+        Defaults to True.
 
     execute : Boolean (optional)
         Determines whether the newly generated cell is automatically executed. Defaults to True.
@@ -104,23 +110,40 @@ def cell_below(text, execute=True):
     ------------
     from peaks import *
 
-    cell_below('a=2')  # Generate a cell which creates variable a that is equal to 2
+    make_cell('a=2')  # Generate a cell below which creates variable a that is equal to 2, and execute it
+
+    make_cell('5+7', below=False, execute=False)  # Generate a cell above which calculates 5+7, but do not execute it
 
     """
 
     # Ensure text is in an appropriate format
     text = text.replace("\n", "\\n").replace("'", "\\'")
 
-    if execute:
-        # Generate and execute new cell
-        display(Javascript("""
-        var cell = IPython.notebook.insert_cell_below('code')
-        cell.set_text('""" + text + """')
-        cell.execute()
-        """))
+    if below:
+        if execute:
+            # Generate and execute new cell below
+            display(Javascript("""
+            var cell = IPython.notebook.insert_cell_below('code')
+            cell.set_text('""" + text + """')
+            cell.execute()
+            """))
+        else:
+            # Generate but do not execute new cell below
+            display(Javascript("""
+            var cell = IPython.notebook.insert_cell_below('code')
+            cell.set_text('""" + text + """')
+            """))
     else:
-        # Generate but do not execute new cell
-        display(Javascript("""
-        var cell = IPython.notebook.insert_cell_below('code')
-        cell.set_text('""" + text + """')
-        """))
+        if execute:
+            # Generate and execute new cell above
+            display(Javascript("""
+            var cell = IPython.notebook.insert_cell_above('code')
+            cell.set_text('""" + text + """')
+            cell.execute()
+            """))
+        else:
+            # Generate but do not execute new cell above
+            display(Javascript("""
+            var cell = IPython.notebook.insert_cell_above('code')
+            cell.set_text('""" + text + """')
+            """))
