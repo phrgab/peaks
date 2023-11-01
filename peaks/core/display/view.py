@@ -1,3 +1,3 @@
-"""Interactive in-line plotting functions
+"""Interactive in-line plotting functions.
 
 """

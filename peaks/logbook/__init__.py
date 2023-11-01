@@ -1,3 +1,3 @@
-"""Functions used to for automatic logging of measurements and procedures
+"""Functions used to for automatic logging of measurements and procedures.
 
 """

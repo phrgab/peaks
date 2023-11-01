@@ -1,4 +1,4 @@
-"""Unsupervised clustering functions
+"""Unsupervised clustering functions.
 
 """
 
@@ -26,37 +26,38 @@ def xarray_to_ML_format(data, extract='dispersion', E=0, dE=0, k=0, dk=0, scale=
     Parameters
     ------------
     data : xr.DataArray
-        The spatial mapping data to change to a tabular pandas dataframe
+        The spatial mapping data to change to a tabular pandas dataframe.
 
     extract : str (optional)
         Determines what is extracted from spatial mapping data. Defaults to dispersion. Valid entries are:
             dispersion
             MDC
             EDC
+        Selecting MDC/EDC will rapidly increase calculation time.
 
     E : float (optional)
-        Energy of MDCs to extract. Defaults to 0
+        Energy of MDCs to extract. Defaults to 0.
 
     dE : float (optional)
-        MDC Integration range (represents the total range, i.e. integrates over +/- dE/2). Defaults to 0
+        MDC Integration range (represents the total range, i.e. integrates over +/- dE/2). Defaults to 0.
 
     k : float (optional)
-        k or theta_par value of EDCs to extract. Defaults to 0
+        k or theta_par value of EDCs to extract. Defaults to 0.
 
     dk : float (optional)
-        EDC integration range (represents the total range, i.e. integrates over +/- dk/2). Defaults to 0
+        EDC integration range (represents the total range, i.e. integrates over +/- dk/2). Defaults to 0.
 
     scale : Boolean (optional)
-        Whether to apply standard scaling to data (i.e center all values in each dimension around zero
-        with unit standard deviation). Defaults to False
+        Whether to apply standard scaling to data (i.e. center all values in each dimension around zero with unit
+        standard deviation). Defaults to False.
 
     norm : Boolean (optional)
-        Whether to normalise the data at each spatial position. Defaults to False
+        Whether to normalise the data at each spatial position. Defaults to False.
 
     Returns
     ------------
     df : pd.DataFrame
-        The spatial mapping data represented as a tabular pandas dataframe
+        The spatial mapping data represented as a tabular pandas dataframe.
 
     Examples
     ------------
@@ -124,30 +125,30 @@ def xarray_to_ML_format(data, extract='dispersion', E=0, dE=0, k=0, dk=0, scale=
 
 
 def perform_k_means(data, k=3, n_init="auto"):
-    """Perform k-means clustering using scikit-learn
+    """Perform k-means clustering using scikit-learn.
 
     Parameters
     ------------
     data : pd.DataFrame
-        The data represented as a tabular pandas dataframe to perform clustering analysis on
+        The data represented as a tabular pandas dataframe to perform clustering analysis on.
 
     k : int (optional)
-        Number of clusters. Defaults to 3
+        Number of clusters. Defaults to 3.
 
     n_init : int, string (optional)
         Number of times the k-means algorithm will be run with different centroid seeds. The final results will be the
         best output of n_init consecutive runs in terms of inertia. Required since the kmeans algorithm can fall into
-        local minima, so repeats are required to check for this. Defaults to 'auto' (note: if an outdated sklearn
+        local minima, so repeats are required to check for this. Defaults to 'auto' (note: if an outdated scikit-learn
         package is installed where 'auto' is not yet implemented, an error will arise. In this case set n_init=10, or
-        similar)
+        similar).
 
     Returns
     ------------
     model : sklearn.cluster._kmeans.KMeans
-        K-means clustering analysis model information
+        K-means clustering analysis model information.
 
     labels : np.ndarray
-        Array of spatially-dependent cluster assignments
+        Array of spatially-dependent cluster assignments.
 
     Examples
     ------------
@@ -173,54 +174,54 @@ def perform_k_means(data, k=3, n_init="auto"):
 @add_methods(xr.DataArray)
 def clusters_explore(data, cluster_range=range(1, 7), n_init="auto", use_PCA=True, PCs=3, extract='dispersion', E=0,
                      dE=0, k=0, dk=0, scale=False, norm=False):
-    """Perform an exploratory k-means clustering analysis on a spatial map for a range of number of clusters
+    """Perform an exploratory k-means clustering analysis on a spatial map for a range of number of clusters.
 
     Parameters
     ------------
     data : xr.DataArray
-        The spatial mapping data to perform an exploratory k-means clustering analysis on
+        The spatial mapping data to perform an exploratory k-means clustering analysis on.
 
     cluster_range : range (optional)
-        Range of number of clusters to perform k-means clustering analysis for. Defaults to range(1,7)
+        Range of number of clusters to perform k-means clustering analysis for. Defaults to range(1,7).
 
     n_init : int, string (optional)
         Number of times the k-means algorithm will be run with different centroid seeds. The final results will be the
         best output of n_init consecutive runs in terms of inertia. Required since the kmeans algorithm can fall into
-        local minima, so repeats are required to check for this. Defaults to 'auto' (note: if an outdated sklearn
+        local minima, so repeats are required to check for this. Defaults to 'auto' (note: if an outdated scikit-learn
         package is installed where 'auto' is not yet implemented, an error will arise. In this case set n_init=10, or
-        similar)
+        similar).
 
     use_PCA : Boolean (optional)
-        Whether to apply a principal component analysis to the data. Defaults to True
+        Whether to apply a principal component analysis to the data. Defaults to True.
 
     PCs: int (optional)
-        Number of principal components. Defaults to 3
+        Number of principal components. Defaults to 3.
 
     extract : str (optional)
         Determines what is extracted from spatial mapping data. Defaults to dispersion. Valid entries are:
             dispersion
             MDC
             EDC
-        Selecting MDC/EDC will rapidly increase calculation time
+        Selecting MDC/EDC will rapidly increase calculation time.
 
     E : float (optional)
-        Energy of MDCs to extract. Defaults to 0
+        Energy of MDCs to extract. Defaults to 0.
 
     dE : float (optional)
-        MDC Integration range (represents the total range, i.e. integrates over +/- dE/2). Defaults to 0
+        MDC Integration range (represents the total range, i.e. integrates over +/- dE/2). Defaults to 0.
 
     k : float (optional)
-        k or theta_par value of EDCs to extract. Defaults to 0
+        k or theta_par value of EDCs to extract. Defaults to 0.
 
     dk : float (optional)
-        EDC integration range (represents the total range, i.e. integrates over +/- dk/2). Defaults to 0
+        EDC integration range (represents the total range, i.e. integrates over +/- dk/2). Defaults to 0.
 
     scale : Boolean (optional)
-        Whether to apply standard scaling to data (i.e center all values in each dimension around zero
-        with unit standard deviation). Defaults to False
+        Whether to apply standard scaling to data (i.e. center all values in each dimension around zero with unit
+        standard deviation). Defaults to False.
 
     norm : Boolean (optional)
-        Whether to normalise the data at each spatial position. Defaults to False
+        Whether to normalise the data at each spatial position. Defaults to False.
 
     Examples
     ------------
@@ -294,71 +295,71 @@ def clusters_explore(data, cluster_range=range(1, 7), n_init="auto", use_PCA=Tru
 @add_methods(xr.DataArray)
 def clusters(data, num_clusters=3, n_init="auto", use_PCA=True, PCs=3, extract='dispersion', E=0, dE=0, k=0, dk=0,
              scale=False, norm=False, robust=False, vmin=None, vmax=None):
-    """Perform a k-means clustering analysis on a spatial map
+    """Perform a k-means clustering analysis on a spatial map.
 
     Parameters
     ------------
     data : xr.DataArray
-        The spatial mapping data to perform an exploratory k-means clustering analysis on
+        The spatial mapping data to perform an exploratory k-means clustering analysis on.
 
     num_clusters : int (optional)
-        Number of clusters to perform k-means clustering analysis for. Defaults to 3
+        Number of clusters to perform k-means clustering analysis for. Defaults to 3.
 
     n_init : int, string (optional)
         Number of times the k-means algorithm will be run with different centroid seeds. The final results will be the
         best output of n_init consecutive runs in terms of inertia. Required since the kmeans algorithm can fall into
-        local minima, so repeats are required to check for this. Defaults to 'auto' (note: if an outdated sklearn
+        local minima, so repeats are required to check for this. Defaults to 'auto' (note: if an outdated scikit-learn
         package is installed where 'auto' is not yet implemented, an error will arise. In this case set n_init=10, or
-        similar)
+        similar).
 
     use_PCA : Boolean (optional)
-        Whether to apply a principal component analysis to the data. Defaults to True
+        Whether to apply a principal component analysis to the data. Defaults to True.
 
     PCs: int (optional)
-        Number of principal components. Defaults to 3
+        Number of principal components. Defaults to 3.
 
     extract : str (optional)
         Determines what is extracted from spatial mapping data. Defaults to dispersion. Valid entries are:
             dispersion
             MDC
             EDC
-        Selecting MDC/EDC will rapidly increase calculation time
+        Selecting MDC/EDC will rapidly increase calculation time.
 
     E : float (optional)
-        Energy of MDCs to extract. Defaults to 0
+        Energy of MDCs to extract. Defaults to 0.
 
     dE : float (optional)
-        MDC Integration range (represents the total range, i.e. integrates over +/- dE/2). Defaults to 0
+        MDC Integration range (represents the total range, i.e. integrates over +/- dE/2). Defaults to 0.
 
     k : float (optional)
-        k or theta_par value of EDCs to extract. Defaults to 0
+        k or theta_par value of EDCs to extract. Defaults to 0.
 
     dk : float (optional)
-        EDC integration range (represents the total range, i.e. integrates over +/- dk/2). Defaults to 0
+        EDC integration range (represents the total range, i.e. integrates over +/- dk/2). Defaults to 0.
 
     scale : Boolean (optional)
-        Whether to apply standard scaling to data (i.e center all values in each dimension around zero
-        with unit standard deviation). Defaults to False.
+        Whether to apply standard scaling to data (i.e. center all values in each dimension around zero with unit
+        standard deviation). Defaults to False.
 
     norm : Boolean (optional)
-        Whether to normalise the data at each spatial position. Defaults to False
+        Whether to normalise the data at each spatial position. Defaults to False.
 
     robust : Boolean (optional)
-        Whether the argument robust=True is passed to the plots. Defaults to False
+        Whether the argument robust=True is passed to the plots. Defaults to False.
 
     vmin : float (optional)
-        Matplotlib vmin value used in plots of dispersions. Defaults to None
+        Matplotlib vmin value used in plots of dispersions. Defaults to None.
 
     vmax : float (optional)
-        Matplotlib vmax value used in plots of dispersions. Defaults to None
+        Matplotlib vmax value used in plots of dispersions. Defaults to None.
 
     Returns
     ------------
     classification_map : xr.DataArray
-        Spatial map of cluster labels
+        Spatial map of cluster labels.
 
     cluster_center_disps : list
-        List of dispersions for each cluster center
+        List of dispersions for each cluster center.
 
     Examples
     ------------
@@ -489,44 +490,44 @@ def clusters(data, num_clusters=3, n_init="auto", use_PCA=True, PCs=3, extract='
 @add_methods(xr.DataArray)
 def PCA_explore(data, PCs_range=range(1, 6), threshold=0.95, extract='dispersion', E=0, dE=0, k=0, dk=0, scale=False,
                 norm=False):
-    """Perform an exploratory principal component analysis on a spatial map for a range of principal components
+    """Perform an exploratory principal component analysis on a spatial map for a range of principal components.
 
     Parameters
     ------------
     data : xr.DataArray
-        The spatial mapping data to perform an exploratory principal component analysis on
+        The spatial mapping data to perform an exploratory principal component analysis on.
 
     PCs_range : range (optional)
-        Range of number of principal components to perform PCA for. Defaults to range(1,6)
+        Range of number of principal components to perform PCA for. Defaults to range(1,6).
 
     threshold : float (optional)
-        Required threshold for the explained variance fraction of the dimensionally reduced dataset. Defaults to 0.95
+        Required threshold for the explained variance fraction of the dimensionally reduced dataset. Defaults to 0.95.
 
     extract : str (optional)
         Determines what is extracted from spatial mapping data. Defaults to dispersion. Valid entries are:
             dispersion
             MDC
             EDC
-        Selecting MDC/EDC will rapidly increase calculation time
+        Selecting MDC/EDC will rapidly increase calculation time.
 
     E : float (optional)
-        Energy of MDCs to extract. Defaults to 0
+        Energy of MDCs to extract. Defaults to 0.
 
     dE : float (optional)
-        MDC Integration range (represents the total range, i.e. integrates over +/- dE/2). Defaults to 0
+        MDC Integration range (represents the total range, i.e. integrates over +/- dE/2). Defaults to 0.
 
     k : float (optional)
-        k or theta_par value of EDCs to extract. Defaults to 0
+        k or theta_par value of EDCs to extract. Defaults to 0.
 
     dk : float (optional)
-        EDC integration range (represents the total range, i.e. integrates over +/- dk/2). Defaults to 0
+        EDC integration range (represents the total range, i.e. integrates over +/- dk/2). Defaults to 0.
 
     scale : Boolean (optional)
-        Whether to apply standard scaling to data (i.e center all values in each dimension around zero
-        with unit standard deviation). Defaults to False.
+        Whether to apply standard scaling to data (i.e. center all values in each dimension around zero with unit
+        standard deviation). Defaults to False.
 
     norm : Boolean (optional)
-        Whether to normalise the data at each spatial position. Defaults to False
+        Whether to normalise the data at each spatial position. Defaults to False.
 
     Examples
     ------------

@@ -1,3 +1,3 @@
-"""Additional experimental technique-specific functions used for analysis
+"""Additional experimental technique-specific functions used for analysis.
 
 """

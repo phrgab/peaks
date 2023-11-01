@@ -1,4 +1,4 @@
-"""Helper functions for acting on metadata
+"""Helper functions for acting on metadata.
 
 """
 
@@ -11,21 +11,21 @@ from peaks.core.utils.OOP_method import add_methods
 
 @add_methods(xr.DataArray)
 def update_hist(array, hist):
-    """Updates the analysis history metadata of the supplied xarray
+    """Updates the analysis history metadata of the supplied DataArray.
 
     Parameters
     ------------
     array : xr.DataArray
-        The xarray to which the analysis history is to be updated
+        The xarray to which the analysis history is to be updated.
 
     hist : string
-        Analysis history to be appended to xarray analysis history metadata
+        Analysis history to be appended to xarray analysis history metadata.
 
 
     Returns
     ------------
     array : xr.DataArray
-        The xarray with updated analysis history
+        The xarray with updated analysis history.
 
 
     Examples
@@ -36,7 +36,7 @@ def update_hist(array, hist):
 
     my_data = my_data/2
 
-    my_data = my_data.update_hist('Data divided by 2')  # Update the analysis history metadata of my_data
+    my_data = my_data.update_hist('Data divided by 2')  # Update the analysis history metadata of my_data.
 
     """
     

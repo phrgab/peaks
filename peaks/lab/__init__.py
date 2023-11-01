@@ -1,3 +1,3 @@
-"""Functions used to control lab instrumentation at St Andrews
+"""Functions used to control lab instrumentation at St Andrews.
 
 """

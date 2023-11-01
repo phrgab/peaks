@@ -1,3 +1,3 @@
-"""Functions used for spin-resolved ARPES data
+"""Functions used for spin-resolved ARPES data.
 
 """

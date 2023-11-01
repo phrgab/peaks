@@ -1,4 +1,4 @@
-"""Allows a function to act as an OOP method
+"""Allows a function to act as an OOP method.
 
 """
 
@@ -14,7 +14,7 @@ def add_methods(cls):
     Parameters
     ------------
     cls : object
-        Here, this will be xr.DataArray. This allows a function to be applied to an xarray as a method
+        Here, this will be xr.DataArray. This allows a function to be applied to an xarray as a method.
 
     Examples
     ------------
@@ -32,7 +32,7 @@ def add_methods(cls):
 
     """
 
-    # decorator for the function, func
+    # decorator for the function - func
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
