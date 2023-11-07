@@ -1,0 +1,1398 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.10.0" />
+<title>peaks.core.process.data_select API documentation</title>
+<meta name="description" content="Functions used to extract selections of data." />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>peaks.core.process.data_select</code></h1>
+</header>
+<section id="section-intro">
+<p>Functions used to extract selections of data.</p>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">&#34;&#34;&#34;Functions used to extract selections of data.
+
+&#34;&#34;&#34;
+
+# Phil King 24/04/2021
+# Brendan Edwards 03/12/2021
+# Brendan Edwards 17/10/2023
+
+import numpy as np
+import xarray as xr
+from matplotlib.path import Path
+from peaks.core.utils.OOP_method import add_methods
+
+
+@add_methods(xr.DataArray)
+def DC(data, coord=&#39;eV&#39;, val=0, dval=0, ana_hist=True):
+    &#34;&#34;&#34;General function to extract DCs from data along any coordinate.
+
+    Parameters
+    ------------
+    data : xr.DataArray
+        The data to extract DCs from.
+
+    coord : str (optional)
+        Coordinate to extract DC at. Defaults to eV.
+
+    val : float, list, np.ndarray, tuple (optional)
+        DC value(s) to select. If tuple, must be in the format (start, end, step). Defaults to 0.
+
+    dval : float (optional)
+        Integration range (represents the total range, i.e. integrates over +/- dval/2). Defaults to 0.
+
+    ana_hist : Boolean (optional)
+        Defines whether the function appends information to the analysis history metadata. Defaults to True.
+
+    Returns
+    ------------
+    dc : xr.DataArray
+        Xarray of DC.
+
+    Examples
+    ------------
+    from peaks import *
+
+    disp = load(&#39;disp.ibw&#39;)
+
+    DC1 = disp.DC(coord=&#39;theta_par&#39;, val=3.5, dval=0.5)  # Extracts an EDC at theta_par = 3.5 +/- 0.25
+
+    DC2 = disp.DC(&#39;eV&#39;, -0.5, 0.2)  # Extracts an MDC at eV = -0.5 +/- 0.1
+
+    DC3 = disp.DC(&#39;eV&#39;, [-0.5, -0.4], 0.2)  # Extracts MDCs at eV = -0.5 +/- 0.1 and -0.4 +/- 0.1
+
+    DC4 = disp.DC(&#39;eV&#39;, (-0.2, 0.1, 0.05), 0.02)  # Extracts MDCs between eV = -0.2 and 0.1 in steps of 0.05 with
+                                                    +/- 0.01 integrations
+
+    &#34;&#34;&#34;
+
+    # If val is a 3 element tuple of the format (start, end, step), make val an np.ndarray of the relevant values
+    if type(val) == tuple:
+        if len(val) == 3:
+            delta = 0.000000001  # small value to add to end so that values include end number (if appropriate)
+            val = np.arange(val[0], val[1] + delta, val[2])
+        else:
+            raise Exception(&#34;Tuple argument must be in the format (start, end, step)&#34;)
+
+    # Ensure val is of type list
+    if type(val) == np.ndarray:
+        val = list(val)
+    elif type(val) != list:
+        val = [val]
+
+    # Convert window to pixels
+    num_pixels = int((dval / abs(data[coord].data[1] - data[coord].data[0])) + 1)
+
+    # Extract single pixel DC(s)
+    dc = data.sel({coord: val}, method=&#39;nearest&#39;)
+
+    # Apply extra binning if required
+    if num_pixels &gt; 1:
+        for i in dc[coord]:
+            dc.loc[{coord: i}] = data.sel({coord: slice(i - dval / 2, i + dval / 2)}).mean(coord, keep_attrs=True)
+
+    # If returning a single DC, want to remove the non-varying coordinate as a dimension
+    try:
+        dc = dc.squeeze(coord)
+    except:
+        pass
+
+    # Update the analysis history if ana_hist is True (will be False when DC is called from e.g. EDC, MDC, FS)
+    if ana_hist:
+        hist = &#39;DC extracted, integration window: &#39; + str(dval)
+        dc.update_hist(hist)
+
+    return dc
+
+
+@add_methods(xr.DataArray)
+def MDC(data, E=0, dE=0):
+    &#34;&#34;&#34;Extract MDCs from DataArrays.
+
+    Parameters
+    ------------
+    data : xr.DataArray
+        The dispersion to extract an MDC from.
+
+    E : float, list, np.ndarray, tuple (optional)
+        Energy (or energies) of MDC(s) to extract. If tuple, must be in the format (start, end, step). Defaults to 0.
+
+    dE : float (optional)
+        Integration range (represents the total range, i.e. integrates over +/- dE/2). Defaults to 0.
+
+    Returns
+    ------------
+    mdc : xr.DataArray
+        Xarray of extracted MDC.
+
+    Examples
+    ------------
+    from peaks import *
+
+    disp = load(&#39;disp.ibw&#39;)
+
+    MDC1 = disp.MDC(E=-1.2, dE=0.01)  # Extracts an MDC at eV = -1.2 +/- 0.005
+
+    MDC2 = disp.MDC(55.6, 0.06)  # Extracts an MDC at eV = 55.6 +/- 0.03
+
+    MDC3 = disp.MDC()  # Extracts a single non-integrated MDC at eV value closest to 0
+
+    MDC4 = disp.MDC([55.6, 55.7], 0.06)  # Extracts MDCs at eV = 55.6 +/- 0.03 and 55.7 +/- 0.03
+
+    MDC5 = disp.MDC((-0.2, 0.1, 0.05), 0.02)  # Extracts MDCs between eV = -0.2 and 0.1 in steps of 0.05 with
+                                                +/- 0.01 integrations
+
+    &#34;&#34;&#34;
+
+    # Call function to extract relevant MDC from dispersion
+    mdc = data.DC(coord=&#39;eV&#39;, val=E, dval=dE, ana_hist=False)
+
+    # Update the analysis history
+    hist = &#39;MDC extracted, integration window: &#39; + str(dE)
+    mdc.update_hist(hist)
+
+    return mdc
+
+
+@add_methods(xr.DataArray)
+def EDC(data, k=0, dk=0):
+    &#34;&#34;&#34;Extract EDCs from DataArrays.
+
+    Parameters
+    ------------
+    data : xr.DataArray
+        The dispersion to extract an EDC from/
+
+    k : float, list, np.ndarray, tuple (optional)
+        k or theta_par value(s) of EDC(s) to extract. If tuple, must be in the format (start, end, step). Defaults to 0.
+
+    dk : float (optional)
+        Integration range (represents the total range, i.e. integrates over +/- dk/2). Defaults to 0.
+
+    Returns
+    ------------
+    edc : xr.DataArray
+        Xarray of extracted EDC.
+
+    Examples
+    ------------
+    from peaks import *
+
+    disp = load(&#39;disp.ibw&#39;)
+
+    EDC1 = disp.EDC(k=0.5, dk=0.01)  # Extracts an EDC at k (or theta_par) = 0.5 +/- 0.005
+
+    EDC2 = disp.EDC(-0.2, 0.06)  # Extracts an EDC at k (or theta_par) = -0.2 +/- 0.03
+
+    EDC3 = disp.EDC()  # Extracts a single non-integrated EDC at k (or theta_par) value closest to 0
+
+    EDC4 = disp.EDC([-0.2, -0.1], 0.06)  # Extracts EDCs at k (or theta_par) = -0.2 +/- 0.03 and -0.1 +/- 0.03
+
+    EDC5 = disp.EDC((0.7, 1.2, 0.1), 0.02)  # Extracts EDCs between k (or theta_par) = 0.7 and 1.2 in steps of 0.1 with
+                                              +/- 0.01 integrations
+
+    &#34;&#34;&#34;
+
+    # Work out correct variable for dispersive direction (i.e. is data in angle or k-space)
+    coords = list(data.dims)
+    coords.remove(&#39;eV&#39;)
+    coord = coords[-1]  # Should always be the last one if data loading is consistent
+
+    # Call function to extract relevant EDC from dispersion
+    edc = data.DC(coord=coord, val=k, dval=dk, ana_hist=False)
+
+    # Update the analysis history
+    hist = &#39;EDC extracted, integration window: &#39; + str(dk)
+    edc.update_hist(hist)
+
+    return edc
+
+
+@add_methods(xr.DataArray)
+def FS(data, E=0, dE=0):
+    &#34;&#34;&#34;Extract constant energy slices, e.g. Fermi surfaces, from 3D DataArrays.
+
+    Parameters
+    ------------
+    data : xr.DataArray
+        The 3D Fermi map to extract a FS from.
+
+    E : float, list, np.ndarray, tuple (optional)
+        Energy (or energies) of slice(s) to extract. If tuple, must be in the format (start, end, step). Defaults to 0.
+
+    dE : float (optional)
+        Integration range (represents the total range, i.e. integrates over +/- dE/2). Defaults to 0.
+
+    Returns
+    ------------
+    fs : xr.DataArray
+        Xarray of extracted constant energy slice.
+
+    Examples
+    ------------
+    from peaks import *
+
+    FM = load(&#39;FM.zip&#39;)
+
+    FS1 = FM.FS(E=-1.2, dE=0.01)  # Extracts a constant energy slice at eV = -1.2 +/- 0.005
+
+    FS2 = FM.FS(95.56, 0.06)  # Extracts a constant energy slice at eV = 95.56 +/- 0.03
+
+    FS3 = FM.FS()  # Extracts a single non-integrated constant energy slice at eV value closest to 0
+
+    FS4 = FM.FS([95.56, 95.60], 0.06)  # Extracts constant energy slices at eV = 95.56 +/- 0.03 and 95.60 +/- 0.03
+
+    FS5 = FM.FS((-0.2, 0.1, 0.05), 0.02)  # Extracts constant energy slices between eV = -0.2 and 0.1 in steps of 0.05
+                                            with +/- 0.01 integrations
+
+    &#34;&#34;&#34;
+
+    # Check data is 3D
+    if len(data.dims) != 3:
+        raise Exception(&#34;Function only acts on 3D data&#34;)
+
+    # Call function to extract relevant constant energy slice from Fermi map
+    fs = data.DC(coord=&#39;eV&#39;, val=E, dval=dE, ana_hist=False)
+
+    # Update the analysis history
+    hist = &#39;Constant energy slice extracted, integration window: &#39; + str(dE)
+    fs.update_hist(hist)
+
+    return fs
+
+
+@add_methods(xr.DataArray)
+def DOS(data):
+    &#34;&#34;&#34;Integrate over all but the energy axis to return the best approximation to the DOS possible from the data.
+
+    Parameters
+    ------------
+    data : xr.DataArray
+        Data to extract DOS from.
+
+    Returns
+    ------------
+    dos : xr.DataArray
+        xarray of extracted DOS.
+
+    Examples
+    ------------
+    from peaks import *
+
+    disp = load(&#39;disp.ibw&#39;)
+
+    FM = load(&#39;FM.zip&#39;)
+
+    disp_DOS = disp.DOS()  # Extracts DOS of dispersion
+
+    FM_DOS = FM.DOS() # Extracts DOS of Fermi map
+
+    &#34;&#34;&#34;
+
+    # Get relevant dimensions to integrate over
+    int_dim = list(filter(lambda i: i != &#39;eV&#39;, data.dims))
+
+    # Calculate the DOS
+    dos = data.mean(int_dim, keep_attrs=True)
+
+    # Update the analysis history
+    hist = &#39;Integrated along axes: &#39; + str(int_dim)
+    dos.update_hist(hist)
+
+    return dos
+
+
+@add_methods(xr.DataArray)
+def tot(data, spatial_int=False):
+    &#34;&#34;&#34;Integrate spatial map data over all non-spatial (energy and angle/k) or all spatial dimensions.
+
+    Parameters
+    ------------
+    data : xr.DataArray
+        Spatial map data.
+
+    spatial_int : Boolean (optional)
+        Determines whether integration is performed over spatial or non-spatial dimensions. Defaults to False.
+
+    Returns
+    ------------
+    data_tot : xr.DataArray
+        The integrated data.
+
+    Examples
+    ------------
+    from peaks import *
+
+    SM = load(&#39;SM.ibw&#39;)
+
+    SM_int = SM.tot()  # Extracts energy and angle integrated spatial map
+
+    SM_int_spatial = SM.tot(spatial_int=True)   # Extracts spatially integrated dispersion
+
+    &#34;&#34;&#34;
+
+    # Integrate over spatial dimensions
+    if spatial_int:
+        data_tot = data.mean([&#39;x1&#39;, &#39;x2&#39;], keep_attrs=True)
+        hist = &#39;Integrated along axes: &#39; + str([&#39;x1&#39;, &#39;x2&#39;])
+
+    # Integrate over non-spatial dimensions
+    else:
+        # Get relevant dimensions to integrate over
+        int_dim = list(filter(lambda n: n != &#39;x1&#39; and n != &#39;x2&#39;, data.dims))
+        hist = &#39;Integrated along axes: &#39; + str(int_dim)
+        data_tot = data.mean(int_dim, keep_attrs=True)
+
+    # Update the analysis history
+    data_tot.update_hist(hist)
+
+    return data_tot
+
+
+@add_methods(xr.DataArray)
+def radial_cuts(data, num_azi=361, num_points=200, radius=2, **kwargs):
+    &#34;&#34;&#34;Extract radial cuts of a Fermi surface as a function of azimuthal angle.
+
+    Parameters
+    ------------
+    data : xr.DataArray
+        Data to extract radial cuts from.
+
+    num_azi : float (optional)
+        Number of evenly spaced azi values between 0 and 360 degrees to take radial cuts. Defaults to 361.
+
+    num_points : float (optional)
+        Number of evenly spaced points to sample along a cut. Defaults to 200.
+
+    radius : float (optional)
+        Maximum radius to take cuts up to. Defaults to 2.
+
+    **kwargs : float (optional)
+        Used to define centre of rotations in the format coord = num, e.g. k_par = 1.2 sets the k_par centre as 1.2.
+        Default centre of rotation is (0, 0).
+
+    Returns
+    ------------
+    data_to_return : xr.DataArray
+        xarray of radial cuts against azi.
+
+    Examples
+    ------------
+    from peaks import *
+
+    FM = load(&#39;FM.zip&#39;)
+
+    FS1 = FM.FS(E=-0, dE=0.01)  # Extracts a constant energy slice at eV = -1.2 +/- 0.005
+
+    FS1_radial_cuts_1 = FS1.radial_cuts(num_azi=181, num_points=300, radius=15, theta_par=-2, ana_polar=-5)  # Extracts
+                                             radial cuts (radius = 15) at azi values in 2 degree increments, using
+                                             a centre of rotation (theta_par, ana_polar) = (-2, -5)
+
+    FS1_radial_cuts_2 = FS1.radial_cuts()  # Extracts radial cuts (radius = 2) at azi values in 1 degree increments,
+                                             using a centre of rotation (coord_1, coord_2) = (0, 0)
+
+    &#34;&#34;&#34;
+
+    # Check data is 2D
+    if len(data.dims) != 2:
+        raise Exception(&#34;Function only acts on 2D data&#34;)
+
+    # Define the coordinate system
+    x_coord = data.dims[0]
+    y_coord = data.dims[1]
+
+    # Check for user-defined centre of rotations
+    try:
+        x_centre = (kwargs[x_coord])
+    except:
+        x_centre = 0
+    try:
+        y_centre = (kwargs[y_coord])
+    except:
+        y_centre = 0
+
+    # Define coordinates to be sampled
+    azi_angles = np.linspace(0, 360, num_azi)
+    k_values = np.linspace(0, radius, num_points)
+    spectrum = []
+
+    # For each azi angle, interpolate the data onto a radial cut and append result to spectrum
+    for angle in azi_angles:
+        x_values = np.linspace(0 + x_centre, (np.cos(np.radians(angle)) * radius) + x_centre, num_points)
+        y_values = np.linspace(0 + y_centre, (np.sin(np.radians(angle)) * radius) + y_centre, num_points)
+        x_xarray = xr.DataArray(x_values, dims=&#39;k&#39;)
+        y_xarray = xr.DataArray(y_values, dims=&#39;k&#39;)
+        interpolated_data = data.interp({x_coord: x_xarray, y_coord: y_xarray})
+        spectrum.append(interpolated_data.data)
+
+    # Create xarray of radial cuts against azi
+    data_to_return = xr.DataArray(np.array(spectrum).transpose(), dims=(&#34;k&#34;, &#34;azi&#34;),
+                                  coords={&#34;k&#34;: k_values, &#34;azi&#34;: azi_angles})
+    data_to_return.attrs = data.attrs
+
+    # Update the analysis history
+    data_to_return.update_hist(&#39;Radial cuts taken as a function of azi&#39;)
+
+    return data_to_return
+
+
+@add_methods(xr.DataArray)
+def mask_data(data, ROI_in, return_integrated=True):
+    &#34;&#34;&#34;This function takes a multidimensional DataArray, and applies a polygon region of interest (ROI) as a mask. By
+    default, the function will then extract the mean over the two dimensions defined by the ROI. For a rectangular
+    ROI, this is equivalent to a simple .sel over those dimensions followed by a mean, but an arbitrary polygon can
+    be used to define the ROI.
+
+    Parameters
+    ------------
+    data : xr.DataArray
+        The multidimensional data to apply the ROI selection to.
+
+    ROI_in : dict
+        A dictionary of two lists which contains the vertices of the polygon for the ROI definition, in the form
+        {&#39;dim1&#39;: [pt1, pt2, pt3, ...], &#39;dim2&#39;=[pt1&#39;, pt2&#39;, pt3&#39;, ...]}. As many points can be specified as required,
+        but this should be given with the same number of points for each dimension.
+
+    return_integrated : Boolean (optional)
+        Whether to mean the data confined within ROI region over the ROI dimensions, or instead return the masked data.
+        Defaults to True.
+
+    Returns
+    ------------
+    ROI_selected_data : xr.DataArray
+        The input data with the ROI applied as a mask, and (if return_integrated=True) the mean taken over those
+        remaining dimensions.
+
+    Examples
+    ------------
+    from peaks import *
+
+    SM = load(&#39;SM.ibw&#39;)
+
+    ROI = {&#39;theta_par&#39;: [-8, -5.5, -3.1, -5.6], &#39;eV&#39;: [95.45, 95.45, 95.77, 95.77]}  # Define ROI
+
+    ROI_SM = SM.mask_data(ROI)  # Extract SM consisting of the integrated spectral weight confined within the ROI
+
+    ROI_SM = SM.mask_data(ROI, return_integrated=False)  # Extract SM consisting of the input data with the ROI applied
+                                                      as a mask
+
+    &#34;&#34;&#34;
+
+    # Check function has been fed with suitable dictionary for ROI generation
+    err_str = (&#39;ROI must be a dictionary containing two entries for the relevant axes. Each of these entries should &#39;
+               &#39;be a list of the vertices of the polygon for the labelled axis of the ROI. These must be of equal &#39;
+               &#39;length for the two axes.&#39;)
+    if type(ROI_in) != dict or len(ROI_in) != 2:
+        raise Exception(err_str)
+    else:  # Seems correct format
+        dims = list(ROI_in)  # Determine relevant dimensions for ROI
+
+        # Check lengths match
+        if len(ROI_in[dims[0]]) != len(ROI_in[dims[1]]):
+            raise Exception(err_str)
+
+    # Define ROI and make a polygon path defining the ROI
+    ROI = []
+    for i in range(len(ROI_in[dims[0]])):
+        ROI.append((ROI_in[dims[0]][i], ROI_in[dims[1]][i]))
+    p = Path(ROI)  # Make a polygon defining the ROI
+
+    # Restrict the data cube down to the minimum possible size (making this a copy to avoid overwriting problems)
+    data_bounded = data.sel({dims[0]: slice(min(ROI_in[dims[0]]), max(ROI_in[dims[0]])),
+                             dims[1]: slice(min(ROI_in[dims[1]]), max(ROI_in[dims[1]]))}).copy(deep=True)
+
+    # Broadcast coordinate data
+    b, dim0 = xr.broadcast(data_bounded, data_bounded[dims[0]])
+    b, dim1 = xr.broadcast(data_bounded, data_bounded[dims[1]])
+
+    # Convert coordinate data into a format for passing to matplotlib path function for identifying which points are
+    # in the relevant ROI
+    points = np.vstack((dim0.data.flatten(), dim1.data.flatten())).T
+
+    # Check which of these points fall within our ROI
+    grid = p.contains_points(points, radius=0.01)
+
+    # Reshape to make a data mask
+    mask = grid.reshape(data_bounded.shape)
+
+    if return_integrated:  # Data should be averaged over the ROI dimensions
+        ROI_selected_data = data_bounded.where(mask).mean(dims, keep_attrs=True)
+        hist = &#39;Data averaged over region of interest defined by polygon with vertices: &#39; + str(ROI_in)
+    else:  # Masked data to be returned
+        ROI_selected_data = data_bounded.where(mask)
+        hist = &#39;Data masked by region of interest defined by polygon with vertices: &#39; + str(ROI_in)
+
+    # Update analysis history
+    ROI_selected_data.update_hist(hist)
+
+    return ROI_selected_data
+
+
+def disp_from_hv():
+    pass</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="peaks.core.process.data_select.DC"><code class="name flex">
+<span>def <span class="ident">DC</span></span>(<span>data, coord='eV', val=0, dval=0, ana_hist=True)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>General function to extract DCs from data along any coordinate.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>data</code></strong> :&ensp;<code>xr.DataArray</code></dt>
+<dd>The data to extract DCs from.</dd>
+<dt><strong><code>coord</code></strong> :&ensp;<code>str (optional)</code></dt>
+<dd>Coordinate to extract DC at. Defaults to eV.</dd>
+<dt><strong><code>val</code></strong> :&ensp;<code>float, list, np.ndarray, tuple (optional)</code></dt>
+<dd>DC value(s) to select. If tuple, must be in the format (start, end, step). Defaults to 0.</dd>
+<dt><strong><code>dval</code></strong> :&ensp;<code>float (optional)</code></dt>
+<dd>Integration range (represents the total range, i.e. integrates over +/- dval/2). Defaults to 0.</dd>
+<dt><strong><code>ana_hist</code></strong> :&ensp;<code>Boolean (optional)</code></dt>
+<dd>Defines whether the function appends information to the analysis history metadata. Defaults to True.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>dc</code></strong> :&ensp;<code>xr.DataArray</code></dt>
+<dd>Xarray of DC.</dd>
+</dl>
+<h2 id="examples">Examples</h2>
+<p>from peaks import *</p>
+<p>disp = load('disp.ibw')</p>
+<p>DC1 = disp.DC(coord='theta_par', val=3.5, dval=0.5)
+# Extracts an EDC at theta_par = 3.5 +/- 0.25</p>
+<p>DC2 = disp.DC('eV', -0.5, 0.2)
+# Extracts an MDC at eV = -0.5 +/- 0.1</p>
+<p>DC3 = disp.DC('eV', [-0.5, -0.4], 0.2)
+# Extracts MDCs at eV = -0.5 +/- 0.1 and -0.4 +/- 0.1</p>
+<p>DC4 = disp.DC('eV', (-0.2, 0.1, 0.05), 0.02)
+# Extracts MDCs between eV = -0.2 and 0.1 in steps of 0.05 with
++/- 0.01 integrations</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@add_methods(xr.DataArray)
+def DC(data, coord=&#39;eV&#39;, val=0, dval=0, ana_hist=True):
+    &#34;&#34;&#34;General function to extract DCs from data along any coordinate.
+
+    Parameters
+    ------------
+    data : xr.DataArray
+        The data to extract DCs from.
+
+    coord : str (optional)
+        Coordinate to extract DC at. Defaults to eV.
+
+    val : float, list, np.ndarray, tuple (optional)
+        DC value(s) to select. If tuple, must be in the format (start, end, step). Defaults to 0.
+
+    dval : float (optional)
+        Integration range (represents the total range, i.e. integrates over +/- dval/2). Defaults to 0.
+
+    ana_hist : Boolean (optional)
+        Defines whether the function appends information to the analysis history metadata. Defaults to True.
+
+    Returns
+    ------------
+    dc : xr.DataArray
+        Xarray of DC.
+
+    Examples
+    ------------
+    from peaks import *
+
+    disp = load(&#39;disp.ibw&#39;)
+
+    DC1 = disp.DC(coord=&#39;theta_par&#39;, val=3.5, dval=0.5)  # Extracts an EDC at theta_par = 3.5 +/- 0.25
+
+    DC2 = disp.DC(&#39;eV&#39;, -0.5, 0.2)  # Extracts an MDC at eV = -0.5 +/- 0.1
+
+    DC3 = disp.DC(&#39;eV&#39;, [-0.5, -0.4], 0.2)  # Extracts MDCs at eV = -0.5 +/- 0.1 and -0.4 +/- 0.1
+
+    DC4 = disp.DC(&#39;eV&#39;, (-0.2, 0.1, 0.05), 0.02)  # Extracts MDCs between eV = -0.2 and 0.1 in steps of 0.05 with
+                                                    +/- 0.01 integrations
+
+    &#34;&#34;&#34;
+
+    # If val is a 3 element tuple of the format (start, end, step), make val an np.ndarray of the relevant values
+    if type(val) == tuple:
+        if len(val) == 3:
+            delta = 0.000000001  # small value to add to end so that values include end number (if appropriate)
+            val = np.arange(val[0], val[1] + delta, val[2])
+        else:
+            raise Exception(&#34;Tuple argument must be in the format (start, end, step)&#34;)
+
+    # Ensure val is of type list
+    if type(val) == np.ndarray:
+        val = list(val)
+    elif type(val) != list:
+        val = [val]
+
+    # Convert window to pixels
+    num_pixels = int((dval / abs(data[coord].data[1] - data[coord].data[0])) + 1)
+
+    # Extract single pixel DC(s)
+    dc = data.sel({coord: val}, method=&#39;nearest&#39;)
+
+    # Apply extra binning if required
+    if num_pixels &gt; 1:
+        for i in dc[coord]:
+            dc.loc[{coord: i}] = data.sel({coord: slice(i - dval / 2, i + dval / 2)}).mean(coord, keep_attrs=True)
+
+    # If returning a single DC, want to remove the non-varying coordinate as a dimension
+    try:
+        dc = dc.squeeze(coord)
+    except:
+        pass
+
+    # Update the analysis history if ana_hist is True (will be False when DC is called from e.g. EDC, MDC, FS)
+    if ana_hist:
+        hist = &#39;DC extracted, integration window: &#39; + str(dval)
+        dc.update_hist(hist)
+
+    return dc</code></pre>
+</details>
+</dd>
+<dt id="peaks.core.process.data_select.DOS"><code class="name flex">
+<span>def <span class="ident">DOS</span></span>(<span>data)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Integrate over all but the energy axis to return the best approximation to the DOS possible from the data.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>data</code></strong> :&ensp;<code>xr.DataArray</code></dt>
+<dd>Data to extract DOS from.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>dos</code></strong> :&ensp;<code>xr.DataArray</code></dt>
+<dd>xarray of extracted DOS.</dd>
+</dl>
+<h2 id="examples">Examples</h2>
+<p>from peaks import *</p>
+<p>disp = load('disp.ibw')</p>
+<p>FM = load('FM.zip')</p>
+<p>disp_DOS = disp.DOS()
+# Extracts DOS of dispersion</p>
+<p>FM_DOS = FM.DOS() # Extracts DOS of Fermi map</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@add_methods(xr.DataArray)
+def DOS(data):
+    &#34;&#34;&#34;Integrate over all but the energy axis to return the best approximation to the DOS possible from the data.
+
+    Parameters
+    ------------
+    data : xr.DataArray
+        Data to extract DOS from.
+
+    Returns
+    ------------
+    dos : xr.DataArray
+        xarray of extracted DOS.
+
+    Examples
+    ------------
+    from peaks import *
+
+    disp = load(&#39;disp.ibw&#39;)
+
+    FM = load(&#39;FM.zip&#39;)
+
+    disp_DOS = disp.DOS()  # Extracts DOS of dispersion
+
+    FM_DOS = FM.DOS() # Extracts DOS of Fermi map
+
+    &#34;&#34;&#34;
+
+    # Get relevant dimensions to integrate over
+    int_dim = list(filter(lambda i: i != &#39;eV&#39;, data.dims))
+
+    # Calculate the DOS
+    dos = data.mean(int_dim, keep_attrs=True)
+
+    # Update the analysis history
+    hist = &#39;Integrated along axes: &#39; + str(int_dim)
+    dos.update_hist(hist)
+
+    return dos</code></pre>
+</details>
+</dd>
+<dt id="peaks.core.process.data_select.EDC"><code class="name flex">
+<span>def <span class="ident">EDC</span></span>(<span>data, k=0, dk=0)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Extract EDCs from DataArrays.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>data</code></strong> :&ensp;<code>xr.DataArray</code></dt>
+<dd>The dispersion to extract an EDC from/</dd>
+<dt><strong><code>k</code></strong> :&ensp;<code>float, list, np.ndarray, tuple (optional)</code></dt>
+<dd>k or theta_par value(s) of EDC(s) to extract. If tuple, must be in the format (start, end, step). Defaults to 0.</dd>
+<dt><strong><code>dk</code></strong> :&ensp;<code>float (optional)</code></dt>
+<dd>Integration range (represents the total range, i.e. integrates over +/- dk/2). Defaults to 0.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>edc</code></strong> :&ensp;<code>xr.DataArray</code></dt>
+<dd>Xarray of extracted EDC.</dd>
+</dl>
+<h2 id="examples">Examples</h2>
+<p>from peaks import *</p>
+<p>disp = load('disp.ibw')</p>
+<p>EDC1 = disp.EDC(k=0.5, dk=0.01)
+# Extracts an EDC at k (or theta_par) = 0.5 +/- 0.005</p>
+<p>EDC2 = disp.EDC(-0.2, 0.06)
+# Extracts an EDC at k (or theta_par) = -0.2 +/- 0.03</p>
+<p>EDC3 = disp.EDC()
+# Extracts a single non-integrated EDC at k (or theta_par) value closest to 0</p>
+<p>EDC4 = disp.EDC([-0.2, -0.1], 0.06)
+# Extracts EDCs at k (or theta_par) = -0.2 +/- 0.03 and -0.1 +/- 0.03</p>
+<p>EDC5 = disp.EDC((0.7, 1.2, 0.1), 0.02)
+# Extracts EDCs between k (or theta_par) = 0.7 and 1.2 in steps of 0.1 with
++/- 0.01 integrations</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@add_methods(xr.DataArray)
+def EDC(data, k=0, dk=0):
+    &#34;&#34;&#34;Extract EDCs from DataArrays.
+
+    Parameters
+    ------------
+    data : xr.DataArray
+        The dispersion to extract an EDC from/
+
+    k : float, list, np.ndarray, tuple (optional)
+        k or theta_par value(s) of EDC(s) to extract. If tuple, must be in the format (start, end, step). Defaults to 0.
+
+    dk : float (optional)
+        Integration range (represents the total range, i.e. integrates over +/- dk/2). Defaults to 0.
+
+    Returns
+    ------------
+    edc : xr.DataArray
+        Xarray of extracted EDC.
+
+    Examples
+    ------------
+    from peaks import *
+
+    disp = load(&#39;disp.ibw&#39;)
+
+    EDC1 = disp.EDC(k=0.5, dk=0.01)  # Extracts an EDC at k (or theta_par) = 0.5 +/- 0.005
+
+    EDC2 = disp.EDC(-0.2, 0.06)  # Extracts an EDC at k (or theta_par) = -0.2 +/- 0.03
+
+    EDC3 = disp.EDC()  # Extracts a single non-integrated EDC at k (or theta_par) value closest to 0
+
+    EDC4 = disp.EDC([-0.2, -0.1], 0.06)  # Extracts EDCs at k (or theta_par) = -0.2 +/- 0.03 and -0.1 +/- 0.03
+
+    EDC5 = disp.EDC((0.7, 1.2, 0.1), 0.02)  # Extracts EDCs between k (or theta_par) = 0.7 and 1.2 in steps of 0.1 with
+                                              +/- 0.01 integrations
+
+    &#34;&#34;&#34;
+
+    # Work out correct variable for dispersive direction (i.e. is data in angle or k-space)
+    coords = list(data.dims)
+    coords.remove(&#39;eV&#39;)
+    coord = coords[-1]  # Should always be the last one if data loading is consistent
+
+    # Call function to extract relevant EDC from dispersion
+    edc = data.DC(coord=coord, val=k, dval=dk, ana_hist=False)
+
+    # Update the analysis history
+    hist = &#39;EDC extracted, integration window: &#39; + str(dk)
+    edc.update_hist(hist)
+
+    return edc</code></pre>
+</details>
+</dd>
+<dt id="peaks.core.process.data_select.FS"><code class="name flex">
+<span>def <span class="ident">FS</span></span>(<span>data, E=0, dE=0)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Extract constant energy slices, e.g. Fermi surfaces, from 3D DataArrays.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>data</code></strong> :&ensp;<code>xr.DataArray</code></dt>
+<dd>The 3D Fermi map to extract a FS from.</dd>
+<dt><strong><code>E</code></strong> :&ensp;<code>float, list, np.ndarray, tuple (optional)</code></dt>
+<dd>Energy (or energies) of slice(s) to extract. If tuple, must be in the format (start, end, step). Defaults to 0.</dd>
+<dt><strong><code>dE</code></strong> :&ensp;<code>float (optional)</code></dt>
+<dd>Integration range (represents the total range, i.e. integrates over +/- dE/2). Defaults to 0.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>fs</code></strong> :&ensp;<code>xr.DataArray</code></dt>
+<dd>Xarray of extracted constant energy slice.</dd>
+</dl>
+<h2 id="examples">Examples</h2>
+<p>from peaks import *</p>
+<p>FM = load('FM.zip')</p>
+<p>FS1 = FM.FS(E=-1.2, dE=0.01)
+# Extracts a constant energy slice at eV = -1.2 +/- 0.005</p>
+<p>FS2 = FM.FS(95.56, 0.06)
+# Extracts a constant energy slice at eV = 95.56 +/- 0.03</p>
+<p>FS3 = FM.FS()
+# Extracts a single non-integrated constant energy slice at eV value closest to 0</p>
+<p>FS4 = FM.FS([95.56, 95.60], 0.06)
+# Extracts constant energy slices at eV = 95.56 +/- 0.03 and 95.60 +/- 0.03</p>
+<p>FS5 = FM.FS((-0.2, 0.1, 0.05), 0.02)
+# Extracts constant energy slices between eV = -0.2 and 0.1 in steps of 0.05
+with +/- 0.01 integrations</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@add_methods(xr.DataArray)
+def FS(data, E=0, dE=0):
+    &#34;&#34;&#34;Extract constant energy slices, e.g. Fermi surfaces, from 3D DataArrays.
+
+    Parameters
+    ------------
+    data : xr.DataArray
+        The 3D Fermi map to extract a FS from.
+
+    E : float, list, np.ndarray, tuple (optional)
+        Energy (or energies) of slice(s) to extract. If tuple, must be in the format (start, end, step). Defaults to 0.
+
+    dE : float (optional)
+        Integration range (represents the total range, i.e. integrates over +/- dE/2). Defaults to 0.
+
+    Returns
+    ------------
+    fs : xr.DataArray
+        Xarray of extracted constant energy slice.
+
+    Examples
+    ------------
+    from peaks import *
+
+    FM = load(&#39;FM.zip&#39;)
+
+    FS1 = FM.FS(E=-1.2, dE=0.01)  # Extracts a constant energy slice at eV = -1.2 +/- 0.005
+
+    FS2 = FM.FS(95.56, 0.06)  # Extracts a constant energy slice at eV = 95.56 +/- 0.03
+
+    FS3 = FM.FS()  # Extracts a single non-integrated constant energy slice at eV value closest to 0
+
+    FS4 = FM.FS([95.56, 95.60], 0.06)  # Extracts constant energy slices at eV = 95.56 +/- 0.03 and 95.60 +/- 0.03
+
+    FS5 = FM.FS((-0.2, 0.1, 0.05), 0.02)  # Extracts constant energy slices between eV = -0.2 and 0.1 in steps of 0.05
+                                            with +/- 0.01 integrations
+
+    &#34;&#34;&#34;
+
+    # Check data is 3D
+    if len(data.dims) != 3:
+        raise Exception(&#34;Function only acts on 3D data&#34;)
+
+    # Call function to extract relevant constant energy slice from Fermi map
+    fs = data.DC(coord=&#39;eV&#39;, val=E, dval=dE, ana_hist=False)
+
+    # Update the analysis history
+    hist = &#39;Constant energy slice extracted, integration window: &#39; + str(dE)
+    fs.update_hist(hist)
+
+    return fs</code></pre>
+</details>
+</dd>
+<dt id="peaks.core.process.data_select.MDC"><code class="name flex">
+<span>def <span class="ident">MDC</span></span>(<span>data, E=0, dE=0)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Extract MDCs from DataArrays.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>data</code></strong> :&ensp;<code>xr.DataArray</code></dt>
+<dd>The dispersion to extract an MDC from.</dd>
+<dt><strong><code>E</code></strong> :&ensp;<code>float, list, np.ndarray, tuple (optional)</code></dt>
+<dd>Energy (or energies) of MDC(s) to extract. If tuple, must be in the format (start, end, step). Defaults to 0.</dd>
+<dt><strong><code>dE</code></strong> :&ensp;<code>float (optional)</code></dt>
+<dd>Integration range (represents the total range, i.e. integrates over +/- dE/2). Defaults to 0.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>mdc</code></strong> :&ensp;<code>xr.DataArray</code></dt>
+<dd>Xarray of extracted MDC.</dd>
+</dl>
+<h2 id="examples">Examples</h2>
+<p>from peaks import *</p>
+<p>disp = load('disp.ibw')</p>
+<p>MDC1 = disp.MDC(E=-1.2, dE=0.01)
+# Extracts an MDC at eV = -1.2 +/- 0.005</p>
+<p>MDC2 = disp.MDC(55.6, 0.06)
+# Extracts an MDC at eV = 55.6 +/- 0.03</p>
+<p>MDC3 = disp.MDC()
+# Extracts a single non-integrated MDC at eV value closest to 0</p>
+<p>MDC4 = disp.MDC([55.6, 55.7], 0.06)
+# Extracts MDCs at eV = 55.6 +/- 0.03 and 55.7 +/- 0.03</p>
+<p>MDC5 = disp.MDC((-0.2, 0.1, 0.05), 0.02)
+# Extracts MDCs between eV = -0.2 and 0.1 in steps of 0.05 with
++/- 0.01 integrations</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@add_methods(xr.DataArray)
+def MDC(data, E=0, dE=0):
+    &#34;&#34;&#34;Extract MDCs from DataArrays.
+
+    Parameters
+    ------------
+    data : xr.DataArray
+        The dispersion to extract an MDC from.
+
+    E : float, list, np.ndarray, tuple (optional)
+        Energy (or energies) of MDC(s) to extract. If tuple, must be in the format (start, end, step). Defaults to 0.
+
+    dE : float (optional)
+        Integration range (represents the total range, i.e. integrates over +/- dE/2). Defaults to 0.
+
+    Returns
+    ------------
+    mdc : xr.DataArray
+        Xarray of extracted MDC.
+
+    Examples
+    ------------
+    from peaks import *
+
+    disp = load(&#39;disp.ibw&#39;)
+
+    MDC1 = disp.MDC(E=-1.2, dE=0.01)  # Extracts an MDC at eV = -1.2 +/- 0.005
+
+    MDC2 = disp.MDC(55.6, 0.06)  # Extracts an MDC at eV = 55.6 +/- 0.03
+
+    MDC3 = disp.MDC()  # Extracts a single non-integrated MDC at eV value closest to 0
+
+    MDC4 = disp.MDC([55.6, 55.7], 0.06)  # Extracts MDCs at eV = 55.6 +/- 0.03 and 55.7 +/- 0.03
+
+    MDC5 = disp.MDC((-0.2, 0.1, 0.05), 0.02)  # Extracts MDCs between eV = -0.2 and 0.1 in steps of 0.05 with
+                                                +/- 0.01 integrations
+
+    &#34;&#34;&#34;
+
+    # Call function to extract relevant MDC from dispersion
+    mdc = data.DC(coord=&#39;eV&#39;, val=E, dval=dE, ana_hist=False)
+
+    # Update the analysis history
+    hist = &#39;MDC extracted, integration window: &#39; + str(dE)
+    mdc.update_hist(hist)
+
+    return mdc</code></pre>
+</details>
+</dd>
+<dt id="peaks.core.process.data_select.disp_from_hv"><code class="name flex">
+<span>def <span class="ident">disp_from_hv</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def disp_from_hv():
+    pass</code></pre>
+</details>
+</dd>
+<dt id="peaks.core.process.data_select.mask_data"><code class="name flex">
+<span>def <span class="ident">mask_data</span></span>(<span>data, ROI_in, return_integrated=True)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>This function takes a multidimensional DataArray, and applies a polygon region of interest (ROI) as a mask. By
+default, the function will then extract the mean over the two dimensions defined by the ROI. For a rectangular
+ROI, this is equivalent to a simple .sel over those dimensions followed by a mean, but an arbitrary polygon can
+be used to define the ROI.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>data</code></strong> :&ensp;<code>xr.DataArray</code></dt>
+<dd>The multidimensional data to apply the ROI selection to.</dd>
+<dt><strong><code>ROI_in</code></strong> :&ensp;<code>dict</code></dt>
+<dd>A dictionary of two lists which contains the vertices of the polygon for the ROI definition, in the form
+{'dim1': [pt1, pt2, pt3, &hellip;], 'dim2'=[pt1', pt2', pt3', &hellip;]}. As many points can be specified as required,
+but this should be given with the same number of points for each dimension.</dd>
+<dt><strong><code>return_integrated</code></strong> :&ensp;<code>Boolean (optional)</code></dt>
+<dd>Whether to mean the data confined within ROI region over the ROI dimensions, or instead return the masked data.
+Defaults to True.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>ROI_selected_data</code></strong> :&ensp;<code>xr.DataArray</code></dt>
+<dd>The input data with the ROI applied as a mask, and (if return_integrated=True) the mean taken over those
+remaining dimensions.</dd>
+</dl>
+<h2 id="examples">Examples</h2>
+<p>from peaks import *</p>
+<p>SM = load('SM.ibw')</p>
+<p>ROI = {'theta_par': [-8, -5.5, -3.1, -5.6], 'eV': [95.45, 95.45, 95.77, 95.77]}
+# Define ROI</p>
+<p>ROI_SM = SM.mask_data(ROI)
+# Extract SM consisting of the integrated spectral weight confined within the ROI</p>
+<p>ROI_SM = SM.mask_data(ROI, return_integrated=False)
+# Extract SM consisting of the input data with the ROI applied
+as a mask</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@add_methods(xr.DataArray)
+def mask_data(data, ROI_in, return_integrated=True):
+    &#34;&#34;&#34;This function takes a multidimensional DataArray, and applies a polygon region of interest (ROI) as a mask. By
+    default, the function will then extract the mean over the two dimensions defined by the ROI. For a rectangular
+    ROI, this is equivalent to a simple .sel over those dimensions followed by a mean, but an arbitrary polygon can
+    be used to define the ROI.
+
+    Parameters
+    ------------
+    data : xr.DataArray
+        The multidimensional data to apply the ROI selection to.
+
+    ROI_in : dict
+        A dictionary of two lists which contains the vertices of the polygon for the ROI definition, in the form
+        {&#39;dim1&#39;: [pt1, pt2, pt3, ...], &#39;dim2&#39;=[pt1&#39;, pt2&#39;, pt3&#39;, ...]}. As many points can be specified as required,
+        but this should be given with the same number of points for each dimension.
+
+    return_integrated : Boolean (optional)
+        Whether to mean the data confined within ROI region over the ROI dimensions, or instead return the masked data.
+        Defaults to True.
+
+    Returns
+    ------------
+    ROI_selected_data : xr.DataArray
+        The input data with the ROI applied as a mask, and (if return_integrated=True) the mean taken over those
+        remaining dimensions.
+
+    Examples
+    ------------
+    from peaks import *
+
+    SM = load(&#39;SM.ibw&#39;)
+
+    ROI = {&#39;theta_par&#39;: [-8, -5.5, -3.1, -5.6], &#39;eV&#39;: [95.45, 95.45, 95.77, 95.77]}  # Define ROI
+
+    ROI_SM = SM.mask_data(ROI)  # Extract SM consisting of the integrated spectral weight confined within the ROI
+
+    ROI_SM = SM.mask_data(ROI, return_integrated=False)  # Extract SM consisting of the input data with the ROI applied
+                                                      as a mask
+
+    &#34;&#34;&#34;
+
+    # Check function has been fed with suitable dictionary for ROI generation
+    err_str = (&#39;ROI must be a dictionary containing two entries for the relevant axes. Each of these entries should &#39;
+               &#39;be a list of the vertices of the polygon for the labelled axis of the ROI. These must be of equal &#39;
+               &#39;length for the two axes.&#39;)
+    if type(ROI_in) != dict or len(ROI_in) != 2:
+        raise Exception(err_str)
+    else:  # Seems correct format
+        dims = list(ROI_in)  # Determine relevant dimensions for ROI
+
+        # Check lengths match
+        if len(ROI_in[dims[0]]) != len(ROI_in[dims[1]]):
+            raise Exception(err_str)
+
+    # Define ROI and make a polygon path defining the ROI
+    ROI = []
+    for i in range(len(ROI_in[dims[0]])):
+        ROI.append((ROI_in[dims[0]][i], ROI_in[dims[1]][i]))
+    p = Path(ROI)  # Make a polygon defining the ROI
+
+    # Restrict the data cube down to the minimum possible size (making this a copy to avoid overwriting problems)
+    data_bounded = data.sel({dims[0]: slice(min(ROI_in[dims[0]]), max(ROI_in[dims[0]])),
+                             dims[1]: slice(min(ROI_in[dims[1]]), max(ROI_in[dims[1]]))}).copy(deep=True)
+
+    # Broadcast coordinate data
+    b, dim0 = xr.broadcast(data_bounded, data_bounded[dims[0]])
+    b, dim1 = xr.broadcast(data_bounded, data_bounded[dims[1]])
+
+    # Convert coordinate data into a format for passing to matplotlib path function for identifying which points are
+    # in the relevant ROI
+    points = np.vstack((dim0.data.flatten(), dim1.data.flatten())).T
+
+    # Check which of these points fall within our ROI
+    grid = p.contains_points(points, radius=0.01)
+
+    # Reshape to make a data mask
+    mask = grid.reshape(data_bounded.shape)
+
+    if return_integrated:  # Data should be averaged over the ROI dimensions
+        ROI_selected_data = data_bounded.where(mask).mean(dims, keep_attrs=True)
+        hist = &#39;Data averaged over region of interest defined by polygon with vertices: &#39; + str(ROI_in)
+    else:  # Masked data to be returned
+        ROI_selected_data = data_bounded.where(mask)
+        hist = &#39;Data masked by region of interest defined by polygon with vertices: &#39; + str(ROI_in)
+
+    # Update analysis history
+    ROI_selected_data.update_hist(hist)
+
+    return ROI_selected_data</code></pre>
+</details>
+</dd>
+<dt id="peaks.core.process.data_select.radial_cuts"><code class="name flex">
+<span>def <span class="ident">radial_cuts</span></span>(<span>data, num_azi=361, num_points=200, radius=2, **kwargs)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Extract radial cuts of a Fermi surface as a function of azimuthal angle.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>data</code></strong> :&ensp;<code>xr.DataArray</code></dt>
+<dd>Data to extract radial cuts from.</dd>
+<dt><strong><code>num_azi</code></strong> :&ensp;<code>float (optional)</code></dt>
+<dd>Number of evenly spaced azi values between 0 and 360 degrees to take radial cuts. Defaults to 361.</dd>
+<dt><strong><code>num_points</code></strong> :&ensp;<code>float (optional)</code></dt>
+<dd>Number of evenly spaced points to sample along a cut. Defaults to 200.</dd>
+<dt><strong><code>radius</code></strong> :&ensp;<code>float (optional)</code></dt>
+<dd>Maximum radius to take cuts up to. Defaults to 2.</dd>
+<dt><strong><code>**kwargs</code></strong> :&ensp;<code>float (optional)</code></dt>
+<dd>Used to define centre of rotations in the format coord = num, e.g. k_par = 1.2 sets the k_par centre as 1.2.
+Default centre of rotation is (0, 0).</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>data_to_return</code></strong> :&ensp;<code>xr.DataArray</code></dt>
+<dd>xarray of radial cuts against azi.</dd>
+</dl>
+<h2 id="examples">Examples</h2>
+<p>from peaks import *</p>
+<p>FM = load('FM.zip')</p>
+<p>FS1 = FM.FS(E=-0, dE=0.01)
+# Extracts a constant energy slice at eV = -1.2 +/- 0.005</p>
+<p>FS1_radial_cuts_1 = FS1.radial_cuts(num_azi=181, num_points=300, radius=15, theta_par=-2, ana_polar=-5)
+# Extracts
+radial cuts (radius = 15) at azi values in 2 degree increments, using
+a centre of rotation (theta_par, ana_polar) = (-2, -5)</p>
+<p>FS1_radial_cuts_2 = FS1.radial_cuts()
+# Extracts radial cuts (radius = 2) at azi values in 1 degree increments,
+using a centre of rotation (coord_1, coord_2) = (0, 0)</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@add_methods(xr.DataArray)
+def radial_cuts(data, num_azi=361, num_points=200, radius=2, **kwargs):
+    &#34;&#34;&#34;Extract radial cuts of a Fermi surface as a function of azimuthal angle.
+
+    Parameters
+    ------------
+    data : xr.DataArray
+        Data to extract radial cuts from.
+
+    num_azi : float (optional)
+        Number of evenly spaced azi values between 0 and 360 degrees to take radial cuts. Defaults to 361.
+
+    num_points : float (optional)
+        Number of evenly spaced points to sample along a cut. Defaults to 200.
+
+    radius : float (optional)
+        Maximum radius to take cuts up to. Defaults to 2.
+
+    **kwargs : float (optional)
+        Used to define centre of rotations in the format coord = num, e.g. k_par = 1.2 sets the k_par centre as 1.2.
+        Default centre of rotation is (0, 0).
+
+    Returns
+    ------------
+    data_to_return : xr.DataArray
+        xarray of radial cuts against azi.
+
+    Examples
+    ------------
+    from peaks import *
+
+    FM = load(&#39;FM.zip&#39;)
+
+    FS1 = FM.FS(E=-0, dE=0.01)  # Extracts a constant energy slice at eV = -1.2 +/- 0.005
+
+    FS1_radial_cuts_1 = FS1.radial_cuts(num_azi=181, num_points=300, radius=15, theta_par=-2, ana_polar=-5)  # Extracts
+                                             radial cuts (radius = 15) at azi values in 2 degree increments, using
+                                             a centre of rotation (theta_par, ana_polar) = (-2, -5)
+
+    FS1_radial_cuts_2 = FS1.radial_cuts()  # Extracts radial cuts (radius = 2) at azi values in 1 degree increments,
+                                             using a centre of rotation (coord_1, coord_2) = (0, 0)
+
+    &#34;&#34;&#34;
+
+    # Check data is 2D
+    if len(data.dims) != 2:
+        raise Exception(&#34;Function only acts on 2D data&#34;)
+
+    # Define the coordinate system
+    x_coord = data.dims[0]
+    y_coord = data.dims[1]
+
+    # Check for user-defined centre of rotations
+    try:
+        x_centre = (kwargs[x_coord])
+    except:
+        x_centre = 0
+    try:
+        y_centre = (kwargs[y_coord])
+    except:
+        y_centre = 0
+
+    # Define coordinates to be sampled
+    azi_angles = np.linspace(0, 360, num_azi)
+    k_values = np.linspace(0, radius, num_points)
+    spectrum = []
+
+    # For each azi angle, interpolate the data onto a radial cut and append result to spectrum
+    for angle in azi_angles:
+        x_values = np.linspace(0 + x_centre, (np.cos(np.radians(angle)) * radius) + x_centre, num_points)
+        y_values = np.linspace(0 + y_centre, (np.sin(np.radians(angle)) * radius) + y_centre, num_points)
+        x_xarray = xr.DataArray(x_values, dims=&#39;k&#39;)
+        y_xarray = xr.DataArray(y_values, dims=&#39;k&#39;)
+        interpolated_data = data.interp({x_coord: x_xarray, y_coord: y_xarray})
+        spectrum.append(interpolated_data.data)
+
+    # Create xarray of radial cuts against azi
+    data_to_return = xr.DataArray(np.array(spectrum).transpose(), dims=(&#34;k&#34;, &#34;azi&#34;),
+                                  coords={&#34;k&#34;: k_values, &#34;azi&#34;: azi_angles})
+    data_to_return.attrs = data.attrs
+
+    # Update the analysis history
+    data_to_return.update_hist(&#39;Radial cuts taken as a function of azi&#39;)
+
+    return data_to_return</code></pre>
+</details>
+</dd>
+<dt id="peaks.core.process.data_select.tot"><code class="name flex">
+<span>def <span class="ident">tot</span></span>(<span>data, spatial_int=False)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Integrate spatial map data over all non-spatial (energy and angle/k) or all spatial dimensions.</p>
+<h2 id="parameters">Parameters</h2>
+<dl>
+<dt><strong><code>data</code></strong> :&ensp;<code>xr.DataArray</code></dt>
+<dd>Spatial map data.</dd>
+<dt><strong><code>spatial_int</code></strong> :&ensp;<code>Boolean (optional)</code></dt>
+<dd>Determines whether integration is performed over spatial or non-spatial dimensions. Defaults to False.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>data_tot</code></strong> :&ensp;<code>xr.DataArray</code></dt>
+<dd>The integrated data.</dd>
+</dl>
+<h2 id="examples">Examples</h2>
+<p>from peaks import *</p>
+<p>SM = load('SM.ibw')</p>
+<p>SM_int = SM.tot()
+# Extracts energy and angle integrated spatial map</p>
+<p>SM_int_spatial = SM.tot(spatial_int=True)
+# Extracts spatially integrated dispersion</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">@add_methods(xr.DataArray)
+def tot(data, spatial_int=False):
+    &#34;&#34;&#34;Integrate spatial map data over all non-spatial (energy and angle/k) or all spatial dimensions.
+
+    Parameters
+    ------------
+    data : xr.DataArray
+        Spatial map data.
+
+    spatial_int : Boolean (optional)
+        Determines whether integration is performed over spatial or non-spatial dimensions. Defaults to False.
+
+    Returns
+    ------------
+    data_tot : xr.DataArray
+        The integrated data.
+
+    Examples
+    ------------
+    from peaks import *
+
+    SM = load(&#39;SM.ibw&#39;)
+
+    SM_int = SM.tot()  # Extracts energy and angle integrated spatial map
+
+    SM_int_spatial = SM.tot(spatial_int=True)   # Extracts spatially integrated dispersion
+
+    &#34;&#34;&#34;
+
+    # Integrate over spatial dimensions
+    if spatial_int:
+        data_tot = data.mean([&#39;x1&#39;, &#39;x2&#39;], keep_attrs=True)
+        hist = &#39;Integrated along axes: &#39; + str([&#39;x1&#39;, &#39;x2&#39;])
+
+    # Integrate over non-spatial dimensions
+    else:
+        # Get relevant dimensions to integrate over
+        int_dim = list(filter(lambda n: n != &#39;x1&#39; and n != &#39;x2&#39;, data.dims))
+        hist = &#39;Integrated along axes: &#39; + str(int_dim)
+        data_tot = data.mean(int_dim, keep_attrs=True)
+
+    # Update the analysis history
+    data_tot.update_hist(hist)
+
+    return data_tot</code></pre>
+</details>
+</dd>
+</dl>
+</section>
+<section>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="peaks.core.process" href="index.html">peaks.core.process</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="two-column">
+<li><code><a title="peaks.core.process.data_select.DC" href="#peaks.core.process.data_select.DC">DC</a></code></li>
+<li><code><a title="peaks.core.process.data_select.DOS" href="#peaks.core.process.data_select.DOS">DOS</a></code></li>
+<li><code><a title="peaks.core.process.data_select.EDC" href="#peaks.core.process.data_select.EDC">EDC</a></code></li>
+<li><code><a title="peaks.core.process.data_select.FS" href="#peaks.core.process.data_select.FS">FS</a></code></li>
+<li><code><a title="peaks.core.process.data_select.MDC" href="#peaks.core.process.data_select.MDC">MDC</a></code></li>
+<li><code><a title="peaks.core.process.data_select.disp_from_hv" href="#peaks.core.process.data_select.disp_from_hv">disp_from_hv</a></code></li>
+<li><code><a title="peaks.core.process.data_select.mask_data" href="#peaks.core.process.data_select.mask_data">mask_data</a></code></li>
+<li><code><a title="peaks.core.process.data_select.radial_cuts" href="#peaks.core.process.data_select.radial_cuts">radial_cuts</a></code></li>
+<li><code><a title="peaks.core.process.data_select.tot" href="#peaks.core.process.data_select.tot">tot</a></code></li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+</footer>
+</body>
+</html>
