@@ -111,7 +111,7 @@ def ML_pre_proc(data, extract='dispersion', E=0, dE=0, k=0, dk=0, scale=False, n
 
             # Else user has entered an invalid method argument
             else:
-                raise Exception('Method must be dispersion, MDC or EDC')
+                raise Exception('Method must be dispersion, MDC or EDC.')
 
     # Create tabular pandas dataframe
     df = pd.DataFrame(data=np.array(sample_data))
@@ -568,8 +568,8 @@ def PCA_explore(data, PCs_range=range(1, 6), threshold=0.95, extract='dispersion
 
     # If explained variance could not exceed threshold, display a warning
     if num_principal_axes == 'Unknown':
-        analysis_warning('Explained variance could not exceed threshold. Either reduce threshold or increase PCA_range',
-                         title='Analysis info', warn_type='danger')
+        analysis_warning('Explained variance could not exceed threshold. Either reduce threshold or '
+                         'increase PCA_range.', title='Analysis info', warn_type='danger')
 
     # Plot results of exploratory PCA, and suggest minimum required number of principal axes (if the explained
     # variance threshold has been exceeded)
