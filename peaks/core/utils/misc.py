@@ -32,7 +32,7 @@ def analysis_warning(text, warn_type='info', title='Analysis info'):
     ------------
     from peaks import *
 
-    analysis_warning('Fitting result could not converge', warn_type='danger', title='Analysis info')  # Displays a red
+    analysis_warning('Fitting result could not converge.', warn_type='danger', title='Analysis info')  # Displays a red
         warning box informing the user that the fitting analysis failed
 
     """

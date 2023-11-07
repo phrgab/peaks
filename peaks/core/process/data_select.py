@@ -61,7 +61,7 @@ def DC(data, coord='eV', val=0, dval=0, ana_hist=True):
             delta = 0.000000001  # small value to add to end so that values include end number (if appropriate)
             val = np.arange(val[0], val[1] + delta, val[2])
         else:
-            raise Exception("Tuple argument must be in the format (start, end, step)")
+            raise Exception("Tuple argument must be in the format (start, end, step).")
 
     # Ensure val is of type list
     if type(val) == np.ndarray:
@@ -238,7 +238,7 @@ def FS(data, E=0, dE=0):
 
     # Check data is 3D
     if len(data.dims) != 3:
-        raise Exception("Function only acts on 3D data")
+        raise Exception("Function only acts on 3D data.")
 
     # Call function to extract relevant constant energy slice from Fermi map
     fs = data.DC(coord='eV', val=E, dval=dE, ana_hist=False)
@@ -384,7 +384,7 @@ def radial_cuts(data, num_azi=361, num_points=200, radius=2, **kwargs):
 
     # Check data is 2D
     if len(data.dims) != 2:
-        raise Exception("Function only acts on 2D data")
+        raise Exception("Function only acts on 2D data.")
 
     # Define the coordinate system
     x_coord = data.dims[0]
