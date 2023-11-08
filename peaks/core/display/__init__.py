@@ -2,4 +2,4 @@
 
 """
 
-from .plotting import plot_grid, plot_DCs
+from .plotting import plot_grid, plot_DCs, plot_ROI

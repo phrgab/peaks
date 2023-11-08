@@ -75,7 +75,7 @@ def plot_grid(data, ncols=3, nrows=None, titles=None, sharex=False, sharey=False
         nrows = int(np.ceil(nplots / ncols))  # Set nrows based on ncols and nplots
 
     # If figsize not specified, set a default based on number of rows and columns
-    if figsize == None:
+    if not figsize:
         figsize = (5 * ncols, 5 * nrows)
 
     # Make the figure layout
@@ -120,8 +120,8 @@ def plot_grid(data, ncols=3, nrows=None, titles=None, sharex=False, sharey=False
 
 
 def plot_DCs(DCs, titles=None, cmap='coolwarm', color=None, offset=0, norm=False, stack_dim='auto', figsize=(6,6),
-             linewidth=1.5, **kwargs):
-    """Plot a DC stack with the colours varying according to a colormap
+             linewidth=1, ax=None, **kwargs):
+    """Plot a DC stack with the colours varying according to a colormap.
 
     Parameters
     ------------
@@ -135,7 +135,7 @@ def plot_DCs(DCs, titles=None, cmap='coolwarm', color=None, offset=0, norm=False
         Matplotlib cmap to use for line colors. Defaults to coolwarm.
 
     color : str (optional)
-        single matplotlib color to use for all lines. Takes precedence over cmap if defined. Defaults to None.
+        Single matplotlib color to use for all lines. Takes precedence over cmap if defined. Defaults to None.
 
     offset : float (optional)
         Vertical offsets between subsequent DCs, represented as a fraction of the maximum peak height. Defaults to 0.
@@ -152,6 +152,9 @@ def plot_DCs(DCs, titles=None, cmap='coolwarm', color=None, offset=0, norm=False
 
     linewidth : float (optional)
         Width of lines to be plotted. Defaults to 1.
+
+    ax : numpy.ndarray (optional)
+        Specific matplotlib axis call. Defaults to None.
 
     **kwargs (optional)
         Additional standard matplotlib calls arguments to pass to the plot.
@@ -213,9 +216,11 @@ def plot_DCs(DCs, titles=None, cmap='coolwarm', color=None, offset=0, norm=False
     # Add offset to DC data
     DC_array += offset_data
 
-    # Check a few style options and provide defaults if not already specified
-    if 'add_legend' not in kwargs and not titles:
+    # If no tiles are provided, no legend will be displayed
+    if not titles:
         kwargs['add_legend'] = False
+
+    # If x and y are not defined, make a guess for which axes to plot the dimensions on.
     if 'y' not in kwargs and 'x' not in kwargs:
         # If it seems to be an EDC plot, set vertical by default
         if other_dim == 'eV':
@@ -225,8 +230,8 @@ def plot_DCs(DCs, titles=None, cmap='coolwarm', color=None, offset=0, norm=False
             kwargs['x'] = other_dim
 
     # Set up plot
-    if 'ax' in kwargs:
-        ax = kwargs['ax']
+    if ax:
+        kwargs['ax'] = ax
     else:
         plt.figure(figsize=figsize)
         ax = plt.gca()
@@ -261,12 +266,109 @@ def plot_DCs(DCs, titles=None, cmap='coolwarm', color=None, offset=0, norm=False
                 'Length of supplied titles list does not match number of DCs. Supplied titles have not been used.',
                 title='Plotting info', warn_type='danger')
 
+    # Tidy up the layout
+    plt.tight_layout()
+
+
+def plot_ROI(ROI, color='black', x=None, y=None, label=None, loc='best', ax=None, **kwargs):
+    """This function plots a region of interest (ROI).
+
+    Parameters
+    ------------
+    ROI : dict
+        A dictionary of two lists which contains the vertices of the polygon for the ROI definition, in the form
+        {'dim1': [pt1, pt2, pt3, ...], 'dim2'=[pt1', pt2', pt3', ...]}. As many points can be specified as required,
+        but this should be given with the same number of points for each dimension.
+
+    color : str (optional)
+        Matplotlib color to use for ROI plot. Defaults to 'black'.
+
+    x : str (optional)
+        Specifies which coordinate to plot along the x-axis. Takes precedence over y (only one of x and y need to be
+        specified, the other is set automatically). Defaults to the first coordinate listed in the ROI dictionary.
+
+    y : str (optional)
+        Specifies which coordinate to plot along the y-axis. Defaults to the second coordinate listed in the ROI
+        dictionary.
+
+    label : str (optional)
+        ROI label to pass to a legend. Defaults to None (where no legend is plotted).
+
+    loc : str, int (optional)
+        Standard matplotlib call to specify legend location. Defaults to 'best'.
+
+    ax : numpy.ndarray (optional)
+        Specific matplotlib axis call. Defaults to None.
+
+    **kwargs (optional)
+        Additional standard matplotlib calls arguments to pass to the plot.
+
+    Examples
+    ------------
+    from peaks import *
+
+    disp = load('disp1.ibw')
+
+    ROI1 = {'theta_par': [-8, -5.5, -3.1, -5.6], 'eV': [95.45, 95.45, 95.77, 95.77]}
+    ROI2 = {'theta_par': [-9, -4, -2.5, -5.9], 'eV': [95.45, 95.45, 95.77, 95.77]}
+
+    plot_ROI(ROI1)  # Plots ROI.
+    plt.show()
+
+    disp1.plot()
+    plot_ROI(ROI1, x='eV')  # Plots ROI on top of a dispersion with eV plotted along the x-axis.
+    plt.show()
+
+    fig, axes= plt.subplots(ncols=2)
+    disp.T.plot(ax=axes[0])
+    plot_ROI(ROI1, label='ROI 1', ax=axes[0])  # Plot ROI on top of a dispersion on specific axis, axes[0], with a label
+    disp.T.plot(ax=axes[1])
+    plot_ROI(ROI2, label='ROI 2', ax=axes[1])  # Plot ROI on top of a dispersion on specific axis, axes[1], with a label
+
+    """
+
+    # Determine relevant dimensions for ROI
+    dims = list(ROI)
+
+    # Determine lists of vertices of ROI
+    verts0 = ROI[dims[0]]
+    verts1 = ROI[dims[1]]
+
+    # Append initial value to end to close polygon
+    verts0.append(verts0[0])
+    verts1.append(verts1[0])
+
+    # By default, plot the second dimension as the y-axis
+    yax = 1
+
+    # Check if definition of x- or y-axis is given
+    if x:
+        yax = 1 - dims.index(x)
+    elif y:
+        yax = dims.index(y)
+
+    # Plot the ROI
+    if ax:  # If particular axis specified
+        if yax == 0:
+            ax.plot(verts1, verts0, color=color, label=label, **kwargs)
+        else:
+            ax.plot(verts0, verts1, color=color, label=label, **kwargs)
+    else:  # Otherwise just call with plt
+        if yax == 0:
+            plt.plot(verts1, verts0, color=color, label=label, **kwargs)
+        else:
+            plt.plot(verts0, verts1, color=color, label=label, **kwargs)
+
+    # If called with label, plot the legend
+    if label:
+        if ax:  # If particular axis specified
+            ax.legend(loc=loc)
+        else:  # Otherwise just call with plt
+            plt.legend(loc=loc)
+
+    # Tidy up the layout
     plt.tight_layout()
 
 
 def plot_nanofocus():
-    pass
-
-
-def plot_ROI():
     pass
