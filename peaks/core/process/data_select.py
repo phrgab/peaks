@@ -19,7 +19,7 @@ def DC(data, coord='eV', val=0, dval=0, ana_hist=True):
     Parameters
     ------------
     data : xr.DataArray
-        The data to extract DCs from.
+        The data to extract a DC from.
 
     coord : str (optional)
         Coordinate to extract DC at. Defaults to eV.
@@ -36,7 +36,7 @@ def DC(data, coord='eV', val=0, dval=0, ana_hist=True):
     Returns
     ------------
     dc : xr.DataArray
-        Xarray of DC.
+        Extracted DC(s).
 
     Examples
     ------------
@@ -56,7 +56,7 @@ def DC(data, coord='eV', val=0, dval=0, ana_hist=True):
     """
 
     # If val is a 3 element tuple of the format (start, end, step), make val an np.ndarray of the relevant values
-    if type(val) == tuple:
+    if isinstance(val, tuple):
         if len(val) == 3:
             delta = 0.000000001  # small value to add to end so that values include end number (if appropriate)
             val = np.arange(val[0], val[1] + delta, val[2])
@@ -64,9 +64,9 @@ def DC(data, coord='eV', val=0, dval=0, ana_hist=True):
             raise Exception("Tuple argument must be in the format (start, end, step).")
 
     # Ensure val is of type list
-    if type(val) == np.ndarray:
+    if isinstance(val, np.ndarray):
         val = list(val)
-    elif type(val) != list:
+    elif not isinstance(val, list):
         val = [val]
 
     # Convert window to pixels
@@ -112,7 +112,7 @@ def MDC(data, E=0, dE=0):
     Returns
     ------------
     mdc : xr.DataArray
-        Xarray of extracted MDC.
+        Extracted MDC(s).
 
     Examples
     ------------
@@ -150,7 +150,7 @@ def EDC(data, k=0, dk=0):
     Parameters
     ------------
     data : xr.DataArray
-        The dispersion to extract an EDC from/
+        The dispersion to extract an EDC from.
 
     k : float, list, np.ndarray, tuple (optional)
         k or theta_par value(s) of EDC(s) to extract. If tuple, must be in the format (start, end, step). Defaults to 0.
@@ -161,7 +161,7 @@ def EDC(data, k=0, dk=0):
     Returns
     ------------
     edc : xr.DataArray
-        Xarray of extracted EDC.
+        Extracted EDC(s).
 
     Examples
     ------------
@@ -204,7 +204,7 @@ def FS(data, E=0, dE=0):
     Parameters
     ------------
     data : xr.DataArray
-        The 3D Fermi map to extract a FS from.
+        The 3D Fermi map to extract an FS from.
 
     E : float, list, np.ndarray, tuple (optional)
         Energy (or energies) of slice(s) to extract. If tuple, must be in the format (start, end, step). Defaults to 0.
@@ -215,7 +215,7 @@ def FS(data, E=0, dE=0):
     Returns
     ------------
     fs : xr.DataArray
-        Xarray of extracted constant energy slice.
+        Extracted constant energy slice(s).
 
     Examples
     ------------
@@ -262,7 +262,7 @@ def DOS(data):
     Returns
     ------------
     dos : xr.DataArray
-        xarray of extracted DOS.
+        Extracted DOS.
 
     Examples
     ------------
@@ -363,7 +363,7 @@ def radial_cuts(data, num_azi=361, num_points=200, radius=2, **kwargs):
     Returns
     ------------
     data_to_return : xr.DataArray
-        xarray of radial cuts against azi.
+        Radial cuts against azi.
 
     Examples
     ------------
@@ -426,7 +426,7 @@ def radial_cuts(data, num_azi=361, num_points=200, radius=2, **kwargs):
 
 
 @add_methods(xr.DataArray)
-def mask_data(data, ROI_in, return_integrated=True):
+def mask_data(data, ROI, return_integrated=True):
     """This function takes a multidimensional DataArray, and applies a polygon region of interest (ROI) as a mask. By
     default, the function will then extract the mean over the two dimensions defined by the ROI. For a rectangular
     ROI, this is equivalent to a simple .sel over those dimensions followed by a mean, but an arbitrary polygon can
@@ -437,7 +437,7 @@ def mask_data(data, ROI_in, return_integrated=True):
     data : xr.DataArray
         The multidimensional data to apply the ROI selection to.
 
-    ROI_in : dict
+    ROI : dict
         A dictionary of two lists which contains the vertices of the polygon for the ROI definition, in the form
         {'dim1': [pt1, pt2, pt3, ...], 'dim2'=[pt1', pt2', pt3', ...]}. As many points can be specified as required,
         but this should be given with the same number of points for each dimension.
@@ -471,24 +471,24 @@ def mask_data(data, ROI_in, return_integrated=True):
     err_str = ('ROI must be a dictionary containing two entries for the relevant axes. Each of these entries should '
                'be a list of the vertices of the polygon for the labelled axis of the ROI. These must be of equal '
                'length for the two axes.')
-    if type(ROI_in) != dict or len(ROI_in) != 2:
+    if type(ROI) != dict or len(ROI) != 2:
         raise Exception(err_str)
     else:  # Seems correct format
-        dims = list(ROI_in)  # Determine relevant dimensions for ROI
+        dims = list(ROI)  # Determine relevant dimensions for ROI
 
         # Check lengths match
-        if len(ROI_in[dims[0]]) != len(ROI_in[dims[1]]):
+        if len(ROI[dims[0]]) != len(ROI[dims[1]]):
             raise Exception(err_str)
 
-    # Define ROI and make a polygon path defining the ROI
-    ROI = []
-    for i in range(len(ROI_in[dims[0]])):
-        ROI.append((ROI_in[dims[0]][i], ROI_in[dims[1]][i]))
-    p = Path(ROI)  # Make a polygon defining the ROI
+    # Define ROI_path to make a polygon path defining the ROI
+    ROI_path = []
+    for i in range(len(ROI[dims[0]])):
+        ROI_path.append((ROI[dims[0]][i], ROI[dims[1]][i]))
+    p = Path(ROI_path)  # Make a polygon defining the ROI
 
     # Restrict the data cube down to the minimum possible size (making this a copy to avoid overwriting problems)
-    data_bounded = data.sel({dims[0]: slice(min(ROI_in[dims[0]]), max(ROI_in[dims[0]])),
-                             dims[1]: slice(min(ROI_in[dims[1]]), max(ROI_in[dims[1]]))}).copy(deep=True)
+    data_bounded = data.sel({dims[0]: slice(min(ROI[dims[0]]), max(ROI[dims[0]])),
+                             dims[1]: slice(min(ROI[dims[1]]), max(ROI[dims[1]]))}).copy(deep=True)
 
     # Broadcast coordinate data
     b, dim0 = xr.broadcast(data_bounded, data_bounded[dims[0]])
@@ -506,10 +506,10 @@ def mask_data(data, ROI_in, return_integrated=True):
 
     if return_integrated:  # Data should be averaged over the ROI dimensions
         ROI_selected_data = data_bounded.where(mask).mean(dims, keep_attrs=True)
-        hist = 'Data averaged over region of interest defined by polygon with vertices: ' + str(ROI_in)
+        hist = 'Data averaged over region of interest defined by polygon with vertices: ' + str(ROI)
     else:  # Masked data to be returned
         ROI_selected_data = data_bounded.where(mask)
-        hist = 'Data masked by region of interest defined by polygon with vertices: ' + str(ROI_in)
+        hist = 'Data masked by region of interest defined by polygon with vertices: ' + str(ROI)
 
     # Update analysis history
     ROI_selected_data.update_hist(hist)
