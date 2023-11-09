@@ -60,6 +60,10 @@ def smooth(data, **kwargs):
 
     """
 
+    # Check that some axes to smooth over were passed
+    if len(kwargs) == 0:
+        raise Exception("Function requires axes to be smoothed over to be defined.")
+
     # Copy the input data to prevent overwriting issues
     smoothed_data = data.copy(deep=True)
 
