@@ -52,11 +52,11 @@ def smooth(data, **kwargs):
 
     disp = load('disp.ibw')
 
-    disp.smooth(theta_par=0.5, eV=0.2)  # Smooth dispersion by a Gaussian with FWHM 0.5 deg and 0.2 eV
+    disp_smooth = disp.smooth(theta_par=0.5, eV=0.2)  # Smooth dispersion by a Gaussian with FWHM 0.5 deg and 0.2 eV
 
     EDC1 = disp.EDC()
 
-    EDC1.smooth(eV=0.1)  # Smooth EDC by a Gaussian with FWHM 0.2 eV
+    EDC1_smooth = EDC1.smooth(eV=0.1)  # Smooth EDC by a Gaussian with FWHM 0.2 eV
 
     """
 
