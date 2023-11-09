@@ -10,49 +10,82 @@ from peaks.core.utils.OOP_method import add_methods
 
 
 @add_methods(xr.DataArray)
-def update_hist(array, hist):
+def update_hist(data, hist):
     """Updates the analysis history metadata of the supplied DataArray.
 
     Parameters
     ------------
-    array : xr.DataArray
-        The xarray to which the analysis history is to be updated.
+    data : xr.DataArray
+        The DataArray to which the analysis history is to be updated.
 
     hist : string
-        Analysis history to be appended to xarray analysis history metadata.
+        Analysis history to be appended to DataArray analysis history metadata.
 
 
     Returns
     ------------
-    array : xr.DataArray
-        The xarray with updated analysis history.
+    data : xr.DataArray
+        The DataArray with updated analysis history.
 
 
     Examples
     ------------
     from peaks import *
 
-    my_data = load('my_file.ibw')
+    disp = load('disp.ibw')
 
-    my_data = my_data/2
+    disp = disp/2
 
-    my_data = my_data.update_hist('Data divided by 2')  # Update the analysis history metadata of my_data.
+    disp = disp.update_hist('Dispersion data divided by 2')  # Update the analysis history metadata of disp.
 
     """
     
-    # If analysis history is not in the xarray metadata
-    if 'analysis_history' not in array.attrs:
-        array.attrs['analysis_history'] = []
+    # If analysis history is not in the DataArray attributes, define it
+    if 'analysis_history' not in data.attrs:
+        data.attrs['analysis_history'] = []
     
-    # Update the xarray analysis history (the following is done so that the original xarray is not overwritten)
+    # Update the DataArray analysis history (the following is done so that the original DataArray is not overwritten)
     analysis_history = []
-    for item in array.attrs['analysis_history']:
+    for item in data.attrs['analysis_history']:
         analysis_history.append(item)
     analysis_history.append(hist)
-    array.attrs['analysis_history'] = analysis_history
+    data.attrs['analysis_history'] = analysis_history
     
-    return array
+    return data
 
 
-def _set_normals():
-    pass
+@add_methods(xr.DataArray)
+def _set_normals(data, **kwargs):
+    """Function to set normal emissions into the attributes of DataArrays based on arguments passed in kwargs.
+
+    Parameters
+    ------------
+    data: xr.DataArray
+        The DataArray to write normal emission angles to.
+
+    **kwargs : float (optional)
+        Attributes to be overwritten in the DataArray in the format attr=float. Valid for polar, tilt, azi, norm_polar,
+        norm_tilt and norm_azi. All other kwargs are ignored.
+
+    Examples
+    ------------
+    from peaks import *
+
+    disp = load('disp.ibw')
+
+    disp._set_normals(polar=0, tilt=0, azi=0, norm_polar=0, norm_tilt=0, norm_azi=0)  # Sets the attributes of disp
+
+    """
+
+    if 'polar' in kwargs:
+        data.attrs['polar'] = kwargs['polar']  # Set polar attribute of metadata
+    if 'tilt' in kwargs:
+        data.attrs['tilt'] = kwargs['tilt']  # Set tilt attribute of metadata
+    if 'azi' in kwargs:
+        data.attrs['azi'] = kwargs['azi']  # Set azi attribute of metadata
+    if 'norm_polar' in kwargs:
+        data.attrs['norm_polar'] = kwargs['norm_polar']  # Set norm_polar attribute of metadata
+    if 'norm_tilt' in kwargs:
+        data.attrs['norm_tilt'] = kwargs['norm_tilt']  # Set norm_tilt attribute of metadata
+    if 'norm_azi' in kwargs:
+        data.attrs['norm_azi'] = kwargs['norm_azi']  # Set norm_azi attribute of metadata
