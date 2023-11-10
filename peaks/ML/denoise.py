@@ -24,17 +24,22 @@ def SM_PCA(data, PCs=10):
     PCs : int (optional)
         The number of principal components used to perform PCA. Defaults to 10.
 
+    Returns
+    ------------
+    Reconstructed_SM : xr.DataArray
+        The reconstructed spatial map.
+
     Examples
     ------------
     from peaks import *
 
     SM = load('SM.ibw')
 
-    reconstructed_SM1 = SM.SM_PCA()  # Use a 10 principal components PCA to reduce the information contained a spatial
-                                     map, effectively denoising it
+    # Use a 10 principal components PCA to reduce the information contained a spatial map, effectively denoising it
+    reconstructed_SM1 = SM.SM_PCA()
 
-    reconstructed_SM2 = SM.SM_PCA(PCs=30)  # Use a 30 principal components PCA to reduce the information contained a
-                                           spatial map, effectively denoising it
+    # Use a 30 principal components PCA to reduce the information contained a spatial map, effectively denoising it
+    reconstructed_SM2 = SM.SM_PCA(PCs=30)
 
     """
 
