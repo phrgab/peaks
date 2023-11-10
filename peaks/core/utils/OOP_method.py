@@ -22,13 +22,15 @@ def add_methods(cls):
 
     my_data = load('my_file.ibw')
 
-    @add_methods(xr.DataArray)  # Turns the following function (data_plus_1) into a xr.DataArray method
+    # Turns the following function (data_plus_1) into a xr.DataArray method
+    @add_methods(xr.DataArray)
 
+    # Example function that adds 1 to the data
     def data_plus_1(data):
-
         return data+1
 
-    my_data_plus_1 = my_data.data_plus_1()  # Create a new xarray equal to my_data + 1
+    # Create a new xarray equal to my_data + 1
+    my_data_plus_1 = my_data.data_plus_1()
 
     """
 

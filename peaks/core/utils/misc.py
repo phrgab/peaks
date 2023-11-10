@@ -32,8 +32,11 @@ def analysis_warning(text, warn_type='info', title='Analysis info'):
     ------------
     from peaks import *
 
-    analysis_warning('Fitting result could not converge.', warn_type='danger', title='Analysis info')  # Displays a red
-        warning box informing the user that the fitting analysis failed
+    # Display a blue warning box informing the user that the data is being loaded
+    analysis_warning('Loading file into DataArray format.', warn_type='info', title='Loading info')
+
+    # Display a red warning box informing the user that the fitting analysis failed
+    analysis_warning('Fitting result could not converge.', warn_type='danger', title='Analysis info')
 
     """
 
@@ -54,9 +57,11 @@ def make_docs(folder=None):
     ------------
     from peaks import *
 
-    make_docs()  # Create module documentation at default location in peaks package
+    # Create module documentation at default location in peaks package
+    make_docs()
 
-    make_docs(folder='C:/User/Documents/docs')  # Create module documentation in the docs folder at 'C:/User/Documents'
+    # Create module documentation in the docs folder at 'C:/User/Documents'
+    make_docs(folder='C:/User/Documents/docs')
 
     """
 
@@ -110,9 +115,11 @@ def make_cell(text, below=True, execute=True):
     ------------
     from peaks import *
 
-    make_cell('a=2')  # Generate a cell below which creates variable a that is equal to 2, and execute it
+    # Generate a cell below which creates variable a that is equal to 2, and execute it
+    make_cell('a=2')
 
-    make_cell('5+7', below=False, execute=False)  # Generate a cell above which calculates 5+7, but do not execute it
+    # Generate a cell above which calculates 5+7, but do not execute it
+    make_cell('5+7', below=False, execute=False)
 
     """
 
