@@ -65,10 +65,11 @@ def ML_pre_proc(data, extract='dispersion', E=0, dE=0, k=0, dk=0, scale=False, n
 
     SM = load('SM.ibw')
 
-    SM_df1 = SM.ML_pre_proc()  # Get spatial mapping data in a tabular pandas dataframe format
+    # Get spatial mapping data in a tabular pandas dataframe format
+    SM_df1 = SM.ML_pre_proc()
 
-    SM_df2 = SM.ML_pre_proc(extract='MDC', E=73.42, dE=0.02)  # Get spatial mapping MDCs in a tabular pandas
-                                                                        dataframe format
+    # Get spatial mapping MDCs in a tabular pandas dataframe format
+    SM_df2 = SM.ML_pre_proc(extract='MDC', E=73.42, dE=0.02)
 
     """
 
@@ -156,11 +157,14 @@ def perform_k_means(data, k=3, n_init="auto"):
 
     SM = load('SM.ibw')
 
-    SM_df = SM.ML_pre_proc()  # Get spatial mapping data in a tabular pandas dataframe format
+    # Get spatial mapping data in a tabular pandas dataframe format
+    SM_df = SM.ML_pre_proc()
 
-    model1, labels1 = perform_k_means(data=SM_df)  # Perform k-means clustering analysis for 3 clusters
+    # Perform k-means clustering analysis for 3 clusters
+    model1, labels1 = perform_k_means(data=SM_df)
 
-    model2, labels2 = perform_k_means(data=SM_df, k=4)  # Perform k-means clustering analysis for 4 clusters
+    # Perform k-means clustering analysis for 4 clusters
+    model2, labels2 = perform_k_means(data=SM_df, k=4)
 
     """
 
@@ -229,13 +233,13 @@ def clusters_explore(data, cluster_range=range(1, 7), n_init="auto", use_PCA=Tru
 
     SM = load('SM.ibw')
 
-    SM.clusters_explore()  # Perform an exploratory k-means clustering analysis for numbers of clusters ranging from
-                            1 to 6, applying a principal component analysis to the spatial mapping data using 3
-                            principal components
+    # Perform an exploratory k-means clustering analysis for numbers of clusters ranging from 1 to 6, applying a
+    # principal component analysis to the spatial mapping data using 3 principal components
+    SM.clusters_explore()
 
-    SM.clusters_explore(cluster_range=range(1,11), use_PCA=False, extract='MDC', E=73.42, dE=0.02)  # Perform an
-                            exploratory k-means clustering analysis on spatial mapping MDCs for numbers of clusters
-                            ranging from 1 to 10
+    # Perform an exploratory k-means clustering analysis on spatial mapping MDCs for numbers of clusters ranging
+    # from 1 to 10
+    SM.clusters_explore(cluster_range=range(1,11), use_PCA=False, extract='MDC', E=73.42, dE=0.02)
 
     """
 
@@ -367,12 +371,12 @@ def clusters(data, num_clusters=3, n_init="auto", use_PCA=True, PCs=3, extract='
 
     SM = load('SM.ibw')
 
-    classification_map1, cluster_center_disps1 = SM.clusters(num_clusters=3, PCs=4)  # Perform a k-means clustering
-                        analysis using 3 clusters, applying a principal component analysis to the spatial mapping data
-                        using 4 principal components
+    # Perform a k-means clustering analysis using 3 clusters, applying a principal component analysis to the spatial
+    # mapping data using 4 principal components
+    cluster_map1, cluster_disps1 = SM.clusters(num_clusters=3, PCs=4)
 
-    classification_map2, cluster_center_disps2 = SM.clusters(num_clusters=3, use_PCA=False, extract='MDC', E=73.42,
-                        dE=0.02)  # Perform a k-means clustering analysis using 3 clusters on spatial mapping MDCs
+    # Perform a k-means clustering analysis using 3 clusters on spatial mapping MDCs
+    cluster_map2, cluster_disps2 = SM.clusters(num_clusters=3, use_PCA=False, extract='MDC', E=73.42, dE=0.02)
 
     """
 
@@ -535,11 +539,11 @@ def PCA_explore(data, PCs_range=range(1, 6), threshold=0.95, extract='dispersion
 
     SM = load('SM.ibw')
 
-    SM.PCA_explore()  # Perform an exploratory PCA on spatial mapping data for numbers of principal components
-                        ranging from 1 to 5
+    # Perform an exploratory PCA on spatial mapping data for numbers of principal components ranging from 1 to 5
+    SM.PCA_explore()
 
-    SM.PCA_explore(PCs_range=range(1,11), extract='MDC', E=73.42, dE=0.02)  # Perform an exploratory PCA on spatial
-                        mapping MDCs for numbers of principal components ranging from 1 to 10
+    # Perform an exploratory PCA on spatial mapping MDCs for numbers of principal components ranging from 1 to 10
+    SM.PCA_explore(PCs_range=range(1,11), extract='MDC', E=73.42, dE=0.02)
 
     """
 
