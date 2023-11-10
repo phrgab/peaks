@@ -54,10 +54,12 @@ def plot_grid(data, ncols=3, nrows=None, titles=None, sharex=False, sharey=False
     disps_to_plot = [disp1, disp2, disp3, disp4]
     disp_titles = ['10 K', '20 K', '30 K', '40 K']
 
-    plot_grid(disps_to_plot)  # Plots dispersions on a 2D grid
+    # Plot dispersions on a 2D grid
+    plot_grid(disps_to_plot)
 
-    plot_grid(disps_to_plot, titles=disp_titles, sharex=True, add_colorbar=False)  # Plots dispersions on a 2D grid,
-                    where each dispersion has a title, all dispersions share an x-axis, and colour bars are not shown
+    # Plot dispersions on a 2D grid, where each dispersion has a title, all dispersions share an x-axis, and
+    # colour bars are not shown
+    plot_grid(disps_to_plot, titles=disp_titles, sharex=True, add_colorbar=False)
 
     """
 
@@ -167,14 +169,16 @@ def plot_DCs(DCs, titles=None, cmap='coolwarm', color=None, offset=0, norm=False
 
     EDCs_to_plot = disp.EDC(k=[0, 0.1, 0.2, 0.3, 0.4, 0.5], dk=0.01)
 
-    plot_DCs(to_plot)  # Plots EDCs
+    # Plot EDCs
+    plot_DCs(to_plot)
 
     MDC_1 = disp.MDC(E=95.61, dE=0.01)
     MDC_2 = disp.MDC(E=95.62, dE=0.01)
     MDC_3 = disp.MDC(E=95.63, dE=0.01)
 
-    plot_DCs([MDC_1, MDC_2, MDC_3], titles = ['EF', 'EF - 0.01 eV', 'EF -0.02 eV'], norm=True, offset=0.05)  # Plots
-                                            normalised MDCs with a 5% (of maximum height) offset, and adds legend.
+
+    # Plot normalised MDCs with a 5% (of maximum height) offset, and adds legend
+    plot_DCs([MDC_1, MDC_2, MDC_3], titles = ['EF', 'EF - 0.01 eV', 'EF -0.02 eV'], norm=True, offset=0.05)
 
     """
 
@@ -312,18 +316,21 @@ def plot_ROI(ROI, color='black', x=None, y=None, label=None, loc='best', ax=None
     ROI1 = {'theta_par': [-8, -5.5, -3.1, -5.6], 'eV': [95.45, 95.45, 95.77, 95.77]}
     ROI2 = {'theta_par': [-9, -4, -2.5, -5.9], 'eV': [95.45, 95.45, 95.77, 95.77]}
 
-    plot_ROI(ROI1)  # Plots ROI.
+    # Plot ROI
+    plot_ROI(ROI1)
     plt.show()
 
+    # Plot ROI on top of a dispersion with eV plotted along the x-axis.
     disp1.plot()
-    plot_ROI(ROI1, x='eV')  # Plots ROI on top of a dispersion with eV plotted along the x-axis.
+    plot_ROI(ROI1, x='eV')
     plt.show()
 
+    # Plot ROIs on top of dispersions on specific axes, axes[0] and axes[1], with labels
     fig, axes= plt.subplots(ncols=2)
     disp.T.plot(ax=axes[0])
-    plot_ROI(ROI1, label='ROI 1', ax=axes[0])  # Plot ROI on top of a dispersion on specific axis, axes[0], with a label
+    plot_ROI(ROI1, label='ROI 1', ax=axes[0])
     disp.T.plot(ax=axes[1])
-    plot_ROI(ROI2, label='ROI 2', ax=axes[1])  # Plot ROI on top of a dispersion on specific axis, axes[1], with a label
+    plot_ROI(ROI2, label='ROI 2', ax=axes[1])
 
     """
 

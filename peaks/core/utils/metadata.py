@@ -36,7 +36,8 @@ def update_hist(data, hist):
 
     disp = disp/2
 
-    disp = disp.update_hist('Dispersion data divided by 2')  # Update the analysis history metadata of disp.
+    # Update the analysis history metadata of the dispersion
+    disp = disp.update_hist('Dispersion data divided by 2')
 
     """
     
@@ -73,7 +74,8 @@ def _set_normals(data, **kwargs):
 
     disp = load('disp.ibw')
 
-    disp._set_normals(polar=0, tilt=0, azi=0, norm_polar=0, norm_tilt=0, norm_azi=0)  # Sets the attributes of disp
+    # Sets the attributes of the dispersion
+    disp._set_normals(polar=0, tilt=0, azi=0, norm_polar=0, norm_tilt=0, norm_azi=0)
 
     """
 

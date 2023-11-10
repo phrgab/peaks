@@ -44,14 +44,17 @@ def DC(data, coord='eV', val=0, dval=0, ana_hist=True):
 
     disp = load('disp.ibw')
 
-    DC1 = disp.DC(coord='theta_par', val=3.5, dval=0.5)  # Extracts an EDC at theta_par = 3.5 +/- 0.25
+    # Extract an EDC at theta_par = 3.5 +/- 0.25
+    DC1 = disp.DC(coord='theta_par', val=3.5, dval=0.5)
 
-    DC2 = disp.DC('eV', -0.5, 0.2)  # Extracts an MDC at eV = -0.5 +/- 0.1
+    # Extract an MDC at eV = -0.5 +/- 0.1
+    DC2 = disp.DC('eV', -0.5, 0.2)
 
-    DC3 = disp.DC('eV', [-0.5, -0.4], 0.2)  # Extracts MDCs at eV = -0.5 +/- 0.1 and -0.4 +/- 0.1
+    # Extract MDCs at eV = -0.5 +/- 0.1 and -0.4 +/- 0.1
+    DC3 = disp.DC('eV', [-0.5, -0.4], 0.2)
 
-    DC4 = disp.DC('eV', (-0.2, 0.1, 0.05), 0.02)  # Extracts MDCs between eV = -0.2 and 0.1 in steps of 0.05 with
-                                                    +/- 0.01 integrations
+    # Extract MDCs between eV = -0.2 and 0.1 in steps of 0.05 with +/- 0.01 integrations
+    DC4 = disp.DC('eV', (-0.2, 0.1, 0.05), 0.02)
 
     """
 
@@ -120,16 +123,20 @@ def MDC(data, E=0, dE=0):
 
     disp = load('disp.ibw')
 
-    MDC1 = disp.MDC(E=-1.2, dE=0.01)  # Extracts an MDC at eV = -1.2 +/- 0.005
+    # Extract an MDC at eV = -1.2 +/- 0.005
+    MDC1 = disp.MDC(E=-1.2, dE=0.01)
 
-    MDC2 = disp.MDC(55.6, 0.06)  # Extracts an MDC at eV = 55.6 +/- 0.03
+    # Extract an MDC at eV = 55.6 +/- 0.03
+    MDC2 = disp.MDC(55.6, 0.06)
 
-    MDC3 = disp.MDC()  # Extracts a single non-integrated MDC at eV value closest to 0
+    # Extract a single non-integrated MDC at eV value closest to 0
+    MDC3 = disp.MDC()
 
-    MDC4 = disp.MDC([55.6, 55.7], 0.06)  # Extracts MDCs at eV = 55.6 +/- 0.03 and 55.7 +/- 0.03
+    # Extract MDCs at eV = 55.6 +/- 0.03 and 55.7 +/- 0.03
+    MDC4 = disp.MDC([55.6, 55.7], 0.06)
 
-    MDC5 = disp.MDC((-0.2, 0.1, 0.05), 0.02)  # Extracts MDCs between eV = -0.2 and 0.1 in steps of 0.05 with
-                                                +/- 0.01 integrations
+    # Extract MDCs between eV = -0.2 and 0.1 in steps of 0.05 with +/- 0.01 integrations
+    MDC5 = disp.MDC((-0.2, 0.1, 0.05), 0.02)
 
     """
 
@@ -169,16 +176,20 @@ def EDC(data, k=0, dk=0):
 
     disp = load('disp.ibw')
 
-    EDC1 = disp.EDC(k=0.5, dk=0.01)  # Extracts an EDC at k (or theta_par) = 0.5 +/- 0.005
+    # Extract an EDC at k (or theta_par) = 0.5 +/- 0.005
+    EDC1 = disp.EDC(k=0.5, dk=0.01)
 
-    EDC2 = disp.EDC(-0.2, 0.06)  # Extracts an EDC at k (or theta_par) = -0.2 +/- 0.03
+    # Extract an EDC at k (or theta_par) = -0.2 +/- 0.03
+    EDC2 = disp.EDC(-0.2, 0.06)
 
-    EDC3 = disp.EDC()  # Extracts a single non-integrated EDC at k (or theta_par) value closest to 0
+    # Extract a single non-integrated EDC at k (or theta_par) value closest to 0
+    EDC3 = disp.EDC()
 
-    EDC4 = disp.EDC([-0.2, -0.1], 0.06)  # Extracts EDCs at k (or theta_par) = -0.2 +/- 0.03 and -0.1 +/- 0.03
+    # Extract EDCs at k (or theta_par) = -0.2 +/- 0.03 and -0.1 +/- 0.03
+    EDC4 = disp.EDC([-0.2, -0.1], 0.06)
 
-    EDC5 = disp.EDC((0.7, 1.2, 0.1), 0.02)  # Extracts EDCs between k (or theta_par) = 0.7 and 1.2 in steps of 0.1 with
-                                              +/- 0.01 integrations
+    # Extract EDCs between k (or theta_par) = 0.7 and 1.2 in steps of 0.1 with +/- 0.01 integrations
+    EDC5 = disp.EDC((0.7, 1.2, 0.1), 0.02)
 
     """
 
@@ -223,16 +234,20 @@ def FS(data, E=0, dE=0):
 
     FM = load('FM.zip')
 
-    FS1 = FM.FS(E=-1.2, dE=0.01)  # Extracts a constant energy slice at eV = -1.2 +/- 0.005
+    # Extract a constant energy slice at eV = -1.2 +/- 0.005
+    FS1 = FM.FS(E=-1.2, dE=0.01)
 
-    FS2 = FM.FS(95.56, 0.06)  # Extracts a constant energy slice at eV = 95.56 +/- 0.03
+    # Extract a constant energy slice at eV = 95.56 +/- 0.03
+    FS2 = FM.FS(95.56, 0.06)
 
-    FS3 = FM.FS()  # Extracts a single non-integrated constant energy slice at eV value closest to 0
+    # Extract a single non-integrated constant energy slice at eV value closest to 0
+    FS3 = FM.FS()
 
-    FS4 = FM.FS([95.56, 95.60], 0.06)  # Extracts constant energy slices at eV = 95.56 +/- 0.03 and 95.60 +/- 0.03
+    # Extract constant energy slices at eV = 95.56 +/- 0.03 and 95.60 +/- 0.03
+    FS4 = FM.FS([95.56, 95.60], 0.06)
 
-    FS5 = FM.FS((-0.2, 0.1, 0.05), 0.02)  # Extracts constant energy slices between eV = -0.2 and 0.1 in steps of 0.05
-                                            with +/- 0.01 integrations
+    # Extract constant energy slices between eV = -0.2 and 0.1 in steps of 0.05 with +/- 0.01 integrations
+    FS5 = FM.FS((-0.2, 0.1, 0.05), 0.02)
 
     """
 
@@ -272,9 +287,11 @@ def DOS(data):
 
     FM = load('FM.zip')
 
-    disp_DOS = disp.DOS()  # Extracts DOS of dispersion
+    # Extract DOS of a dispersion
+    disp_DOS = disp.DOS()
 
-    FM_DOS = FM.DOS() # Extracts DOS of Fermi map
+    # Extract DOS of a Fermi map
+    FM_DOS = FM.DOS()
 
     """
 
@@ -314,9 +331,11 @@ def tot(data, spatial_int=False):
 
     SM = load('SM.ibw')
 
-    SM_int = SM.tot()  # Extracts energy and angle integrated spatial map
+    # Extract energy and angle integrated spatial map
+    SM_int = SM.tot()
 
-    SM_int_spatial = SM.tot(spatial_int=True)   # Extracts spatially integrated dispersion
+    # Extract spatially integrated dispersion
+    SM_int_spatial = SM.tot(spatial_int=True)
 
     """
 
@@ -371,14 +390,15 @@ def radial_cuts(data, num_azi=361, num_points=200, radius=2, **kwargs):
 
     FM = load('FM.zip')
 
-    FS1 = FM.FS(E=-0, dE=0.01)  # Extracts a constant energy slice at eV = -1.2 +/- 0.005
+    FS1 = FM.FS(E=-0, dE=0.01)
 
-    FS1_radial_cuts_1 = FS1.radial_cuts(num_azi=181, num_points=300, radius=15, theta_par=-2, ana_polar=-5)  # Extracts
-                                             radial cuts (radius = 15) at azi values in 2 degree increments, using
-                                             a centre of rotation (theta_par, ana_polar) = (-2, -5)
+    # Extract radial cuts (radius = 15) at azi values in 2 degree increments, using a centre of
+    # rotation (theta_par, ana_polar) = (-2, -5)
+    FS1_radial_cuts_1 = FS1.radial_cuts(num_azi=181, num_points=300, radius=15, theta_par=-2, ana_polar=-5)
 
-    FS1_radial_cuts_2 = FS1.radial_cuts()  # Extracts radial cuts (radius = 2) at azi values in 1 degree increments,
-                                             using a centre of rotation (coord_1, coord_2) = (0, 0)
+    # Extract radial cuts (radius = 2) at azi values in 1 degree increments, using a centre of
+    # rotation (coord_1, coord_2) = (0, 0)
+    FS1_radial_cuts_2 = FS1.radial_cuts()
 
     """
 
@@ -458,12 +478,14 @@ def mask_data(data, ROI, return_integrated=True):
 
     SM = load('SM.ibw')
 
-    ROI = {'theta_par': [-8, -5.5, -3.1, -5.6], 'eV': [95.45, 95.45, 95.77, 95.77]}  # Define ROI
+    # Define ROI used to mask data
+    ROI = {'theta_par': [-8, -5.5, -3.1, -5.6], 'eV': [95.45, 95.45, 95.77, 95.77]}
 
-    ROI_SM = SM.mask_data(ROI)  # Extract SM consisting of the integrated spectral weight confined within the ROI
+    # Extract SM consisting of the integrated spectral weight confined within the ROI
+    ROI_SM = SM.mask_data(ROI)
 
-    ROI_SM = SM.mask_data(ROI, return_integrated=False)  # Extract SM consisting of the input data with the ROI applied
-                                                      as a mask
+    # Extract SM consisting of the input data with the ROI applied as a mask
+    ROI_SM = SM.mask_data(ROI, return_integrated=False)
 
     """
 
