@@ -54,10 +54,10 @@ def smooth(data, **smoothing_kwargs):
 
     EDC1 = disp.EDC()
 
-    # Smooth the dispersion by a Gaussian with FWHM 0.5 deg and 0.2 eV
+    # Smooth the dispersion by Gaussian filters with FWHMs for the theta_par and eV axes of 0.5 deg and 0.2 eV
     disp_smooth = disp.smooth(theta_par=0.5, eV=0.2)
 
-    # Smooth the EDC by a Gaussian with FWHM 0.2 eV
+    # Smooth the EDC by a Gaussian filter with FWHM for the eV axis of 0.2 eV
     EDC1_smooth = EDC1.smooth(eV=0.1)
 
     """
