@@ -416,7 +416,7 @@ def clusters(data, num_clusters=3, n_init="auto", use_PCA=True, PCs=3, extract='
         cluster_average_disps.append(total_disp / len(current_disps))
 
     # Find maximum vmax of the averaged cluster dispersions so intensity variations between terminations can be observed
-    if robust == False and vmax == None:
+    if not robust and not vmax:
         max_cluster_disps_vmax = 0
         for disp in cluster_average_disps:
             if float(disp.max()) > max_cluster_disps_vmax:
@@ -434,11 +434,11 @@ def clusters(data, num_clusters=3, n_init="auto", use_PCA=True, PCs=3, extract='
 
     # Plot average dispersion of each cluster
     cluster_average_titles = ['Cluster ' + str(i) for i in range(num_clusters)]  # Titles for plots
-    if vmax != None:
+    if vmax:
         plot_grid(cluster_average_disps, titles=cluster_average_titles, cmap='binary', y='eV', ncols=num_clusters,
                   vmin=vmin, vmax=vmax, cbar_kwargs={'label': None})
     else:
-        if robust == False:
+        if not robust:
             plot_grid(cluster_average_disps, titles=cluster_average_titles, cmap='binary', y='eV', ncols=num_clusters,
                       vmin=vmin, vmax=max_cluster_disps_vmax, cbar_kwargs={'label': None})
         else:
@@ -448,7 +448,7 @@ def clusters(data, num_clusters=3, n_init="auto", use_PCA=True, PCs=3, extract='
     plt.show()
 
     # If a PCA was used on full dispersions, plot also the reconstructed cluster centers
-    if use_PCA == True and extract == 'dispersion':
+    if use_PCA and extract == 'dispersion':
         # Get non-spatial coordinates
         coords = list(data.dims)
         coords.remove('x1')
@@ -465,7 +465,7 @@ def clusters(data, num_clusters=3, n_init="auto", use_PCA=True, PCs=3, extract='
 
         # Find maximum vmax of the reconstructed cluster center dispersions so intensity variations between
         # terminations can be observed
-        if robust == False and vmax == None:
+        if not robust and not vmax:
             max_reconstructed_cluster_disps_vmax = 0
             for disp in reconstructed_cluster_centers_disps:
                 if float(disp.max()) > max_reconstructed_cluster_disps_vmax:
@@ -474,11 +474,11 @@ def clusters(data, num_clusters=3, n_init="auto", use_PCA=True, PCs=3, extract='
         # reconstructed cluster center dispersions
         reconstructed_cluster_centers_titles = ['Cluster ' + str(i) + ' (reconstructed)' for i in
                                                 range(num_clusters)]  # Titles for plots
-        if vmax != None:
+        if vmax:
             plot_grid(reconstructed_cluster_centers_disps, titles=reconstructed_cluster_centers_titles, cmap='binary',
                       y='eV', ncols=num_clusters, vmin=vmin, vmax=vmax, cbar_kwargs={'label': None})
         else:
-            if robust == False:
+            if not robust:
                 plot_grid(reconstructed_cluster_centers_disps, titles=reconstructed_cluster_centers_titles,
                           cmap='binary', y='eV', ncols=num_clusters, vmin=vmin,
                           vmax=max_reconstructed_cluster_disps_vmax, cbar_kwargs={'label': None})
