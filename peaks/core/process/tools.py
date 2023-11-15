@@ -112,15 +112,100 @@ def rotate():
     pass
 
 
+@add_methods(xr.DataArray)
+def sym(data, flipped=False, fillna=True, **sym_kwarg):
+    """Function which primarily applies a symmetrisation around a given axis. It can alternatively be used to simply
+    flip data around a given axis.
+
+    Parameters
+    ------------
+    data : xr.DataArray
+        The data to be symmetrised.
+
+    flipped : Boolean (optional)
+        Whether to return the flipped data rather than the sum of the original and flipped data. Defaults to False.
+
+    fillna : Boolean (optional)
+        Whether to fill NaNs with 0s. NaNs occur for regions where the original and flipped data do not overlap. If
+        fillna is True, regions without overlap will appear with half intensity (since only one of the original or
+        flipped data contributes). Defaults to True.
+
+    **sym_kwarg : float (optional)
+        Axis to symmetrise about in the format axis=coord, where coord is coordinate around which the symmetrisation is
+        performed, e.g. theta_par=1.4. Defaults to eV=0.
+
+    Returns
+    ------------
+    sym_data : xr.DataArray
+        The symmetrised (or simply flipped) data.
+
+    Examples
+    ------------
+    from peaks import *
+
+    disp = load('disp.ibw')
+
+    # Symmetrise the dispersion about theta_par=3
+    disp_sym = disp.sym(theta_par=3)
+
+    # Flip the dispersion about theta_par=3
+    disp_sym = disp.sym(theta_par=3, flipped=True)
+
+    """
+    # Copy the input xarray
+    sym_data = data.copy(deep=True)
+
+    # Check that more than one sym_kwarg has not been passed. If so, raise an error
+    if len(sym_kwarg) > 1:  # Check only called with single axis kwarg
+        raise Exception("Function can only be called with single axis.")
+
+    # If no axis has been provided in sym_kwarg, set to the default symmetrisation axis and coordinate of eV=0
+    if len(sym_kwarg) == 0:
+        sym_kwarg = {'eV': 0}
+
+    # Get provided axis and coordinate to perform symmetrisation around
+    sym_axis = next(iter(sym_kwarg))
+    sym_coord = sym_kwarg[sym_axis]
+
+    # Check that provided axis is a valid dimension of inputted DataArray, if not raise an error
+    if sym_axis not in sym_data.dims:
+        raise Exception("Provided symmetrisation axis is not a valid dimension of inputted DataArray.")
+
+    # Check if the symmetrisation coordinate is within the range of the inputted DataArray, if not raise an error
+    if sym_coord < min(sym_data[sym_axis].data) or sym_coord > max(sym_data[sym_axis].data):
+        raise Exception(
+            "Provided symmetrisation coordinate ({sym_axis}={sym_coord}) is not within the coordinate range of the "
+            "inputted DataArray".format(sym_axis=sym_axis, sym_coord=sym_coord))
+
+    # Generate flipped axis DataArray which maps the original axis to the flipped axis
+    flipped_axis_values = (2 * sym_coord) - sym_data[sym_axis].data
+    flipped_axis_xarray = xr.DataArray(flipped_axis_values, dims=[sym_axis], coords={sym_axis: sym_data[sym_axis].data})
+
+    # Flip the inputted DataArray by interpolating it onto the flipped axis (and replace NaNs with 0)
+    flipped_data = sym_data.interp({sym_axis: flipped_axis_xarray})
+
+    # Fill NaNs with 0s if requested
+    if fillna:
+        flipped_data = flipped_data.fillna(0)
+
+    # If only the flipped data is requested
+    if flipped:
+        # Assign sym_data to just the flipped data
+        sym_data = flipped_data
+        # Update the analysis history
+        sym_data.update_hist('Flipped data about {sym_kwarg}'.format(sym_kwarg=sym_kwarg))
+
+    # If the full symmetrisation is requested
+    else:
+        # Sum the original and flipped data
+        sym_data += flipped_data
+        # Update the analysis history
+        sym_data.update_hist('Symmetrised data about {sym_kwarg}'.format(sym_kwarg=sym_kwarg))
+
+    return sym_data
+
+
 def sym_nfold():
-    pass
-
-
-def sym_EF():
-    pass
-
-
-def sym_1d():
     pass
 
 
