@@ -358,7 +358,7 @@ def tot(data, spatial_int=False):
 
 
 @add_methods(xr.DataArray)
-def radial_cuts(data, num_azi=361, num_points=200, radius=2, **kwargs):
+def radial_cuts(data, num_azi=361, num_points=200, radius=2, **centre_kwargs):
     """Extract radial cuts of a Fermi surface as a function of azimuthal angle.
 
     Parameters
@@ -375,8 +375,8 @@ def radial_cuts(data, num_azi=361, num_points=200, radius=2, **kwargs):
     radius : float (optional)
         Maximum radius to take cuts up to. Defaults to 2.
 
-    **kwargs : float (optional)
-        Used to define centre of rotations in the format coord = num, e.g. k_par = 1.2 sets the k_par centre as 1.2.
+    **centre_kwargs : float (optional)
+        Used to define centre of rotations in the format dim = coord, e.g. k_par = 1.2 sets the k_par centre as 1.2.
         Default centre of rotation is (0, 0).
 
     Returns
@@ -411,13 +411,11 @@ def radial_cuts(data, num_azi=361, num_points=200, radius=2, **kwargs):
     y_coord = data.dims[1]
 
     # Check for user-defined centre of rotations
-    try:
-        x_centre = (kwargs[x_coord])
-    except:
+    x_centre = centre_kwargs.get(x_coord)
+    if not x_centre:
         x_centre = 0
-    try:
-        y_centre = (kwargs[y_coord])
-    except:
+    y_centre = centre_kwargs.get(y_coord)
+    if not y_centre:
         y_centre = 0
 
     # Define coordinates to be sampled
