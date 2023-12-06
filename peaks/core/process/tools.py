@@ -29,6 +29,77 @@ def bgs():
 
 
 @add_methods(xr.DataArray)
+def bin_data(data, binning=None, **binning_kwargs):
+    """Shortcut function to bin data.
+
+    Parameters
+    ------------
+    data : xr.DataArray
+        The data to be binned.
+
+    binning : int (optional)
+        Size of bins to apply to all dimensions. Defaults to None (dimension-specific binning_kwargs must be defined).
+        Takes priority over use of binning_kwargs.
+
+    **binning_kwargs : int (optional)
+        Used to define dimension-specific binning in the format dim = bin_size, e.g. theta_par = 2.
+
+    Returns
+    ------------
+    binned_data : xr.DataArray
+        The binned data.
+
+    Examples
+    ------------
+    from peaks import *
+
+    disp = load('disp.ibw')
+
+    # Bin dispersion using bin sizes of 2 in both dimensions.
+    disp_binned1 = disp.bin_data(2)
+
+    # Bin dispersion using a bin size of 2 along theta_par, and a bin size of 3 along eV.
+    disp_binned2 = disp.bin_data(theta_par=2, eV=3)
+
+    """
+
+    # If binning argument is defined, apply same size bins to all dimensions
+    if binning:
+        # If binning argument is not an integer, raise an error
+        if not isinstance(binning, int):
+            raise Exception('Binning value must be an integer.')
+
+        # Overwrite any binning_kwargs since binning takes priority
+        binning_kwargs = {}
+
+        # Loop through all dimensions and define bin size in binning_kwargs
+        for dim in data.dims:
+            binning_kwargs[dim] = binning
+
+    # If binning argument is not defined, get dimension-specific bins from binning_kwargs
+    else:
+        # If no binning_kwargs are supplied, raise an error
+        if len(binning_kwargs) == 0:
+            raise Exception('No binning parameters set. Define either binning or binning_kwargs arguments.')
+
+        # Loop through all items in binning_kwargs to ensure dictionary keys are valid dimensions and dictionary values
+        # are integers, if not raise an error.
+        for dim in binning_kwargs:
+            if dim not in data.dims:
+                raise Exception('{dim} is not a valid dimension of the inputted DataArray.'.format(dim=dim))
+            if not isinstance(binning_kwargs[dim], int):
+                raise Exception('Binning values must be integers.')
+
+    # Apply binning to data
+    binned_data = data.coarsen(binning_kwargs, boundary='pad').mean()
+
+    # Update analysis history
+    binned_data.update_hist('Binned data using the bins: {binning_kwargs}'.format(binning_kwargs=binning_kwargs))
+
+    return binned_data
+
+
+@add_methods(xr.DataArray)
 def smooth(data, **smoothing_kwargs):
     """Function to smooth data by applying a Gaussian smoothing operator.
 
@@ -110,7 +181,7 @@ def smooth(data, **smoothing_kwargs):
 
 @add_methods(xr.DataArray)
 def rotate(data, rotation, **centre_kwargs):
-    """Function to rotate 2D data around a given centre of rotation
+    """Function to rotate 2D data around a given centre of rotation.
 
     Parameters
     ------------
