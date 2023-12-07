@@ -11,7 +11,7 @@ from IPython.display import display, Javascript, Markdown
 
 
 def analysis_warning(text, warn_type='info', title='Analysis info'):
-    """Warning tool for use within code, to display string in formatted box.
+    """Tool to display a string as a warning in a formatted box.
 
     Parameters
     ------------
