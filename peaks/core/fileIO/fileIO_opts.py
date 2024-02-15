@@ -7,11 +7,22 @@
 
 
 class file(object):
-    """Class used to store user-defined file paths (optionally including some of the file name for disambiguation e.g.
-    path_to_data/i05-123), file extensions, and location (e.g. beamline). Note: multiple file paths or extensions can be
-    defined as lists to allow for the use of data saved at different folders, with different extensions.
+    """Class used to store and print user-defined file paths (optionally including some of the file name for
+    disambiguation e.g. path_to_data/i05-123), file extensions, and location (e.g. beamline). Note: multiple file paths
+    or extensions can be defined as lists to allow for the use of data saved at different folders, with different
+    extensions.
 
     """
+
+    def __init__(self):
+        """This function simply prints the current file variables.
+
+        """
+
+        # Print the currently supported locations
+        print('file.path: {path}'.format(path=self.path))
+        print('file.ext: {ext}'.format(ext=self.ext))
+        print('file.loc: {loc}'.format(loc=self.loc))
 
     # Initialise variables as None
     path = None  # Path(s) to files
@@ -25,7 +36,7 @@ class loc_opts(object):
     """
 
     def __init__(self):
-        """This function simply prints the currently supported locations when loc_opts() is called
+        """This function simply prints the currently supported locations when loc_opts() is called.
 
         """
 

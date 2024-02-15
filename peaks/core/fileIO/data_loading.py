@@ -4,19 +4,21 @@
 
 # Brendan Edwards 28/06/2021
 # Phil King 14/05/2022
-# Brendan Edwards 12/02/2024
+# Brendan Edwards 14/02/2024
 
 import os
 import natsort
 import h5py
 import xarray as xr
+import dask
 import dask.array as da
+from tqdm import tqdm
 from peaks.core.utils.misc import analysis_warning
 from peaks.core.fileIO.fileIO_opts import file, loc_opts, _coords
-from peaks.core.fileIO.loaders.SES_loader import _load_SES_metalines, _SES_find
+from peaks.core.fileIO.loaders.SES import _load_SES_metalines, _SES_find
 
 
-def load(fname, dask='auto', loc='auto', metadata=True):
+def load(fname, lazy='auto', loc='auto', metadata=True, parallel=False):
     """Shortcut function to load_data where much of the file path can be set by the file global options:
 
         file.path : str, list
@@ -36,7 +38,7 @@ def load(fname, dask='auto', loc='auto', metadata=True):
         Either the full file name(s), or the remainder of the file name(s) not already specified in the file global
         options.
 
-    dask : str, Boolean
+    lazy : str, Boolean
         Whether to load data in a lazily evaluated dask format. Set explicitly using True/False Boolean. Defaults
         to 'auto' where a file is only loaded in the dask format if its spectrum is above 500 MB.
 
@@ -47,6 +49,11 @@ def load(fname, dask='auto', loc='auto', metadata=True):
 
     metadata : Boolean
         Whether to attempt to load metadata into the attributes of the xr.DataArray. Defaults to True.
+
+    parallel : Boolean
+        Whether to load data in parallel when multiple files are being loaded. Only compatible with certain file types
+        such as those based on the h5py format, e.g. nxs files. Takes priority over lazy, enforcing that all data is
+        computed and loaded into memory. Defaults to False.
 
     Returns
     ------------
@@ -75,17 +82,17 @@ def load(fname, dask='auto', loc='auto', metadata=True):
 
     # Load data without needing to define data path or extension, nor the repeated part of the scan name (determined
     # from global options defined in file)
-    disp3 = load('456')
-    disp4 = load('457')
+    disp3 = load(456)
+    disp4 = load(457)
 
     # Load multiple files at once
-    disps = load(['456', '457', '458'])
+    disps = load([456, 457, 458])
 
     # Still can load data using a complete data path, and global options defined in file will be ignored
     disp1 = load('C:/User/Documents/Data/disp1.ibw')
 
     # Load data in a lazily evaluated dask format
-    disp1 = load('C:/User/Documents/Data/disp1.ibw', dask=True)
+    disp1 = load('C:/User/Documents/Data/disp1.ibw', lazy=True)
 
     # Load data without metadata
     disp1 = load('C:/User/Documents/Data/disp1.ibw', metadata=False)
@@ -101,7 +108,7 @@ def load(fname, dask='auto', loc='auto', metadata=True):
 
     # Set placeholder file path and extension
     path = [None]
-    ext = [None]
+    ext = ['']
 
     # If file.path is defined, make a list of the inputted path(s)
     if file.path:
@@ -156,12 +163,12 @@ def load(fname, dask='auto', loc='auto', metadata=True):
                 file_list.append(current_file)
 
     # Load data by calling load_data
-    loaded_data = load_data(file_list, dask=dask, loc=loc, metadata=metadata)
+    loaded_data = load_data(file_list, lazy=lazy, loc=loc, metadata=metadata, parallel=parallel)
 
     return loaded_data
 
 
-def load_data(fname, dask='auto', loc='auto', metadata=True):
+def load_data(fname, lazy='auto', loc='auto', metadata=True, parallel=False):
     """Function to load data files in the xr.DataArray format.
 
     Parameters
@@ -169,7 +176,7 @@ def load_data(fname, dask='auto', loc='auto', metadata=True):
     fname : str, list
         Path(s) to the file(s) to be loaded.
 
-    dask : str, Boolean
+    lazy : str, Boolean
         Whether to load data in a lazily evaluated dask format. Set explicitly using True/False Boolean. Defaults
         to 'auto' where a file is only loaded in the dask format if its spectrum is above 500 MB.
 
@@ -179,6 +186,11 @@ def load_data(fname, dask='auto', loc='auto', metadata=True):
 
     metadata : Boolean
         Whether to attempt to load metadata into the attributes of the xr.DataArray. Defaults to True.
+
+    parallel : Boolean
+        Whether to load data in parallel when multiple files are being loaded. Only compatible with certain file types
+        such as those based on the h5py format, e.g. nxs files. Takes priority over lazy, enforcing that all data is
+        computed and loaded into memory. Defaults to False.
 
     Returns
     ------------
@@ -197,7 +209,7 @@ def load_data(fname, dask='auto', loc='auto', metadata=True):
     disps = load(['disp1.ibw', 'disp2.ibw', 'disp3.ibw'])
 
     # Load data in a lazily evaluated dask format
-    FM1 = load('FM1.ibw', dask=True)
+    FM1 = load('FM1.ibw', lazy=True)
 
     # Load data without metadata
     FM1 = load('FM1.ibw', metadata=False)
@@ -207,10 +219,56 @@ def load_data(fname, dask='auto', loc='auto', metadata=True):
 
     """
 
-    return 1
+    # Ensure fname is of type list
+    if not isinstance(fname, list):
+        fname = [fname]
+
+    # Define an empty list to store loaded data
+    loaded_data = []
+
+    # If the files have been requested to be loaded in parallel
+    if parallel:
+        # Loop through and set up the dask delayed function which will facilitate data loading in parallel
+        for single_fname in fname:
+            loaded_data.append(
+                dask.delayed(_load_single_data(fname=single_fname, lazy=lazy, loc=loc, metadata=metadata)))
+
+        # Perform the data loading in parallel
+        loaded_data = dask.compute(*loaded_data)
+
+        # If Lazy is not False, display message informing the user that setting parallel to True means all data is
+        # loaded into memory and cannot be lazily evaluated
+        if lazy:
+            analysis_warning(
+                'By setting parallel=True, the data has been computed and loaded into memory. This means that the '
+                'data is unable to be lazily evaluated in the dask format. If a lazy evaluation is required, set '
+                'parallel=False', title='Loading info', warn_type='danger')
+
+    # If not, load files sequentially
+    else:
+        for single_fname in tqdm(fname, desc='Loading data', disable=len(fname) == 1, colour='CYAN'):
+            loaded_data.append(_load_single_data(fname=single_fname, lazy=lazy, loc=loc, metadata=metadata))
+
+    # Check if any of the loaded data have been lazily evaluated. If so, inform the user
+    for data in loaded_data:
+        if isinstance(data.data, dask.array.core.Array):
+            analysis_warning(
+                'DataArray has been lazily evaluated in the dask format (set lazy=False to load as DataArray in xarray '
+                'format). Use the .compute() method to load DataArray into RAM in the xarray format, or the .persist() '
+                'method to instead load DataArray into RAM in the dask format. Note: these operations load all of the '
+                'data into memory, so large files may require an initial reduction in size through either a slicing or '
+                'binning operation.',
+                title='Loading info', warn_type='info')
+            break
+
+    # If there is only one loaded item in loaded_data, return the xr.DataArray (xr.DataSet) entry instead of a list
+    if len(loaded_data) == 1:
+        loaded_data = loaded_data[0]
+
+    return loaded_data
 
 
-def _load_single_data(fname, dask='auto', loc='auto', metadata=True):
+def _load_single_data(fname, lazy='auto', loc='auto', metadata=True):
     """Function to load a single data file as an xr.DataArray
 
     Parameters
@@ -218,7 +276,7 @@ def _load_single_data(fname, dask='auto', loc='auto', metadata=True):
     fname : str
         Path to the file to be loaded.
 
-    dask : str, Boolean
+    lazy : str, Boolean
         Whether to load data in a lazily evaluated dask format. Set explicitly using True/False Boolean. Defaults
         to 'auto' where a file is only loaded in the dask format if its spectrum is above 500 MB.
 
@@ -242,7 +300,7 @@ def _load_single_data(fname, dask='auto', loc='auto', metadata=True):
     FM1 = _load_single_data('C:/User/Documents/Data/FM1.ibw')
 
     # Load single data file in a lazily evaluated dask format
-    FM1 = _load_single_data('C:/User/Documents/Data/FM1.ibw', dask=True)
+    FM1 = _load_single_data('C:/User/Documents/Data/FM1.ibw', lazy=True)
 
     # Load single data file without metadata
     FM1 = _load_single_data('C:/User/Documents/Data/FM1.ibw', metadata=False)
@@ -267,16 +325,20 @@ def _load_single_data(fname, dask='auto', loc='auto', metadata=True):
         data = _load_Artemis_data(fname)
 
     elif loc == 'Diamond I05-HR' or loc == 'Diamond I05-nano':
-        from .loaders.i05 import _load_I05_data
+        from .loaders.I05 import _load_I05_data
         data = _load_I05_data(fname)
 
     elif loc == 'Elettra APE':
-        from .loaders.APE import _load_Elettra_data
-        data = _load_Elettra_data(fname)
+        from .loaders.APE import _load_APE_data
+        data = _load_APE_data(fname)
 
-    elif loc == 'MAX IV Bloch' or loc == 'MAX IV Bloch-spin':
+    elif loc == 'MAX IV Bloch':
         from .loaders.Bloch import _load_Bloch_data
         data = _load_Bloch_data(fname)
+
+    elif loc == 'MAX IV Bloch-spin':
+        from .loaders.Bloch import _load_Bloch_spin_data
+        data = _load_Bloch_spin_data(fname)
 
     elif loc == 'SOLEIL CASSIOPEE':
         from .loaders.CASSIOPEE import _load_CASSIOPEE_data
@@ -325,27 +387,20 @@ def _load_single_data(fname, dask='auto', loc='auto', metadata=True):
     # If location is NetCDF, data is already loaded in xr.DataArray format
     if loc == 'NetCDF':
         # Convert the data to dask format if the user has requested to load data in a lazily evaluated dask format, or
-        # if the data spectrum is above 500 MB (and dask='auto')
-        if dask is True or (dask == 'auto' and data.nbytes > 500000000):
+        # if the data spectrum is above 500 MB (and lazy='auto')
+        if lazy is True or (lazy == 'auto' and data.nbytes > 500000000):
             DataArray = da.from_array(data['spectrum'], chunks='auto')
-            analysis_warning(
-                'DataArray has been lazily evaluated in the dask format (set dask=False to load as DataArray in xarray '
-                'format). Use the .compute() method to load DataArray into RAM in the xarray format, or the .persist() '
-                'method to instead load DataArray into RAM in the dask format. Note: these operations load all of the '
-                'data into memory, so large files may require an initial reduction in size through either a slicing or '
-                'binning operation.',
-                title='Loading info', warn_type='info')
         else:
             DataArray = data
 
     # If location is not NetCDF, we must convert the data to xr.DataArray format and add metadata (if requested)
     else:
         # Generate an xr.DataArray from the loaded data (converting to dask format if required)
-        DataArray = _make_DataArray(data, dask=dask)
+        DataArray = _make_DataArray(data, lazy=lazy)
 
         # Add metadata to the loaded DataArray if requested
         if metadata:
-            _add_metadata(DataArray, fname, scan_type=data['scan_type'])
+            _add_metadata(DataArray, fname, loc, scan_type=data['scan_type'])
 
     # Ensure that all the DataArray coordinates are ordered low to high
     for dim in DataArray.dims:
@@ -363,7 +418,7 @@ def _load_single_data(fname, dask='auto', loc='auto', metadata=True):
     return DataArray
 
 
-def _make_DataArray(data, dask='auto'):
+def _make_DataArray(data, lazy='auto'):
     """This function makes an xr.DataArray from the inputted data.
 
     Parameters
@@ -371,7 +426,7 @@ def _make_DataArray(data, dask='auto'):
     data : dict
         Dictionary containing the file scan type, spectrum, and coordinates.
 
-    dask : str, Boolean
+    lazy : str, Boolean
         Whether to load data in a lazily evaluated dask format. Set explicitly using True/False Boolean. Defaults to
         'auto' where a file is only loaded in the dask format if its spectrum is above 500 MB.
 
@@ -394,7 +449,7 @@ def _make_DataArray(data, dask='auto'):
     DataArray = _make_DataArray(data)
 
     # Get data in a lazily evaluated dask format
-    DataArray = _make_DataArray(data, dask=True)
+    DataArray = _make_DataArray(data, lazy=True)
 
     """
 
@@ -405,16 +460,9 @@ def _make_DataArray(data, dask='auto'):
     scan_type = data['scan_type']
 
     # Convert the data spectrum to dask format if the user has requested to load data in a lazily evaluated dask format,
-    # or if the data spectrum is above 500 MB (and dask='auto')
-    if dask is True or (dask == 'auto' and data['spectrum'].nbytes > 500000000):
+    # or if the data spectrum is above 500 MB (and lazy='auto')
+    if lazy is True or (lazy == 'auto' and data['spectrum'].nbytes > 500000000):
         data['spectrum'] = da.from_array(data['spectrum'], chunks='auto')
-        analysis_warning(
-            'DataArray has been lazily evaluated in the dask format (set dask=False to load as DataArray in xarray '
-            'format). Use the .compute() method to load DataArray into RAM in the xarray format, or the .persist() '
-            'method to instead load DataArray into RAM in the dask format. Note: these operations load all of the '
-            'data into memory, so large files may require an initial reduction in size through either a slicing or '
-            'binning operation.',
-            title='Loading info', warn_type='info')
 
     # If the scan type is a dispersion, there is only one possible set of coordinates
     if scan_type == 'dispersion':
@@ -502,7 +550,7 @@ def _make_DataArray(data, dask='auto'):
     return DataArray
 
 
-def _add_metadata(DataArray, loc, fname, scan_type):
+def _add_metadata(DataArray, fname, loc, scan_type):
     """This function adds metadata to an inputted xr.DataArray.
 
     Parameters
@@ -510,11 +558,11 @@ def _add_metadata(DataArray, loc, fname, scan_type):
     DataArray : xr.DataArray
         The inputted DataArray.
 
-    loc : str
-        The name of the location (typically a beamline).
-
     fname : str
         Path to the file to be loaded.
+
+    loc : str
+        The name of the location (typically a beamline).
 
     scan_type : str
         The scan type of the data.
@@ -536,7 +584,7 @@ def _add_metadata(DataArray, loc, fname, scan_type):
     DataArray = _make_DataArray(data)
 
     # Add metadata to DataArray
-    add_metadata(DataArray, loc, fname, scan_type=data['scan_type'])
+    add_metadata(DataArray, fname, loc, scan_type=data['scan_type'])
 
     """
 
@@ -550,16 +598,20 @@ def _add_metadata(DataArray, loc, fname, scan_type):
         metadata = _load_Artemis_metadata(fname, scan_type)
 
     elif loc == 'Diamond I05-HR' or loc == 'Diamond I05-nano':
-        from .loaders.i05 import _load_I05_metadata
+        from .loaders.I05 import _load_I05_metadata
         metadata = _load_I05_metadata(fname, scan_type, loc)
 
     elif loc == 'Elettra APE':
-        from .loaders.APE import _load_Elettra_metadata
-        metadata = _load_Elettra_metadata(fname, scan_type)
+        from .loaders.APE import _load_APE_metadata
+        metadata = _load_APE_metadata(fname, scan_type)
 
-    elif loc == 'MAX IV Bloch' or loc == 'MAX IV Bloch-spin':
+    elif loc == 'MAX IV Bloch':
         from .loaders.Bloch import _load_Bloch_metadata
         metadata = _load_Bloch_metadata(fname, scan_type, loc)
+
+    elif loc == 'MAX IV Bloch-spin':
+        from .loaders.Bloch import _load_Bloch_spin_metadata
+        metadata = _load_Bloch_spin_metadata(fname, scan_type, loc)
 
     elif loc == 'SOLEIL CASSIOPEE':
         from .loaders.CASSIOPEE import _load_CASSIOPEE_metadata
@@ -589,9 +641,8 @@ def _add_metadata(DataArray, loc, fname, scan_type):
         from .loaders.ibw import _load_ibw_metadata
         data = _load_ibw_metadata(fname)
 
-    # Loop through items in metadata, and assign the information to attributes of the DataArray
-    for i in metadata:
-        DataArray.attrs[i] = metadata[i]
+    # Assign the metadata information to attributes of the DataArray
+    DataArray.attrs = metadata
 
     # Give the DataArray a name equal to the scan_name attribute
     DataArray.name = metadata['scan_name']
@@ -650,7 +701,7 @@ def _get_loc(fname):
         # If measurement was performed using Specs analyser, location must be MAX IV Bloch-spin or StA-Phoibos
         if 'SpecsLab' in line0:
             # By default, assume StA-Phoibos
-            loc = 'St Andrews - Phoibos'
+            loc = 'StA-Phoibos'
             # Open the file and load the first 30 lines to to check if this is instead MAX IV Bloch-spin
             with open(fname) as f:
                 for i in range(30):
@@ -668,7 +719,7 @@ def _get_loc(fname):
 
     # If the file is .krx format, the location must be StA-MBS
     elif file_extension == '.krx':
-        loc = 'St Andrews - MBS'
+        loc = 'StA-MBS'
 
     # If the file is .txt format, the location must be StA-MBS, MAX IV Bloch, Elettra APE or SOLEIL CASSIOPEE
     elif file_extension == '.txt':
@@ -731,7 +782,7 @@ def _get_loc(fname):
         # Open the file (read only)
         f = h5py.File(fname, 'r')
         # .nxs files at Diamond and Alba contain approximately the same identifier format
-        identifier = _h5py_str(f['entry1/instrument/name'])
+        identifier = _h5py_str(f, 'entry1/instrument/name')
         # From the identifier, determine the location
         if 'i05-1' in identifier:
             loc = 'Diamond I05-nano'
@@ -749,18 +800,25 @@ def _get_loc(fname):
     elif file_extension == '.cif':
         loc = 'Structure'
 
-    # If the file is .tiff format, it should be a LEED file
-    elif file_extension == '.tiff':
+    # If the file is standard image format, it should be a LEED file
+    elif file_extension == '.bmp' or file_extension == '.jpeg' or file_extension == '.png':
         loc = 'StA-LEED'
+
+    # If the file is .iso format, it should be a LEED file
+    elif file_extension == '.iso':
+        loc = 'StA-RHEED'
 
     return loc
 
 
-def _h5py_str(file_handle):
+def _h5py_str(file, file_handle):
     """Parses string or binary strings into the correct format when reading from a h5py file
 
     Parameters
     ------------
+    file : h5py._hl.files.File
+        An open h5py format file.
+
     file_handle : str, bin, list
          File handle of h5py file object. Can either be str, bin or list of str/bin
 
@@ -776,23 +834,29 @@ def _h5py_str(file_handle):
     disp1 = load('disp1.ibw')
 
     # Acts as a shortcut for accessing h5py file data. e.g. f['entry1/instrument/name'][()].decode()
-    location = _h5py_str(f['entry1/instrument/name'])
+    location = _h5py_str(f, 'entry1/instrument/name')
 
     """
 
     # Attempt to obtain field contents
     try:
-        if not isinstance(file_handle[()], str):
+        if not isinstance(file[file_handle][()], str):
             try:
-                contents = file_handle[0].decode()
+                contents = file[file_handle][0]
             except ValueError:
-                contents = file_handle[()].decode()
+                contents = file[file_handle][()]
         else:
-            contents = file_handle[()]
+            contents = file[file_handle][()]
 
     # Return None if unable to obtain field contents
     except TypeError:
         contents = None
+
+    # Decode contents if required
+    try:
+        contents = contents.decode()
+    except AttributeError:
+        pass
 
     return contents
 
@@ -806,7 +870,7 @@ def _extract_mapping_metadata(mapping_coordinates, num_dp):
     mapping_coordinates : list, np.array
          The coordinates of a mapping variable
 
-    num_dp : float, int
+    num_dp : int
         The number of decimal places round to.
 
     Returns
@@ -833,6 +897,6 @@ def _extract_mapping_metadata(mapping_coordinates, num_dp):
     step_size = round((max_value - min_value) / (len(mapping_coordinates) - 1), num_dp)
 
     # Describe the inputted mapping coordinates in the format: 'min:max (step)'.
-    mapping_metadata = str(min_value) + ':' + str(max_value) + ' (' + str(max_value) + ')'
+    mapping_metadata = str(min_value) + ':' + str(max_value) + ' (' + str(step_size) + ')'
 
     return mapping_metadata
