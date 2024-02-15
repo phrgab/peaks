@@ -9,4 +9,116 @@
 
 
 def _load_Bloch_data(fname):
-    pass
+    """This function loads data that was obtained at the A branch of the Bloch beamline at MAX IV Laboratory.
+
+    Parameters
+    ------------
+    fname : str
+        Path to the file to be loaded.
+
+    Returns
+    ------------
+    data : dict
+        Dictionary containing the file scan type, spectrum, and coordinates.
+
+    Examples
+    ------------
+    from peaks.core.fileIO.loaders.Bloch import _load_Bloch_data
+
+    fname = 'C:/User/Documents/Research/disp1.ibw'
+
+    # Extract data from file obtained at the A branch of the Bloch beamline at MAX IV Laboratory
+    data = _load_Bloch_data(fname)
+
+    """
+
+    raise Exception('MAX IV Bloch is not currently supported')
+
+
+def _load_Bloch_metadata(fname, scan_type):
+    """This function loads metadata from data that was obtained at the A branch of the Bloch beamline at MAX IV
+    Laboratory.
+
+    Parameters
+    ------------
+    fname : str
+        Path to the file to be loaded.
+
+    scan_type : str
+        The scan type of the data.
+
+    Returns
+    ------------
+    metadata : dict
+        Dictionary containing the relevant metadata.
+
+    Examples
+    ------------
+    from peaks.core.fileIO.loaders.Bloch import _load_Bloch_metadata
+
+    fname = 'C:/User/Documents/Research/disp1.ibw'
+
+    # Extract metadata from file obtained at the A branch of the Bloch beamline at MAX IV Laboratory
+    metadata = _load_Bloch_metadata(fname)
+
+    """
+
+    raise Exception('MAX IV Bloch-spin is not currently supported')
+
+
+def _load_Bloch_spin_data(fname):
+    """This function loads data that was obtained at the spin branch of the Bloch beamline at MAX IV Laboratory.
+
+    Parameters
+    ------------
+    fname : str
+        Path to the file to be loaded.
+
+    Returns
+    ------------
+    data : dict
+        Dictionary containing the file scan type, spectrum, and coordinates.
+
+    Examples
+    ------------
+    from peaks.core.fileIO.loaders.Bloch import _load_Bloch_spin_data
+
+    fname = 'C:/User/Documents/Research/disp1.ibw'
+
+    # Extract data from file obtained at the spin branch of the Bloch beamline
+    data = _load_Bloch_spin_data(fname)
+
+    """
+
+    raise Exception('MAX IV Bloch-spin is not currently supported')
+
+
+def _load_Bloch_spin_metadata(fname, scan_type):
+    """This function loads metadata from data that was obtained at the spin branch of the Bloch beamline at MAX IV
+    Laboratory.
+
+    Parameters
+    ------------
+    fname : str
+        Path to the file to be loaded.
+
+    scan_type : str
+        The scan type of the data.
+
+    Returns
+    ------------
+    metadata : dict
+        Dictionary containing the relevant metadata.
+
+    Examples
+    ------------
+    from peaks.core.fileIO.loaders.Bloch import _load_Bloch_spin_metadata
+
+    fname = 'C:/User/Documents/Research/disp1.ibw'
+
+    # Extract metadata from file obtained at the spin branch of the Bloch beamline
+    metadata = _load_Bloch_spin_metadata(fname)
+
+    """
+
+    raise Exception('MAX IV Bloch-spin is not currently supported')

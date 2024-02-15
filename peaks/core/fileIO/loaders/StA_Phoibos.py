@@ -105,47 +105,6 @@ def _load_StA_Phoibos_data(fname):
     return data
 
 
-def _StA_Phoibos_find(lines, item):
-    """This function will loop over the lines in a .xy text file obtained using the ARPES system (Phoibos analyser) at
-    St Andrews, and then pick out the line starting with the desired keyword.
-
-    Parameters
-    ------------
-    lines : list
-        A list where each entry is a line from the .xy text file.
-
-    item : str
-        The keyword that is being searched for.
-
-    Returns
-    ------------
-    line_contents : str
-        The line contents following '# ' + the desired keyword.
-
-    Examples
-    ------------
-    from peaks.core.fileIO.loaders.StA_Phoibos import _StA_Phoibos_find
-
-    fname = 'C:/User/Documents/Research/disp1.xy'
-
-    # Open the file and load lines
-    with open(fname) as f:
-        lines = f.readlines()
-
-    # Extract the analyser mode
-    ana_mode = _StA_Phoibos_find(lines, 'Analyzer Lens')
-
-    """
-
-    # Loop over lines to extract the line starting with '# ' + the desired keyword.
-    for line in lines:
-        if line.startswith('# ' + item):
-            line_contents = line.replace('# ' + item + ': ', "").strip()
-            break
-
-    return line_contents
-
-
 def _load_StA_Phoibos_metadata(fname, scan_type):
     """This function loads metadata from data that was obtained using the ARPES system (Phoibos analyser) at St Andrews.
 
@@ -181,9 +140,11 @@ def _load_StA_Phoibos_metadata(fname, scan_type):
     metadata = {}
 
     # Extract the scan name from the file full path
-    metadata['scan_name'] = fname.split('/')[len(fname)-1].split('.')[0]
+    fname_split = fname.split('/')
+    metadata['scan_name'] = fname_split[len(fname_split)-1].split('.')[0]
 
-    # Define other attributes, using the _StA_Phoibos_find function to obtain metadata where possible
+    # Define attributes, using the _StA_Phoibos_find function to obtain metadata where possible
+    metadata['scan_type'] = scan_type
     metadata['sample_description'] = None
     metadata['eV_type'] = 'kinetic'
     metadata['beamline'] = 'StA-Phoibos'
@@ -231,3 +192,44 @@ def _load_StA_Phoibos_metadata(fname, scan_type):
     metadata['temp_cryo'] = None
 
     return metadata
+
+
+def _StA_Phoibos_find(lines, item):
+    """This function will loop over the lines in a .xy text file obtained using the ARPES system (Phoibos analyser) at
+    St Andrews, and then pick out the line starting with the desired keyword.
+
+    Parameters
+    ------------
+    lines : list
+        A list where each entry is a line from the .xy text file.
+
+    item : str
+        The keyword that is being searched for.
+
+    Returns
+    ------------
+    line_contents : str
+        The line contents following '# ' + the desired keyword.
+
+    Examples
+    ------------
+    from peaks.core.fileIO.loaders.StA_Phoibos import _StA_Phoibos_find
+
+    fname = 'C:/User/Documents/Research/disp1.xy'
+
+    # Open the file and load lines
+    with open(fname) as f:
+        lines = f.readlines()
+
+    # Extract the analyser mode
+    ana_mode = _StA_Phoibos_find(lines, 'Analyzer Lens')
+
+    """
+
+    # Loop over lines to extract the line starting with '# ' + the desired keyword.
+    for line in lines:
+        if line.startswith('# ' + item):
+            line_contents = line.replace('# ' + item + ': ', "").strip()
+            break
+
+    return line_contents
