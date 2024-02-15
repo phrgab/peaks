@@ -21,7 +21,7 @@ def save(data, fname):
         The data to be saved as a NetCDF file.
 
     fname : str
-        Path to the NetCDF file to be created (note: the extension of the file must be .nc).
+        Path to the NetCDF file to be created. Note: the extension of the file must be .nc.
 
     Examples
     ------------
