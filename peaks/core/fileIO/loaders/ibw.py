@@ -10,7 +10,30 @@ import numpy as np
 
 
 def _load_ibw_data(fname):
-    pass
+    """This function loads data stored in ibw files.
+
+    Parameters
+    ------------
+    fname : str
+        Path to the file to be loaded.
+
+    Returns
+    ------------
+    data : xr.DataArray
+        The loaded data.
+
+    Examples
+    ------------
+    from peaks.core.fileIO.loaders.ibw import _load_ibw_data
+
+    fname = 'C:/User/Documents/Research/disp1.ibw'
+
+    # Extract data from an ibw file
+    data = _load_NetCDF_data(fname)
+
+    """
+
+    raise Exception('ibw file loading is not currently supported')
 
 
 def _load_ibw_wavenote(fname):
