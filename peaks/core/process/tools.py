@@ -1075,8 +1075,8 @@ def _merge_two_DataArrays(DataArray1, DataArray2, dim):
 
     # Before we sum the two DataArrays, we want to apply linear intensity reductions in the overlap region so that we
     # gradually go from the DataArray1 spectrum to the DataArray2 spectrum, obtaining equal contributions in the center
-    # of the overlap region. Achieve this by defining for a scaling for DataArray1 (called DataArray1_scaling) which is
-    # 1 over the theta_par region consisting of just DataArray1 (left_region), linearly decreases from 1 to 0 over the
+    # of the overlap region. Achieve this by defining a scaling for DataArray1 (called DataArray1_scaling) which is 1
+    # over the theta_par region consisting of just DataArray1 (left_region), linearly decreases from 1 to 0 over the
     # overlap region, and is 0 over the theta_par region consisting of just DataArray2 (left_region). An equivalent
     # scaling for DataArray2 (called DataArray2_scaling) is obtained as DataArray2_scaling = 1 - DataArray1_scaling
     left_region = np.ones(overlap_limits_indexes[0])
