@@ -3,7 +3,7 @@
 """
 
 # Phil King 17/04/2021
-# Brendan Edwards 16/11/2023
+# Brendan Edwards 19/02/2024
 
 import numpy as np
 import xarray as xr
@@ -935,6 +935,9 @@ def merge_data(data, dim='theta_par', sel=slice(None, None), offsets=None):
 
     # As above, but defining offsets=10 to produce the same result
     merged_disp = merge_data([disp1, disp2, disp3, disp4], offsets=10)
+
+    # As above, but cutting the detector edges of the data by slicing theta_par between -9 and 9 to get a better merge
+    merged_disp = merge_data([disp1, disp2, disp3, disp4], sel=slice(-9,9), offsets=10)
 
     # Merge the XPS scans (measured over different energy ranges)
     merged_XPS = merge_data([XPS_1, XPS_2], coord='eV')
