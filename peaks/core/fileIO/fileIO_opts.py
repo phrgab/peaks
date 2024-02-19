@@ -45,7 +45,7 @@ class loc_opts(object):
 
     # List to store the currently supported locations
     locs = ['ALBA LOREA',
-            'Diamond Artemis',
+            'CLF Artemis',
             'Diamond I05-HR',
             'Diamond I05-nano',
             'Elettra APE',
@@ -110,24 +110,24 @@ class _BL_angles(object):
     angles['ALBA LOREA']['x2 name'] = 'saz'
     angles['ALBA LOREA']['x3 name'] = 'say'
 
-    # Values for Diamond Artemis
-    angles['Diamond Artemis'] = {}
-    angles['Diamond Artemis']['ana_type'] = 'II'
-    angles['Diamond Artemis']['theta_par'] = -1
-    angles['Diamond Artemis']['defl_par'] = 0
-    angles['Diamond Artemis']['defl_perp'] = 0
-    angles['Diamond Artemis']['polar'] = 1
-    angles['Diamond Artemis']['tilt'] = 1
-    angles['Diamond Artemis']['azi'] = -1
-    angles['Diamond Artemis']['ana_polar'] = 0
-    angles['Diamond Artemis']['polar_name'] = 'theta'
-    angles['Diamond Artemis']['tilt_name'] = 'None'
-    angles['Diamond Artemis']['azi_name'] = 'azi'
-    angles['Diamond Artemis']['defl_par_name'] = 'None'
-    angles['Diamond Artemis']['defl_perp_name'] = 'None'
-    angles['Diamond Artemis']['x1 name'] = 'X'
-    angles['Diamond Artemis']['x2 name'] = 'Z'
-    angles['Diamond Artemis']['x3 name'] = 'Y'
+    # Values for CLF Artemis
+    angles['CLF Artemis'] = {}
+    angles['CLF Artemis']['ana_type'] = 'II'
+    angles['CLF Artemis']['theta_par'] = -1
+    angles['CLF Artemis']['defl_par'] = 0
+    angles['CLF Artemis']['defl_perp'] = 0
+    angles['CLF Artemis']['polar'] = 1
+    angles['CLF Artemis']['tilt'] = 1
+    angles['CLF Artemis']['azi'] = -1
+    angles['CLF Artemis']['ana_polar'] = 0
+    angles['CLF Artemis']['polar_name'] = 'theta'
+    angles['CLF Artemis']['tilt_name'] = 'None'
+    angles['CLF Artemis']['azi_name'] = 'azi'
+    angles['CLF Artemis']['defl_par_name'] = 'None'
+    angles['CLF Artemis']['defl_perp_name'] = 'None'
+    angles['CLF Artemis']['x1 name'] = 'X'
+    angles['CLF Artemis']['x2 name'] = 'Z'
+    angles['CLF Artemis']['x3 name'] = 'Y'
 
     # Values for Diamond I05-HR
     angles['Diamond I05-HR'] = {}
