@@ -38,19 +38,19 @@ def load(fname, lazy='auto', loc='auto', metadata=True, parallel=False):
         Either the full file name(s), or the remainder of the file name(s) not already specified in the file global
         options.
 
-    lazy : str, Boolean
+    lazy : str, Boolean (optional)
         Whether to load data in a lazily evaluated dask format. Set explicitly using True/False Boolean. Defaults
         to 'auto' where a file is only loaded in the dask format if its spectrum is above 500 MB.
 
-    loc : str
+    loc : str (optional)
         The name of the location (typically a beamline). Defaults to 'auto', where the location will be attempted to be
         automatically determined, unless a value is defined for file.loc. If loc is not the default 'auto' value, the
         parameter loc will take priority over the value in file.loc.
 
-    metadata : Boolean
+    metadata : Boolean (optional)
         Whether to attempt to load metadata into the attributes of the xr.DataArray. Defaults to True.
 
-    parallel : Boolean
+    parallel : Boolean (optional)
         Whether to load data in parallel when multiple files are being loaded. Only compatible with certain file types
         such as those based on the h5py format, e.g. nxs files. Takes priority over lazy, enforcing that all data is
         computed and loaded into memory. Defaults to False.
@@ -162,8 +162,11 @@ def load(fname, lazy='auto', loc='auto', metadata=True, parallel=False):
             if os.path.exists(current_file):
                 file_list.append(current_file)
 
-    # Load data by calling load_data
-    loaded_data = load_data(file_list, lazy=lazy, loc=loc, metadata=metadata, parallel=parallel)
+    # Load data by calling load_data if a valid file has been found. If not raise an error
+    if len(file_list) > 0:
+        loaded_data = load_data(file_list, lazy=lazy, loc=loc, metadata=metadata, parallel=parallel)
+    else:
+        raise Exception('No valid file paths could be found.')
 
     return loaded_data
 
@@ -176,18 +179,18 @@ def load_data(fname, lazy='auto', loc='auto', metadata=True, parallel=False):
     fname : str, list
         Path(s) to the file(s) to be loaded.
 
-    lazy : str, Boolean
+    lazy : str, Boolean (optional)
         Whether to load data in a lazily evaluated dask format. Set explicitly using True/False Boolean. Defaults
         to 'auto' where a file is only loaded in the dask format if its spectrum is above 500 MB.
 
-    loc : str
+    loc : str (optional)
         The name of the location (typically a beamline). Defaults to 'auto', where the location will be attempted to be
         automatically determined.
 
-    metadata : Boolean
+    metadata : Boolean (optional)
         Whether to attempt to load metadata into the attributes of the xr.DataArray. Defaults to True.
 
-    parallel : Boolean
+    parallel : Boolean (optional)
         Whether to load data in parallel when multiple files are being loaded. Only compatible with certain file types
         such as those based on the h5py format, e.g. nxs files. Takes priority over lazy, enforcing that all data is
         computed and loaded into memory. Defaults to False.
@@ -276,15 +279,15 @@ def _load_single_data(fname, lazy='auto', loc='auto', metadata=True):
     fname : str
         Path to the file to be loaded.
 
-    lazy : str, Boolean
+    lazy : str, Boolean (optional)
         Whether to load data in a lazily evaluated dask format. Set explicitly using True/False Boolean. Defaults
         to 'auto' where a file is only loaded in the dask format if its spectrum is above 500 MB.
 
-    loc : str
+    loc : str (optional)
         The name of the location (typically a beamline). Defaults to 'auto', where the location will be attempted to be
         automatically determined.
 
-    metadata : Boolean
+    metadata : Boolean (optional)
         Whether to attempt to load metadata into the attributes of the xr.DataArray. Defaults to True.
 
     Returns
@@ -320,7 +323,7 @@ def _load_single_data(fname, lazy='auto', loc='auto', metadata=True):
         from .loaders.LOREA import _load_LOREA_data
         data = _load_LOREA_data(fname)
 
-    elif loc == 'Diamond Artemis':
+    elif loc == 'CLF Artemis':
         from .loaders.Artemis import _load_Artemis_data
         data = _load_Artemis_data(fname)
 
@@ -365,7 +368,7 @@ def _load_single_data(fname, lazy='auto', loc='auto', metadata=True):
         data = _load_StA_RHEED_data(fname)
 
     elif loc == 'Structure':
-        raise Exception('Structure is not currently supported')
+        raise Exception('Structure is not currently supported.')
         # from ... import ...
         # data = ...(fname)
         # Return data (don't want to mess up later code operations in this function so return here)
@@ -381,8 +384,8 @@ def _load_single_data(fname, lazy='auto', loc='auto', metadata=True):
     # If loc is not a valid location, raise an error
     else:
         raise Exception(
-            'Data source is not supported or could not be identified. Currently supported options are: ' + str(
-                loc_opts.locs))
+            'Data source is not supported or could not be identified. Currently supported options are: '
+            '{locs}.'.format(locs=str(loc_opts.locs)))
 
     # If location is NetCDF, data is already loaded in xr.DataArray format
     if loc == 'NetCDF':
@@ -426,7 +429,7 @@ def _make_DataArray(data, lazy='auto'):
     data : dict
         Dictionary containing the file scan type, spectrum, and coordinates.
 
-    lazy : str, Boolean
+    lazy : str, Boolean (optional)
         Whether to load data in a lazily evaluated dask format. Set explicitly using True/False Boolean. Defaults to
         'auto' where a file is only loaded in the dask format if its spectrum is above 500 MB.
 
@@ -593,7 +596,7 @@ def _add_metadata(DataArray, fname, loc, scan_type):
         from .loaders.LOREA import _load_LOREA_metadata
         metadata = _load_LOREA_metadata(fname, scan_type)
 
-    elif loc == 'Diamond Artemis':
+    elif loc == 'CLF Artemis':
         from .loaders.Artemis import _load_Artemis_metadata
         metadata = _load_Artemis_metadata(fname, scan_type)
 
@@ -679,18 +682,18 @@ def _get_loc(fname):
     loc = None
 
     # If there is no extension, the data is in a folder. This is consistent with SOLEIL CASSIOPEE Fermi maps or
-    # Diamond Artemis data
+    # CLF Artemis data
     if file_extension == '':
         # Extract identifiable data from the file to determine if the location is SOLEIL CASSIOPEE
         file_list = natsort.natsorted(os.listdir(filename))
         file_list_ROI = [item for item in file_list if 'ROI1_' in item and isfile(join(file, item))]
         if len(file_list_ROI) > 1:  # Must be SOLEIL CASSIOPEE
             loc = 'SOLEIL CASSIOPEE'
-        else:  # Likely Diamond Artemis
-            # Extract identifiable data from the file to determine if the location is Diamond Artemis
+        else:  # Likely CLF Artemis
+            # Extract identifiable data from the file to determine if the location is CLF Artemis
             file_list_Neq = [item for item in file_list if 'N=' in item]
-            if len(file_list_Neq) > 0:  # Must be Diamond Artemis
-                loc = 'Diamond Artemis'
+            if len(file_list_Neq) > 0:  # Must be CLF Artemis
+                loc = 'CLF Artemis'
 
     # If the file is .xy format, the location must be either MAX IV Bloch-spin, StA-Phoibos or StA-Bruker
     elif file_extension == '.xy':
