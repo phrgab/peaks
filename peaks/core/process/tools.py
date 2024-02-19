@@ -3,29 +3,223 @@
 """
 
 # Phil King 17/04/2021
-# Brendan Edwards 09/11/2023
+# Brendan Edwards 16/11/2023
 
 import numpy as np
 import xarray as xr
 from scipy.ndimage import gaussian_filter
+from IPython.display import clear_output
+from peaks.core.fit.models import _Shirley
 from peaks.core.utils.OOP_method import add_methods
 from peaks.core.utils.misc import analysis_warning
 
 
 @add_methods(xr.DataArray)
-def norm(dispersion, *args, **kwargs):
-    # Temp function
-    norm_dispersion = dispersion.copy(deep=True)
-    norm_dispersion = norm_dispersion / float(norm_dispersion.max())
-    return norm_dispersion
+def norm(data, dim=None):
+    """Function to apply a normalisation to data.
+
+    Parameters
+    ------------
+    data : xr.DataArray
+        The data to be normalised.
+
+    dim : str (optional)
+         Normalise data by an integrated DC along direction defined by dim, e.g. dim='eV' would normalise the data by an
+         integrated MDC. Set dim='all' to normalise by the mean of the data. Defaults to None where the data is
+         normalised to unity.
+
+    Returns
+    ------------
+    norm_data : xr.DataArray
+        The normalised data.
+
+    Examples
+    ------------
+    from peaks import *
+
+    disp = load('disp.ibw')
+
+    # Normalise the dispersion to unity
+    disp_norm = disp.norm()
+
+    # Normalise the dispersion by an integrated MDC
+    disp_norm = disp.norm('eV')
+
+    # Normalise the dispersion by an integrated EDC
+    disp_norm = disp.norm('theta_par')
+
+    """
+
+    # Copy the input data to prevent overwriting issues
+    norm_data = data.copy(deep=True)
+
+    # If a dim has been provided, either normalise by the mean value of the data, or by an integrated DC
+    if dim:
+        # If dim is 'all', normalise by the mean value of the data
+        if dim == 'all':
+            # Normalise by the mean value of the data
+            norm_data.data /= norm_data.data.mean()
+
+            # Update analysis history
+            norm_data.update_hist('Data normalised by its mean value')
+
+        # If not, normalise data by integrated DC
+        else:
+            # Ensure dim is a valid dimension
+            if dim not in norm_data.dims:
+                raise Exception('{dim} is not a valid dimension of the inputted DataArray.'.format(dim=dim))
+
+            # Integrate data along dim
+            int_data = norm_data.mean(dim)
+
+            # Normalise data by integrated DC
+            norm_data.data = (norm_data / int_data).data
+
+            # Update analysis history
+            norm_data.update_hist('Data normalised an integrated DC along {dim}'.format(dim=dim))
+
+    # If no dim has been provided, normalise to unity
+    else:
+        # Normalise data to unity
+        norm_data.data /= norm_data.data.max()
+
+        # Update analysis history
+        norm_data.update_hist('Data normalised to unity')
+
+    return norm_data
 
 
-def _norm_wave():
-    pass
+@add_methods(xr.DataArray)
+def bgs(data, subtraction, num_avg=1, offset_start=0, offset_end=0, max_iterations=10):
+    """Function to subtract a background from data.
 
+    Parameters
+    ------------
+    data : xr.DataArray
+        The data from which a background will be subtracted.
 
-def bgs():
-    pass
+    subtraction : int, float, str
+        The type of background to subtract:
+
+            Set to a int/float to subtract that number, e.g. subtraction=3.4.
+
+            Set to 'all' to subtract the mean of the data.
+
+            Set to a str of a valid dimension to subtract an integrated DC along the direction defined by the dimension,
+            e.g. subtraction='eV' would subtract an integrated MDC.
+
+            Set to 'Shirley' to subtract a Shirley background, e.g. subtraction='Shirley'. Additional arguments num_avg,
+            offset_start, offset_end and max_iterations can be defined to optimise the Shirley background.
+
+    num_avg : int (optional)
+        Shirley background optimisation parameter. The number of points to consider when calculating the average value
+        of the data start and end points. Useful for noisy data. Defaults to 1.
+
+    offset_start : float (optional)
+        Shirley background optimisation parameter. The offset to subtract from the data start value. Useful when data
+        range does not completely cover the start (left) tail of the peak. Defaults to 0.
+
+    offset_end : float (optional)
+        Shirley background optimisation parameter. The offset to subtract from the data end value. Useful when data
+        range does not completely cover the end (right) tail of the peak. Defaults to 0.
+
+    max_iterations : int (optional)
+        Shirley background optimisation parameter. The maximum number of iterations to allow for convergence of Shirley
+        background. Defaults to 10.
+
+    Returns
+    ------------
+    bgs_data : xr.DataArray
+        The background subtracted data.
+
+    Examples
+    ------------
+    from peaks import *
+
+    disp = load('disp1.xy')
+
+    S2p_XPS = load('XPS1.ibw').DOS()
+
+    # Subtract a constant background of 3.5 from the data
+    bgs_disp = disp.bkg(3.5)
+
+    # Subtract a constant background equal to the mean value of the data from the data
+    disp_norm = disp.bkg('all')
+
+    # Subtract a background equal to an integrated MDC from the data
+    disp_norm = disp.bkg('eV')
+
+    # Subtract a background equal to an integrated EDC from the data
+    disp_norm = disp.bkg('theta_par')
+
+    # Subtract a Shirley background from the data
+    bgs_S2p_XPS = S2p_XPS.bkg('Shirley')
+
+    # Subtract a Shirley background from the data, using 3 points to calculate the average value of the data start and
+    # end points
+    bgs_S2p_XPS = S2p_XPS.bkg('Shirley', num_avg=3)
+
+    """
+
+    # Copy the input data to prevent overwriting issues
+    bgs_data = data.copy(deep=True)
+
+    # If subtraction is an int or float, perform a constant background subtraction by a user-defined amount
+    if isinstance(subtraction, int) or isinstance(subtraction, float):
+        # Subtract a constant background from the data
+        bgs_data -= subtraction
+
+        # Update analysis history
+        bgs_data.update_hist(
+            'A constant background of {val} has been subtracted from the data'.format(val=str(subtraction)))
+
+    # If subtraction is a str, there a few options of what the desired operation is.
+    elif isinstance(subtraction, str):
+        # If subtraction is 'Shirley'
+        if subtraction == 'Shirley':
+            # Calculate the Shirley background using the function _Shirley
+            Shirley_bkg = _Shirley(bgs_data, num_avg=num_avg, offset_start=offset_start, offset_end=offset_end,
+                                   max_iterations=max_iterations)
+
+            # Subtract the Shirley background from the data
+            bgs_data -= Shirley_bkg
+
+            # Update analysis history
+            bgs_data.update_hist('A Shirley background has been subtracted from the data')
+
+        # If subtraction is 'all'
+        elif subtraction == 'all':
+            # Subtract a constant background equal to the mean value of the data from the data
+            bgs_data -= bgs_data.data.mean()
+
+            # Update analysis history
+            bgs_data.update_hist(
+                'A constant background equal to the mean value of the data has been subtracted from the data')
+
+        # If subtraction is a valid dimension of the data
+        elif subtraction in bgs_data.dims:
+            # Integrate data along dimension defined by subtraction
+            int_data = bgs_data.mean(subtraction)
+
+            # Subtract data by integrated DC
+            bgs_data.data = (bgs_data - int_data).data
+
+            # Update analysis history
+            bgs_data.update_hist(
+                'A background equal to an integrated DC along {subtraction} has been subtracted from the data'.format(
+                    subtraction=subtraction))
+
+        # Inputted argument for subtraction is not valid. Raise an error
+        else:
+            raise Exception(
+                "Inputted subtraction argument is not an int, float, 'all', 'Shirley', or a valid dimension of the "
+                "inputted DataArray.")
+
+    # Invalid data type for subtraction. Raise an error
+    else:
+        raise Exception('Invalid data type for subtraction. Please use an int, float or str.')
+
+    return bgs_data
 
 
 @add_methods(xr.DataArray)
@@ -192,7 +386,7 @@ def rotate(data, rotation, **centre_kwargs):
         The rotation angle in degrees.
 
     **centre_kwargs : float (optional)
-        Used to define centre of rotation in the format dim = coord, e.g. k_par = 1.2 sets the k_par centre as 1.2.
+        Used to define centre of rotation in the format dim=coord, e.g. theta_par=1.2 sets the theta_par centre as 1.2.
         Default centre of rotation is (0, 0).
 
     Returns
@@ -232,6 +426,10 @@ def rotate(data, rotation, **centre_kwargs):
     y_dim = data_to_be_expanded.dims[0]  # By default, dims[0] is plotted as y in xarray
 
     # Check for user-defined centre of rotations
+    for dim in list(centre_kwargs):
+        if dim not in list(data_to_be_expanded.dims):
+            raise Exception('{dim} is not a valid dimension of the inputted DataArray.'.format(dim=dim))
+
     x_centre = centre_kwargs.get(x_dim)
     if not x_centre:
         x_centre = 0
@@ -252,9 +450,9 @@ def rotate(data, rotation, **centre_kwargs):
     rotated_corner_coords = []
     for coord in corner_coords:
         rotated_x = x_centre + (np.cos(np.radians(rotation)) * (coord[0] - x_centre)) - (
-                    np.sin(np.radians(rotation)) * (coord[1] - y_centre))
+                np.sin(np.radians(rotation)) * (coord[1] - y_centre))
         rotated_y = y_centre + (np.sin(np.radians(rotation)) * (coord[0] - x_centre)) + (
-                    np.cos(np.radians(rotation)) * (coord[1] - y_centre))
+                np.cos(np.radians(rotation)) * (coord[1] - y_centre))
         rotated_corner_coords.append([rotated_x, rotated_y])
 
     # Determine rotated x and y limits
@@ -287,9 +485,9 @@ def rotate(data, rotation, **centre_kwargs):
     for i, y in enumerate(y_coord_grid):
         for j, x in enumerate(x_coord_grid):
             new_x_coord_grid[i][j] = x_centre + (np.sin(np.radians(rotation)) * (y - y_centre)) + (
-                        np.cos(np.radians(rotation)) * (x - x_centre))
+                    np.cos(np.radians(rotation)) * (x - x_centre))
             new_y_coord_grid[i][j] = y_centre + (np.cos(np.radians(rotation)) * (y - y_centre)) - (
-                        np.sin(np.radians(rotation)) * (x - x_centre))
+                    np.sin(np.radians(rotation)) * (x - x_centre))
 
     # Define mapping along x as xarray
     x_xarray = xr.DataArray(
@@ -342,7 +540,7 @@ def sym(data, flipped=False, fillna=True, **sym_kwarg):
 
     fillna : Boolean (optional)
         Whether to fill NaNs with 0s. NaNs occur for regions where the original and flipped data do not overlap. If
-        fillna is True, regions without overlap will appear with half intensity (since only one of the original or
+        fillna=True, regions without overlap will appear with half intensity (since only one of the original or
         flipped data contributes). Defaults to True.
 
     **sym_kwarg : float (optional)
@@ -367,6 +565,7 @@ def sym(data, flipped=False, fillna=True, **sym_kwarg):
     disp_sym = disp.sym(theta_par=3, flipped=True)
 
     """
+
     # Copy the input data to prevent overwrite issues
     sym_data = data.copy(deep=True)
 
@@ -420,8 +619,132 @@ def sym(data, flipped=False, fillna=True, **sym_kwarg):
     return sym_data
 
 
-def sym_nfold():
-    pass
+@add_methods(xr.DataArray)
+def sym_nfold(data, nfold, expand=True, fillna=True, **centre_kwargs):
+    """Function to perform an n-fold symmetrisation of data around a centre coordinate.
+
+    Parameters
+    ------------
+    data : xr.DataArray
+        The data to be symmetrised.
+
+    nfold : int
+        The rotation order.
+
+    expand : Boolean (optional)
+        Whether to expand the coordinate grid to view all symmetrised data.
+
+    fillna : Boolean (optional)
+        Whether to fill NaNs with 0s. When the data is rotated, the coordinate grid is expanded. As such there will be
+        regions with NaNs on the new coordinate grid. Setting fillna=False means such regions remain NaNs, leading to a
+        loss of data when the different rotations are summed during the symmetrisation. Setting fillna=True sets the
+        NaNs to 0, but when the different rotations are summed during the symmetrisation, such regions are scaled to
+        allow for a consistent intensity of the symmetrised data. Some NaNs will remain for regions of the new
+        coordinate grid where there is no data. Defaults to True
+
+    **centre_kwargs : float (optional)
+        Used to define centre of rotation used for the symmetrisation in the format dim=coord, e.g. theta_par=1.2 sets
+        the theta_par centre as 1.2. Default centre of rotation is (0, 0).
+
+    Returns
+    ------------
+    sym_data : xr.DataArray
+        The symmetrised data.
+
+    Examples
+    ------------
+    from peaks import *
+
+    FM1 = load('FM1.zip')
+    FS1 = FM1.FS(E=75.62, dE=0.02)
+
+    # Perform a 3-fold symmetrisation of the Fermi surface around a (0,0) centre of rotation
+    FS1_sym = FS1.sym_nfold(nfold=3)
+
+    # Perform a 3-fold symmetrisation of the Fermi surface around a (theta_par=3, ana_polar=5) centre of rotation,
+    # restricting the coordinate grid of the output to that of the input, and not replacing Nans.
+    FS1_sym = FS1.sym(theta_par=3, ana_polar=5, expand=False, fillna=False)
+
+    """
+
+    # Copy the input data to prevent overwrite issues
+    data_to_be_symmetrised = data.copy(deep=True)
+
+    # Get dimensions of inputted data
+    dim1 = data_to_be_symmetrised.dims[0]
+    dim2 = data_to_be_symmetrised.dims[1]
+
+    # Determine the rotations that will be applied and summed to produce the symmetrised data
+    rotation_values = np.linspace(0, 360, nfold + 1)[0:-1]
+
+    # Define lists to store rotated data, and coordinate limits
+    rotated_data = []
+    dim1_limits = []
+    dim2_limits = []
+
+    # Perform the required rotations, and determine coordinate limits of each rotated data
+    for rotation in rotation_values:
+        current_rotated_data = data_to_be_symmetrised.rotate(rotation, **centre_kwargs)
+        dim1_limits.append([current_rotated_data[dim1].data.min(), current_rotated_data[dim1].data.max()])
+        dim2_limits.append([current_rotated_data[dim2].data.min(), current_rotated_data[dim2].data.max()])
+        rotated_data.append(current_rotated_data)
+
+    # Determine the extremes of the coordinate limits in the rotated data
+    dim1_min = round(min([item[0] for item in dim1_limits]), 4)
+    dim1_max = round(max([item[1] for item in dim1_limits]), 4)
+    dim2_min = round(min([item[0] for item in dim2_limits]), 4)
+    dim2_max = round(max([item[1] for item in dim2_limits]), 4)
+
+    # Determine the coordinate step size of the inputted data
+    dim1_step = round(float(data_to_be_symmetrised[dim1][1] - data_to_be_symmetrised[dim1][0]), 4)
+    dim2_step = round(float(data_to_be_symmetrised[dim2][1] - data_to_be_symmetrised[dim2][0]), 4)
+
+    # Determine the number of coordinate points needed
+    num_dim1 = int((dim1_max - dim1_min) / dim1_step) + 1
+    num_dim2 = int((dim2_max - dim2_min) / dim2_step) + 1
+
+    # Determine the extremal coordinate grid
+    dim1_values = np.linspace(dim1_min, dim1_max, num_dim1)
+    dim2_values = np.linspace(dim2_min, dim2_max, num_dim2)
+
+    # Define list to store interpolate rotated data
+    interp_rotated_data = []
+
+    # If fillna=True, keep track of where we encounter NaNs, so that we can rescale the data accordingly later
+    if fillna:
+        NaN_counter = np.zeros((num_dim1, num_dim2))
+
+    # Interpolate rotated data onto extremal coordinate grid
+    for entry in rotated_data:
+        current_rotated_data = entry.interp({dim1: dim1_values, dim2: dim2_values})
+        # If fillna=True, fill NaNs with 0 and update NaN_counter accordingly
+        if fillna:
+            current_rotated_data = current_rotated_data.fillna(0)
+            # current_NaN_counter becomes 1 where a nan has been filled, as 0 elsewhere
+            current_NaN_counter = current_rotated_data.where(current_rotated_data == 0, -1) + 1
+            NaN_counter += current_NaN_counter.data
+        interp_rotated_data.append(current_rotated_data)
+
+    # Sum the rotated data to get the symmetrised data
+    sym_data = sum_data(interp_rotated_data)
+
+    # Remove sum_data analysis_history entry, and clear warning (given during sum_data since analysis_history attrs will
+    # differ
+    sym_data.attrs['analysis_history'] = sym_data.attrs['analysis_history'][0:-1]
+    clear_output()
+
+    # Rescale the data according to the NaN_counter so regions are of consistent intensity
+    if fillna:
+        sym_data.data = (sym_data / (NaN_counter.max() - NaN_counter).data).data
+
+    # If expand is False, perform an interpolation to keep the same coordinate grid as the inputted data
+    if not expand:
+        sym_data = sym_data.interp({dim1: data_to_be_symmetrised[dim1], dim2: data_to_be_symmetrised[dim2]}).fillna(0)
+
+    # Update analysis history
+    sym_data.update_hist('Symmetrised data using a {nfold}-fold rotation'.format(nfold=nfold))
+
+    return sym_data
 
 
 def sum_data(data):
@@ -467,6 +790,10 @@ def sum_data(data):
     # Copy the attributes of the first DataArray
     data_0_attrs = data_0_data.attrs.copy()
 
+    # Ensure scan name is an attribute
+    if 'scan_name' not in data_0_attrs:
+        data_0_attrs['scan_name'] = 'Unknown'
+
     # Remove scan_name from the attributes, and assign scan name to data_0_name
     data_0_name = data_0_attrs.pop('scan_name')
 
@@ -487,6 +814,9 @@ def sum_data(data):
         current_data = data[i]
         # Extract attributes of current DataArray
         current_attrs = current_data.attrs.copy()
+        # Ensure scan name is an attribute
+        if 'scan_name' not in current_attrs:
+            current_attrs['scan_name'] = 'Unknown'
         # Remove scan_name from the current DataArray attributes, and assign scan name to current_name
         current_name = current_attrs.pop('scan_name')
 
@@ -550,19 +880,224 @@ def sum_data(data):
     # Update the analysis history
     hist_str = '{num_data} scans summed together.'.format(num_data=num_data)
     if attrs_warn_flag:  # If the there is an attributes mismatch, append information to analysis history
-        hist_str += ' CAUTION: mismatch of some attributes - those of scan {data_0_name} kept.'.format(
+        hist_str += ' CAUTION: mismatch of some attributes - those of scan {data_0_name} kept'.format(
             data_0_name=data_0_name)
     if coords_warn_flag:  # If the there is a coordinates mismatch, append information to analysis history
         hist_str += (' CAUTION: mismatch of some coordinates - interpolated data onto scan {data_0_name} coordinate '
-                     'grid.').format(data_0_name=data_0_name)
+                     'grid').format(data_0_name=data_0_name)
     summed_data.update_hist(hist_str)
 
     return summed_data
 
 
-def merge_data():
-    pass
+def merge_data(data, dim='theta_par', sel=slice(None, None), offsets=None):
+    """Function to merge two or more DataArrays together along a given dimension.
+
+    Parameters
+    ------------
+    data : list
+        Any number of N-dimensional DataArrays to merge together.
+
+    dim : str (optional)
+        The dimension to merge along. Defaults to 'theta_par'.
+
+    sel : slice (optional)
+        Selection of DataArrays in the list data along the dimension defined in dim, e.g. setting dim='theta_par' and
+        sel=slice(-9,8.5) would perform the selection .sel(theta_par=slice(-9,8.5)) on each DataArray in the list data.
+        Defaults to slice(None,None).
+
+    offsets : list, np.ndarray, float, int (optional)
+        The offsets along the dimension defined in dim that must be applied to the DataArrays in the list data. If
+        offsets is of type list (or np.ndarray), len(offsets) must equal len(data), and the offsets will be applied to
+        their corresponding DataArray in data. If offsets is of type float (or int), a list of offsets will be generated
+        with evenly spaced offsets starting at 0, e.g. if offsets=12, a list with length equal to len(data) will be
+        created of the form [0, 12, 24, ...]. Defaults to None where no offsets are applied.
+
+    Returns
+    ------------
+    merged_data : xr.DataArray
+        The single merged DataArray.
+
+    Examples
+    ------------
+    from peaks import *
+
+    disp1 = load('disp1.ibw')
+    disp2 = load('disp2.ibw')
+    disp3 = load('disp3.ibw')
+    disp4 = load('disp4.ibw')
+    XPS_1 = load('XPS_1.ibw')
+    XPS_2 = load('XPS_2.ibw')
+
+    # Merge the dispersions (measured at subsequent polar values with 10 degree intervals) along 'theta_par', applying
+    # the offsets [0, 10, 20, 30] as a list
+    merged_disp = merge_data([disp1, disp2, disp3, disp4], offsets=[0, 10, 20, 30])
+
+    # As above, but defining offsets=10 to produce the same result
+    merged_disp = merge_data([disp1, disp2, disp3, disp4], offsets=10)
+
+    # Merge the XPS scans (measured over different energy ranges)
+    merged_XPS = merge_data([XPS_1, XPS_2], coord='eV')
+
+    """
+
+    # Ensure dim is a valid dimension
+    if dim not in data[0].dims:
+        raise Exception('{dim} is not a valid dimension of the inputted data.'.format(dim=dim))
+
+    # Copy the input data to prevent overwriting issues, and perform the selection along dim defined by sel
+    data_to_merge = []
+    for item in data:
+        if isinstance(item, xr.core.dataarray.DataArray):
+            data_to_merge.append(item.copy(deep=True).sel({dim: sel}))
+        else:
+            raise Exception('Data must be a list of xr.DataArrays.')
+
+    # Apply offsets to inputted data if required
+    if offsets:
+        # If offsets is a list (or np.ndarray), ensure len(offsets) == len(data)
+        if isinstance(offsets, list) or isinstance(offsets, np.ndarray):
+            if not len(offsets) == len(data):
+                raise Exception(
+                    'If offsets is provided as a list (or np.ndarray), the length of offsets and data must match.')
+
+        # If offsets is a float or int, make offsets a list of the form [0, offsets*1, offsets*2, ...]
+        elif isinstance(offsets, float) or isinstance(offsets, int):
+            offsets = [i * offsets for i in range(len(data))]
+
+        # If offset is not of type list, np.ndarray, float or int, raise an error
+        else:
+            raise Exception('Invalid type for offsets. Argument must be a list, np.ndarray, float or int.')
+
+        # Loop through data, apply offsets, and maintain coordinate units if any are present
+        for i, current_data in enumerate(data_to_merge):
+            data_to_merge[i].coords[dim] = current_data.coords[dim] - offsets[i]
+            try:
+                data_to_merge[i].coords[dim].attrs['units'] = data[i].coords[dim].attrs['units']
+            except KeyError:
+                pass
+
+    # Ensure data_to_merge is arranged in order of increasing coordinates along dim
+    min_values = []
+    for item in data_to_merge:
+        min_values.append([item.coords[dim].data.min(), item])
+    min_values.sort()
+    data_to_merge = [entry[1] for entry in min_values]
+
+    # Initially define merged_data as the first entry of data_to_merge, and extract the scan name
+    merged_data = data_to_merge[0]
+    scan_name = merged_data.attrs['scan_name']
+
+    # Loop through the remaining entries of data_to_merge, merge the data with merged_data (using the function
+    # _merge_two_DataArrays), and update the scan name
+    for current_data in data_to_merge[1:]:
+        merged_data = _merge_two_DataArrays(merged_data, current_data, dim)
+        scan_name += ' & ' + current_data.attrs['scan_name']
+
+    # Update analysis history
+    merged_data.update_hist('Merged {scan_name} along {dim}'.format(scan_name=scan_name, dim=dim))
+
+    return merged_data
 
 
-def _merge_two_xarrays():
-    pass
+def _merge_two_DataArrays(DataArray1, DataArray2, dim):
+    """Function to merge two N-dimensional DataArrays together along a given dimension.
+
+    Parameters
+    ------------
+    DataArray1 : xr.DataArray
+        The first DataArray to be merged, with the lowest coordinates along dim.
+
+    DataArray2 : xr.DataArray
+        The second DataArray to be merged, with the highest coordinates along dim
+
+    dim : str
+        The dimension to merge along.
+
+    Returns
+    ------------
+    merged_data : xr.DataArray
+        The single merged DataArray.
+
+    Examples
+    ------------
+    from peaks import *
+
+    from peaks.core.process.tools import _merge_two_DataArrays
+
+    disp1 = load('disp1.nc')
+    disp2 = load('disp2.nc')
+
+    # Merge the dispersions along 'theta_par'
+    merged_disp = merge_data(disp1, disp2, 'theta_par')
+
+    """
+
+    # Ensure dims of the inputted DataArrays are the same
+    if not DataArray1.dims == DataArray2.dims:
+        raise Exception('The dimensions of the inputted DataArrays do not match.')
+
+    # Ensure dim is a valid dimension
+    if dim not in DataArray1.dims:
+        raise Exception('{dim} is not a valid dimension of the inputted data.'.format(dim=dim))
+
+    # Copy the input data to prevent overwriting issues
+    DataArray1 = DataArray1.copy(deep=True)
+    DataArray2 = DataArray2.copy(deep=True)
+
+    # Determine overlap region of the two DataArrays
+    overlap_limits = (DataArray2.coords[dim].data.min(), DataArray1.coords[dim].data.max())
+
+    # Define coordinate axis along dim for merged_data
+    coord_step = abs(DataArray1.coords[dim][1] - DataArray1.coords[dim][0])
+    coord_limits = (DataArray1.coords[dim].data.min(), DataArray2.coords[dim].data.max())
+    coord_num_points = int((coord_limits[1] - coord_limits[0]) / coord_step)
+    coord_values = np.linspace(coord_limits[0], coord_limits[1], coord_num_points)
+
+    # Interpolate DataArrays onto new coordinate grid
+    DataArray1 = DataArray1.interp({dim: coord_values}).fillna(0)
+    DataArray2 = DataArray2.interp({dim: coord_values}).fillna(0)
+
+    # The overlap region will now be slightly different due to the new coordinate system. Find the indexes of the new
+    # overlap region
+    overlap_limits_indexes = (
+        (np.abs(coord_values - overlap_limits[0])).argmin(), (np.abs(coord_values - overlap_limits[1])).argmin())
+
+    # Determine the total counts within the overlap region of the two DataArrays
+    DataArray1_overlap_intensity = float(
+        DataArray1.isel(theta_par=slice(overlap_limits_indexes[0], overlap_limits_indexes[1])).sum())
+    DataArray2_overlap_intensity = float(
+        DataArray2.isel(theta_par=slice(overlap_limits_indexes[0], overlap_limits_indexes[1])).sum())
+
+    # Scale DataArray2 such that the total counts within the overlap region of the two DataArrays is equal
+    ratio = DataArray1_overlap_intensity / DataArray2_overlap_intensity
+    DataArray2.data *= ratio
+
+    # Before we sum the two DataArrays, we want to apply linear intensity reductions in the overlap region so that we
+    # gradually go from the DataArray1 spectrum to the DataArray2 spectrum, obtaining equal contributions in the center
+    # of the overlap region. Achieve this by defining for a scaling for DataArray1 (called DataArray1_scaling) which is
+    # 1 over the theta_par region consisting of just DataArray1 (left_region), linearly decreases from 1 to 0 over the
+    # overlap region, and is 0 over the theta_par region consisting of just DataArray2 (left_region). An equivalent
+    # scaling for DataArray2 (called DataArray2_scaling) is obtained as DataArray2_scaling = 1 - DataArray1_scaling
+    left_region = np.ones(overlap_limits_indexes[0])
+    overlap_region = np.linspace(1, 0, (overlap_limits_indexes[1] - overlap_limits_indexes[0] + 1))
+    right_region = np.zeros(len(coord_values) - overlap_limits_indexes[1] - 1)
+    DataArray1_scaling = np.concatenate((left_region, overlap_region, right_region))
+    DataArray2_scaling = 1 - DataArray1_scaling
+
+    # Represent the scaling as DataArrays so that they are associated with the correct dimension (makes function
+    # applicable to any N-dimensional data)
+    DataArray1_scaling = xr.DataArray(DataArray1_scaling, dims=[dim], coords={dim: coord_values})
+    DataArray2_scaling = xr.DataArray(DataArray2_scaling, dims=[dim], coords={dim: coord_values})
+
+    # Normalise DataArray1 and DataArray2 by their respective scaling along dim
+    DataArray1 *= DataArray1_scaling
+    DataArray2 *= DataArray2_scaling
+
+    # Sum DataArray1 and DataArray2
+    merged_data = sum_data([DataArray1, DataArray2])
+
+    # Remove sum_data analysis_history entry
+    merged_data.attrs['analysis_history'] = merged_data.attrs['analysis_history'][0:-1]
+
+    return merged_data
