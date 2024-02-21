@@ -11,13 +11,13 @@ from peaks.core.utils.OOP_method import add_methods
 
 @add_methods(xr.DataArray)
 def save(data, fname):
-    """This function saves data in the xr.DataArray format as a NetCDF file. Note: The NetCDF file format is very
-    restricted in what types of xr.DataArray attributes can be saved, allowing only basic str, int, float etc. While
-    this function makes an attempt to save the attributes, there may be some loss of metadata.
+    """This function saves data in the :class:`xarray.DataArray` format as a NetCDF file. Note: The NetCDF file format
+    is very restricted in what types of DataArray attributes can be saved, allowing only basic str, int,
+    float etc. While this function makes an attempt to save the attributes, there may be some loss of metadata.
 
     Parameters
     ------------
-    data : xr.DataArray
+    data : xarray.DataArray
         The data to be saved as a NetCDF file.
 
     fname : str
@@ -25,25 +25,27 @@ def save(data, fname):
 
     Examples
     ------------
-    from peaks import *
+    Example usage is as follows::
 
-    FM = load('FM.zip')
+        from peaks import *
 
-    # Extract a constant energy slice at eV = -1.2 +/- 0.005
-    FS1 = FM.FS(E=-1.2, dE=0.01)
+        FM = load('FM.zip')
 
-    # Save FS1 as a NetCDF file in the current folder directory
-    FS1.save('FS1.nc')
+        # Extract a constant energy slice at eV = -1.2 +/- 0.005
+        FS1 = FM.FS(E=-1.2, dE=0.01)
 
-    # Save FS1 as a NetCDF file in a defined folder directory
-    FS1.save('C:/User/Documents/Research/FS1.nc')
+        # Save FS1 as a NetCDF file in the current folder directory
+        FS1.save('FS1.nc')
+
+        # Save FS1 as a NetCDF file in a defined folder directory
+        FS1.save('C:/User/Documents/Research/FS1.nc')
 
     """
 
-    # Copy the attrs of the inputted xr.DataArray - needed since when we change the attrs in this function, which will
-    # also change the attrs of the inputted input xr.DataArray. We do not want this, so revert changes at the end of the
-    # function so that the altered attrs only apply to the saved NetCDF file. This method is less memory-intensive than
-    # just copying the full xr.DataArray
+    # Copy the attrs of the inputted xarray.DataArray - needed since when we change the attrs in this function, which
+    # will also change the attrs of the inputted xarray.DataArray. We do not want this, so revert changes at the end of
+    # the function so that the altered attrs only apply to the saved NetCDF file. This method is less  memory-intensive
+    # than just copying the full xarray.DataArray
     data_attrs = data.attrs.copy()
 
     # Since NetCDF cannot save lists, to save the list analysis_history we convert it to a string where the items are
