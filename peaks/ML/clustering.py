@@ -20,56 +20,58 @@ from peaks.core.display.plotting import plot_grid
 
 @add_methods(xr.DataArray)
 def ML_pre_proc(data, extract='dispersion', E=0, dE=0, k=0, dk=0, scale=False, norm=False):
-    """Represent spatial mapping data as a tabular pandas dataframe where each spatial position is a feature.
-    This dataframe format is used to represent data in machine learning functions.
+    """Represent spatial mapping data as a tabular pandas DataFrame where each spatial position is a feature.
+    This DataFrame format is used to represent data in machine learning functions.
 
     Parameters
     ------------
-    data : xr.DataArray
+    data : xarray.DataArray
         The spatial mapping data to change to a tabular pandas dataframe.
 
-    extract : str (optional)
+    extract : str, optional
         Determines what is extracted from spatial mapping data. Defaults to dispersion. Valid entries are:
             dispersion
             MDC
             EDC
         Selecting MDC/EDC will rapidly increase calculation time.
 
-    E : float (optional)
+    E : float, optional
         Energy of MDCs to extract. Defaults to 0.
 
-    dE : float (optional)
+    dE : float, optional
         MDC Integration range (represents the total range, i.e. integrates over +/- dE/2). Defaults to 0.
 
-    k : float (optional)
+    k : float, optional
         k or theta_par value of EDCs to extract. Defaults to 0.
 
-    dk : float (optional)
+    dk : float, optional
         EDC integration range (represents the total range, i.e. integrates over +/- dk/2). Defaults to 0.
 
-    scale : Boolean (optional)
+    scale : bool, optional
         Whether to apply standard scaling to data (i.e. center all values in each dimension around zero with unit
         standard deviation). Defaults to False.
 
-    norm : Boolean (optional)
+    norm : bool, optional
         Whether to normalise the data at each spatial position. Defaults to False.
 
     Returns
     ------------
-    df : pd.DataFrame
+    df : pandas.DataFrame
         The spatial mapping data represented as a tabular pandas dataframe.
 
     Examples
     ------------
-    from peaks import *
+    Example usage is as follows::
 
-    SM = load('SM.ibw')
+        from peaks import *
 
-    # Get spatial mapping data in a tabular pandas dataframe format
-    SM_df1 = SM.ML_pre_proc()
+        SM = load('SM.ibw')
 
-    # Get spatial mapping MDCs in a tabular pandas dataframe format
-    SM_df2 = SM.ML_pre_proc(extract='MDC', E=73.42, dE=0.02)
+        # Get spatial mapping data in a tabular pandas dataframe format
+        SM_df1 = SM.ML_pre_proc()
+
+        # Get spatial mapping MDCs in a tabular pandas dataframe format
+        SM_df2 = SM.ML_pre_proc(extract='MDC', E=73.42, dE=0.02)
 
     """
 
@@ -130,13 +132,13 @@ def perform_k_means(data, k=3, n_init="auto"):
 
     Parameters
     ------------
-    data : pd.DataFrame
+    data : pandas.DataFrame
         The data represented as a tabular pandas dataframe to perform clustering analysis on.
 
-    k : int (optional)
+    k : int, optional
         Number of clusters. Defaults to 3.
 
-    n_init : int, string (optional)
+    n_init : int, string, optional
         Number of times the k-means algorithm will be run with different centroid seeds. The final results will be the
         best output of n_init consecutive runs in terms of inertia. Required since the kmeans algorithm can fall into
         local minima, so repeats are required to check for this. Defaults to 'auto' (note: if an outdated scikit-learn
@@ -148,29 +150,36 @@ def perform_k_means(data, k=3, n_init="auto"):
     model : sklearn.cluster._kmeans.KMeans
         K-means clustering analysis model information.
 
-    labels : np.ndarray
+    labels : numpy.ndarray
         Array of spatially-dependent cluster assignments.
 
     Examples
     ------------
-    from peaks import *
+    Example usage is as follows::
 
-    SM = load('SM.ibw')
+        from peaks import *
 
-    # Get spatial mapping data in a tabular pandas dataframe format
-    SM_df = SM.ML_pre_proc()
+        SM = load('SM.ibw')
 
-    # Perform k-means clustering analysis for 3 clusters
-    model1, labels1 = perform_k_means(data=SM_df)
+        # Get spatial mapping data in a tabular pandas dataframe format
+        SM_df = SM.ML_pre_proc()
 
-    # Perform k-means clustering analysis for 4 clusters
-    model2, labels2 = perform_k_means(data=SM_df, k=4)
+        # Perform k-means clustering analysis for 3 clusters
+        model1, labels1 = perform_k_means(SM_df)
+
+        # Perform k-means clustering analysis for 4 clusters
+        model2, labels2 = perform_k_means(SM_df, k=4)
 
     """
 
-    model = KMeans(n_clusters=k, n_init=n_init)  # Create a k-means clustering model
-    model.fit(data)  # Fit the model to the sampling data
-    labels = model.predict(data)  # Predict the labels of the samples, i.e. which cluster they belong to
+    # Create a k-means clustering model
+    model = KMeans(n_clusters=k, n_init=n_init)
+
+    # Fit the model to the sampling data
+    model.fit(data)
+
+    # Predict the labels of the samples, i.e. which cluster they belong to
+    labels = model.predict(data)
 
     return model, labels
 
@@ -182,64 +191,66 @@ def clusters_explore(data, cluster_range=range(1, 7), n_init="auto", use_PCA=Tru
 
     Parameters
     ------------
-    data : xr.DataArray
+    data : xarray.DataArray
         The spatial mapping data to perform an exploratory k-means clustering analysis on.
 
-    cluster_range : range (optional)
+    cluster_range : range, optional
         Range of number of clusters to perform k-means clustering analysis for. Defaults to range(1,7).
 
-    n_init : int, string (optional)
+    n_init : int, string, optional
         Number of times the k-means algorithm will be run with different centroid seeds. The final results will be the
         best output of n_init consecutive runs in terms of inertia. Required since the kmeans algorithm can fall into
         local minima, so repeats are required to check for this. Defaults to 'auto' (note: if an outdated scikit-learn
         package is installed where 'auto' is not yet implemented, an error will arise. In this case set n_init=10, or
         similar).
 
-    use_PCA : Boolean (optional)
+    use_PCA : bool, optional
         Whether to apply a principal component analysis to the data. Defaults to True.
 
-    PCs: int (optional)
+    PCs: int, optional
         Number of principal components. Defaults to 3.
 
-    extract : str (optional)
+    extract : str, optional
         Determines what is extracted from spatial mapping data. Defaults to dispersion. Valid entries are:
             dispersion
             MDC
             EDC
         Selecting MDC/EDC will rapidly increase calculation time.
 
-    E : float (optional)
+    E : float, optional
         Energy of MDCs to extract. Defaults to 0.
 
-    dE : float (optional)
+    dE : float, optional
         MDC Integration range (represents the total range, i.e. integrates over +/- dE/2). Defaults to 0.
 
-    k : float (optional)
+    k : float, optional
         k or theta_par value of EDCs to extract. Defaults to 0.
 
-    dk : float (optional)
+    dk : float, optional
         EDC integration range (represents the total range, i.e. integrates over +/- dk/2). Defaults to 0.
 
-    scale : Boolean (optional)
+    scale : bool, optional
         Whether to apply standard scaling to data (i.e. center all values in each dimension around zero with unit
         standard deviation). Defaults to False.
 
-    norm : Boolean (optional)
+    norm : bool, optional
         Whether to normalise the data at each spatial position. Defaults to False.
 
     Examples
     ------------
-    from peaks import *
+    Example usage is as follows::
 
-    SM = load('SM.ibw')
+        from peaks import *
 
-    # Perform an exploratory k-means clustering analysis for numbers of clusters ranging from 1 to 6, applying a
-    # principal component analysis to the spatial mapping data using 3 principal components
-    SM.clusters_explore()
+        SM = load('SM.ibw')
 
-    # Perform an exploratory k-means clustering analysis on spatial mapping MDCs for numbers of clusters ranging
-    # from 1 to 10
-    SM.clusters_explore(cluster_range=range(1,11), use_PCA=False, extract='MDC', E=73.42, dE=0.02)
+        # Perform an exploratory k-means clustering analysis for numbers of clusters ranging from 1 to 6, applying a
+        # principal component analysis to the spatial mapping data using 3 principal components
+        SM.clusters_explore()
+
+        # Perform an exploratory k-means clustering analysis on spatial mapping MDCs for numbers of clusters ranging
+        # from 1 to 10
+        SM.clusters_explore(cluster_range=range(1,11), use_PCA=False, extract='MDC', E=73.42, dE=0.02)
 
     """
 
@@ -303,80 +314,82 @@ def clusters(data, num_clusters=3, n_init="auto", use_PCA=True, PCs=3, extract='
 
     Parameters
     ------------
-    data : xr.DataArray
+    data : xarray.DataArray
         The spatial mapping data to perform an exploratory k-means clustering analysis on.
 
-    num_clusters : int (optional)
+    num_clusters : int, optional
         Number of clusters to perform k-means clustering analysis for. Defaults to 3.
 
-    n_init : int, string (optional)
+    n_init : int, string, optional
         Number of times the k-means algorithm will be run with different centroid seeds. The final results will be the
         best output of n_init consecutive runs in terms of inertia. Required since the kmeans algorithm can fall into
         local minima, so repeats are required to check for this. Defaults to 'auto' (note: if an outdated scikit-learn
         package is installed where 'auto' is not yet implemented, an error will arise. In this case set n_init=10, or
         similar).
 
-    use_PCA : Boolean (optional)
+    use_PCA : bool, optional
         Whether to apply a principal component analysis to the data. Defaults to True.
 
-    PCs: int (optional)
+    PCs: int, optional
         Number of principal components. Defaults to 3.
 
-    extract : str (optional)
+    extract : str, optional
         Determines what is extracted from spatial mapping data. Defaults to dispersion. Valid entries are:
             dispersion
             MDC
             EDC
         Selecting MDC/EDC will rapidly increase calculation time.
 
-    E : float (optional)
+    E : float, optional
         Energy of MDCs to extract. Defaults to 0.
 
-    dE : float (optional)
+    dE : float, optional
         MDC Integration range (represents the total range, i.e. integrates over +/- dE/2). Defaults to 0.
 
-    k : float (optional)
+    k : float, optional
         k or theta_par value of EDCs to extract. Defaults to 0.
 
-    dk : float (optional)
+    dk : float, optional
         EDC integration range (represents the total range, i.e. integrates over +/- dk/2). Defaults to 0.
 
-    scale : Boolean (optional)
+    scale : bool, optional
         Whether to apply standard scaling to data (i.e. center all values in each dimension around zero with unit
         standard deviation). Defaults to False.
 
-    norm : Boolean (optional)
+    norm : bool, optional
         Whether to normalise the data at each spatial position. Defaults to False.
 
-    robust : Boolean (optional)
+    robust : bool, optional
         Whether the argument robust=True is passed to the plots. Defaults to False.
 
-    vmin : float (optional)
+    vmin : float, optional
         Matplotlib vmin value used in plots of dispersions. Defaults to None.
 
-    vmax : float (optional)
+    vmax : float, optional
         Matplotlib vmax value used in plots of dispersions. Defaults to None.
 
     Returns
     ------------
-    classification_map : xr.DataArray
+    classification_map : xarray.DataArray
         Spatial map of cluster labels.
 
     cluster_center_disps : list
-        List of dispersions for each cluster center.
+        Dispersions for each cluster center.
 
     Examples
     ------------
-    from peaks import *
+    Example usage is as follows::
 
-    SM = load('SM.ibw')
+        from peaks import *
 
-    # Perform a k-means clustering analysis using 3 clusters, applying a principal component analysis to the spatial
-    # mapping data using 4 principal components
-    cluster_map1, cluster_disps1 = SM.clusters(num_clusters=3, PCs=4)
+        SM = load('SM.ibw')
 
-    # Perform a k-means clustering analysis using 3 clusters on spatial mapping MDCs
-    cluster_map2, cluster_disps2 = SM.clusters(num_clusters=3, use_PCA=False, extract='MDC', E=73.42, dE=0.02)
+        # Perform a k-means clustering analysis using 3 clusters, applying a principal component analysis to the spatial
+        # mapping data using 4 principal components
+        cluster_map1, cluster_disps1 = SM.clusters(num_clusters=3, PCs=4)
+
+        # Perform a k-means clustering analysis using 3 clusters on spatial mapping MDCs
+        cluster_map2, cluster_disps2 = SM.clusters(num_clusters=3, use_PCA=False, extract='MDC', E=73.42, dE=0.02)
 
     """
 
@@ -498,52 +511,54 @@ def PCA_explore(data, PCs_range=range(1, 6), threshold=0.95, extract='dispersion
 
     Parameters
     ------------
-    data : xr.DataArray
+    data : xarray.DataArray
         The spatial mapping data to perform an exploratory principal component analysis on.
 
-    PCs_range : range (optional)
+    PCs_range : range, optional
         Range of number of principal components to perform PCA for. Defaults to range(1,6).
 
-    threshold : float (optional)
+    threshold : float, optional
         Required threshold for the explained variance fraction of the dimensionally reduced dataset. Defaults to 0.95.
 
-    extract : str (optional)
+    extract : str, optional
         Determines what is extracted from spatial mapping data. Defaults to dispersion. Valid entries are:
             dispersion
             MDC
             EDC
         Selecting MDC/EDC will rapidly increase calculation time.
 
-    E : float (optional)
+    E : float, optional
         Energy of MDCs to extract. Defaults to 0.
 
-    dE : float (optional)
+    dE : float, optional
         MDC Integration range (represents the total range, i.e. integrates over +/- dE/2). Defaults to 0.
 
-    k : float (optional)
+    k : float, optional
         k or theta_par value of EDCs to extract. Defaults to 0.
 
-    dk : float (optional)
+    dk : float, optional
         EDC integration range (represents the total range, i.e. integrates over +/- dk/2). Defaults to 0.
 
-    scale : Boolean (optional)
+    scale : bool, optional
         Whether to apply standard scaling to data (i.e. center all values in each dimension around zero with unit
         standard deviation). Defaults to False.
 
-    norm : Boolean (optional)
+    norm : bool, optional
         Whether to normalise the data at each spatial position. Defaults to False.
 
     Examples
     ------------
-    from peaks import *
+    Example usage is as follows::
 
-    SM = load('SM.ibw')
+        from peaks import *
 
-    # Perform an exploratory PCA on spatial mapping data for numbers of principal components ranging from 1 to 5
-    SM.PCA_explore()
+        SM = load('SM.ibw')
 
-    # Perform an exploratory PCA on spatial mapping MDCs for numbers of principal components ranging from 1 to 10
-    SM.PCA_explore(PCs_range=range(1,11), extract='MDC', E=73.42, dE=0.02)
+        # Perform an exploratory PCA on spatial mapping data for numbers of principal components ranging from 1 to 5
+        SM.PCA_explore()
+
+        # Perform an exploratory PCA on spatial mapping MDCs for numbers of principal components ranging from 1 to 10
+        SM.PCA_explore(PCs_range=range(1,11), extract='MDC', E=73.42, dE=0.02)
 
     """
 
