@@ -1,4 +1,4 @@
-"""Class to generate periodic table GUI.
+"""Class to generate periodic table graphical user interface.
 
 """
 
