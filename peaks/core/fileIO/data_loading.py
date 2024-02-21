@@ -393,9 +393,7 @@ def _load_single_data(fname, lazy='auto', loc='auto', metadata=True):
         # if the data spectrum is above 500 MB (and lazy='auto')
         if lazy is True or (lazy == 'auto' and data.nbytes > 500000000):
             data.data = da.from_array(data.data, chunks='auto')
-            DataArray = data
-        else:
-            DataArray = data
+        DataArray = data
 
     # If location is not NetCDF, we must convert the data to xr.DataArray format and add metadata (if requested)
     else:
