@@ -22,44 +22,46 @@ def _Shirley(data, num_avg=1, offset_start=0, offset_end=0, max_iterations=10):
 
     Parameters
     ------------
-    data : numpy.ndarray, list, xr.DataArray
+    data : numpy.ndarray, list, xarray.DataArray
         The 1D data (y values) to find the Shirley background of.
 
-    num_avg : int (optional)
+    num_avg : int, optional
         The number of points to consider when calculating the average value of the data start and end points. Useful for
         noisy data. Defaults to 1.
 
-    offset_start : float (optional)
+    offset_start : float, optional
         The offset to subtract from the data start value. Useful when data range does not completely cover the start
         (left) tail of the peak. Defaults to 0.
 
-    offset_end : float (optional)
+    offset_end : float, optional
         The offset to subtract from the data end value. Useful when data range does not completely cover the end (right)
         tail of the peak. Defaults to 0.
 
-    max_iterations : int (optional)
+    max_iterations : int, optional
         The maximum number of iterations to allow for convergence of Shirley background. Defaults to 10.
 
     Returns
     ------------
-    Shirley_bkg : np.array
+    Shirley_bkg : numpy.ndarray
         The Shirley background of the 1D data.
 
     Examples
     ------------
-    from peaks import *
+    Example usage is as follows::
 
-    S2p_XPS = load('XPS1.ibw').DOS()
+        from peaks import *
 
-    # Extract Shirley background of the XPS scan
-    S2p_XPS_Shirley_bkg = _Shirley(S2p_XPS)
+        S2p_XPS = load('XPS1.ibw').DOS()
 
-    # Extract Shirley background of the XPS scan, using 3 points to calculate the average value of the data start and
-    # end points
-    S2p_XPS_Shirley_bkg = _Shirley(S2p_XPS, num_avg=3)
+        # Extract Shirley background of the XPS scan
+        S2p_XPS_Shirley_bkg = _Shirley(S2p_XPS)
 
-    # Extract Shirley background of the XPS scan, applying an offset to the data start value
-    S2p_XPS_Shirley_bkg = _Shirley(S2p_XPS, offset_start=0.3)
+        # Extract Shirley background of the XPS scan, using 3 points to calculate the average value of the data start
+        and end points
+        S2p_XPS_Shirley_bkg = _Shirley(S2p_XPS, num_avg=3)
+
+        # Extract Shirley background of the XPS scan, applying an offset to the data start value
+        S2p_XPS_Shirley_bkg = _Shirley(S2p_XPS, offset_start=0.3)
 
     """
 
@@ -71,11 +73,11 @@ def _Shirley(data, num_avg=1, offset_start=0, offset_end=0, max_iterations=10):
     elif isinstance(data, list):  # if data is a list
         data = np.array(data)
     else:
-        raise Exception('Inputted data must be a 1D np.ndarray, list or xr.DataArray.')
+        raise Exception('Inputted data must be a 1D numpy.ndarray, list or xarray.DataArray.')
 
     # Ensure data is 1D
     if len(data.shape) != 1:
-        raise Exception('Inputted data must be a 1D np.ndarray, list or xr.DataArray.')
+        raise Exception('Inputted data must be a 1D numpy.ndarray, list or xarray.DataArray.')
 
     # Ensure num_avg and max_iterations are integers
     try:
