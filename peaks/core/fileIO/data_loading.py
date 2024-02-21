@@ -392,7 +392,8 @@ def _load_single_data(fname, lazy='auto', loc='auto', metadata=True):
         # Convert the data to dask format if the user has requested to load data in a lazily evaluated dask format, or
         # if the data spectrum is above 500 MB (and lazy='auto')
         if lazy is True or (lazy == 'auto' and data.nbytes > 500000000):
-            DataArray = da.from_array(data['spectrum'], chunks='auto')
+            data.data = da.from_array(data.data, chunks='auto')
+            DataArray = data
         else:
             DataArray = data
 
