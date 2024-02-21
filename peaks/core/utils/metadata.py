@@ -15,29 +15,29 @@ def update_hist(data, hist):
 
     Parameters
     ------------
-    data : xr.DataArray
-        The DataArray to which the analysis history is to be updated.
+    data : xarray.DataArray
+        The :class:`xarray.DataArray` for which the analysis history is to be updated.
 
     hist : string
         Analysis history to be appended to DataArray analysis history metadata.
 
-
     Returns
     ------------
-    data : xr.DataArray
-        The DataArray with updated analysis history.
-
+    data : xarray.DataArray
+        The :class:`xarray.DataArray` with updated analysis history.
 
     Examples
     ------------
-    from peaks import *
+    Example usage is as follows::
 
-    disp = load('disp.ibw')
+        from peaks import *
 
-    disp = disp/2
+        disp = load('disp.ibw')
 
-    # Update the analysis history metadata of the dispersion
-    disp = disp.update_hist('Dispersion data divided by 2')
+        disp = disp/2
+
+        # Update the analysis history metadata of the dispersion
+        disp = disp.update_hist('Dispersion data divided by 2')
 
     """
     
@@ -56,38 +56,40 @@ def update_hist(data, hist):
 
 
 @add_methods(xr.DataArray)
-def _set_normals(data, **kwargs):
-    """Function to set normal emissions into the attributes of DataArrays based on arguments passed in kwargs.
+def _set_normals(data, **angle_kwargs):
+    """Function to set normal emissions into the attributes of DataArrays based on arguments passed in angle_kwargs.
 
     Parameters
     ------------
-    data: xr.DataArray
-        The DataArray to write normal emission angles to.
+    data: xarray.DataArray
+        The :class:`xarray.DataArray` to write normal emission angles to.
 
-    **kwargs : float (optional)
-        Attributes to be overwritten in the DataArray in the format attr=float. Valid for polar, tilt, azi, norm_polar,
-        norm_tilt and norm_azi. All other kwargs are ignored.
+    **angle_kwargs : float, optional
+        Attributes to be overwritten in the :class:`xarray.DataArray` in the format attr=float. Valid for polar, tilt,
+        azi, norm_polar, norm_tilt and norm_azi. All other angle_kwargs are ignored.
 
     Examples
     ------------
-    from peaks import *
+    Example usage is as follows::
 
-    disp = load('disp.ibw')
+        from peaks import *
 
-    # Sets the attributes of the dispersion
-    disp._set_normals(polar=0, tilt=0, azi=0, norm_polar=0, norm_tilt=0, norm_azi=0)
+        disp = load('disp.ibw')
+
+        # Sets the attributes of the dispersion
+        disp._set_normals(polar=0, tilt=0, azi=0, norm_polar=0, norm_tilt=0, norm_azi=0)
 
     """
 
-    if 'polar' in kwargs:
-        data.attrs['polar'] = kwargs['polar']  # Set polar attribute of metadata
-    if 'tilt' in kwargs:
-        data.attrs['tilt'] = kwargs['tilt']  # Set tilt attribute of metadata
-    if 'azi' in kwargs:
-        data.attrs['azi'] = kwargs['azi']  # Set azi attribute of metadata
-    if 'norm_polar' in kwargs:
-        data.attrs['norm_polar'] = kwargs['norm_polar']  # Set norm_polar attribute of metadata
-    if 'norm_tilt' in kwargs:
-        data.attrs['norm_tilt'] = kwargs['norm_tilt']  # Set norm_tilt attribute of metadata
-    if 'norm_azi' in kwargs:
-        data.attrs['norm_azi'] = kwargs['norm_azi']  # Set norm_azi attribute of metadata
+    if 'polar' in angle_kwargs:
+        data.attrs['polar'] = angle_kwargs['polar']  # Set polar attribute of metadata
+    if 'tilt' in angle_kwargs:
+        data.attrs['tilt'] = angle_kwargs['tilt']  # Set tilt attribute of metadata
+    if 'azi' in angle_kwargs:
+        data.attrs['azi'] = angle_kwargs['azi']  # Set azi attribute of metadata
+    if 'norm_polar' in angle_kwargs:
+        data.attrs['norm_polar'] = angle_kwargs['norm_polar']  # Set norm_polar attribute of metadata
+    if 'norm_tilt' in angle_kwargs:
+        data.attrs['norm_tilt'] = angle_kwargs['norm_tilt']  # Set norm_tilt attribute of metadata
+    if 'norm_azi' in angle_kwargs:
+        data.attrs['norm_azi'] = angle_kwargs['norm_azi']  # Set norm_azi attribute of metadata
