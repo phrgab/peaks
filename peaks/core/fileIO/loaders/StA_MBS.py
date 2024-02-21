@@ -22,12 +22,14 @@ def _load_StA_MBS_data(fname):
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.StA_MBS import _load_StA_MBS_data
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/disp1.krx'
+        from peaks.core.fileIO.loaders.StA_MBS import _load_StA_MBS_data
 
-    # Extract data from file obtained using the spin-ARPES system (MBS analyser) at St Andrews
-    data = _load_StA_MBS_data(fname)
+        fname = 'C:/User/Documents/Research/disp1.krx'
+
+        # Extract data from file obtained using the spin-ARPES system (MBS analyser) at St Andrews
+        data = _load_StA_MBS_data(fname)
 
     """
 
@@ -53,12 +55,14 @@ def _load_StA_MBS_metadata(fname, scan_type):
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.StA_MBS import _load_StA_MBS_metadata
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/disp1.krx'
+        from peaks.core.fileIO.loaders.StA_MBS import _load_StA_MBS_metadata
 
-    # Extract metadata from file obtained using the spin-ARPES system (MBS analyser) at St Andrews
-    metadata = _load_StA_MBS_metadata(fname)
+        fname = 'C:/User/Documents/Research/disp1.krx'
+
+        # Extract metadata from file obtained using the spin-ARPES system (MBS analyser) at St Andrews
+        metadata = _load_StA_MBS_metadata(fname)
 
     """
 

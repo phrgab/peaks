@@ -21,12 +21,14 @@ def _load_StA_RHEED_data(fname):
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.StA_RHEED import _load_StA_RHEED_data
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/RHEED_VSe2.iso'
+        from peaks.core.fileIO.loaders.StA_RHEED import _load_StA_RHEED_data
 
-    # Extract data from file obtained using the RHEED system at St Andrews
-    data = _load_StA_RHEED_data(fname)
+        fname = 'C:/User/Documents/Research/RHEED_VSe2.iso'
+
+        # Extract data from file obtained using the RHEED system at St Andrews
+        data = _load_StA_RHEED_data(fname)
 
     """
 
@@ -51,12 +53,14 @@ def _load_StA_RHEED_metadata(fname, scan_type):
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.StA_RHEED import _load_StA_RHEED_metadata
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/RHEED_VSe2.iso'
+        from peaks.core.fileIO.loaders.StA_RHEED import _load_StA_RHEED_metadata
 
-    # Extract metadata from file obtained using the RHEED system at St Andrews
-    metadata = _load_StA_RHEED_metadata(fname)
+        fname = 'C:/User/Documents/Research/RHEED_VSe2.iso'
+
+        # Extract metadata from file obtained using the RHEED system at St Andrews
+        metadata = _load_StA_RHEED_metadata(fname)
 
     """
 

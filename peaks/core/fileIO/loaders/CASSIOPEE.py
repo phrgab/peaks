@@ -23,12 +23,14 @@ def _load_CASSIOPEEE_data(fname):
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.CASSIOPEE import _load_CASSIOPEE_data
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/disp1.ibw'
+        from peaks.core.fileIO.loaders.CASSIOPEE import _load_CASSIOPEE_data
 
-    # Extract data from file obtained at the CASSIOPEE beamline at SOLEIL
-    data = _load_CASSIOPEE_data(fname)
+        fname = 'C:/User/Documents/Research/disp1.ibw'
+
+        # Extract data from file obtained at the CASSIOPEE beamline at SOLEIL
+        data = _load_CASSIOPEE_data(fname)
 
     """
 
@@ -53,12 +55,14 @@ def _load_CASSIOPEE_metadata(fname, scan_type):
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.CASSIOPEE import _load_CASSIOPEE_metadata
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/disp1.ibw'
+        from peaks.core.fileIO.loaders.CASSIOPEE import _load_CASSIOPEE_metadata
 
-    # Extract metadata from file obtained at the CASSIOPEE beamline at SOLEIL
-    metadata = _load_CASSIOPEE_metadata(fname)
+        fname = 'C:/User/Documents/Research/disp1.ibw'
+
+        # Extract metadata from file obtained at the CASSIOPEE beamline at SOLEIL
+        metadata = _load_CASSIOPEE_metadata(fname)
 
     """
 

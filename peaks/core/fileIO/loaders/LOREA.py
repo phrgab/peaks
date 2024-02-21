@@ -21,12 +21,14 @@ def _load_LOREA_data(fname):
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.LOREA import _load_LOREA_data
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/disp1.nxs'
+        from peaks.core.fileIO.loaders.LOREA import _load_LOREA_data
 
-    # Extract data from file obtained at the LOREA beamline at ALBA
-    data = _load_LOREA_data(fname)
+        fname = 'C:/User/Documents/Research/disp1.nxs'
+
+        # Extract data from file obtained at the LOREA beamline at ALBA
+        data = _load_LOREA_data(fname)
 
     """
 
@@ -51,12 +53,14 @@ def _load_LOREA_metadata(fname, scan_type):
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.LOREA import _load_LOREA_metadata
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/disp1.nxs'
+        from peaks.core.fileIO.loaders.LOREA import _load_LOREA_metadata
 
-    # Extract metadata from file obtained at the LOREA beamline at ALBA
-    metadata = _load_LOREA_metadata(fname)
+        fname = 'C:/User/Documents/Research/disp1.nxs'
+
+        # Extract metadata from file obtained at the LOREA beamline at ALBA
+        metadata = _load_LOREA_metadata(fname)
 
     """
 

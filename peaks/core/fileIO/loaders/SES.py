@@ -3,7 +3,7 @@
 """
 
 # Phil King 21/07/22
-# Brendan Edwards 12/02/2024
+# Brendan Edwards 15/02/2024
 
 import os
 import zipfile
@@ -21,17 +21,19 @@ def _load_SES_data(fname):
 
     Returns
     ------------
-    data : xr.DataArray
-        The loaded data.
+    data : dict
+        Dictionary containing the file scan type, spectrum, and coordinates.
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.SES import _load_SES_data
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/FM1.zip'
+        from peaks.core.fileIO.loaders.SES import _load_SES_data
 
-    # Extract data from an SES format file
-    data = _load_SES_data(fname)
+        fname = 'C:/User/Documents/Research/FM1.zip'
+
+        # Extract data from an SES format file
+        data = _load_SES_data(fname)
 
     """
 
@@ -61,17 +63,19 @@ def _load_SES_txt_data(fname):
 
     Returns
     ------------
-    data : xr.DataArray
-        The loaded data.
+    data : dict
+        Dictionary containing the file scan type, spectrum, and coordinates.
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.SES import _load_SES_txt_data
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/disp1.txt'
+        from peaks.core.fileIO.loaders.SES import _load_SES_txt_data
 
-    # Extract data from an SES format file
-    data = _load_SES_txt_data(fname)
+        fname = 'C:/User/Documents/Research/disp1.txt'
+
+        # Extract data from an SES format file
+        data = _load_SES_txt_data(fname)
 
     """
 
@@ -105,17 +109,19 @@ def _load_SES_zip_data(fname):
 
     Returns
     ------------
-    data : xr.DataArray
-        The loaded data.
+    data : dict
+        Dictionary containing the file scan type, spectrum, and coordinates.
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.SES import _load_SES_zip_data
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/FM1.zip'
+        from peaks.core.fileIO.loaders.SES import _load_SES_zip_data
 
-    # Extract data from an SES format file
-    data = _load_SES_zip_data(fname)
+        fname = 'C:/User/Documents/Research/FM1.zip'
+
+        # Extract data from an SES format file
+        data = _load_SES_zip_data(fname)
 
     """
 
@@ -179,21 +185,23 @@ def _load_SES_ibw_data(fname):
 
     Returns
     ------------
-    data : xr.DataArray
-        The loaded data.
+    data : dict
+        Dictionary containing the file scan type, spectrum, and coordinates.
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.SES import _load_SES_ibw_data
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/disp1.ibw'
+        from peaks.core.fileIO.loaders.SES import _load_SES_ibw_data
 
-    # Extract data from an SES format file
-    data = _load_SES_ibw_data(fname)
+        fname = 'C:/User/Documents/Research/disp1.ibw'
+
+        # Extract data from an SES format file
+        data = _load_SES_ibw_data(fname)
 
     """
 
-    raise Exception('SES file loading is not currently supported')
+    raise Exception('SES ibw file loading is not currently supported')
 
 
 def _load_SES_metalines(fname):
@@ -211,12 +219,14 @@ def _load_SES_metalines(fname):
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.SES import _extract_SES_metalines
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/disp1.zip'
+        from peaks.core.fileIO.loaders.SES import _extract_SES_metalines
 
-    # Extract the lines containing metadata
-    loc = _extract_SES_metalines(fname)
+        fname = 'C:/User/Documents/Research/disp1.zip'
+
+        # Extract the lines containing metadata
+        loc = _extract_SES_metalines(fname)
 
     """
     # Get file_extension to determine the file type
@@ -272,16 +282,18 @@ def _SES_find(lines, item):
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.SES import _SES_find
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/disp1.txt'
+        from peaks.core.fileIO.loaders.SES import _SES_find
 
-    # Open the file and load lines
-    with open(fname) as f:
-        lines = f.readlines()
+        fname = 'C:/User/Documents/Research/disp1.txt'
 
-    # Extract the analyser mode
-    ana_mode = _SES_find(lines, 'Analyzer Lens')
+        # Open the file and load lines
+        with open(fname) as f:
+            lines = f.readlines()
+
+        # Extract the analyser mode
+        ana_mode = _SES_find(lines, 'Analyzer Lens')
 
     """
 

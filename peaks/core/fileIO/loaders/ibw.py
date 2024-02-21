@@ -3,14 +3,16 @@
 """
 
 # Phil King 24/07/2022
-# Brendan Edwards 12/02/2024
+# Brendan Edwards 15/02/2024
 
 import os
 import numpy as np
 
 
 def _load_ibw_data(fname):
-    """This function loads data stored in ibw files.
+    """*** NOT COMPLETED - IGOR IMPORT OF FUNCTION binarywave MUST BE FIXED. ***
+
+    This function loads data stored in ibw files.
 
     Parameters
     ------------
@@ -19,21 +21,48 @@ def _load_ibw_data(fname):
 
     Returns
     ------------
-    data : xr.DataArray
-        The loaded data.
+    data : dict
+        Dictionary containing the file scan type, spectrum, and coordinates.
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.ibw import _load_ibw_data
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/disp1.ibw'
+        from peaks.core.fileIO.loaders.ibw import _load_ibw_data
 
-    # Extract data from an ibw file
-    data = _load_NetCDF_data(fname)
+        fname = 'C:/User/Documents/Research/disp1.ibw'
+
+        # Extract data from an ibw file
+        data = _load_NetCDF_data(fname)
 
     """
 
-    raise Exception('ibw file loading is not currently supported')
+    # Open the file and load its contents
+    file_contents = None
+    # file_contents = binarywave.load(fname)
+
+    # Extract spectrum
+    spectrum = file_contents['wave']['wData']
+
+    # Extract relevant information on the dimensions of the data
+    dim_size = file_contents['wave']['bin_header']['dimEUnitsSize']
+    dim_units = file_contents['wave']['dimension_units'].decode()
+
+    # Extract scales of dimensions
+    dim_start = file_contents['wave']['wave_header']['sfB']  # Initial value
+    dim_step = file_contents['wave']['wave_header']['sfA']  # Step size
+    dim_points = file_contents['wave']['wave_header']['nDim']  # Number of points
+
+    # Loop through dimensions and determine the relevant dimension waves and names, as labelled in file
+    dims = []
+    coords = {}
+    counter = 0
+    for i in range(spectrum.ndim):
+        # Determine dimension units/name as labelled in file
+        dims.append(dim_units[counter: (counter + dim_size[i])])
+        coords[dims[i]] = np.linspace(dim_start[i], dim_start[i] + dim_step[i] * dim_points[i], dim_points[i],
+                                      endpoint=False)
+        counter += dim_size[i]
 
 
 def _load_ibw_wavenote(fname):
@@ -51,12 +80,14 @@ def _load_ibw_wavenote(fname):
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.ibw import _load_ibw_wavenote
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/disp1.ibw'
+        from peaks.core.fileIO.loaders.ibw import _load_ibw_wavenote
 
-    # Extract the wavenote containing metadata
-    wavenote = _load_ibw_wavenote(fname)
+        fname = 'C:/User/Documents/Research/disp1.ibw'
+
+        # Extract the wavenote containing metadata
+        wavenote = _load_ibw_wavenote(fname)
 
     """
 

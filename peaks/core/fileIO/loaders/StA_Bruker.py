@@ -21,12 +21,14 @@ def _load_StA_Bruker_data(fname):
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.StA_Bruker import _load_StA_Bruker_data
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/scan1.xy'
+        from peaks.core.fileIO.loaders.StA_Bruker import _load_StA_Bruker_data
 
-    # Extract data from file obtained using the XRD system (Bruker diffractometer) at St Andrews
-    data = _load_StA_Bruker_data(fname)
+        fname = 'C:/User/Documents/Research/scan1.xy'
+
+        # Extract data from file obtained using the XRD system (Bruker diffractometer) at St Andrews
+        data = _load_StA_Bruker_data(fname)
 
     """
 
@@ -52,12 +54,14 @@ def _load_StA_Bruker_metadata(fname, scan_type):
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.StA_Bruker import _load_StA_Bruker_metadata
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/scan1.xy'
+        from peaks.core.fileIO.loaders.StA_Bruker import _load_StA_Bruker_metadata
 
-    # Extract metadata from file obtained using the XRD system (Bruker diffractometer) at St Andrews
-    metadata = _load_StA_Bruker_metadata(fname)
+        fname = 'C:/User/Documents/Research/scan1.xy'
+
+        # Extract metadata from file obtained using the XRD system (Bruker diffractometer) at St Andrews
+        metadata = _load_StA_Bruker_metadata(fname)
 
     """
 
