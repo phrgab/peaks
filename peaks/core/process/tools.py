@@ -818,7 +818,7 @@ def degrid(data, width=0.1, height=0.1, cutoff=4):
     FFT = fft2(data_to_degrid.data)
 
     # Rearrange the FFT by shifting the zero-frequency component to the centre of the np.array (equivalent to changing
-    # range from (0 2π) to (-π,π) since FFT is periodic according to period defined by grid size). Useful for
+    # range from (0, 2 Pi) to (-Pi, Pi) since FFT is periodic according to period defined by grid size). Useful for
     # visualisation and data manipulation
     FFT = fftshift(FFT)
 
