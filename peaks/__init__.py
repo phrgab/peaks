@@ -1,20 +1,18 @@
 """peaks: (P)ython (E)lectron Spectroscopy and Diffraction (A)nalysis by (K)ing Group (S)t Andrews.
 
 peaks is a collection of analysis tools for the loading, processing and display of spectroscopic and diffraction data,
-with a core focus on tools for angle-resolved photoemission and electron diffraction techniques. It also includes
-various functions for efficient log keeping and experimental system monitoring.
+with a core focus on tools for angle-resolved photoemission and electron diffraction techniques.
 
-It has been developed by the King group in St Andrews, with contributions from the following group members: Phil King,
-Brendan Edwards, Tommaso Antonelli, Edgar Abarca Morales, Liam Trzaska, Lewis Hart and Andela Zivanovic
+It has been developed by the King group at the University of St Andrews, with contributions from the following group
+members: Phil King, Brendan Edwards, Tommaso Antonelli, Edgar Abarca Morales, Liam Trzaska, Lewis Hart.
 
-This version of peaks is the result of a complete restructuring of the package that was completed in late 2023 by
+This version of peaks is the result of a complete restructuring of the package that was completed in 2023 and 2024 by
 Brendan Edwards and Phil King.
 
-Copyright the above authors. Contact pdk6@st-andrews.ac.uk for further information, to contribute,
-and for bug reporting.
+Copyright the above authors. Contact pdk6@st-andrews.ac.uk for further information, to contribute, and for bug
+reporting.
 
 For documentation, please see /docs/index.html in root folder.
-
 
 *** Installation ***
 
@@ -41,22 +39,21 @@ For documentation, please see /docs/index.html in root folder.
 
 *** Basic Usage ***
 
-    Typically, run in a jupyter notebook or equivalent. To import peaks run:
+    Typically, run in a jupyter notebook or equivalent. To import peaks run::
 
         from peaks import *
 
-    See the individual module and function descriptions for detailed information about the usage,
-    and follow the example notebooks for tutorials.
+    See the individual module and function descriptions for detailed information about the usage, and follow the example
+    notebooks for tutorials.
 
 """
 
 # Import core packages to namespace
-import gc
 import numpy as np
 import matplotlib.pyplot as plt
 import xarray as xr
 
-# Import core modules from to namespace
+# Import peaks modules to namespace
 from peaks.core import *
 from peaks.ML import *
 
