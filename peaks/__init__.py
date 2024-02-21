@@ -39,7 +39,7 @@ For documentation, please see /docs/index.html in root folder.
 
 *** Basic Usage ***
 
-    Typically, run in a jupyter notebook or equivalent. To import peaks run::
+    Typically, run in a jupyter notebook or equivalent. To import peaks run:
 
         from peaks import *
 
