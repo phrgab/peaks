@@ -14,11 +14,11 @@ from peaks.core.utils.OOP_method import add_methods
 
 @add_methods(xr.DataArray)
 def deriv(data, dims):
-    """General function to perform differentiations along the specified dimensions of data contained in a DataArray.
+    """General function to perform differentiations along the specified dimensions of data.
 
     Parameters
     ------------
-    data : xr.DataArray
+    data : xarray.DataArray
         The data to differentiate.
 
     dims : str, list
@@ -27,26 +27,28 @@ def deriv(data, dims):
 
     Returns
     ------------
-    deriv_data : xr.DataArray
+    deriv_data : xarray.DataArray
         The differentiated data.
 
     Examples
     ------------
-    from peaks import *
+    Example usage is as follows::
 
-    disp = load('disp.ibw')
+        from peaks import *
 
-    # Differentiate the dispersion along eV
-    disp_deriv = disp.deriv('eV')
+        disp = load('disp.ibw')
 
-    # Double differentiate the dispersion along eV
-    disp_deriv = disp.deriv(['eV', 'eV'])
+        # Differentiate the dispersion along eV
+        disp_deriv = disp.deriv('eV')
 
-    # Differentiate the dispersion along eV and then along theta_par
-    disp_deriv = disp.deriv(['eV', 'theta_par'])
+        # Double differentiate the dispersion along eV
+        disp_deriv = disp.deriv(['eV', 'eV'])
 
-    # Smooth and then differentiate the dispersion along eV
-    disp_deriv = disp.smooth(eV=0.05).deriv('eV')
+        # Differentiate the dispersion along eV and then along theta_par
+        disp_deriv = disp.deriv(['eV', 'theta_par'])
+
+        # Smooth and then differentiate the dispersion along eV
+        disp_deriv = disp.smooth(eV=0.05).deriv('eV')
 
     """
 
@@ -83,29 +85,31 @@ def deriv(data, dims):
 
 @add_methods(xr.DataArray)
 def d2E(data):
-    """Shortcut function to perform a double differentiation along the eV dimension of data contained in a DataArray.
+    """Shortcut function to perform a double differentiation along the eV dimension of data.
 
     Parameters
     ------------
-    data : xr.DataArray
+    data : xarray.DataArray
         The data to differentiate.
 
     Returns
     ------------
-    deriv_data : xr.DataArray
+    deriv_data : xarray.DataArray
         The differentiated data.
 
     Examples
     ------------
-    from peaks import *
+    Example usage is as follows::
 
-    disp = load('disp.ibw')
+        from peaks import *
 
-    # Double differentiate the dispersion along eV
-    disp_deriv = disp.d2E()
+        disp = load('disp.ibw')
 
-    # Smooth and then double differentiate the dispersion along eV
-    disp_deriv = disp.smooth(eV=0.05).d2E()
+        # Double differentiate the dispersion along eV
+        disp_deriv = disp.d2E()
+
+        # Smooth and then double differentiate the dispersion along eV
+        disp_deriv = disp.smooth(eV=0.05).d2E()
 
     """
 
@@ -121,30 +125,31 @@ def d2E(data):
 
 @add_methods(xr.DataArray)
 def d2k(data):
-    """Shortcut function to perform a double differentiation along the momentum (or angle) dimension of data contained
-    in a DataArray.
+    """Shortcut function to perform a double differentiation along the momentum (or angle) dimension of data.
 
     Parameters
     ------------
-    data : xr.DataArray
+    data : xarray.DataArray
         The data to differentiate.
 
     Returns
     ------------
-    deriv_data : xr.DataArray
+    deriv_data : xarray.DataArray
         The differentiated data.
 
     Examples
     ------------
-    from peaks import *
+    Example usage is as follows::
 
-    disp = load('disp.ibw')
+        from peaks import *
 
-    # Double differentiate the dispersion along the angle dimension
-    disp_deriv = disp.d2k()
+        disp = load('disp.ibw')
 
-    # Smooth and then double differentiate the dispersion along the angle dimension
-    disp_deriv = disp.smooth(theta_par=0.5).d2k()
+        # Double differentiate the dispersion along the angle dimension
+        disp_deriv = disp.d2k()
+
+        # Smooth and then double differentiate the dispersion along the angle dimension
+        disp_deriv = disp.smooth(theta_par=0.5).d2k()
 
     """
 
@@ -162,30 +167,32 @@ def d2k(data):
 
 @add_methods(xr.DataArray)
 def dEdk(data):
-    """Shortcut function to perform sequential differentiations along the eV then momentum (or angle) dimensions of data
-    contained in a DataArray.
+    """Shortcut function to perform sequential differentiations along the eV then momentum (or angle) dimensions of
+    data.
 
     Parameters
     ------------
-    data : xr.DataArray
+    data : xarray.DataArray
         The data to differentiate.
 
     Returns
     ------------
-    deriv_data : xr.DataArray
+    deriv_data : xarray.DataArray
         The differentiated data.
 
     Examples
     ------------
-    from peaks import *
+    Example usage is as follows::
 
-    disp = load('disp.ibw')
+        from peaks import *
 
-    # Sequentially differentiate the dispersion along the eV then angle dimension
-    disp_deriv = disp.dEdk()
+        disp = load('disp.ibw')
 
-    # Smooth and then sequentially differentiate the dispersion along the eV then angle dimension
-    disp_deriv = disp.smooth(eV=0.05, theta_par=0.5).dEdk()
+        # Sequentially differentiate the dispersion along the eV then angle dimension
+        disp_deriv = disp.dEdk()
+
+        # Smooth and then sequentially differentiate the dispersion along the eV then angle dimension
+        disp_deriv = disp.smooth(eV=0.05, theta_par=0.5).dEdk()
 
     """
 
@@ -212,30 +219,32 @@ def dEdk(data):
 
 @add_methods(xr.DataArray)
 def dkdE(data):
-    """Shortcut function to perform sequential differentiations along the momentum (or angle) then eV dimensions of data
-    contained in a DataArray.
+    """Shortcut function to perform sequential differentiations along the momentum (or angle) then eV dimensions of
+    data.
 
     Parameters
     ------------
-    data : xr.DataArray
+    data : xarray.DataArray
         The data to differentiate.
 
     Returns
     ------------
-    deriv_data : xr.DataArray
+    deriv_data : xarray.DataArray
         The differentiated data.
 
     Examples
     ------------
-    from peaks import *
+    Example usage is as follows::
 
-    disp = load('disp.ibw')
+        from peaks import *
 
-    # Sequentially differentiate the dispersion along the angle then eV dimension
-    disp_deriv = disp.dkdE()
+        disp = load('disp.ibw')
 
-    # Smooth and then sequentially differentiate the dispersion along the angle then eV dimension
-    disp_deriv = disp.smooth(theta_par=0.5, eV=0.05).dkdE()
+        # Sequentially differentiate the dispersion along the angle then eV dimension
+        disp_deriv = disp.dkdE()
+
+        # Smooth and then sequentially differentiate the dispersion along the angle then eV dimension
+        disp_deriv = disp.smooth(theta_par=0.5, eV=0.05).dkdE()
 
     """
 
@@ -262,12 +271,11 @@ def dkdE(data):
 
 @add_methods(xr.DataArray)
 def curvature(data, **parameter_kwargs):
-    """Perform 2D curvature analysis of data contained in a DataArray (see Rev. Sci. Instrum.  82, 043712 (2011) for
-    analysis procedure).
+    """Perform 2D curvature analysis of data (see Rev. Sci. Instrum.  82, 043712 (2011) for analysis procedure).
 
     Parameters
     ------------
-    data : xr.DataArray
+    data : xarray.DataArray
         The data to perform curvature analysis on.
 
     **parameter_kwargs : float
@@ -277,21 +285,23 @@ def curvature(data, **parameter_kwargs):
 
     Returns
     ------------
-    curv_data : xr.DataArray
+    curv_data : xarray.DataArray
         The data following curvature analysis.
 
     Examples
     ------------
-    from peaks import *
+    Example usage is as follows::
 
-    disp = load('disp.ibw')
+        from peaks import *
 
-    # Perform curvature analysis on the dispersion using free parameters for the theta_par and eV axes of 10 and 1
-    disp_curv = disp.curvature(theta_par=10, eV=1)
+        disp = load('disp.ibw')
 
-    # Smooth and then perform curvature analysis on the dispersion using free parameters for the
-    # theta_par and eV axes of 10 and 1
-    disp_curv = disp.smooth(eV=0.03, theta_par=0.3).curvature(theta_par=10, eV=1)
+        # Perform curvature analysis on the dispersion using free parameters for the theta_par and eV axes of 10 and 1
+        disp_curv = disp.curvature(theta_par=10, eV=1)
+
+        # Smooth and then perform curvature analysis on the dispersion using free parameters for the
+        # theta_par and eV axes of 10 and 1
+        disp_curv = disp.smooth(eV=0.03, theta_par=0.3).curvature(theta_par=10, eV=1)
 
     """
 
@@ -340,12 +350,12 @@ def curvature(data, **parameter_kwargs):
 
 @add_methods(xr.DataArray)
 def min_gradient(data, **smoothing_kwargs):
-    """Perform minimum gradient analysis of data contained in a DataArray, using Gaussian filtering (see Rev. Sci.
-    Instrum 88 (2017) 07390 for analysis procedure).
+    """Perform minimum gradient analysis of data, using Gaussian filtering (see Rev. Sci. Instrum 88 (2017) 07390 for
+    analysis procedure).
 
     Parameters
     ------------
-    data : xr.DataArray
+    data : xarray.DataArray
         The data to perform minimum gradient analysis on.
 
     **smoothing_kwargs : float
@@ -356,24 +366,26 @@ def min_gradient(data, **smoothing_kwargs):
 
     Returns
     ------------
-    grad_data : xr.DataArray
+    grad_data : xarray.DataArray
         The data following minimum gradient analysis.
 
     Examples
     ------------
-    from peaks import *
+    Example usage is as follows::
 
-    disp = load('disp.ibw')
+        from peaks import *
 
-    FM = load('FM.zip')
+        disp = load('disp.ibw')
 
-    # Perform minimum gradient analysis on the dispersion using Gaussian filters with FWHMs for the theta_par and eV
-    # axes of 0.2 deg and 0.05 eV
-    disp_grad = disp.min_gradient(theta_par=0.2, eV=0.05)
+        FM = load('FM.zip')
 
-    # Perform minimum gradient analysis on the Fermi map using Gaussian filters with FWHMs for the ana_polar, theta_par
-    # and eV axes of 0.2 deg, 0.2 deg and 0.05 eV
-    FM_grad = FM.min_gradient(ana_polar=0.2, theta_par=0.5, eV=0.05)
+        # Perform minimum gradient analysis on the dispersion using Gaussian filters with FWHMs for the theta_par and eV
+        # axes of 0.2 deg and 0.05 eV
+        disp_grad = disp.min_gradient(theta_par=0.2, eV=0.05)
+
+        # Perform minimum gradient analysis on the Fermi map using Gaussian filters with FWHMs for the ana_polar,
+        # theta_par and eV axes of 0.2 deg, 0.2 deg and 0.05 eV
+        FM_grad = FM.min_gradient(ana_polar=0.2, theta_par=0.5, eV=0.05)
 
     """
 

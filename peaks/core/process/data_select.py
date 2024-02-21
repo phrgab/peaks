@@ -18,47 +18,49 @@ def DC(data, coord='eV', val=0, dval=0, ana_hist=True):
 
     Parameters
     ------------
-    data : xr.DataArray
+    data : xarray.DataArray
         The data to extract a DC from.
 
-    coord : str (optional)
+    coord : str, optional
         Coordinate to extract DC at. Defaults to eV.
 
-    val : float, list, np.ndarray, tuple (optional)
+    val : float, list, numpy.ndarray, tuple, optional
         DC value(s) to select. If tuple, must be in the format (start, end, step). Defaults to 0.
 
-    dval : float (optional)
+    dval : float, optional
         Integration range (represents the total range, i.e. integrates over +/- dval/2). Defaults to 0.
 
-    ana_hist : Boolean (optional)
+    ana_hist : bool, optional
         Defines whether the function appends information to the analysis history metadata. Defaults to True.
 
     Returns
     ------------
-    dc : xr.DataArray
+    dc : xarray.DataArray
         Extracted DC(s).
 
     Examples
     ------------
-    from peaks import *
+    Example usage is as follows::
 
-    disp = load('disp.ibw')
+        from peaks import *
 
-    # Extract an EDC at theta_par = 3.5 +/- 0.25
-    DC1 = disp.DC(coord='theta_par', val=3.5, dval=0.5)
+        disp = load('disp.ibw')
 
-    # Extract an MDC at eV = -0.5 +/- 0.1
-    DC2 = disp.DC('eV', -0.5, 0.2)
+        # Extract an EDC at theta_par = 3.5 +/- 0.25
+        DC1 = disp.DC(coord='theta_par', val=3.5, dval=0.5)
 
-    # Extract MDCs at eV = -0.5 +/- 0.1 and -0.4 +/- 0.1
-    DC3 = disp.DC('eV', [-0.5, -0.4], 0.2)
+        # Extract an MDC at eV = -0.5 +/- 0.1
+        DC2 = disp.DC('eV', -0.5, 0.2)
 
-    # Extract MDCs between eV = -0.2 and 0.1 in steps of 0.05 with +/- 0.01 integrations
-    DC4 = disp.DC('eV', (-0.2, 0.1, 0.05), 0.02)
+        # Extract MDCs at eV = -0.5 +/- 0.1 and -0.4 +/- 0.1
+        DC3 = disp.DC('eV', [-0.5, -0.4], 0.2)
+
+        # Extract MDCs between eV = -0.2 and 0.1 in steps of 0.05 with +/- 0.01 integrations
+        DC4 = disp.DC('eV', (-0.2, 0.1, 0.05), 0.02)
 
     """
 
-    # If val is a 3 element tuple of the format (start, end, step), make val an np.ndarray of the relevant values
+    # If val is a 3 element tuple of the format (start, end, step), make val an numpy.ndarray of the relevant values
     if isinstance(val, tuple):
         if len(val) == 3:
             delta = 0.000000001  # small value to add to end so that values include end number (if appropriate)
@@ -99,44 +101,46 @@ def DC(data, coord='eV', val=0, dval=0, ana_hist=True):
 
 @add_methods(xr.DataArray)
 def MDC(data, E=0, dE=0):
-    """Extract MDCs from DataArrays.
+    """Extract MDCs from data.
 
     Parameters
     ------------
-    data : xr.DataArray
+    data : xarray.DataArray
         The dispersion to extract an MDC from.
 
-    E : float, list, np.ndarray, tuple (optional)
+    E : float, list, numpy.ndarray, tuple, optional
         Energy (or energies) of MDC(s) to extract. If tuple, must be in the format (start, end, step). Defaults to 0.
 
-    dE : float (optional)
+    dE : float, optional
         Integration range (represents the total range, i.e. integrates over +/- dE/2). Defaults to 0.
 
     Returns
     ------------
-    mdc : xr.DataArray
+    mdc : xarray.DataArray
         Extracted MDC(s).
 
     Examples
     ------------
-    from peaks import *
+    Example usage is as follows::
 
-    disp = load('disp.ibw')
+        from peaks import *
 
-    # Extract an MDC at eV = -1.2 +/- 0.005
-    MDC1 = disp.MDC(E=-1.2, dE=0.01)
+        disp = load('disp.ibw')
 
-    # Extract an MDC at eV = 55.6 +/- 0.03
-    MDC2 = disp.MDC(55.6, 0.06)
+        # Extract an MDC at eV = -1.2 +/- 0.005
+        MDC1 = disp.MDC(E=-1.2, dE=0.01)
 
-    # Extract a single non-integrated MDC at eV value closest to 0
-    MDC3 = disp.MDC()
+        # Extract an MDC at eV = 55.6 +/- 0.03
+        MDC2 = disp.MDC(55.6, 0.06)
 
-    # Extract MDCs at eV = 55.6 +/- 0.03 and 55.7 +/- 0.03
-    MDC4 = disp.MDC([55.6, 55.7], 0.06)
+        # Extract a single non-integrated MDC at eV value closest to 0
+        MDC3 = disp.MDC()
 
-    # Extract MDCs between eV = -0.2 and 0.1 in steps of 0.05 with +/- 0.01 integrations
-    MDC5 = disp.MDC((-0.2, 0.1, 0.05), 0.02)
+        # Extract MDCs at eV = 55.6 +/- 0.03 and 55.7 +/- 0.03
+        MDC4 = disp.MDC([55.6, 55.7], 0.06)
+
+        # Extract MDCs between eV = -0.2 and 0.1 in steps of 0.05 with +/- 0.01 integrations
+        MDC5 = disp.MDC((-0.2, 0.1, 0.05), 0.02)
 
     """
 
@@ -152,44 +156,46 @@ def MDC(data, E=0, dE=0):
 
 @add_methods(xr.DataArray)
 def EDC(data, k=0, dk=0):
-    """Extract EDCs from DataArrays.
+    """Extract EDCs from data.
 
     Parameters
     ------------
-    data : xr.DataArray
+    data : xarray.DataArray
         The dispersion to extract an EDC from.
 
-    k : float, list, np.ndarray, tuple (optional)
+    k : float, list, numpy.ndarray, tuple, optional
         k or theta_par value(s) of EDC(s) to extract. If tuple, must be in the format (start, end, step). Defaults to 0.
 
-    dk : float (optional)
+    dk : float, optional
         Integration range (represents the total range, i.e. integrates over +/- dk/2). Defaults to 0.
 
     Returns
     ------------
-    edc : xr.DataArray
+    edc : xarray.DataArray
         Extracted EDC(s).
 
     Examples
     ------------
-    from peaks import *
+    Example usage is as follows::
 
-    disp = load('disp.ibw')
+        from peaks import *
 
-    # Extract an EDC at k (or theta_par) = 0.5 +/- 0.005
-    EDC1 = disp.EDC(k=0.5, dk=0.01)
+        disp = load('disp.ibw')
 
-    # Extract an EDC at k (or theta_par) = -0.2 +/- 0.03
-    EDC2 = disp.EDC(-0.2, 0.06)
+        # Extract an EDC at k (or theta_par) = 0.5 +/- 0.005
+        EDC1 = disp.EDC(k=0.5, dk=0.01)
 
-    # Extract a single non-integrated EDC at k (or theta_par) value closest to 0
-    EDC3 = disp.EDC()
+        # Extract an EDC at k (or theta_par) = -0.2 +/- 0.03
+        EDC2 = disp.EDC(-0.2, 0.06)
 
-    # Extract EDCs at k (or theta_par) = -0.2 +/- 0.03 and -0.1 +/- 0.03
-    EDC4 = disp.EDC([-0.2, -0.1], 0.06)
+        # Extract a single non-integrated EDC at k (or theta_par) value closest to 0
+        EDC3 = disp.EDC()
 
-    # Extract EDCs between k (or theta_par) = 0.7 and 1.2 in steps of 0.1 with +/- 0.01 integrations
-    EDC5 = disp.EDC((0.7, 1.2, 0.1), 0.02)
+        # Extract EDCs at k (or theta_par) = -0.2 +/- 0.03 and -0.1 +/- 0.03
+        EDC4 = disp.EDC([-0.2, -0.1], 0.06)
+
+        # Extract EDCs between k (or theta_par) = 0.7 and 1.2 in steps of 0.1 with +/- 0.01 integrations
+        EDC5 = disp.EDC((0.7, 1.2, 0.1), 0.02)
 
     """
 
@@ -210,44 +216,46 @@ def EDC(data, k=0, dk=0):
 
 @add_methods(xr.DataArray)
 def FS(data, E=0, dE=0):
-    """Extract constant energy slices, e.g. Fermi surfaces, from 3D DataArrays.
+    """Extract constant energy slices, e.g. Fermi surfaces, from 3D data.
 
     Parameters
     ------------
-    data : xr.DataArray
+    data : xarray.DataArray
         The 3D Fermi map to extract an FS from.
 
-    E : float, list, np.ndarray, tuple (optional)
+    E : float, list, numpy.ndarray, tuple, optional
         Energy (or energies) of slice(s) to extract. If tuple, must be in the format (start, end, step). Defaults to 0.
 
-    dE : float (optional)
+    dE : float, optional
         Integration range (represents the total range, i.e. integrates over +/- dE/2). Defaults to 0.
 
     Returns
     ------------
-    fs : xr.DataArray
+    fs : xarray.DataArray
         Extracted constant energy slice(s).
 
     Examples
     ------------
-    from peaks import *
+    Example usage is as follows::
 
-    FM = load('FM.zip')
+        from peaks import *
 
-    # Extract a constant energy slice at eV = -1.2 +/- 0.005
-    FS1 = FM.FS(E=-1.2, dE=0.01)
+        FM = load('FM.zip')
 
-    # Extract a constant energy slice at eV = 95.56 +/- 0.03
-    FS2 = FM.FS(95.56, 0.06)
+        # Extract a constant energy slice at eV = -1.2 +/- 0.005
+        FS1 = FM.FS(E=-1.2, dE=0.01)
 
-    # Extract a single non-integrated constant energy slice at eV value closest to 0
-    FS3 = FM.FS()
+        # Extract a constant energy slice at eV = 95.56 +/- 0.03
+        FS2 = FM.FS(95.56, 0.06)
 
-    # Extract constant energy slices at eV = 95.56 +/- 0.03 and 95.60 +/- 0.03
-    FS4 = FM.FS([95.56, 95.60], 0.06)
+        # Extract a single non-integrated constant energy slice at eV value closest to 0
+        FS3 = FM.FS()
 
-    # Extract constant energy slices between eV = -0.2 and 0.1 in steps of 0.05 with +/- 0.01 integrations
-    FS5 = FM.FS((-0.2, 0.1, 0.05), 0.02)
+        # Extract constant energy slices at eV = 95.56 +/- 0.03 and 95.60 +/- 0.03
+        FS4 = FM.FS([95.56, 95.60], 0.06)
+
+        # Extract constant energy slices between eV = -0.2 and 0.1 in steps of 0.05 with +/- 0.01 integrations
+        FS5 = FM.FS((-0.2, 0.1, 0.05), 0.02)
 
     """
 
@@ -271,27 +279,29 @@ def DOS(data):
 
     Parameters
     ------------
-    data : xr.DataArray
+    data : xarray.DataArray
         Data to extract DOS from.
 
     Returns
     ------------
-    dos : xr.DataArray
+    dos : xarray.DataArray
         Extracted DOS.
 
     Examples
     ------------
-    from peaks import *
+    Example usage is as follows::
 
-    disp = load('disp.ibw')
+        from peaks import *
 
-    FM = load('FM.zip')
+        disp = load('disp.ibw')
 
-    # Extract DOS of a dispersion
-    disp_DOS = disp.DOS()
+        FM = load('FM.zip')
 
-    # Extract DOS of a Fermi map
-    FM_DOS = FM.DOS()
+        # Extract DOS of a dispersion
+        disp_DOS = disp.DOS()
+
+        # Extract DOS of a Fermi map
+        FM_DOS = FM.DOS()
 
     """
 
@@ -314,28 +324,30 @@ def tot(data, spatial_int=False):
 
     Parameters
     ------------
-    data : xr.DataArray
+    data : xarray.DataArray
         Spatial map data.
 
-    spatial_int : Boolean (optional)
+    spatial_int : bool, optional
         Determines whether integration is performed over spatial or non-spatial dimensions. Defaults to False.
 
     Returns
     ------------
-    data_tot : xr.DataArray
+    data_tot : xarray.DataArray
         The integrated data.
 
     Examples
     ------------
-    from peaks import *
+    Example usage is as follows::
 
-    SM = load('SM.ibw')
+        from peaks import *
 
-    # Extract energy and angle integrated spatial map
-    SM_int = SM.tot()
+        SM = load('SM.ibw')
 
-    # Extract spatially integrated dispersion
-    SM_int_spatial = SM.tot(spatial_int=True)
+        # Extract energy and angle integrated spatial map
+        SM_int = SM.tot()
+
+        # Extract spatially integrated dispersion
+        SM_int_spatial = SM.tot(spatial_int=True)
 
     """
 
@@ -363,42 +375,44 @@ def radial_cuts(data, num_azi=361, num_points=200, radius=2, **centre_kwargs):
 
     Parameters
     ------------
-    data : xr.DataArray
+    data : xarray.DataArray
         Data to extract radial cuts from.
 
-    num_azi : float (optional)
+    num_azi : float, optional
         Number of evenly spaced azi values between 0 and 360 degrees to take radial cuts. Defaults to 361.
 
-    num_points : float (optional)
+    num_points : float, optional
         Number of evenly spaced points to sample along a cut. Defaults to 200.
 
-    radius : float (optional)
+    radius : float, optional
         Maximum radius to take cuts up to. Defaults to 2.
 
-    **centre_kwargs : float (optional)
+    **centre_kwargs : float, optional
         Used to define centre of rotations in the format dim = coord, e.g. k_par = 1.2 sets the k_par centre as 1.2.
         Default centre of rotation is (0, 0).
 
     Returns
     ------------
-    data_to_return : xr.DataArray
+    data_to_return : xarray.DataArray
         Radial cuts against azi.
 
     Examples
     ------------
-    from peaks import *
+    Example usage is as follows::
 
-    FM = load('FM.zip')
+        from peaks import *
 
-    FS1 = FM.FS(E=-0, dE=0.01)
+        FM = load('FM.zip')
 
-    # Extract radial cuts (radius = 15) at azi values in 2 degree increments, using a centre of
-    # rotation (theta_par, ana_polar) = (-2, -5)
-    FS1_radial_cuts_1 = FS1.radial_cuts(num_azi=181, num_points=300, radius=15, theta_par=-2, ana_polar=-5)
+        FS1 = FM.FS(E=-0, dE=0.01)
 
-    # Extract radial cuts (radius = 2) at azi values in 1 degree increments, using a centre of
-    # rotation (coord_1, coord_2) = (0, 0)
-    FS1_radial_cuts_2 = FS1.radial_cuts()
+        # Extract radial cuts (radius = 15) at azi values in 2 degree increments, using a centre of
+        # rotation (theta_par, ana_polar) = (-2, -5)
+        FS1_radial_cuts_1 = FS1.radial_cuts(num_azi=181, num_points=300, radius=15, theta_par=-2, ana_polar=-5)
+
+        # Extract radial cuts (radius = 2) at azi values in 1 degree increments, using a centre of
+        # rotation (coord_1, coord_2) = (0, 0)
+        FS1_radial_cuts_2 = FS1.radial_cuts()
 
     """
 
@@ -445,14 +459,14 @@ def radial_cuts(data, num_azi=361, num_points=200, radius=2, **centre_kwargs):
 
 @add_methods(xr.DataArray)
 def mask_data(data, ROI, return_integrated=True):
-    """This function takes a multidimensional DataArray, and applies a polygon region of interest (ROI) as a mask. By
-    default, the function will then extract the mean over the two dimensions defined by the ROI. For a rectangular
-    ROI, this is equivalent to a simple .sel over those dimensions followed by a mean, but an arbitrary polygon can
-    be used to define the ROI.
+    """This function applies a polygon region of interest (ROI) as a mask to multidimensional data. By default, the
+    function will then extract the mean over the two dimensions defined by the ROI. For a rectangular ROI, this is
+    equivalent to a simple .sel over those dimensions followed by a mean, but an arbitrary polygon can be used to define
+    the ROI.
 
     Parameters
     ------------
-    data : xr.DataArray
+    data : xarray.DataArray
         The multidimensional data to apply the ROI selection to.
 
     ROI : dict
@@ -460,30 +474,32 @@ def mask_data(data, ROI, return_integrated=True):
         {'dim1': [pt1, pt2, pt3, ...], 'dim2'=[pt1', pt2', pt3', ...]}. As many points can be specified as required,
         but this should be given with the same number of points for each dimension.
 
-    return_integrated : Boolean (optional)
+    return_integrated : bool, optional
         Whether to mean the data confined within ROI region over the ROI dimensions, or instead return the masked data.
         Defaults to True.
 
     Returns
     ------------
-    ROI_selected_data : xr.DataArray
+    ROI_selected_data : xarray.DataArray
         The input data with the ROI applied as a mask, and (if return_integrated=True) the mean taken over those
         remaining dimensions.
 
     Examples
     ------------
-    from peaks import *
+    Example usage is as follows::
 
-    SM = load('SM.ibw')
+        from peaks import *
 
-    # Define ROI used to mask data
-    ROI = {'theta_par': [-8, -5.5, -3.1, -5.6], 'eV': [95.45, 95.45, 95.77, 95.77]}
+        SM = load('SM.ibw')
 
-    # Extract SM consisting of the integrated spectral weight confined within the ROI
-    ROI_SM = SM.mask_data(ROI)
+        # Define ROI used to mask data
+        ROI = {'theta_par': [-8, -5.5, -3.1, -5.6], 'eV': [95.45, 95.45, 95.77, 95.77]}
 
-    # Extract SM consisting of the input data with the ROI applied as a mask
-    ROI_SM = SM.mask_data(ROI, return_integrated=False)
+        # Extract SM consisting of the integrated spectral weight confined within the ROI
+        ROI_SM = SM.mask_data(ROI)
+
+        # Extract SM consisting of the input data with the ROI applied as a mask
+        ROI_SM = SM.mask_data(ROI, return_integrated=False)
 
     """
 
