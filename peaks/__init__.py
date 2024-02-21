@@ -4,7 +4,7 @@ peaks is a collection of analysis tools for the loading, processing and display 
 with a core focus on tools for angle-resolved photoemission and electron diffraction techniques.
 
 It has been developed by the King group at the University of St Andrews, with contributions from the following group
-members: Phil King, Brendan Edwards, Tommaso Antonelli, Edgar Abarca Morales, Liam Trzaska, Lewis Hart.
+members: Phil King, Brendan Edwards, Tommaso Antonelli, Edgar Abarca Morales, Liam Trzaska and Lewis Hart.
 
 This version of peaks is the result of a complete restructuring of the package in 2023 and 2024 by Brendan Edwards and
 Phil King.
