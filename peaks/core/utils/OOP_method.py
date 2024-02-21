@@ -14,23 +14,26 @@ def add_methods(cls):
     Parameters
     ------------
     cls : object
-        Here, this will be xr.DataArray. This allows a function to be applied to an xarray as a method.
+        Here, this will be an:class:`xarray.DataArray`. This allows a function to be applied to an
+        :class:`xarray.DataArray` as a method.
 
     Examples
     ------------
-    from peaks import *
+    Example usage is as follows::
 
-    my_data = load('my_file.ibw')
+        from peaks import *
 
-    # Turns the following function (data_plus_1) into a xr.DataArray method
-    @add_methods(xr.DataArray)
+        my_data = load('my_file.ibw')
 
-    # Example function that adds 1 to the data
-    def data_plus_1(data):
-        return data+1
+        # Turns the following function (data_plus_1) into a xarray.DataArray method
+        @add_methods(xr.DataArray)
 
-    # Create a new xarray equal to my_data + 1
-    my_data_plus_1 = my_data.data_plus_1()
+        # Example function that adds 1 to the data
+        def data_plus_1(data):
+            return data+1
+
+        # Create a new xarray equal to my_data + 1
+        my_data_plus_1 = my_data.data_plus_1()
 
     """
 

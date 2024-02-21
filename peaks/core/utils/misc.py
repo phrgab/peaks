@@ -18,25 +18,27 @@ def analysis_warning(text, warn_type='info', title='Analysis info'):
     text : str
         Text string to be displayed.
 
-    warn_type : str (optional)
+    warn_type : str, optional
         Warning box type:
             info : blue box (default)
             warning : yellow box
             success : green box
             danger : red box
 
-    title : str (optional)
+    title : str, optional
         Title to be displayed in box. Defaults to `Analysis info`.
 
     Examples
     ------------
-    from peaks import *
+    Example usage is as follows::
 
-    # Display a blue warning box informing the user that the data is being loaded
-    analysis_warning('Loading file into DataArray format.', warn_type='info', title='Loading info')
+        from peaks import *
 
-    # Display a red warning box informing the user that the fitting analysis failed
-    analysis_warning('Fitting result could not converge.', warn_type='danger', title='Analysis info')
+        # Display a blue warning box informing the user that the data is being loaded
+        analysis_warning('Loading file into DataArray format.', warn_type='info', title='Loading info')
+
+        # Display a red warning box informing the user that the fitting analysis failed
+        analysis_warning('Fitting result could not converge.', warn_type='danger', title='Analysis info')
 
     """
 
@@ -49,19 +51,21 @@ def make_docs(folder=None):
 
     Parameters
     ------------
-    folder : str (optional)
+    folder : str, optional
         Defines the folder where the documentation is created. Defaults to None (creating a folder `docs` in the parent
         directory of the code).
 
     Examples
     ------------
-    from peaks import *
+    Example usage is as follows::
 
-    # Create module documentation at default location in peaks package
-    make_docs()
+        from peaks import *
 
-    # Create module documentation in the docs folder at 'C:/User/Documents'
-    make_docs(folder='C:/User/Documents/docs')
+        # Create module documentation at default location in peaks package
+        make_docs()
+
+        # Create module documentation in the docs folder at 'C:/User/Documents'
+        make_docs(folder='C:/User/Documents/docs')
 
     """
 
@@ -104,22 +108,24 @@ def make_cell(text, below=True, execute=True):
     text : str
         Code to be generated in new cell.
 
-    below : Boolean (optional)
+    below : bool, optional
         Determines whether the new cell is generated below the currently running cell (as opposed to above).
         Defaults to True.
 
-    execute : Boolean (optional)
+    execute : bool, optional
         Determines whether the newly generated cell is automatically executed. Defaults to True.
 
     Examples
     ------------
-    from peaks import *
+    Example usage is as follows::
 
-    # Generate a cell below which creates variable a that is equal to 2, and execute it
-    make_cell('a=2')
+        from peaks import *
 
-    # Generate a cell above which calculates 5+7, but do not execute it
-    make_cell('5+7', below=False, execute=False)
+        # Generate a cell below which creates variable a that is equal to 2, and execute it
+        make_cell('a=2')
+
+        # Generate a cell above which calculates 5+7, but do not execute it
+        make_cell('5+7', below=False, execute=False)
 
     """
 
