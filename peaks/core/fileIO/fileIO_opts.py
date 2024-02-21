@@ -3,7 +3,7 @@
 """
 
 # Phil King 13/06/2021
-# Brendan Edwards 12/02/2024
+# Brendan Edwards 21/02/2024
 
 
 class file(object):
@@ -11,6 +11,24 @@ class file(object):
     disambiguation e.g. path_to_data/i05-123), file extensions, and location (e.g. beamline). Note: multiple file paths
     or extensions can be defined as lists to allow for the use of data saved at different folders, with different
     extensions.
+
+    Examples
+    ------------
+    Example usage is as follows::
+
+        from peaks import *
+
+        # Define file paths
+        file.path = ['sample1/i05-1-12', 'sample2/i05-1-12']
+
+        # Define file extensions
+        file.ext = ['nxs', 'zip']
+
+        # Define location
+        file.loc = ['Diamond I05-nano']
+
+        # Print file options
+        file()
 
     """
 
@@ -32,6 +50,15 @@ class file(object):
 
 class loc_opts(object):
     """Class used to store and print the currently supported locations (typically beamlines).
+
+    Examples
+    ------------
+    Example usage is as follows::
+
+        from peaks import *
+
+        # Print currently supported locations
+        loc_opts()
 
     """
 
@@ -65,9 +92,18 @@ class loc_opts(object):
 
 class _BL_angles(object):
     """Class used to store definitions of relative angle signs between manipulator and detector for different beamlines.
-     Useful in functions involving angle conversions, merging and normal emission extractions.
+    Useful in functions involving angle conversions, merging and normal emission extractions.
 
-     """
+    Examples
+    ------------
+    Example usage is as follows::
+
+        from peaks.core.fileIO.fileIO_opts import _BL_angles
+
+        # Get the name of the tilt coordinate at Diamond I05-nano
+        tilt_name = _BL_angles.angles['Diamond I05-nano']['tilt_name']
+
+    """
 
     # Create angles dictionary to store information in
     angles = {}
@@ -121,10 +157,10 @@ class _BL_angles(object):
     angles['CLF Artemis']['azi'] = -1
     angles['CLF Artemis']['ana_polar'] = 0
     angles['CLF Artemis']['polar_name'] = 'theta'
-    angles['CLF Artemis']['tilt_name'] = 'None'
+    angles['CLF Artemis']['tilt_name'] = None
     angles['CLF Artemis']['azi_name'] = 'azi'
-    angles['CLF Artemis']['defl_par_name'] = 'None'
-    angles['CLF Artemis']['defl_perp_name'] = 'None'
+    angles['CLF Artemis']['defl_par_name'] = None
+    angles['CLF Artemis']['defl_perp_name'] = None
     angles['CLF Artemis']['x1 name'] = 'X'
     angles['CLF Artemis']['x2 name'] = 'Z'
     angles['CLF Artemis']['x3 name'] = 'Y'
@@ -142,7 +178,7 @@ class _BL_angles(object):
     angles['Diamond I05-HR']['polar_name'] = 'sapolar'
     angles['Diamond I05-HR']['tilt_name'] = 'satilt'
     angles['Diamond I05-HR']['azi_name'] = 'saazimuth'
-    angles['Diamond I05-HR']['defl_par_name'] = 'None'
+    angles['Diamond I05-HR']['defl_par_name'] = None
     angles['Diamond I05-HR']['defl_perp_name'] = 'deflector_x'
     angles['Diamond I05-HR']['x1 name'] = 'sax'
     angles['Diamond I05-HR']['x2 name'] = 'saz'
@@ -159,7 +195,7 @@ class _BL_angles(object):
     angles['Diamond I05-nano']['azi'] = -1
     angles['Diamond I05-nano']['ana_polar'] = 1
     angles['Diamond I05-nano']['polar_name'] = 'smpolar'
-    angles['Diamond I05-nano']['tilt_name'] = 'None'
+    angles['Diamond I05-nano']['tilt_name'] = None
     angles['Diamond I05-nano']['azi_name'] = 'smazimuth'
     angles['Diamond I05-nano']['defl_par_name'] = 'theta_x'
     angles['Diamond I05-nano']['defl_perp_name'] = 'theta_y'
@@ -179,7 +215,7 @@ class _BL_angles(object):
     angles['Elettra APE']['ana_polar'] = 0
     angles['Elettra APE']['polar_name'] = 'polar'
     angles['Elettra APE']['tilt_name'] = 'tilt'
-    angles['Elettra APE']['azi_name'] = 'None'
+    angles['Elettra APE']['azi_name'] = None
     angles['Elettra APE']['defl_par_name'] = 'theta_x'
     angles['Elettra APE']['defl_perp_name'] = 'theta_y'
     angles['Elettra APE']['x1 name'] = 'temp'
@@ -237,8 +273,8 @@ class _BL_angles(object):
     angles['SOLEIL CASSIOPEE']['polar_name'] = 'theta'
     angles['SOLEIL CASSIOPEE']['tilt_name'] = 'tilt'
     angles['SOLEIL CASSIOPEE']['azi_name'] = 'phi'
-    angles['SOLEIL CASSIOPEE']['defl_par_name'] = 'None'
-    angles['SOLEIL CASSIOPEE']['defl_perp_name'] = 'None'
+    angles['SOLEIL CASSIOPEE']['defl_par_name'] = None
+    angles['SOLEIL CASSIOPEE']['defl_perp_name'] = None
     angles['SOLEIL CASSIOPEE']['x1 name'] = 'x'
     angles['SOLEIL CASSIOPEE']['x2 name'] = 'z'
     angles['SOLEIL CASSIOPEE']['x3 name'] = 'y'
@@ -275,8 +311,8 @@ class _BL_angles(object):
     angles['StA-Phoibos']['polar_name'] = 'Theta'
     angles['StA-Phoibos']['tilt_name'] = 'Phi'
     angles['StA-Phoibos']['azi_name'] = 'Azi'
-    angles['StA-Phoibos']['defl_par_name'] = 'None'
-    angles['StA-Phoibos']['defl_perp_name'] = 'None'
+    angles['StA-Phoibos']['defl_par_name'] = None
+    angles['StA-Phoibos']['defl_perp_name'] = None
     angles['StA-Phoibos']['x1 name'] = 'temp'
     angles['StA-Phoibos']['x2 name'] = 'temp'
     angles['StA-Phoibos']['x3 name'] = 'temp'
@@ -285,9 +321,17 @@ class _BL_angles(object):
 class _coords(object):
     """Class used to store the units for different coordinates.
 
+    Examples
+    ------------
+    Example usage is as follows::
+
+        from peaks.core.fileIO.fileIO_opts import _coords
+
+        # Get the units associated with x1 coordinates
+        x1_units = _coords.units['x1']
+
     """
 
     # Dictionary to store the units for different coordinates
-    units = {'theta_par': 'deg', 'polar': 'deg', 'tilt': 'deg', 'ana_polar': 'deg', 'defl_perp': 'deg',
-                    'x1': 'um', 'x2': 'um', 'x3': 'um', 'x': 'um', 'y': 'um', 'z': 'um', 'location': 'um', 'hv': 'eV',
-                    'KE_delta': 'eV'}
+    units = {'theta_par': 'deg', 'polar': 'deg', 'tilt': 'deg', 'ana_polar': 'deg', 'defl_perp': 'deg', 'x1': 'um',
+             'x2': 'um', 'x3': 'um', 'x': 'um', 'y': 'um', 'z': 'um', 'location': 'um', 'hv': 'eV', 'KE_delta': 'eV'}

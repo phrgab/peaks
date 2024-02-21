@@ -38,71 +38,73 @@ def load(fname, lazy='auto', loc='auto', metadata=True, parallel=False):
         Either the full file name(s), or the remainder of the file name(s) not already specified in the file global
         options.
 
-    lazy : str, Boolean (optional)
+    lazy : str, bool, optional
         Whether to load data in a lazily evaluated dask format. Set explicitly using True/False Boolean. Defaults
         to 'auto' where a file is only loaded in the dask format if its spectrum is above 500 MB.
 
-    loc : str (optional)
+    loc : str, optional
         The name of the location (typically a beamline). Defaults to 'auto', where the location will be attempted to be
         automatically determined, unless a value is defined for file.loc. If loc is not the default 'auto' value, the
         parameter loc will take priority over the value in file.loc.
 
-    metadata : Boolean (optional)
-        Whether to attempt to load metadata into the attributes of the xr.DataArray. Defaults to True.
+    metadata : bool, optional
+        Whether to attempt to load metadata into the attributes of the :class:`xarray.DataArray`. Defaults to True.
 
-    parallel : Boolean (optional)
+    parallel : bool, optional
         Whether to load data in parallel when multiple files are being loaded. Only compatible with certain file types
         such as those based on the h5py format, e.g. nxs files. Takes priority over lazy, enforcing that all data is
         computed and loaded into memory. Defaults to False.
 
     Returns
     ------------
-    loaded_data : xr.DataArray, xr.DataSet, list
+    loaded_data : xarray.DataArray, xarray.DataSet, list
         The loaded data.
 
     Examples
     ------------
-    from peaks import *
+    Example usage is as follows::
 
-    # Load data using a complete data path
-    disp1 = load('C:/User/Documents/disp1.ibw')
-    FM1 = load('C:/User/Documents/FM1.ibw')
+        from peaks import *
 
-    # Define global options in the class file to aid loading
-    file.path = 'C:/User/Documents/Data/'
-    file.ext = ['ibw', 'zip']
+        # Load data using a complete data path
+        disp1 = load('C:/User/Documents/disp1.ibw')
+        FM1 = load('C:/User/Documents/FM1.ibw')
 
-    # Load data without needing to define data path or extension (determined from global options defined in file)
-    disp2 = load('disp2')
-    FM2 = load('FM2')
+        # Define global options in the class file to aid loading
+        file.path = 'C:/User/Documents/Data/'
+        file.ext = ['ibw', 'zip']
 
-    # Define global options in the class file to aid loading, and include a partial part of the scan name
-    file.path = 'C:/User/Documents/Data/i05-1-123'
-    file.ext = 'nxs'
+        # Load data without needing to define data path or extension (determined from global options defined in file)
+        disp2 = load('disp2')
+        FM2 = load('FM2')
 
-    # Load data without needing to define data path or extension, nor the repeated part of the scan name (determined
-    # from global options defined in file)
-    disp3 = load(456)
-    disp4 = load(457)
+        # Define global options in the class file to aid loading, and include a partial part of the scan name
+        file.path = 'C:/User/Documents/Data/i05-1-123'
+        file.ext = 'nxs'
 
-    # Load multiple files at once
-    disps = load([456, 457, 458])
+        # Load data without needing to define data path or extension, nor the repeated part of the scan name (determined
+        # from global options defined in file)
+        disp3 = load(456)
+        disp4 = load(457)
 
-    # Still can load data using a complete data path, and global options defined in file will be ignored
-    disp1 = load('C:/User/Documents/Data/disp1.ibw')
+        # Load multiple files at once
+        disps = load([456, 457, 458])
 
-    # Load data in a lazily evaluated dask format
-    disp1 = load('C:/User/Documents/Data/disp1.ibw', lazy=True)
+        # Still can load data using a complete data path, and global options defined in file will be ignored
+        disp1 = load('C:/User/Documents/Data/disp1.ibw')
 
-    # Load data without metadata
-    disp1 = load('C:/User/Documents/Data/disp1.ibw', metadata=False)
+        # Load data in a lazily evaluated dask format
+        disp1 = load('C:/User/Documents/Data/disp1.ibw', lazy=True)
 
-    # Load data file a pre-defined location (use if automatic location identification fails)
-    disp1 = load('C:/User/Documents/Data/disp1.ibw', loc='MAX IV Bloch')
+        # Load data without metadata
+        disp1 = load('C:/User/Documents/Data/disp1.ibw', metadata=False)
 
-    # Alternatively could define location using global options. Here loc will be defined as 'MAX IV Bloch'
-    file.loc = 'MAX IV Bloch'
-    disp1 = load('C:/User/Documents/Data/disp1.ibw')
+        # Load data file a pre-defined location (use if automatic location identification fails)
+        disp1 = load('C:/User/Documents/Data/disp1.ibw', loc='MAX IV Bloch')
+
+        # Alternatively could define location using global options. Here loc will be defined as 'MAX IV Bloch'
+        file.loc = 'MAX IV Bloch'
+        disp1 = load('C:/User/Documents/Data/disp1.ibw')
 
     """
 
@@ -172,53 +174,55 @@ def load(fname, lazy='auto', loc='auto', metadata=True, parallel=False):
 
 
 def load_data(fname, lazy='auto', loc='auto', metadata=True, parallel=False):
-    """Function to load data files in the xr.DataArray format.
+    """Function to load data files into the xarray DataArray format.
 
     Parameters
     ------------
     fname : str, list
         Path(s) to the file(s) to be loaded.
 
-    lazy : str, Boolean (optional)
+    lazy : str, bool, optional
         Whether to load data in a lazily evaluated dask format. Set explicitly using True/False Boolean. Defaults
         to 'auto' where a file is only loaded in the dask format if its spectrum is above 500 MB.
 
-    loc : str (optional)
+    loc : str, optional
         The name of the location (typically a beamline). Defaults to 'auto', where the location will be attempted to be
         automatically determined.
 
-    metadata : Boolean (optional)
-        Whether to attempt to load metadata into the attributes of the xr.DataArray. Defaults to True.
+    metadata : bool, optional
+        Whether to attempt to load metadata into the attributes of the :class:`xarray.DataArray`. Defaults to True.
 
-    parallel : Boolean (optional)
+    parallel : bool, optional
         Whether to load data in parallel when multiple files are being loaded. Only compatible with certain file types
         such as those based on the h5py format, e.g. nxs files. Takes priority over lazy, enforcing that all data is
         computed and loaded into memory. Defaults to False.
 
     Returns
     ------------
-    loaded_data : xr.DataArray, xr.DataSet, list
+    loaded_data : xarray.DataArray, xarray.DataSet, list
         The loaded data.
 
     Examples
     ------------
-    from peaks import *
+    Example usage is as follows::
 
-    # Load data
-    disp1 = load_data('disp1.ibw')
-    FM1 = load_data('C:/User/Documents/FM1.ibw')
+        from peaks import *
 
-    # Load multiple data files at once
-    disps = load(['disp1.ibw', 'disp2.ibw', 'disp3.ibw'])
+        # Load data
+        disp1 = load_data('disp1.ibw')
+        FM1 = load_data('C:/User/Documents/FM1.ibw')
 
-    # Load data in a lazily evaluated dask format
-    FM1 = load('FM1.ibw', lazy=True)
+        # Load multiple data files at once
+        disps = load(['disp1.ibw', 'disp2.ibw', 'disp3.ibw'])
 
-    # Load data without metadata
-    FM1 = load('FM1.ibw', metadata=False)
+        # Load data in a lazily evaluated dask format
+        FM1 = load('FM1.ibw', lazy=True)
 
-    # Load data file a pre-defined location (use if automatic location identification fails)
-    FM1 = load('FM1.ibw', loc='MAX IV Bloch')
+        # Load data without metadata
+        FM1 = load('FM1.ibw', metadata=False)
+
+        # Load data file a pre-defined location (use if automatic location identification fails)
+        FM1 = load('FM1.ibw', loc='MAX IV Bloch')
 
     """
 
@@ -272,44 +276,46 @@ def load_data(fname, lazy='auto', loc='auto', metadata=True, parallel=False):
 
 
 def _load_single_data(fname, lazy='auto', loc='auto', metadata=True):
-    """Function to load a single data file as an xr.DataArray
+    """Function to load a single data file as an xarray DataArray.
 
     Parameters
     ------------
     fname : str
         Path to the file to be loaded.
 
-    lazy : str, Boolean (optional)
+    lazy : str, bool, optional
         Whether to load data in a lazily evaluated dask format. Set explicitly using True/False Boolean. Defaults
         to 'auto' where a file is only loaded in the dask format if its spectrum is above 500 MB.
 
-    loc : str (optional)
+    loc : str, optional
         The name of the location (typically a beamline). Defaults to 'auto', where the location will be attempted to be
         automatically determined.
 
-    metadata : Boolean (optional)
-        Whether to attempt to load metadata into the attributes of the xr.DataArray. Defaults to True.
+    metadata : bool, optional
+        Whether to attempt to load metadata into the attributes of the :class:`xarray.DataArray`. Defaults to True.
 
     Returns
     ------------
-    DataArray : xr.DataArray
-        The loaded DataArray.
+    DataArray : xarray.DataArray
+        The loaded data.
 
     Examples
     ------------
-    from peaks.core.fileIO.data_loading import _load_single_data
+    Example usage is as follows::
 
-    # Load single data file
-    FM1 = _load_single_data('C:/User/Documents/Data/FM1.ibw')
+        from peaks.core.fileIO.data_loading import _load_single_data
 
-    # Load single data file in a lazily evaluated dask format
-    FM1 = _load_single_data('C:/User/Documents/Data/FM1.ibw', lazy=True)
+        # Load single data file
+        FM1 = _load_single_data('C:/User/Documents/Data/FM1.ibw')
 
-    # Load single data file without metadata
-    FM1 = _load_single_data('C:/User/Documents/Data/FM1.ibw', metadata=False)
+        # Load single data file in a lazily evaluated dask format
+        FM1 = _load_single_data('C:/User/Documents/Data/FM1.ibw', lazy=True)
 
-    # Load single data file with a pre-defined location (use if automatic location identification fails)
-    FM1 = _load_single_data('C:/User/Documents/Data/FM1.ibw', loc='MAX IV Bloch')
+        # Load single data file without metadata
+        FM1 = _load_single_data('C:/User/Documents/Data/FM1.ibw', metadata=False)
+
+        # Load single data file with a pre-defined location (use if automatic location identification fails)
+        FM1 = _load_single_data('C:/User/Documents/Data/FM1.ibw', loc='MAX IV Bloch')
 
     """
 
@@ -412,46 +418,48 @@ def _load_single_data(fname, lazy='auto', loc='auto', metadata=True):
                 DataArray = DataArray.reindex({dim: data[dim][::-1]})
 
     # Ensure that the dimensions of the DataArray are arranged in the standard order
-    DataArray = DataArray.transpose('scan_no', 't', 'hv', 'temp_sample', 'temp_cryo', 'defocus', 'focus', 'da30_z',
-                                    'x1', 'x2', 'x3', 'dim0', 'dim1', 'y_scale', 'two_th', 'polar', 'ana_polar', 'tilt',
-                                    'phi', 'defl_perp', 'k_perp', 'azi', 'defl_par', 'eV', 'theta_par', 'k_par',
-                                    missing_dims='ignore')
+    DataArray = DataArray.transpose('scan_no', 't', 'hv', 'temp_sample', 'temp_cryo', 'defocus', 'focus',
+                                    'da30_z', 'x1', 'x2', 'x3', 'dim0', 'dim1', 'y_scale', 'two_th', 'polar',
+                                    'ana_polar', 'tilt', 'phi', 'defl_perp', 'k_perp', 'azi', 'defl_par', 'eV',
+                                    'theta_par', 'k_par', missing_dims='ignore')
 
     return DataArray
 
 
 def _make_DataArray(data, lazy='auto'):
-    """This function makes an xr.DataArray from the inputted data.
+    """This function makes an xarray DataArray from the inputted data.
 
     Parameters
     ------------
     data : dict
         Dictionary containing the file scan type, spectrum, and coordinates.
 
-    lazy : str, Boolean (optional)
+    lazy : str, bool, optional
         Whether to load data in a lazily evaluated dask format. Set explicitly using True/False Boolean. Defaults to
         'auto' where a file is only loaded in the dask format if its spectrum is above 500 MB.
 
     Returns
     ------------
-    DataArray : xr.DataArray
-        The inputted data in xr.DataArray format.
+    DataArray : xarray.DataArray
+        The inputted data in :class:`xarray.DataArray` format.
 
     Examples
     ------------
-    from peaks.core.fileIO.data_loading import _make_DataArray
-    from peaks.core.fileIO.loaders.I05 import _load_I05_data
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/i05-12345.nxs'
+        from peaks.core.fileIO.data_loading import _make_DataArray
+        from peaks.core.fileIO.loaders.I05 import _load_I05_data
 
-    # Extract data from file obtained at the I05 beamline
-    data = _load_I05_data(fname)
+        fname = 'C:/User/Documents/Research/i05-12345.nxs'
 
-    # Get data in xr.DataArray format
-    DataArray = _make_DataArray(data)
+        # Extract data from file obtained at the I05 beamline
+        data = _load_I05_data(fname)
 
-    # Get data in a lazily evaluated dask format
-    DataArray = _make_DataArray(data, lazy=True)
+        # Get data in xarray.DataArray format
+        DataArray = _make_DataArray(data)
+
+        # Get data in a lazily evaluated dask format
+        DataArray = _make_DataArray(data, lazy=True)
 
     """
 
@@ -553,12 +561,12 @@ def _make_DataArray(data, lazy='auto'):
 
 
 def _add_metadata(DataArray, fname, loc, scan_type):
-    """This function adds metadata to an inputted xr.DataArray.
+    """This function adds metadata to an inputted xarray DataArray.
 
     Parameters
     ------------
-    DataArray : xr.DataArray
-        The inputted DataArray.
+    DataArray : xarray.DataArray
+        The inputted :class:`xarray.DataArray`.
 
     fname : str
         Path to the file to be loaded.
@@ -571,22 +579,24 @@ def _add_metadata(DataArray, fname, loc, scan_type):
 
     Examples
     ------------
-    from peaks.core.fileIO.data_loading import _make_DataArray, _add_metadata, _get_loc
-    from peaks.core.fileIO.loaders.StA_Phoibos_metadata import _load_StA_Phoibos_data
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/i05-12345.nxs'
+        from peaks.core.fileIO.data_loading import _make_DataArray, _add_metadata, _get_loc
+        from peaks.core.fileIO.loaders.StA_Phoibos_metadata import _load_StA_Phoibos_data
 
-    # Determine location qat which data was obtained
-    loc = _get_loc(fname)
+        fname = 'C:/User/Documents/Research/i05-12345.nxs'
 
-    # Extract data from file obtained using the ARPES system (Phoibos analyser) at St Andrews
-    data = _load_StA_Phoibos_data(fname)
+        # Determine location qat which data was obtained
+        loc = _get_loc(fname)
 
-    # Get data in xr.DataArray format
-    DataArray = _make_DataArray(data)
+        # Extract data from file obtained using the ARPES system (Phoibos analyser) at St Andrews
+        data = _load_StA_Phoibos_data(fname)
 
-    # Add metadata to DataArray
-    add_metadata(DataArray, fname, loc, scan_type=data['scan_type'])
+        # Get data in xarray.DataArray format
+        DataArray = _make_DataArray(data)
+
+        # Add metadata to DataArray
+        add_metadata(DataArray, fname, loc, scan_type=data['scan_type'])
 
     """
 
@@ -665,12 +675,14 @@ def _get_loc(fname):
 
     Examples
     ------------
-    from peaks.core.fileIO.data_loading import _get_loc
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/disp1.xy'
+        from peaks.core.fileIO.data_loading import _get_loc
 
-    # Determine the location at which the data was obtained
-    loc = _get_loc(fname)
+        fname = 'C:/User/Documents/Research/disp1.xy'
+
+        # Determine the location at which the data was obtained
+        loc = _get_loc(fname)
 
     """
 
@@ -831,12 +843,14 @@ def _h5py_str(file, file_handle):
 
     Examples
     ------------
-    from peaks.core.fileIO.data_loading import _h5py_str
+    Example usage is as follows::
 
-    disp1 = load('disp1.ibw')
+        from peaks.core.fileIO.data_loading import _h5py_str
 
-    # Acts as a shortcut for accessing h5py file data. e.g. f['entry1/instrument/name'][()].decode()
-    location = _h5py_str(f, 'entry1/instrument/name')
+        disp1 = load('disp1.ibw')
+
+        # Acts as a shortcut for accessing h5py file data. e.g. f['entry1/instrument/name'][()].decode()
+        location = _h5py_str(f, 'entry1/instrument/name')
 
     """
 
@@ -869,7 +883,7 @@ def _extract_mapping_metadata(mapping_coordinates, num_dp):
 
     Parameters
     ------------
-    mapping_coordinates : list, np.array
+    mapping_coordinates : list, numpy.ndarray
          The coordinates of a mapping variable
 
     num_dp : int
@@ -882,12 +896,14 @@ def _extract_mapping_metadata(mapping_coordinates, num_dp):
 
     Examples
     ------------
-    from peaks.core.fileIO.data_loading import _extract_mapping_metadata
+    Example usage is as follows::
 
-    mapping_coordinates = [0, 0.5, 1, 1.5, 2, 2.5, 3]
+        from peaks.core.fileIO.data_loading import _extract_mapping_metadata
 
-    # Extract the mapping coordinates in the format: 'min:max (step)'. For this example, we would get: '0:3 (0.5)'
-    mapping_metadata = _extract_mapping_metadata(mapping_coordinates)
+        mapping_coordinates = [0, 0.5, 1, 1.5, 2, 2.5, 3]
+
+        # Extract the mapping coordinates in the format: 'min:max (step)'. For this example, we would get: '0:3 (0.5)'
+        mapping_metadata = _extract_mapping_metadata(mapping_coordinates)
 
     """
 
