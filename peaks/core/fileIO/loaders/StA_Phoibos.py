@@ -25,12 +25,14 @@ def _load_StA_Phoibos_data(fname):
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.StA_Phoibos import _load_StA_Phoibos_data
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/disp1.xy'
+        from peaks.core.fileIO.loaders.StA_Phoibos import _load_StA_Phoibos_data
 
-    # Extract data from file obtained using the ARPES system (Phoibos analyser) at St Andrews
-    data = _load_StA_Phoibos_data(fname)
+        fname = 'C:/User/Documents/Research/disp1.xy'
+
+        # Extract data from file obtained using the ARPES system (Phoibos analyser) at St Andrews
+        data = _load_StA_Phoibos_data(fname)
 
     """
 
@@ -123,12 +125,14 @@ def _load_StA_Phoibos_metadata(fname, scan_type):
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.StA_Phoibos import _load_StA_Phoibos_metadata
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/disp1.xy'
+        from peaks.core.fileIO.loaders.StA_Phoibos import _load_StA_Phoibos_metadata
 
-    # Extract metadata from file obtained using the ARPES system (Phoibos analyser) at St Andrews
-    metadata = _load_StA_Phoibos_metadata(fname)
+        fname = 'C:/User/Documents/Research/disp1.xy'
+
+        # Extract metadata from file obtained using the ARPES system (Phoibos analyser) at St Andrews
+        metadata = _load_StA_Phoibos_metadata(fname)
 
     """
 
@@ -213,16 +217,18 @@ def _StA_Phoibos_find(lines, item):
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.StA_Phoibos import _StA_Phoibos_find
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/disp1.xy'
+        from peaks.core.fileIO.loaders.StA_Phoibos import _StA_Phoibos_find
 
-    # Open the file and load lines
-    with open(fname) as f:
-        lines = f.readlines()
+        fname = 'C:/User/Documents/Research/disp1.xy'
 
-    # Extract the analyser mode
-    ana_mode = _StA_Phoibos_find(lines, 'Analyzer Lens')
+        # Open the file and load lines
+        with open(fname) as f:
+            lines = f.readlines()
+
+        # Extract the analyser mode
+        ana_mode = _StA_Phoibos_find(lines, 'Analyzer Lens')
 
     """
 

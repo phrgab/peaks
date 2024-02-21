@@ -23,12 +23,14 @@ def _load_Bloch_data(fname):
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.Bloch import _load_Bloch_data
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/disp1.ibw'
+        from peaks.core.fileIO.loaders.Bloch import _load_Bloch_data
 
-    # Extract data from file obtained at the A branch of the Bloch beamline at MAX IV Laboratory
-    data = _load_Bloch_data(fname)
+        fname = 'C:/User/Documents/Research/disp1.ibw'
+
+        # Extract data from file obtained at the A branch of the Bloch beamline at MAX IV Laboratory
+        data = _load_Bloch_data(fname)
 
     """
 
@@ -54,12 +56,14 @@ def _load_Bloch_metadata(fname, scan_type):
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.Bloch import _load_Bloch_metadata
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/disp1.ibw'
+        from peaks.core.fileIO.loaders.Bloch import _load_Bloch_metadata
 
-    # Extract metadata from file obtained at the A branch of the Bloch beamline at MAX IV Laboratory
-    metadata = _load_Bloch_metadata(fname)
+        fname = 'C:/User/Documents/Research/disp1.ibw'
+
+        # Extract metadata from file obtained at the A branch of the Bloch beamline at MAX IV Laboratory
+        metadata = _load_Bloch_metadata(fname)
 
     """
 
@@ -81,12 +85,14 @@ def _load_Bloch_spin_data(fname):
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.Bloch import _load_Bloch_spin_data
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/disp1.ibw'
+        from peaks.core.fileIO.loaders.Bloch import _load_Bloch_spin_data
 
-    # Extract data from file obtained at the spin branch of the Bloch beamline
-    data = _load_Bloch_spin_data(fname)
+        fname = 'C:/User/Documents/Research/disp1.ibw'
+
+        # Extract data from file obtained at the spin branch of the Bloch beamline
+        data = _load_Bloch_spin_data(fname)
 
     """
 
@@ -112,12 +118,14 @@ def _load_Bloch_spin_metadata(fname, scan_type):
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.Bloch import _load_Bloch_spin_metadata
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/disp1.ibw'
+        from peaks.core.fileIO.loaders.Bloch import _load_Bloch_spin_metadata
 
-    # Extract metadata from file obtained at the spin branch of the Bloch beamline
-    metadata = _load_Bloch_spin_metadata(fname)
+        fname = 'C:/User/Documents/Research/disp1.ibw'
+    
+        # Extract metadata from file obtained at the spin branch of the Bloch beamline
+        metadata = _load_Bloch_spin_metadata(fname)
 
     """
 

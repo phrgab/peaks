@@ -1,4 +1,4 @@
-"""Functions to load data from the Artemis facility at Diamond Light Source.
+"""Functions to load data from the Artemis facility at the Central Laser Facility.
 
 """
 
@@ -7,7 +7,7 @@
 
 
 def _load_Artemis_data(fname):
-    """This function loads data that was obtained at the Artemis beamline at Diamond Light Source.
+    """This function loads data that was obtained at the Artemis beamline at the Central Laser Facility.
 
     Parameters
     ------------
@@ -21,20 +21,22 @@ def _load_Artemis_data(fname):
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.Artemis import _load_Artemis_data
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/scan1'
+        from peaks.core.fileIO.loaders.Artemis import _load_Artemis_data
 
-    # Extract data from file obtained at the Artemis beamline at Diamond Light Source.
-    data = _load_Artemis_data(fname)
+        fname = 'C:/User/Documents/Research/scan1'
+
+        # Extract data from file obtained at the Artemis beamline at the Central Laser Facility.
+        data = _load_Artemis_data(fname)
 
     """
 
-    raise Exception('Diamond Artemis is not currently supported')
+    raise Exception('CLF Artemis is not currently supported')
 
 
 def _load_Artemis_metadata(fname, scan_type):
-    """This function loads metadata from data that was obtained at the Artemis beamline at Diamond Light Source.
+    """This function loads metadata from data that was obtained at the Artemis beamline at the Central Laser Facility.
 
     Parameters
     ------------
@@ -51,13 +53,15 @@ def _load_Artemis_metadata(fname, scan_type):
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.Artemis import _load_Artemis_metadata
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/scan1'
+        from peaks.core.fileIO.loaders.Artemis import _load_Artemis_metadata
 
-    # Extract metadata from file obtained at the Artemis beamline at Diamond Light Source
-    metadata = _load_Artemis_metadata(fname)
+        fname = 'C:/User/Documents/Research/scan1'
+
+        # Extract metadata from file obtained at the Artemis beamline at the Central Laser Facility
+        metadata = _load_Artemis_metadata(fname)
 
     """
 
-    raise Exception('Diamond Artemis is not currently supported')
+    raise Exception('CLF Artemis is not currently supported')

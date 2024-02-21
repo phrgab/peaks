@@ -23,12 +23,14 @@ def _load_APE_data(fname):
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.APE import _load_APE_data
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/disp1.ibw'
+        from peaks.core.fileIO.loaders.APE import _load_APE_data
 
-    # Extract data from file obtained at the APE beamline at Elettra
-    data = _load_APE_data(fname)
+        fname = 'C:/User/Documents/Research/disp1.ibw'
+
+        # Extract data from file obtained at the APE beamline at Elettra
+        data = _load_APE_data(fname)
 
     """
 
@@ -53,12 +55,14 @@ def _load_APE_metadata(fname, scan_type):
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.APE import _load_APE_metadata
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/disp1.ibw'
+        from peaks.core.fileIO.loaders.APE import _load_APE_metadata
 
-    # Extract metadata from file obtained at the APE beamline at Elettra
-    metadata = _load_APE_metadata(fname)
+        fname = 'C:/User/Documents/Research/disp1.ibw'
+
+        # Extract metadata from file obtained at the APE beamline at Elettra
+        metadata = _load_APE_metadata(fname)
 
     """
 

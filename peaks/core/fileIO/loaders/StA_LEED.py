@@ -21,12 +21,14 @@ def _load_StA_LEED_data(fname):
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.StA_LEED import _load_StA_LEED_data
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/LEED_100eV.bmp'
+        from peaks.core.fileIO.loaders.StA_LEED import _load_StA_LEED_data
 
-    # Extract data from file obtained using the LEED system at St Andrews
-    data = _load_StA_LEED_data(fname)
+        fname = 'C:/User/Documents/Research/LEED_100eV.bmp'
+
+        # Extract data from file obtained using the LEED system at St Andrews
+        data = _load_StA_LEED_data(fname)
 
     """
 
@@ -51,12 +53,14 @@ def _load_StA_LEED_metadata(fname, scan_type):
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.StA_LEED import _load_StA_LEED_metadata
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/LEED_100eV.bmp'
+        from peaks.core.fileIO.loaders.StA_LEED import _load_StA_LEED_metadata
 
-    # Extract metadata from file obtained using the LEED system at St Andrews
-    metadata = _load_StA_LEED_metadata(fname)
+        fname = 'C:/User/Documents/Research/LEED_100eV.bmp'
+
+        # Extract metadata from file obtained using the LEED system at St Andrews
+        metadata = _load_StA_LEED_metadata(fname)
 
     """
 

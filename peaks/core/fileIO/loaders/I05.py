@@ -28,12 +28,14 @@ def _load_I05_data(fname):
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.I05 import _load_I05_data
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/i05-12345.nxs'
+        from peaks.core.fileIO.loaders.I05 import _load_I05_data
 
-    # Extract data from file obtained at the I05 beamline
-    data = _load_I05_data(fname)
+        fname = 'C:/User/Documents/Research/i05-12345.nxs'
+
+        # Extract data from file obtained at the I05 beamline
+        data = _load_I05_data(fname)
 
     """
 
@@ -84,9 +86,9 @@ def _load_I05_data(fname):
 
             # Display warning explaining how kinetic energy values are saved
             warn_str = ("The kinetic energy coordinates saved are that of the first scan. The corresponding offsets "
-                        "for successive scans are included in the KE_delta coordinate. Run DataArray.disp_from_hv(hv) "
-                        "where DataArray is the loaded hv scan xr.DataArray and hv is the relevant photon energy to "
-                        "extract a dispersion at using the proper kinetic energy scaling for that photon energy.")
+                        "for successive scans are included in the KE_delta coordinate. Run DataArray.disp_from_hv(hv), "
+                        "where DataArray is the loaded hv scan xarray.DataArray and hv is the relevant photon energy, "
+                        "to extract a dispersion at using the proper kinetic energy scaling for that photon energy.")
             analysis_warning(warn_str, title='Loading info', warn_type='info')
 
         # Fermi map (polar/delf varies)
@@ -280,12 +282,14 @@ def _load_I05_metadata(fname, scan_type, loc):
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.I05 import _load_I05_metadata
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/i05-12345.nxs'
+        from peaks.core.fileIO.loaders.I05 import _load_I05_metadata
 
-    # Extract metadata from file obtained at the I05 beamline at Diamond Light Source
-    metadata = _load_I05_metadata(fname)
+        fname = 'C:/User/Documents/Research/i05-12345.nxs'
+
+        # Extract metadata from file obtained at the I05 beamline at Diamond Light Source
+        metadata = _load_I05_metadata(fname)
 
     """
 
@@ -497,21 +501,23 @@ def _I05_find_attr(file, file_handles, attr, attr_type):
 
     Returns
     ------------
-    extracted_attr : str, attr_type, None
+    extracted_attr : str, attr_type, NoneType
         The extracted attribute.
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.I05 import _I05_find_attr
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/i05-12345.nxs'
+        from peaks.core.fileIO.loaders.I05 import _I05_find_attr
 
-    # Open the file (read only)
-    f = h5py.File(fname, 'r')
+        fname = 'C:/User/Documents/Research/i05-12345.nxs'
 
-    # Extract the pass energy attribute from a file obtained at the I05 beamline at Diamond Light Source
-    PE_handles = ['entry1/instrument/analyser/pass_energy', 'entry1/instrument/analyser_total/pass_energy']
-    PE = _I05_find_attr(f, PE_handles, 'P.E', float)
+        # Open the file (read only)
+        f = h5py.File(fname, 'r')
+
+        # Extract the pass energy attribute from a file obtained at the I05 beamline at Diamond Light Source
+        PE_handles = ['entry1/instrument/analyser/pass_energy', 'entry1/instrument/analyser_total/pass_energy']
+        PE = _I05_find_attr(f, PE_handles, 'P.E', float)
 
     """
 
@@ -557,21 +563,23 @@ def _I05_find_coord(file, file_handles, coord, num_dp):
 
     Returns
     ------------
-    extracted_coord : float, np.array, list, None
+    extracted_coord : float, numpy.ndarray, list, NoneType
         The extracted coordinate(s).
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.I05 import _I05_find_coord
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/i05-12345.nxs'
+        from peaks.core.fileIO.loaders.I05 import _I05_find_coord
 
-    # Open the file (read only)
-    f = h5py.File(fname, 'r')
+        fname = 'C:/User/Documents/Research/i05-12345.nxs'
 
-    # Extract the x coordinate metadata from a file obtained at the I05 beamline at Diamond Light Source
-    x_handles = ['entry1/instrument/manipulator/smx', 'entry1/instrument/manipulator/sax']
-    x = _I05_find_coord(f, x_handles, 'x1', num_dp=2)
+        # Open the file (read only)
+        f = h5py.File(fname, 'r')
+
+        # Extract the x coordinate metadata from a file obtained at the I05 beamline at Diamond Light Source
+        x_handles = ['entry1/instrument/manipulator/smx', 'entry1/instrument/manipulator/sax']
+        x = _I05_find_coord(f, x_handles, 'x1', num_dp=2)
 
     """
 

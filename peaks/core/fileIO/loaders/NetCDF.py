@@ -18,21 +18,23 @@ def _load_NetCDF_data(fname):
 
     Returns
     ------------
-    data : xr.DataArray
+    data : xarray.DataArray
         The loaded data.
 
     Examples
     ------------
-    from peaks.core.fileIO.loaders.NetCDF import _load_NetCDF_data
+    Example usage is as follows::
 
-    fname = 'C:/User/Documents/Research/FS1.nc'
+        from peaks.core.fileIO.loaders.NetCDF import _load_NetCDF_data
 
-    # Extract data from a NetCDF file
-    data = _load_NetCDF_data(fname)
+        fname = 'C:/User/Documents/Research/FS1.nc'
+
+        # Extract data from a NetCDF file
+        data = _load_NetCDF_data(fname)
 
     """
 
-    # load NetCDF file as xr.DataArray
+    # load NetCDF file as xarray.DataArray
     data = xr.open_dataarray(fname)
 
     # Since NetCDF file attributes cannot be saved as None type, we want to revert any empty strings to type None
