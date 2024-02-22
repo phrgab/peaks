@@ -822,32 +822,32 @@ def degrid(data, width=0.1, height=0.1, cutoff=4):
     # visualisation and data manipulation
     FFT = fftshift(FFT)
 
-    # Define n0 and n1 values, the discrete coordinates in FFT space
-    n0_values = np.linspace(0, FFT.shape[0] - 1, FFT.shape[0])
-    n1_values = np.linspace(0, FFT.shape[1] - 1, FFT.shape[1])
+    # Define n1 and n2 values, the discrete coordinates in FFT space
+    n1_values = np.linspace(0, FFT.shape[0] - 1, FFT.shape[0])
+    n2_values = np.linspace(0, FFT.shape[1] - 1, FFT.shape[1])
 
-    # Shift n0 and n1 values in accordance with fftshift
-    if len(n0_values) % 2 == 0:
-        n0_values -= (FFT.shape[0]) / 2
-    else:
-        n0_values -= (FFT.shape[0] - 1) / 2
-
+    # Shift n1 and n2 values in accordance with fftshift
     if len(n1_values) % 2 == 0:
-        n1_values -= (FFT.shape[1]) / 2
+        n1_values -= (FFT.shape[0]) / 2
     else:
-        n1_values -= (FFT.shape[1] - 1) / 2
+        n1_values -= (FFT.shape[0] - 1) / 2
+
+    if len(n2_values) % 2 == 0:
+        n2_values -= (FFT.shape[1]) / 2
+    else:
+        n2_values -= (FFT.shape[1] - 1) / 2
 
     # Represent the magnitude of the FFT as an xarray.DataArray for plotting/manipulation purposes.
-    FFT_DataArray = xr.DataArray(abs(FFT), dims=('n0', 'n1'), coords={'n0': n0_values, 'n1': n1_values})
+    FFT_DataArray = xr.DataArray(abs(FFT), dims=('n1', 'n2'), coords={'n1': n1_values, 'n2': n2_values})
 
     # Define the centre region that we want to leave untouched
-    n0_centre = [-1 * FFT.shape[0] * width / 2, FFT.shape[0] * width / 2]
-    n1_centre = [-1 * FFT.shape[1] * height / 2, FFT.shape[1] * height / 2]
+    n1_centre = [-1 * FFT.shape[0] * width / 2, FFT.shape[0] * width / 2]
+    n2_centre = [-1 * FFT.shape[1] * height / 2, FFT.shape[1] * height / 2]
 
     # Get FFT_DataArray with just the central low-frequency region (which defines most of the important information)
-    centre_FFT_DataArray = FFT_DataArray.sel(n0=slice(n0_centre[0], n0_centre[1]),
-                                             n1=slice(n1_centre[0], n1_centre[1])).interp(
-        {'n0': n0_values, 'n1': n1_values}).fillna(0)
+    centre_FFT_DataArray = FFT_DataArray.sel(n1=slice(n1_centre[0], n1_centre[1]),
+                                             n2=slice(n2_centre[0], n2_centre[1])).interp(
+        {'n1': n1_values, 'n2': n2_values}).fillna(0)
 
     # Subtract the central low-frequency region from FFT_DataArray, leaving the not so important information which we
     # can filter
@@ -858,12 +858,12 @@ def degrid(data, width=0.1, height=0.1, cutoff=4):
 
     # Create a filter where any points of centre_subtracted_FFT_DataArray for which the intensity is above the cutoff is
     # assigned to 0. All other points are assigned to 1
-    FFT_filter = xr.DataArray(np.where(centre_subtracted_FFT_DataArray.data > cutoff, 0, 1), dims=('n0', 'n1'),
-                              coords={'n0': n0_values, 'n1': n1_values})
+    FFT_filter = xr.DataArray(np.where(centre_subtracted_FFT_DataArray.data > cutoff, 0, 1), dims=('n1', 'n2'),
+                              coords={'n1': n1_values, 'n2': n2_values})
 
     # Ensure n=0 components are unaffected by changing their values in the filter to 1
-    FFT_filter[int(np.where(n0_values == 0)[0])] = 1
-    FFT_filter[:, int(np.where(n1_values == 0)[0])] = 1
+    FFT_filter[int(np.where(n1_values == 0)[0])] = 1
+    FFT_filter[:, int(np.where(n2_values == 0)[0])] = 1
 
     # Define degrid_data, and assign its contents to the inverse FFT of the original FFT of the data, multiplied by the
     # filter to remove intense high frequency Fourier components
@@ -880,23 +880,23 @@ def degrid(data, width=0.1, height=0.1, cutoff=4):
     fig, axes = plt.subplots(figsize=(15, 4), ncols=4)
 
     # Plot the magnitude of the FFT, and the central low-frequency region that is excluded from filtering analysis
-    FFT_DataArray.plot(ax=axes[0], y='n1', robust=True, add_colorbar=False, cmap='binary')
-    axes[0].plot([n0_centre[0], n0_centre[1]], [n1_centre[0], n1_centre[0]], c='yellow', linewidth=2)
-    axes[0].plot([n0_centre[0], n0_centre[1]], [n1_centre[1], n1_centre[1]], c='yellow', linewidth=2)
-    axes[0].plot([n0_centre[0], n0_centre[0]], [n1_centre[0], n1_centre[1]], c='yellow', linewidth=2)
-    axes[0].plot([n0_centre[1], n0_centre[1]], [n1_centre[0], n1_centre[1]], c='yellow', linewidth=2)
+    FFT_DataArray.plot(ax=axes[0], y='n2', robust=True, add_colorbar=False, cmap='binary')
+    axes[0].plot([n1_centre[0], n1_centre[1]], [n2_centre[0], n2_centre[0]], c='yellow', linewidth=2)
+    axes[0].plot([n1_centre[0], n1_centre[1]], [n2_centre[1], n2_centre[1]], c='yellow', linewidth=2)
+    axes[0].plot([n1_centre[0], n1_centre[0]], [n2_centre[0], n2_centre[1]], c='yellow', linewidth=2)
+    axes[0].plot([n1_centre[1], n1_centre[1]], [n2_centre[0], n2_centre[1]], c='yellow', linewidth=2)
     axes[0].set_title('Data transformed to \nFourier space')
 
     # Plot the FFT with the central central low-frequency region removed
-    centre_subtracted_FFT_DataArray.plot(ax=axes[1], y='n1', robust=True, add_colorbar=False, cmap='binary')
+    centre_subtracted_FFT_DataArray.plot(ax=axes[1], y='n2', robust=True, add_colorbar=False, cmap='binary')
     axes[1].set_title('Important low frequency data \nnot considered for filter')
 
     # Plot the filter
-    FFT_filter.plot(ax=axes[2], y='n1', add_colorbar=False, cmap='binary_r')
+    FFT_filter.plot(ax=axes[2], y='n2', add_colorbar=False, cmap='binary_r')
     axes[2].set_title('Filter determined by \npoints above cutoff')
 
     # Plot the FFT multiplied by the filter (thus with intense high frequency Fourier components removed)
-    (FFT_DataArray * FFT_filter).plot(ax=axes[3], y='n1', robust=True, add_colorbar=False, cmap='binary')
+    (FFT_DataArray * FFT_filter).plot(ax=axes[3], y='n2', robust=True, add_colorbar=False, cmap='binary')
     axes[3].set_title('Apply filter to data to \nremove points above cutoff')
 
     plt.tight_layout()
