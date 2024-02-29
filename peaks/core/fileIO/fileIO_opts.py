@@ -333,5 +333,7 @@ class _coords(object):
     """
 
     # Dictionary to store the units for different coordinates
-    units = {'theta_par': 'deg', 'polar': 'deg', 'tilt': 'deg', 'ana_polar': 'deg', 'defl_perp': 'deg', 'x1': 'um',
-             'x2': 'um', 'x3': 'um', 'x': 'um', 'y': 'um', 'z': 'um', 'location': 'um', 'hv': 'eV', 'KE_delta': 'eV'}
+    units = {'theta_par': 'deg', 'polar': 'deg', 'tilt': 'deg', 'ana_polar': 'deg', 'defl_perp': 'deg',
+             'two_theta': 'deg', 'spin_rot_angle': 'deg', 'x1': 'um', 'x2': 'um', 'x3': 'um', 'x': 'um', 'y': 'um',
+             'z': 'um', 'location': 'um', 'y_scale': 'mm', 'hv': 'eV', 'KE_delta': 'eV', 'temp_sample': 'K',
+             'temp_cryo': 'K'}
