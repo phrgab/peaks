@@ -3,12 +3,13 @@
 """
 
 # Phil King 21/07/22
-# Brendan Edwards 15/02/2024
+# Brendan Edwards 28/02/2024
 
 import os
 import zipfile
 import numpy as np
-from peaks.core.fileIO.loaders.ibw import _load_ibw_wavenote
+from peaks.core.fileIO.loaders.ibw import _load_ibw_data, _load_ibw_wavenote
+from peaks.core.utils.misc import analysis_warning
 
 
 def _load_SES_data(fname):
@@ -186,7 +187,8 @@ def _load_SES_ibw_data(fname):
     Returns
     ------------
     data : dict
-        Dictionary containing the file scan type, spectrum, and coordinates.
+        Dictionary containing the file scan type, spectrum, and coordinates. At this stage, the scan type
+        will not be identified, and the coordinate names may not all be in peaks format.
 
     Examples
     ------------
@@ -201,7 +203,78 @@ def _load_SES_ibw_data(fname):
 
     """
 
-    raise Exception('SES ibw file loading is not currently supported')
+    # Use the _load_ibw_data function to load the data (at this stage, the scan type will not be identified, and the
+    # coordinate names will not be in peaks format.)and metalines
+    data, metalines = _load_ibw_data(fname)
+
+    # Loop through and update the contents of data so that the dimension names are in peaks format
+    for dim in list(data):
+        # Replace kinetic energy with eV
+        if 'kinetic' in dim.lower():
+            # Rename dimension to eV
+            data['eV'] = data.pop(dim)
+
+            # Ensure eV is arranged in increasing eV
+            if data['eV'][0] > data['eV'][1]:
+                data['eV'] = np.flip(data['eV'])
+
+        # Attempt to replace binding energy with kinetic energy
+        elif 'binding' in dim.lower():
+            # If the metadata has this in KE; extract from there
+
+            if _SES_find(metalines, 'Energy Unit') == 'Kinetic':
+                E0 = _SES_find(metalines, 'Low Energy')
+                data[dim] = data[dim] + float(E0) - data[dim][0]
+
+            # If not, give a warning that the data energy axis has been loaded as binding energy
+            else:
+                analysis_warning('Data energy axis has been loaded as binding energy.', title='Loading info',
+                                 warn_type='danger')
+
+            # Rename dimension to eV
+            data['eV'] = data.pop(dim)
+
+            # Ensure eV is arranged in increasing eV
+            if data['eV'][0] > data['eV'][1]:
+                data['eV'] = np.flip(data['eV'])
+
+        # Should be an hv scan, rename photon energy axis to hv and define a KE_delta coordinate
+        elif 'photon' in dim.lower() or 'hv' in dim.lower():
+            # Get the change in KE value of detector as a function of hv
+            data['KE_delta'] = data[dim] - data[dim][0]
+
+            # Rename dimension to hv
+            data['hv'] = data.pop(dim)
+
+        # Replace deg with theta_par
+        elif 'deg' in dim.lower():
+            # Rename dimension to theta_par
+            data['theta_par'] = data.pop(dim)
+
+        # Replace scale with y_scale
+        elif 'scale' in dim.lower():
+            # Rename dimension to y_scale
+            data['y_scale'] = data.pop(dim)
+
+        # Replace iteration with scan_no
+        elif 'iteration' in dim.lower():
+            # Redefine the iteration coordinates to ensure they are 1, 2, 3, ... (shockingly this is not a guarantee)
+            data[dim] = np.array(range(len(data[dim]))) + 1
+
+            # Rename dimension to scan_no
+            data['scan_no'] = data.pop(dim)
+
+        # Any other dimensions require beamline-specific loaders to identify, so rename any remaining dimensions to
+        # generic dimension names
+        elif 'point' in dim.lower():
+            # Rename dimension to dim0
+            data['dim0'] = data.pop(dim)
+
+        elif 'position' in dim.lower():
+            # Rename dimension to dim1
+            data['dim1'] = data.pop(dim)
+
+    return data
 
 
 def _load_SES_metalines(fname):
@@ -221,12 +294,12 @@ def _load_SES_metalines(fname):
     ------------
     Example usage is as follows::
 
-        from peaks.core.fileIO.loaders.SES import _extract_SES_metalines
+        from peaks.core.fileIO.loaders.SES import _load_SES_metalines
 
         fname = 'C:/User/Documents/Research/disp1.zip'
 
         # Extract the lines containing metadata
-        loc = _extract_SES_metalines(fname)
+        lines = _load_SES_metalines(fname)
 
     """
     # Get file_extension to determine the file type
@@ -258,9 +331,78 @@ def _load_SES_metalines(fname):
     # If the file is .ibw format
     elif file_extension == '.ibw':
         # Extract the lines containing metadata from the wavenote of the ibw file using the _load_ibw_wavenote function
-        metadata_lines = _load_ibw_wavenote(fname)
+        metadata_lines = _load_ibw_wavenote(fname).split('\r')
 
     return metadata_lines
+
+
+def _load_SES_manipulator_coords(metadata_lines, unique=True):
+    """This function will extract manipulator coordinates in an SES format manipulator scan.
+
+    Parameters
+    ------------
+    metadata_lines : list
+        Lines extracted from the file containing the metadata.
+
+    unique : bool, optional
+        Whether to only return unique coordinate values, or all coordinate values during a scan.
+
+    Returns
+    ------------
+    manipulator_coords : dict
+        Dictionary containing the manipulator coordinates, where each key is an axis dimension and each entry is a
+        numpy.ndarray.
+
+    Examples
+    ------------
+    Example usage is as follows::
+
+        from peaks.core.fileIO.loaders.SES import _load_SES_metalines, _load_SES_manipulator_coords
+
+        fname = 'C:/User/Documents/Research/SM1.ibw'
+
+        # Extract the lines containing metadata
+        metadata_lines = _load_SES_metalines(fname)
+
+        # Extract the unique manipulator coordinates
+        manipulator_coords = _load_SES_manipulator_coords(metadata_lines)
+
+        # Extract the all manipulator coordinates during a scan
+        manipulator_coords = _load_SES_manipulator_coords(metadata_lines, unique=False)
+
+    """
+
+    # Define a dictionary to store the manipulator coordinates
+    manipulator_coords = {}
+
+    # Determine the location of the manipulator coordinates information in the metadata_lines
+    manip_index = metadata_lines.index('[Run Mode Information]') + 1
+    if 'Name' in metadata_lines[manip_index]:
+        manip_index += 1
+
+    # Extract the axes dimensions
+    for dim in metadata_lines[manip_index].split('\x0b'):
+        manipulator_coords[dim] = []
+
+    # Loop through the rest of the data and extract the manipulator coordinates
+    manip_index += 1
+    while True:
+        try:
+            current_coordinates = metadata_lines[manip_index].split('\x0b')
+            for i, dim in enumerate(manipulator_coords):
+                manipulator_coords[dim].append(float(current_coordinates[i]))
+            manip_index += 1
+        except ValueError:
+            break
+
+    # Convert from lists to np arrays (extracting only unique values if requested)
+    for dim in manipulator_coords:
+        if unique:
+            manipulator_coords[dim] = np.unique(np.array(manipulator_coords[dim]))
+        else:
+            manipulator_coords[dim] = np.array(manipulator_coords[dim])
+
+    return manipulator_coords
 
 
 def _SES_find(lines, item):
@@ -289,11 +431,10 @@ def _SES_find(lines, item):
         fname = 'C:/User/Documents/Research/disp1.txt'
 
         # Open the file and load lines
-        with open(fname) as f:
-            lines = f.readlines()
+        metalines = _load_SES_metalines(fname)
 
         # Extract the analyser mode
-        ana_mode = _SES_find(lines, 'Analyzer Lens')
+        ana_mode = _SES_find(metalines, 'Analyzer Lens')
 
     """
 

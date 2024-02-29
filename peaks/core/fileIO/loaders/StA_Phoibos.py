@@ -140,20 +140,22 @@ def _load_StA_Phoibos_metadata(fname, scan_type):
     with open(fname) as f:
         lines = f.readlines()
 
-    # Define dictionary to store  metadata
+    # Define dictionary to store metadata
     metadata = {}
 
     # Extract the scan name from the file full path
     fname_split = fname.split('/')
     metadata['scan_name'] = fname_split[len(fname_split)-1].split('.')[0]
 
-    # Define attributes, using the _StA_Phoibos_find function to obtain metadata where possible
+    # Define initial attributes
     metadata['scan_type'] = scan_type
     metadata['sample_description'] = None
     metadata['eV_type'] = 'kinetic'
     metadata['beamline'] = 'StA-Phoibos'
     metadata['analysis_history'] = []
     metadata['EF_correction'] = None
+
+    # Define attributes, using the _StA_Phoibos_find function to obtain metadata where possible
     metadata['PE'] = float(_StA_Phoibos_find(lines, 'Pass Energy'))
     metadata['hv'] = float(_StA_Phoibos_find(lines, 'Excitation Energy'))
     metadata['pol'] = None
