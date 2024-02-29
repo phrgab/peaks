@@ -3,16 +3,15 @@
 """
 
 # Phil King 24/07/2022
-# Brendan Edwards 15/02/2024
+# Brendan Edwards 28/02/2024
 
 import os
 import numpy as np
+from igor2 import binarywave
 
 
 def _load_ibw_data(fname):
-    """*** NOT COMPLETED - IGOR IMPORT OF FUNCTION binarywave MUST BE FIXED. ***
-
-    This function loads data stored in ibw files.
+    """This function loads data stored in ibw files.
 
     Parameters
     ------------
@@ -22,7 +21,11 @@ def _load_ibw_data(fname):
     Returns
     ------------
     data : dict
-        Dictionary containing the file scan type, spectrum, and coordinates.
+        Dictionary containing entries for the file scan type, spectrum, and coordinates. At this stage, the scan type
+        will not be identified, and the coordinate names will not be in peaks format.
+
+    metadata_lines : list
+        Lines extracted from the file containing the metadata.
 
     Examples
     ------------
@@ -33,16 +36,15 @@ def _load_ibw_data(fname):
         fname = 'C:/User/Documents/Research/disp1.ibw'
 
         # Extract data from an ibw file
-        data = _load_NetCDF_data(fname)
+        data, metadata_lines = _load_NetCDF_data(fname)
 
     """
 
     # Open the file and load its contents
-    file_contents = None
-    # file_contents = binarywave.load(fname)
+    file_contents = binarywave.load(fname)
 
     # Extract spectrum
-    spectrum = file_contents['wave']['wData']
+    spectrum = file_contents['wave']['wData'].T
 
     # Extract relevant information on the dimensions of the data
     dim_size = file_contents['wave']['bin_header']['dimEUnitsSize']
@@ -52,17 +54,22 @@ def _load_ibw_data(fname):
     dim_start = file_contents['wave']['wave_header']['sfB']  # Initial value
     dim_step = file_contents['wave']['wave_header']['sfA']  # Step size
     dim_points = file_contents['wave']['wave_header']['nDim']  # Number of points
+    dim_end = dim_start + (dim_step * (dim_points - 1))
 
-    # Loop through dimensions and determine the relevant dimension waves and names, as labelled in file
-    dims = []
-    coords = {}
+    # Define a dictionary data which will store the scan type (currently undetermined), spectrum, and coordinates.
+    data = {'scan_type': None, 'spectrum': spectrum}
+
+    # Loop through the dimensions and extract the relevant dimension names and coordinates
     counter = 0
     for i in range(spectrum.ndim):
-        # Determine dimension units/name as labelled in file
-        dims.append(dim_units[counter: (counter + dim_size[i])])
-        coords[dims[i]] = np.linspace(dim_start[i], dim_start[i] + dim_step[i] * dim_points[i], dim_points[i],
-                                      endpoint=False)
+        dim = dim_units[counter:counter + dim_size[i]]
+        data[dim] = np.linspace(dim_start[i], dim_end[i], dim_points[i], endpoint=False)
         counter += dim_size[i]
+
+    # Extract the metadata from the wavenote
+    metadata_lines = file_contents['wave']['note'].decode('ascii').split('\r')
+
+    return data, metadata_lines
 
 
 def _load_ibw_wavenote(fname):
