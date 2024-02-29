@@ -3,14 +3,16 @@
 """
 
 # Phil King 03/05/2021
-# Brendan Edwards 31/10/2023
+# Brendan Edwards 26/02/2024
 
 import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
+from numpy.fft import fft
 from matplotlib import colors, cm
 from cycler import cycler
 from peaks.core.utils.misc import analysis_warning
+from peaks.core.utils.OOP_method import add_methods
 
 
 def plot_grid(data, ncols=3, nrows=None, titles=None, sharex=False, sharey=False, figsize=None, **plotting_kwargs):
@@ -382,5 +384,153 @@ def plot_ROI(ROI, color='black', x=None, y=None, label=None, loc='best', ax=None
     plt.tight_layout()
 
 
-def plot_nanofocus():
-    pass
+@add_methods(xr.DataArray)
+def plot_nanofocus(data, focus='defocus'):
+    """Function to determine the focus of a scan obtained at the nano branch of the I05 beamline at Diamond Light
+    Source, and plot the results. The function works by determining the focal position at which at scanned feature
+    becomes sharpest.
+
+    Parameters
+    ------------
+    data : xarray.DataArray
+        The 2D (or 4D) focussing scan data with some spatial direction dimension and some focussing direction
+        dimension (and additionally theta_par and eV dimensions for 4D data).
+
+    focus : str, optional
+        The dimension of the data that represents the focussing direction.
+
+    Examples
+    ------------
+    Example usage is as follows::
+
+        from peaks import *
+
+        focus_scan = load('i05-1-12345.nxs')
+
+        # Plot the results of how the sharpness of a feature varies with defocus, determining the focal position
+        focus_scan.plot_nanofocus()
+
+    """
+
+    # Ensure the data is a 2D DataArray by integrating in energy and angle space if required
+    if len(data.dims) == 4:
+        data = data.mean(['theta_par', 'eV'], keep_attrs=True)
+
+    # Extract the spatial dimension
+    data_dims = list(data.dims)
+    data_dims.remove(focus)
+    spatial = data_dims[0]
+
+    # Determine the step of the focus dimension
+    focus_step = data[focus].data[1] - data[focus].data[0]
+
+    # Set up a subplot to plot the focussing analysis
+    fig, axes = plt.subplots(figsize=(12, 14), ncols=2, nrows=3)
+
+    # Plot the intensity map
+    data.plot(x=focus, ax=axes[0, 0], add_colorbar=False)
+
+    # Plot focus-dependent cuts through the spatial dimension (using the plot_DCs function)
+    try:
+        plot_DCs(data, color='black', offset=0.1, norm=False, ax=axes[0, 1], y=spatial)
+    except ValueError:
+        plot_DCs(data, color='black', offset=0.1, norm=False, ax=axes[0, 1], stack_dim=spatial)
+    axes[0, 1].set_xlabel('')
+    axes[0, 1].set_xticks([])
+    axes[0, 1].set_title('Line cuts', fontsize=16)
+
+    # Calculate and plot the focus-dependent means of the absolute values of the derivatives along the spatial
+    # dimension
+    mean_abs_deriv = abs(data.diff(spatial)).mean(spatial)
+    mean_abs_deriv.plot(ax=axes[1, 0], c='black')
+
+    # Estimate and plot the focal point from the focus-dependent means of the absolute values of the derivatives
+    # along the spatial dimension
+    mean_abs_deriv_smoothed = mean_abs_deriv.smooth(**{focus: 2 * focus_step})
+    mean_abs_deriv_smoothed.plot(ax=axes[1, 0], c='black', alpha=0.2)
+    max_mean_abs_deriv = mean_abs_deriv_smoothed.argmax()
+    focal_point_mean_abs_deriv = mean_abs_deriv[focus].data[max_mean_abs_deriv]
+    axes[1, 0].set_title(
+        'Mean of the abs(deriv) estimate: {focal_point}'.format(focal_point=focal_point_mean_abs_deriv),
+        fontsize=16)
+    axes[1, 0].axvline(focal_point_mean_abs_deriv, c='black', linestyle='--')
+    axes[1, 0].set_ylabel('Intensity (arb. units)')
+    axes[1, 0].set_yticks([])
+
+    # Calculate and plot the focus-dependent maximums of the absolute values of the derivatives along the spatial
+    # dimension
+    max_abs_deriv = abs(data.diff(spatial)).max(spatial)
+    max_abs_deriv.plot(ax=axes[1, 1], c='black')
+
+    # Estimate and plot the focal point from the focus-dependent maximums of the absolute values of the derivatives
+    # along the spatial dimension
+    max_abs_deriv_smoothed = max_abs_deriv.smooth(**{focus: 2 * focus_step})
+    max_abs_deriv_smoothed.plot(ax=axes[1, 1], c='black', alpha=0.2)
+    max_max_abs_deriv = max_abs_deriv_smoothed.argmax()
+    focal_point_max_abs_deriv = max_abs_deriv[focus].data[max_max_abs_deriv]
+    axes[1, 1].set_title(
+        'Max of the abs(deriv) estimate: {focal_point}'.format(focal_point=focal_point_max_abs_deriv),
+        fontsize=16)
+    axes[1, 1].axvline(focal_point_max_abs_deriv, c='black', linestyle='--')
+    axes[1, 1].set_ylabel('Intensity (arb. units)')
+    axes[1, 1].set_yticks([])
+
+    # Calculate and plot the focus-dependent variance along the spatial dimension
+    variance = data.var(spatial)
+    variance.plot(ax=axes[2, 0], c='black')
+
+    # Estimate and plot the focal point from the focus-dependent variance along the spatial dimension
+    variance_smoothed = variance.smooth(**{focus: 2 * focus_step})
+    variance_smoothed.plot(ax=axes[2, 0], c='black', alpha=0.2)
+    max_variance = variance_smoothed.argmax()
+    focal_point_max_variance = variance[focus].data[max_variance]
+    axes[2, 0].set_title(
+        'Max of the variance estimate: {focal_point}'.format(focal_point=focal_point_max_variance),
+        fontsize=16)
+    axes[2, 0].axvline(focal_point_max_variance, c='black', linestyle='--')
+    axes[2, 0].set_ylabel('Intensity (arb. units)')
+    axes[2, 0].set_yticks([])
+
+    # Perform a fast Fourier transform (FFT) analysis of the data to look for increased higher frequencies
+    # indicative of a sharper step, by transforming the spatial dimension of the data to frequency space
+    FFT_data = data.copy(deep='True')
+    if focus != data.dims[0]:  # Ensure data shape is as expected
+        FFT_data = FFT_data.T
+    FFT_data.data = abs(fft(data.data))  # Perform FFT
+    FFT_data_out = FFT_data.isel({spatial: FFT_data.argmax(spatial).data[0] + 1})
+
+    # Plot the FFT analysis results
+    FFT_data_out.plot(ax=axes[2, 1], c='black')
+
+    # Estimate and plot the focal point from the FFT analysis
+    FFT_data_out_smoothed = FFT_data_out.smooth(**{focus: 2 * focus_step})
+    FFT_data_out_smoothed.plot(ax=axes[2, 1], c='black', alpha=0.2)
+    max_FFT = FFT_data_out_smoothed.argmax()
+    focal_point_max_FFT = FFT_data_out[focus].data[max_FFT]
+    axes[2, 1].set_title(
+        'Fast Fourier transform estimate: {focal_point}'.format(focal_point=focal_point_max_FFT), fontsize=16)
+    axes[2, 1].axvline(focal_point_max_FFT, c='black', linestyle='--')
+    axes[2, 1].set_ylabel('Intensity (arb. units)')
+    axes[2, 1].set_yticks([])
+
+    # Determine the average focal position estimate (removing any estimate outliers that are more than 2 std away
+    # from the mean of the estimates)
+    estimates = np.array(
+        [focal_point_mean_abs_deriv, focal_point_max_abs_deriv, focal_point_max_variance, focal_point_max_FFT])
+    estimates_no_outliers = []
+    for i, item in enumerate(abs(abs(estimates) - abs(estimates.mean()))):
+        if item < (2 * estimates.std()):
+            estimates_no_outliers.append(estimates[i])
+    avg_estimate = round(np.mean(estimates_no_outliers), 2)
+
+    # Plot the average focal position
+    axes[0, 0].set_title(
+        'Intensity map ({focus} estimate: {avg_estimate})'.format(focus=focus, avg_estimate=avg_estimate),
+        fontsize=16)
+    axes[0, 0].axvline(avg_estimate, c='#ECDE00', linestyle='dotted')
+    axes[1, 0].axvline(avg_estimate, c='#ECDE00', linestyle='dotted')
+    axes[1, 1].axvline(avg_estimate, c='#ECDE00', linestyle='dotted')
+    axes[2, 0].axvline(avg_estimate, c='#ECDE00', linestyle='dotted')
+    axes[2, 1].axvline(avg_estimate, c='#ECDE00', linestyle='dotted')
+
+    plt.tight_layout()
