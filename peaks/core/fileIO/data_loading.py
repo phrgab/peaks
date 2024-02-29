@@ -13,6 +13,7 @@ import xarray as xr
 import dask
 import dask.array as da
 from tqdm import tqdm
+from os.path import isfile, join
 from peaks.core.utils.misc import analysis_warning
 from peaks.core.fileIO.fileIO_opts import file, loc_opts, _coords
 from peaks.core.fileIO.loaders.SES import _load_SES_metalines, _SES_find
@@ -159,7 +160,12 @@ def load(fname, lazy='auto', loc='auto', metadata=True, parallel=False):
     # Loop through the non-duplicated addresses in possible_file_addresses
     for address in set(possible_file_addresses):
         for extension in ext:
-            current_file = address + '.' + extension
+            # For standard data files
+            if extension:
+                current_file = address + '.' + extension
+            # For data in folders e.g. SOLEIL CASSIOPEE FMs
+            else:
+                current_file = address
             # If file path is valid append current_file to file_list
             if os.path.exists(current_file):
                 file_list.append(current_file)
@@ -419,9 +425,9 @@ def _load_single_data(fname, lazy='auto', loc='auto', metadata=True):
 
     # Ensure that the dimensions of the DataArray are arranged in the standard order
     DataArray = DataArray.transpose('scan_no', 't', 'hv', 'temp_sample', 'temp_cryo', 'defocus', 'focus',
-                                    'da30_z', 'x1', 'x2', 'x3', 'dim0', 'dim1', 'y_scale', 'two_th', 'polar',
-                                    'ana_polar', 'tilt', 'phi', 'defl_perp', 'k_perp', 'azi', 'defl_par', 'eV',
-                                    'theta_par', 'k_par', missing_dims='ignore')
+                                    'da30_z', 'x3', 'x2', 'x1', 'dim1', 'dim0', 'y_scale', 'two_theta', 'polar',
+                                    'ana_polar', 'tilt', 'phi', 'defl_perp', 'k_perp', 'azi', 'spin_rot_angle',
+                                    'eV', 'defl_par', 'theta_par', 'k_par', missing_dims='ignore')
 
     return DataArray
 
@@ -474,10 +480,15 @@ def _make_DataArray(data, lazy='auto'):
     if lazy is True or (lazy == 'auto' and data['spectrum'].nbytes > 500000000):
         data['spectrum'] = da.from_array(data['spectrum'], chunks='auto')
 
-    # If the scan type is a dispersion, there is only one possible set of coordinates
+    # If the scan type is a standard dispersion, there is only one possible set of coordinates
     if scan_type == 'dispersion':
-        DataArray = xr.DataArray(data['spectrum'], dims=("theta_par", "eV"),
-                                 coords={"theta_par": data['theta_par'], "eV": data['eV']})
+        DataArray = xr.DataArray(data['spectrum'], dims=('theta_par', 'eV'),
+                                 coords={'theta_par': data['theta_par'], 'eV': data['eV']})
+
+    # If the scan type is a dispersion with multiple scans, there is only one possible set of coordinates
+    elif scan_type == 'dispersion (multiple scans)':
+        DataArray = xr.DataArray(data['spectrum'], dims=('scan_no', 'theta_par', 'eV'),
+                                 coords={'scan_no': data['scan_no'], 'theta_par': data['theta_par'], 'eV': data['eV']})
 
     # If the scan type is a Fermi map, the mapping coordinate could be tilt, polar, ana_polar or defl_perp
     elif scan_type == 'FS map':
@@ -496,65 +507,135 @@ def _make_DataArray(data, lazy='auto'):
                                      coords={'defl_perp': data['defl_perp'], 'theta_par': data['theta_par'],
                                              'eV': data['eV']})
 
-    # If the scan type is a spatial map, there is only one possible set of coordinates
+    # If the scan type is a spatial map, there is only one possible set of coordinates, but the spectrum shape will
+    # depend on the order of x1 and x2 (i.e. which is the fast/slow axis), show try both orders (try x2 first as this is
+    # the assumed default in the loaders). theta_par and eV may or may not be present, depending on the analyser mode.
     elif scan_type == 'spatial map':
-        DataArray = xr.DataArray(data['spectrum'], dims=('x1', 'x2', 'theta_par', 'eV'),
-                                 coords={'x1': data['x1'], 'x2': data['x2'], 'theta_par': data['theta_par'],
-                                         'eV': data['eV']})
+        try:
+            if 'theta_par' in data_keys:
+                DataArray = xr.DataArray(data['spectrum'], dims=('x2', 'x1', 'theta_par', 'eV'),
+                                         coords={'x2': data['x2'], 'x1': data['x1'], 'theta_par': data['theta_par'],
+                                                 'eV': data['eV']})
+            else:
+                DataArray = xr.DataArray(data['spectrum'], dims=('x2', 'x1'),
+                                         coords={'x2': data['x2'], 'x1': data['x1']})
+        except ValueError:
+            if 'theta_par' in data_keys:
+                DataArray = xr.DataArray(data['spectrum'], dims=('x1', 'x2', 'theta_par', 'eV'),
+                                         coords={'x1': data['x1'], 'x2': data['x2'], 'theta_par': data['theta_par'],
+                                                 'eV': data['eV']})
+            else:
+                DataArray = xr.DataArray(data['spectrum'], dims=('x1', 'x2'),
+                                         coords={'x1': data['x1'], 'x2': data['x2']})
 
-    # If the scan type is a line scan, the mapping coordinate could be x1, x2 or x3
+    # If the scan type is a line scan, the mapping coordinate could be x1, x2 or x3. theta_par and eV may or may not be
+    # present, depending on the analyser mode
     elif scan_type == 'line scan':
-        if 'x1' in data_keys:
+        if 'x1' in data_keys and 'theta_par' in data_keys:
             DataArray = xr.DataArray(data['spectrum'], dims=('x1', 'theta_par', 'eV'),
                                      coords={'x1': data['x1'], 'theta_par': data['theta_par'], 'eV': data['eV']})
-        elif 'x2' in data_keys:
+        if 'x1' in data_keys:
+            DataArray = xr.DataArray(data['spectrum'], dims='x1', coords={'x1': data['x1']})
+
+        elif 'x2' in data_keys and 'theta_par' in data_keys:
             DataArray = xr.DataArray(data['spectrum'], dims=('x2', 'theta_par', 'eV'),
                                      coords={'x2': data['x2'], 'theta_par': data['theta_par'], 'eV': data['eV']})
-        elif 'x3' in data_keys:
+
+        elif 'x2' in data_keys:
+            DataArray = xr.DataArray(data['spectrum'], dims='x2', coords={'x2': data['x2']})
+
+        elif 'x3' in data_keys and 'theta_par' in data_keys:
             DataArray = xr.DataArray(data['spectrum'], dims=('x3', 'theta_par', 'eV'),
                                      coords={'x3': data['x3'], 'theta_par': data['theta_par'], 'eV': data['eV']})
 
+        elif 'x3' in data_keys:
+            DataArray = xr.DataArray(data['spectrum'], dims='x3', coords={'x3': data['x3']})
+
     # If the scan type is a da30_z scan, there is only one possible set of coordinates
     elif scan_type == 'da30_z scan':
-        DataArray = xr.DataArray(data['spectrum'], dims=('da30_z', 'location', 'eV'),
-                                 coords={'da30_z': data['da30_z'], 'location': data['location'], "eV": data['eV']})
+        DataArray = xr.DataArray(data['spectrum'], dims=('da30_z', 'location'),
+                                 coords={'da30_z': data['da30_z'], 'location': data['location']})
 
-    # If the scan type is a Focus scan, the mapping coordinate could be x1 or x2
+    # If the scan type is a Focus scan, the mapping coordinate could be x1 or x2. theta_par and eV may or may not be
+    # present, depending on the analyser mode
     elif scan_type == 'Focus scan':
-        if 'x1' in data_keys:
+        if 'x1' in data_keys and 'theta_par' in data_keys:
             DataArray = xr.DataArray(data['spectrum'], dims=('defocus', 'x1', 'theta_par', 'eV'),
                                      coords={'defocus': data['defocus'], 'x1': data['x1'],
                                              'theta_par': data['theta_par'], "eV": data['eV']})
-        elif 'x2' in data_keys:
+        elif 'x1' in data_keys:
+            DataArray = xr.DataArray(data['spectrum'], dims=('defocus', 'x1'),
+                                     coords={'defocus': data['defocus'], 'x1': data['x1']})
+        elif 'x2' in data_keys and 'theta_par' in data_keys:
             DataArray = xr.DataArray(data['spectrum'], dims=('defocus', 'x2', 'theta_par', 'eV'),
                                      coords={'defocus': data['defocus'], 'x2': data['x2'],
                                              'theta_par': data['theta_par'], 'eV': data['eV']})
+        elif 'x2' in data_keys:
+            DataArray = xr.DataArray(data['spectrum'], dims=('defocus', 'x2'),
+                                     coords={'defocus': data['defocus'], 'x2': data['x2']})
 
-    # If the scan type is a 1D Focus scan, the focussing coordinate could be da30_z, defocus or focus
+    # If the scan type is a 1D Focus scan, the focussing coordinate could be da30_z, defocus or focus. theta_par and eV
+    # may or may not be present, depending on the analyser mode
     elif scan_type == '1D focus scan':
-        if 'da30_z' in data_keys:
+        if 'da30_z' in data_keys and 'theta_par' in data_keys:
             DataArray = xr.DataArray(data['spectrum'], dims=('da30_z', 'theta_par', 'eV'),
                                      coords={'da30_z': data['da30_z'], 'theta_par': data['theta_par'],
                                              'eV': data['eV']})
-        elif 'defocus' in data_keys:
+        elif 'da30_z' in data_keys:
+            DataArray = xr.DataArray(data['spectrum'], dims='da30_z',
+                                     coords={'da30_z': data['da30_z']})
+        elif 'defocus' in data_keys and 'theta_par' in data_keys:
             DataArray = xr.DataArray(data['spectrum'], dims=('defocus', 'theta_par', 'eV'),
                                      coords={'defocus': data['defocus'], 'theta_par': data['theta_par'],
                                              'eV': data['eV']})
-        elif 'focus' in data_keys:
+        elif 'defocus' in data_keys:
+            DataArray = xr.DataArray(data['spectrum'], dims='defocus',
+                                     coords={'defocus': data['defocus']})
+        elif 'focus' in data_keys and 'theta_par' in data_keys:
             DataArray = xr.DataArray(data['spectrum'], dims=('focus', 'theta_par', 'eV'),
                                      coords={'focus': data['focus'], 'theta_par': data['theta_par'], "eV": data['eV']})
+        elif 'focus' in data_keys:
+            DataArray = xr.DataArray(data['spectrum'], dims='focus',
+                                     coords={'focus': data['focus']})
 
     # If the scan type is an hv scan, there is only one possible set of coordinates
     elif scan_type == 'hv scan':
         DataArray = xr.DataArray(data['spectrum'], dims=('hv', 'theta_par', 'eV'),
                                  coords={'hv': data['hv'], 'theta_par': data['theta_par'], 'eV': data['eV']})
         # Add KE_delta coordinate
-        DataArray.coords['KE_delta'] = ('hv', KE_delta)
+        DataArray.coords['KE_delta'] = ('hv', data['KE_delta'])
+
+        # Display a warning explaining how kinetic energy values are saved
+        warn_str = ("The kinetic energy coordinates saved are that of the first scan. The corresponding offsets "
+                    "for successive scans are included in the KE_delta coordinate. Run DataArray.disp_from_hv(hv), "
+                    "where DataArray is the loaded hv scan xarray.DataArray and hv is the relevant photon energy, "
+                    "to extract a dispersion at using the proper kinetic energy scaling for that photon energy.")
+        analysis_warning(warn_str, title='Loading info', warn_type='info')
+
+    # If the scan type is a temp-dependent scan, there is only one possible set of coordinates
+    elif scan_type == 'temp-dependent scan':
+        DataArray = xr.DataArray(data['spectrum'], dims=('temp_sample', 'theta_par', 'eV'),
+                                 coords={'temp_sample': data['temp_sample'], 'theta_par': data['theta_par'],
+                                         'eV': data['eV']})
+
+    # If the scan type is a spin scan, there is only one possible set of coordinates
+    elif scan_type == 'spin scan':
+        DataArray = xr.DataArray(data['spectrum'], dims=('spin_rot_angle', 'theta_par', 'eV'),
+                                 coords={'spin_rot_angle': data['spin_rot_angle'], 'theta_par': data['theta_par'],
+                                         'eV': data['eV']})
+
+    # If the scan type is a phi scan, there is only one possible set of coordinates
+    elif scan_type == 'phi scan':
+        DataArray = xr.DataArray(data['spectrum'], dims='phi', coords={'phi': data['phi']})
+
+    # If the scan type is a 2Theta-Omega or reflectivity scan, there is only one possible set of coordinates
+    elif (scan_type == '2Theta-Omega scan') or (scan_type == 'reflectivity scan'):
+        DataArray = xr.DataArray(data['spectrum'], dims='two_theta', coords={'two_theta': data['two_theta']})
 
     # Loop through all the possible coordinates in saved in _coords.units. If the coordinate is present in the
     # DataArray, add the relevant unit to the coordinate attributes
     for coord in _coords.units:
-        if coord in list(DataArray.coords):
+        if coord in DataArray.dims:
             DataArray.coords[coord].attrs = {'units': _coords.units[coord]}
 
     return DataArray
@@ -619,11 +700,11 @@ def _add_metadata(DataArray, fname, loc, scan_type):
 
     elif loc == 'MAX IV Bloch':
         from .loaders.Bloch import _load_Bloch_metadata
-        metadata = _load_Bloch_metadata(fname, scan_type, loc)
+        metadata = _load_Bloch_metadata(fname, scan_type)
 
     elif loc == 'MAX IV Bloch-spin':
         from .loaders.Bloch import _load_Bloch_spin_metadata
-        metadata = _load_Bloch_spin_metadata(fname, scan_type, loc)
+        metadata = _load_Bloch_spin_metadata(fname, scan_type)
 
     elif loc == 'SOLEIL CASSIOPEE':
         from .loaders.CASSIOPEE import _load_CASSIOPEE_metadata
@@ -651,7 +732,7 @@ def _add_metadata(DataArray, fname, loc, scan_type):
 
     elif loc == 'ibw':
         from .loaders.ibw import _load_ibw_metadata
-        data = _load_ibw_metadata(fname)
+        metadata = _load_ibw_metadata(fname)
 
     # Assign the metadata information to attributes of the DataArray
     DataArray.attrs = metadata
@@ -696,8 +777,8 @@ def _get_loc(fname):
     # CLF Artemis data
     if file_extension == '':
         # Extract identifiable data from the file to determine if the location is SOLEIL CASSIOPEE
-        file_list = natsort.natsorted(os.listdir(filename))
-        file_list_ROI = [item for item in file_list if 'ROI1_' in item and isfile(join(file, item))]
+        file_list = natsort.natsorted(os.listdir(fname))
+        file_list_ROI = [item for item in file_list if 'ROI1_' in item and isfile(join(fname, item))]
         if len(file_list_ROI) > 1:  # Must be SOLEIL CASSIOPEE
             loc = 'SOLEIL CASSIOPEE'
         else:  # Likely CLF Artemis
@@ -780,12 +861,13 @@ def _get_loc(fname):
     elif file_extension == '.ibw':
         # Extract metadata information from file using the _load_SES_metalines function
         metadata_lines = _load_SES_metalines(fname)
-        # Determine the location
-        if 'bloch' in metadata_lines.lower() or 'maxiv' in metadata_lines.lower():
+        # Extract and determine the location using the _SES_find function
+        location = _SES_find(metadata_lines, 'Location=')
+        if 'bloch' in location.lower() or 'maxiv' in location.lower():
             loc = 'MAX IV Bloch'
-        elif 'ape' in metadata_lines.lower() or 'elettra' in metadata_lines.lower():
+        elif 'ape' in location.lower() or 'elettra' in location.lower():
             loc = 'Elettra APE'
-        elif 'cassiopee' in metadata_lines.lower() or 'soleil' in metadata_lines.lower():
+        elif 'cassiopee' in location.lower() or 'soleil' in location.lower():
             loc = 'SOLEIL CASSIOPEE'
         # If we are unable to find a location, define location as a generic ibw file
         else:
@@ -825,12 +907,149 @@ def _get_loc(fname):
     return loc
 
 
-def _h5py_str(file, file_handle):
+def _h5py_find_attr(h5py_file, file_handles, attr, attr_type):
+    """Helper function which checks possible h5py file handles, and returns an attribute for a valid file handle.
+
+    Parameters
+    ------------
+    h5py_file : h5py._hl.files.File
+        An open h5py format file.
+
+    file_handles : list
+        A list of strings describing the file handle of h5py file object.
+
+    attr : str
+        The name of the metadata attribute that is being extracted.
+
+    attr_type : type
+        The expected type of the attr, e.g. int or float.
+
+    Returns
+    ------------
+    extracted_attr : str, attr_type, NoneType
+        The extracted attribute.
+
+    Examples
+    ------------
+    Example usage is as follows::
+
+        from peaks.core.fileIO.loaders.I05 import _h5py_find_attr
+
+        fname = 'C:/User/Documents/Research/i05-12345.nxs'
+
+        # Open the file (read only)
+        f = h5py.File(fname, 'r')
+
+        # Extract the pass energy attribute from a h5py file
+        PE_handles = ['entry1/instrument/analyser/pass_energy', 'entry1/instrument/analyser_total/pass_energy']
+        PE = _h5py_find_attr(f, PE_handles, 'P.E', float)
+
+    """
+
+    # Set default value
+    extracted_attr = None
+
+    # Loop through file_handles to determine if any are valid
+    for handle in file_handles:
+        try:  # Attempt to extract value as type defined by attr_type
+            extracted_attr = attr_type(_h5py_str(h5py_file, handle))
+            break
+        except ValueError:  # Attempt to extract value as type str
+            extracted_attr = str(_h5py_str(h5py_file, handle))
+            break
+        except KeyError:  # Invalid file handle
+            pass
+
+    # Inform user if the metadata cannot be extracted
+    if extracted_attr is None:
+        analysis_warning(
+            'Unable to extract {attr} metadata. Update metadata loader in peaks.core.fileIO.loaders to account for '
+            'new file format.'.format(attr=attr), title='Loading info', warn_type='danger')
+
+    return extracted_attr
+
+
+def _h5py_find_coord(h5py_file, file_handles, coord, num_dp):
+    """Helper function which checks possible h5py file handles, and returns coordinate metadata for a valid file handle.
+
+    Parameters
+    ------------
+    h5py_file : h5py._hl.files.File
+        An open h5py format file.
+
+    file_handles : list
+        A list of strings describing the file handle of h5py file object.
+
+    coord : str
+        The name of the coordinate that is being extracted.
+
+    num_dp : int
+        The number of decimal places round to.
+
+    Returns
+    ------------
+    extracted_coord : float, str, NoneType
+        The extracted coordinate(s).
+
+    Examples
+    ------------
+    Example usage is as follows::
+
+        from peaks.core.fileIO.loaders.I05 import _h5py_find_coord
+
+        fname = 'C:/User/Documents/Research/i05-12345.nxs'
+
+        # Open the file (read only)
+        f = h5py.File(fname, 'r')
+
+        # Extract the x coordinate metadata from a h5py file
+        x_handles = ['entry1/instrument/manipulator/smx', 'entry1/instrument/manipulator/sax']
+        x = _h5py_find_coord(f, x_handles, 'x1', num_dp=2)
+
+    """
+
+    # Set default value
+    extracted_coord = None
+
+    # Loop through file_handles to determine if any are valid, and extract coordinate information
+    for handle in file_handles:
+        try:  # Attempt to extract coordinate information
+            # Extract coordinate values
+            coord_values = h5py_file[handle][()]
+            if len(coord_values) == 1:  # Simple case of a single coordinate value (rounding to num_dp decimal places)
+                extracted_coord = round(coord_values[0], num_dp)
+            elif len(coord_values) != 1 and len(coord_values.shape) == 1:  # 1D array of coordinate values (line scan)
+                # Extract coordinate metadata in 'min:max (step)' format (rounding to num_dp decimal places)
+                extracted_coord = _extract_mapping_metadata(coord_values, num_dp=num_dp)
+            elif len(coord_values.shape) == 2:  # 2D array of coordinate values (spatial map)
+                if coord_values[0][1] != coord_values[0][0]:
+                    coord_values = coord_values[0]
+                else:
+                    coord_values = [i[0] for i in coord_values]
+                # Extract coordinate metadata in 'min:max (step)' format (rounding to num_dp decimal places)
+                extracted_coord = _extract_mapping_metadata(coord_values, num_dp=num_dp)
+            else:  # Unable to identify coordinate
+                extracted_coord = None
+            break
+
+        except KeyError:  # Invalid file handle
+            pass
+
+    # Inform user if the coordinate metadata cannot be extracted
+    if extracted_coord is None:
+        analysis_warning(
+            'Unable to extract {coord} metadata. Update metadata loader in peaks.core.fileIO.loaders to account for '
+            'new file format.'.format(coord=coord), title='Loading info', warn_type='danger')
+
+    return extracted_coord
+
+
+def _h5py_str(h5py_file, file_handle):
     """Parses string or binary strings into the correct format when reading from a h5py file
 
     Parameters
     ------------
-    file : h5py._hl.files.File
+    h5py_file : h5py._hl.files.File
         An open h5py format file.
 
     file_handle : str, bin, list
@@ -856,13 +1075,13 @@ def _h5py_str(file, file_handle):
 
     # Attempt to obtain field contents
     try:
-        if not isinstance(file[file_handle][()], str):
+        if not isinstance(h5py_file[file_handle][()], str):
             try:
-                contents = file[file_handle][0]
+                contents = h5py_file[file_handle][0]
             except ValueError:
-                contents = file[file_handle][()]
+                contents = h5py_file[file_handle][()]
         else:
-            contents = file[file_handle][()]
+            contents = h5py_file[file_handle][()]
 
     # Return None if unable to obtain field contents
     except TypeError:
