@@ -4,7 +4,7 @@
 
 # Phil King 24/04/2021
 # Brendan Edwards 03/12/2021
-# Brendan Edwards 17/10/2023
+# Brendan Edwards 26/02/2024
 
 import numpy as np
 import xarray as xr
@@ -88,7 +88,7 @@ def DC(data, coord='eV', val=0, dval=0, ana_hist=True):
     # If returning a single DC, want to remove the non-varying coordinate as a dimension
     try:
         dc = dc.squeeze(coord)
-    except:
+    except ValueError:
         pass
 
     # Update the analysis history if ana_hist is True (will be False when DC is called from e.g. EDC, MDC, FS)
@@ -553,5 +553,61 @@ def mask_data(data, ROI, return_integrated=True):
     return ROI_selected_data
 
 
-def disp_from_hv():
-    pass
+@add_methods(xr.DataArray)
+def disp_from_hv(data, hv):
+    """Function to extract a dispersion at a given hv from an hv scan, correcting for the kinetic energy offsets
+    (KE_delta) that arise from using the hv scan loading method.
+
+    Parameters
+    ------------
+    data : xarray.DataArray
+        The hv scan extract a single dispersion from.
+
+    hv : float
+         The photon energy at which to extract a dispersion at.
+
+    Returns
+    ------------
+    hv_disp : xarray.DataArray
+        The extracted dispersion.
+
+    Examples
+    ------------
+    Example usage is as follows::
+
+        from peaks import *
+
+        hv_scan = load('i05-1-54321.nxs')
+
+        # Extract a dispersion from the hv_scan at 79 eV
+        disp_79eV = hv_scan.disp_from_hv(79)
+
+    """
+
+    # Ensure the inputted data is an hv scan
+    if data.attrs['scan_type'] != 'hv scan':
+        raise Exception('The scan type of the inputted data is incompatible with disp_from_hv, which only extracts a '
+                        'single dispersion from an hv scan.')
+
+    # Ensure the inputted data has not already been converted to binding energy
+    if data.attrs['eV_type'] != 'kinetic':
+        raise Exception('The energy axis of the inputted data is incompatible with disp_from_hv, which only works '
+                        'when the energy axis is kinetic energy.')
+
+    # Extract the relevant hv slice
+    hv_scan = data.sel(hv=hv, method='nearest')
+
+    # Rescale eV axis to get the correct kinetic energy
+    hv_scan['eV'] = hv_scan.eV.data + hv_scan.KE_delta.data
+
+    # Delete the now redundant hv and KE_delta coordinates
+    del hv_scan['hv']
+    del hv_scan['KE_delta']
+
+    # Update the hv attribute
+    hv_scan.attrs['hv'] = float(hv)
+
+    # Update analysis history
+    hv_scan.update_hist('Dispersion extracted from hv scan at hv={hv} eV'.format(hv=hv))
+
+    return hv_scan
