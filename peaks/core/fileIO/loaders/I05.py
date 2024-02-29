@@ -205,6 +205,11 @@ def _load_I05_data(fname):
             else:
                 x1_values = [i[0] for i in x1_values]
                 x2_values = x2_values[0]
+                # If we have a square grid and x1 is the slow axis, we must flip the x1 and x2 ordering of spectrum so
+                # that the DataArray generated in _make_DataArray correctly assumes x2 is first dimension
+                if len(x1_values) == len(x2_values):
+                    # Since x1 is the slow axis, flip the x1 and x2 ordering of spectrum so that x2 is first
+                    spectrum = np.transpose(spectrum, (1, 0, 2, 3))
 
             # Define data
             if 'analyser_total' in analyser_keys:  # If scan is in analyser_total mode
