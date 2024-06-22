@@ -3,6 +3,6 @@
 """
 
 from .consts import consts
-from .misc import analysis_warning, make_docs, make_cell
+from .misc import analysis_warning, make_cell
 from .metadata import update_hist
 from .OOP_method import add_methods

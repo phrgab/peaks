@@ -1,5 +1,7 @@
 # `peaks` Documentation
 
+**P**ython **E**lectron Spectroscopy and Diffraction **A**nalysis by **K**ing Group **S**t Andrews.
+
 Version: {{ version }}
 
 Documentation built: {{ date }}
@@ -7,14 +9,21 @@ Documentation built: {{ date }}
 ```{toctree}
 :maxdepth: 3
 
-readme
+getting_started
+```
+
+```{toctree}
+:caption: API Reference
+:hidden:
+:maxdepth: 3
+
 _apidoc/peaks
 ```
 
 ```{toctree}
 :caption: Development
-:hidden:
-:maxdepth: 2
+:maxdepth: 1
 
+contributing
 changelog
 ```

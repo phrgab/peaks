@@ -97,10 +97,10 @@ html_css_files = [
 html_theme_options = {
     "footer_icons": [
         {
-            "name": "Github",
-            "url": "https://github.com/phrgab/peaks",
+            "name": "Gitlab",
+            "url": "https://gitlab.st-andrews.ac.uk/physics-and-astronomy/king-group/peaks",
             "html": "",
-            "class": "fa-brands fa-solid fa-github fa-2x",
+            "class": "fa-brands fa-solid fa-gitlab fa-2x",
         },
     ],
 }
