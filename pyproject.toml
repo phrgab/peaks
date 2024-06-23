@@ -35,9 +35,10 @@ Issues = "https://gitlab.st-andrews.ac.uk/physics-and-astronomy/king-group/peaks
 Documentation = "https://research.st-andrews.ac.uk/kinggroup/peaks/"
 
 [project.optional-dependencies]
-dev = ["black (>=24.2,<25)",
+dev = [
+        "black (>=24.2,<25)",
         "cookiecutter (>=2.5,<3)",
-        "sphinx (>=7.2, <8)",
+        "sphinx (>=7.2,<8)",
         "sphinx-copybutton (>=0.5,<1)",
         "sphinx-togglebutton (>=0.3,<1)",
         "sphinx-inline-tabs (>=2023)",
