@@ -57,5 +57,5 @@ import xarray as xr
 from peaks.core import *
 from peaks.ML import *
 
-# Set default cmap option
-xr.set_options(cmap_sequential='binary')
+# Set some default xrray options
+xr.set_options(cmap_sequential='binary', use_numbagg=True)
