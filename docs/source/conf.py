@@ -37,7 +37,7 @@ extensions = [
     "sphinx_copybutton",
     "sphinx_togglebutton",
     "sphinx_inline_tabs",
-    "myst_parser",
+    "myst_nb",
 ]
 
 intersphinx_mapping = {
@@ -46,6 +46,7 @@ intersphinx_mapping = {
     "xarray": ("https://xarray.pydata.org/en/stable/", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
     "dask": ("https://docs.dask.org/en/latest/", None),
+    "matplotlib": ("https://matplotlib.org/stable/", None),
 }
 
 source_suffix = [".rst", ".md"]
@@ -66,6 +67,9 @@ napoleon_use_rtype = True
 napoleon_preprocess_types = True
 napoleon_type_aliases = None
 napoleon_attr_annotations = True
+
+# myst-nb settings
+nb_execution_mode = "off"
 
 
 # -- Options for HTML output -------------------------------------------------

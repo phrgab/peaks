@@ -26,6 +26,7 @@ pip install sphinx sphinx-copybutton sphinx-togglebutton sphinx-inline-tabs myst
 To build the documentation, navigate to the `docs` directory and run:
 ```bash
 sphinx-apidoc -o source/_apidoc ../peaks
+cp -f ../tutorials/* source/_tutorials/
 make html
 ```
 
