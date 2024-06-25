@@ -18,7 +18,9 @@ dependencies = [
         "natsort (>=8.4,<9)",
         "igor2 (>=0.5,<1)",
         "jupyterlab (>=4.2,<5)",
-        "numbagg (>0.8,<1)",
+        "numbagg (>=0.8,<1)",
+        "hvplot (>=0.10,<1)",
+        "notebook",
         ]
 dynamic = ["version"]
 
