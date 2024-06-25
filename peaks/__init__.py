@@ -57,5 +57,13 @@ import xarray as xr
 from peaks.core import *
 from peaks.ML import *
 
-# Set some default xrray options
+# Set some default xarray options
 xr.set_options(cmap_sequential='binary', use_numbagg=True)
+
+# Import hvplot to enable the hvplot accessor and set some default options
+import holoviews as hv
+import hvplot.xarray
+# Set default options
+hv.opts.defaults(
+    hv.opts.Image(invert_axes=True)
+)

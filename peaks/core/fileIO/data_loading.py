@@ -963,8 +963,9 @@ def _h5py_find_attr(h5py_file, file_handles, attr, attr_type):
     # Inform user if the metadata cannot be extracted
     if extracted_attr is None:
         analysis_warning(
-            'Unable to extract {attr} metadata. Update metadata loader in peaks.core.fileIO.loaders to account for '
-            'new file format.'.format(attr=attr), title='Loading info', warn_type='danger')
+            f'Unable to extract {attr} metadata. If you expected this to be in the available metadata, update '
+            'the metadata loader in peaks.core.fileIO.loaders to account for new file format.',
+            title='Loading info', warn_type='danger')
 
     return extracted_attr
 
@@ -1038,8 +1039,9 @@ def _h5py_find_coord(h5py_file, file_handles, coord, num_dp):
     # Inform user if the coordinate metadata cannot be extracted
     if extracted_coord is None:
         analysis_warning(
-            'Unable to extract {coord} metadata. Update metadata loader in peaks.core.fileIO.loaders to account for '
-            'new file format.'.format(coord=coord), title='Loading info', warn_type='danger')
+            f'Unable to extract {coord} metadata. If you expected this to be in the available metadata, update '
+            'the metadata loader in peaks.core.fileIO.loaders to account for new file format.',
+            title='Loading info', warn_type='danger')
 
     return extracted_coord
 
