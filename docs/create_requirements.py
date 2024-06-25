@@ -17,13 +17,18 @@ def format_dependencies(deps):
     for dep in deps:
         print(dep)
         # Split the dependency into name and version
-        name, version = dep.split(' ')
-        # Remove the parentheses from the version
-        version = version.strip('()')
-        # Replace the comma with nothing
-        #version = version.replace(',', '')
-        # Add the formatted dependency to the list
-        formatted_deps.append(f'{name}{version}')
+        try:
+            name, version = dep.split(' ')
+            # Remove the parentheses from the version
+            version = version.strip('()')
+            # Replace the comma with nothing
+            version = version.replace(',', '')
+            # Add the formatted dependency to the list
+            formatted_deps.append(f'{name}{version}')
+        except ValueError:
+            name = dep
+            formatted_deps.append(f'{name}')
+
     return formatted_deps
 
 # Format the dependencies and dev dependencies
