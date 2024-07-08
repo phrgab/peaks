@@ -10,6 +10,7 @@ import xarray as xr
 import matplotlib.pyplot as plt
 from numpy.fft import fft2, ifft2, fftshift
 from scipy.ndimage import gaussian_filter
+from skimage.registration import phase_cross_correlation
 from IPython.display import clear_output
 from peaks.core.fit.models import _Shirley
 from peaks.core.utils.OOP_method import add_methods
@@ -60,18 +61,22 @@ def norm(data, dim=None):
     # If a dim has been provided, either normalise by the mean value of the data, or by an integrated DC
     if dim:
         # If dim is 'all', normalise by the mean value of the data
-        if dim == 'all':
+        if dim == "all":
             # Normalise by the mean value of the data
             norm_data.data /= norm_data.data.mean()
 
             # Update analysis history
-            norm_data.update_hist('Data normalised by its mean value')
+            norm_data.update_hist("Data normalised by its mean value")
 
         # If not, normalise data by integrated DC
         else:
             # Ensure dim is a valid dimension
             if dim not in norm_data.dims:
-                raise Exception('{dim} is not a valid dimension of the inputted DataArray.'.format(dim=dim))
+                raise Exception(
+                    "{dim} is not a valid dimension of the inputted DataArray.".format(
+                        dim=dim
+                    )
+                )
 
             # Integrate data along dim
             int_data = norm_data.mean(dim)
@@ -80,7 +85,9 @@ def norm(data, dim=None):
             norm_data.data = (norm_data / int_data).data
 
             # Update analysis history
-            norm_data.update_hist('Data normalised an integrated DC along {dim}'.format(dim=dim))
+            norm_data.update_hist(
+                "Data normalised an integrated DC along {dim}".format(dim=dim)
+            )
 
     # If no dim has been provided, normalise to unity
     else:
@@ -88,7 +95,7 @@ def norm(data, dim=None):
         norm_data.data /= norm_data.data.max()
 
         # Update analysis history
-        norm_data.update_hist('Data normalised to unity')
+        norm_data.update_hist("Data normalised to unity")
 
     return norm_data
 
@@ -177,30 +184,41 @@ def bgs(data, subtraction, num_avg=1, offset_start=0, offset_end=0, max_iteratio
 
         # Update analysis history
         bgs_data.update_hist(
-            'A constant background of {val} has been subtracted from the data'.format(val=str(subtraction)))
+            "A constant background of {val} has been subtracted from the data".format(
+                val=str(subtraction)
+            )
+        )
 
     # If subtraction is a str, there a few options of what the desired operation is.
     elif isinstance(subtraction, str):
         # If subtraction is 'Shirley'
-        if subtraction == 'Shirley':
+        if subtraction == "Shirley":
             # Calculate the Shirley background using the function _Shirley
-            Shirley_bkg = _Shirley(bgs_data, num_avg=num_avg, offset_start=offset_start, offset_end=offset_end,
-                                   max_iterations=max_iterations)
+            Shirley_bkg = _Shirley(
+                bgs_data,
+                num_avg=num_avg,
+                offset_start=offset_start,
+                offset_end=offset_end,
+                max_iterations=max_iterations,
+            )
 
             # Subtract the Shirley background from the data
             bgs_data -= Shirley_bkg
 
             # Update analysis history
-            bgs_data.update_hist('A Shirley background has been subtracted from the data')
+            bgs_data.update_hist(
+                "A Shirley background has been subtracted from the data"
+            )
 
         # If subtraction is 'all'
-        elif subtraction == 'all':
+        elif subtraction == "all":
             # Subtract a constant background equal to the mean value of the data from the data
             bgs_data -= bgs_data.data.mean()
 
             # Update analysis history
             bgs_data.update_hist(
-                'A constant background equal to the mean value of the data has been subtracted from the data')
+                "A constant background equal to the mean value of the data has been subtracted from the data"
+            )
 
         # If subtraction is a valid dimension of the data
         elif subtraction in bgs_data.dims:
@@ -212,18 +230,23 @@ def bgs(data, subtraction, num_avg=1, offset_start=0, offset_end=0, max_iteratio
 
             # Update analysis history
             bgs_data.update_hist(
-                'A background equal to an integrated DC along {subtraction} has been subtracted from the data'.format(
-                    subtraction=subtraction))
+                "A background equal to an integrated DC along {subtraction} has been subtracted from the data".format(
+                    subtraction=subtraction
+                )
+            )
 
         # Inputted argument for subtraction is not valid. Raise an error
         else:
             raise Exception(
                 "Inputted subtraction argument is not an int, float, 'all', 'Shirley', or a valid dimension of the "
-                "inputted DataArray.")
+                "inputted DataArray."
+            )
 
     # Invalid data type for subtraction. Raise an error
     else:
-        raise Exception('Invalid data type for subtraction. Please use an int, float or str.')
+        raise Exception(
+            "Invalid data type for subtraction. Please use an int, float or str."
+        )
 
     return bgs_data
 
@@ -269,7 +292,7 @@ def bin_data(data, binning=None, **binning_kwargs):
     if binning:
         # If binning argument is not an integer, raise an error
         if not isinstance(binning, int):
-            raise Exception('Binning value must be an integer.')
+            raise Exception("Binning value must be an integer.")
 
         # Overwrite any binning_kwargs since binning takes priority
         binning_kwargs = {}
@@ -282,21 +305,31 @@ def bin_data(data, binning=None, **binning_kwargs):
     else:
         # If no binning_kwargs are supplied, raise an error
         if len(binning_kwargs) == 0:
-            raise Exception('No binning parameters set. Define either binning or binning_kwargs arguments.')
+            raise Exception(
+                "No binning parameters set. Define either binning or binning_kwargs arguments."
+            )
 
         # Loop through all items in binning_kwargs to ensure dictionary keys are valid dimensions and dictionary values
         # are integers, if not raise an error.
         for dim in binning_kwargs:
             if dim not in data.dims:
-                raise Exception('{dim} is not a valid dimension of the inputted DataArray.'.format(dim=dim))
+                raise Exception(
+                    "{dim} is not a valid dimension of the inputted DataArray.".format(
+                        dim=dim
+                    )
+                )
             if not isinstance(binning_kwargs[dim], int):
-                raise Exception('Binning values must be integers.')
+                raise Exception("Binning values must be integers.")
 
     # Apply binning to data
-    binned_data = data.coarsen(binning_kwargs, boundary='pad').mean()
+    binned_data = data.coarsen(binning_kwargs, boundary="pad").mean()
 
     # Update analysis history
-    binned_data.update_hist('Binned data using the bins: {binning_kwargs}'.format(binning_kwargs=binning_kwargs))
+    binned_data.update_hist(
+        "Binned data using the bins: {binning_kwargs}".format(
+            binning_kwargs=binning_kwargs
+        )
+    )
 
     return binned_data
 
@@ -345,7 +378,7 @@ def smooth(data, **smoothing_kwargs):
     smoothed_data = data.copy(deep=True)
 
     # Define the start of the analysis history update string
-    hist = 'Data smoothed with the following FWHMs along given axes: '
+    hist = "Data smoothed with the following FWHMs along given axes: "
 
     # Make the sigma array (used to store standard deviations) as zeros, then update using supplied definitions
     sigma = np.zeros(len(data.dims))
@@ -355,12 +388,20 @@ def smooth(data, **smoothing_kwargs):
         if value not in smoothing_kwargs:  # No broadening for this dimension
             sigma[count] = 0
         else:  # Determine broadening in pixels from axis scaling
-            delta = abs(data[value].data[1] - data[value].data[0])  # Pixel size in relevant units for axis
+            delta = abs(
+                data[value].data[1] - data[value].data[0]
+            )  # Pixel size in relevant units for axis
             # Must convert smoothing factor from FWHM to standard deviation (in pixels)
-            sigma_px = np.round(smoothing_kwargs[value] / delta) / 2.35482005  # Coordinate sigma in pixels
+            sigma_px = (
+                np.round(smoothing_kwargs[value] / delta) / 2.35482005
+            )  # Coordinate sigma in pixels
             sigma[count] = sigma_px  # Update standard deviations array
-            hist += str(value) + ': ' + str(smoothing_kwargs[value]) + ', '  # Update analysis history string
-            smoothing_kwargs.pop(value)  # Remove this axis from smoothing_kwargs for consistency check later
+            hist += (
+                str(value) + ": " + str(smoothing_kwargs[value]) + ", "
+            )  # Update analysis history string
+            smoothing_kwargs.pop(
+                value
+            )  # Remove this axis from smoothing_kwargs for consistency check later
 
     # Extract the raw DataArray data
     array = smoothed_data.data
@@ -374,8 +415,12 @@ def smooth(data, **smoothing_kwargs):
     # Check that all supplied smoothing_kwargs are used, giving a warning if not (this occurs if an axis does not exist)
     if len(smoothing_kwargs) != 0:
         analysis_warning(
-            'Not all supplied axes are coordinates of DataArray: {coords} have been ignored.'.format(
-                coords=str(smoothing_kwargs)), title='Analysis info', warn_type='danger')
+            "Not all supplied axes are coordinates of DataArray: {coords} have been ignored.".format(
+                coords=str(smoothing_kwargs)
+            ),
+            title="Analysis info",
+            warn_type="danger",
+        )
 
     # Update the analysis history
     smoothed_data.update_hist(hist[:-2])
@@ -440,7 +485,11 @@ def rotate(data, rotation, **centre_kwargs):
     # Check for user-defined centre of rotations
     for dim in list(centre_kwargs):
         if dim not in list(data_to_be_expanded.dims):
-            raise Exception('{dim} is not a valid dimension of the inputted DataArray.'.format(dim=dim))
+            raise Exception(
+                "{dim} is not a valid dimension of the inputted DataArray.".format(
+                    dim=dim
+                )
+            )
 
     x_centre = centre_kwargs.get(x_dim)
     if not x_centre:
@@ -461,10 +510,16 @@ def rotate(data, rotation, **centre_kwargs):
     # Calculate the positions these corners will be rotated to
     rotated_corner_coords = []
     for coord in corner_coords:
-        rotated_x = x_centre + (np.cos(np.radians(rotation)) * (coord[0] - x_centre)) - (
-                np.sin(np.radians(rotation)) * (coord[1] - y_centre))
-        rotated_y = y_centre + (np.sin(np.radians(rotation)) * (coord[0] - x_centre)) + (
-                np.cos(np.radians(rotation)) * (coord[1] - y_centre))
+        rotated_x = (
+            x_centre
+            + (np.cos(np.radians(rotation)) * (coord[0] - x_centre))
+            - (np.sin(np.radians(rotation)) * (coord[1] - y_centre))
+        )
+        rotated_y = (
+            y_centre
+            + (np.sin(np.radians(rotation)) * (coord[0] - x_centre))
+            + (np.cos(np.radians(rotation)) * (coord[1] - y_centre))
+        )
         rotated_corner_coords.append([rotated_x, rotated_y])
 
     # Determine rotated x and y limits
@@ -482,13 +537,21 @@ def rotate(data, rotation, **centre_kwargs):
     new_limits = {x_dim: [new_x_min, new_x_max], y_dim: [new_y_min, new_y_max]}
 
     # Determine expanded coordinate grids for us to interpolate the inputted DataArray onto
-    x_step = data_to_be_expanded.coords[x_dim].data[1] - data_to_be_expanded.coords[x_dim].data[0]
+    x_step = (
+        data_to_be_expanded.coords[x_dim].data[1]
+        - data_to_be_expanded.coords[x_dim].data[0]
+    )
     x_coord_grid = np.arange(new_limits[x_dim][0], new_limits[x_dim][1], x_step)
-    y_step = data_to_be_expanded.coords[y_dim].data[1] - data_to_be_expanded.coords[y_dim].data[0]
+    y_step = (
+        data_to_be_expanded.coords[y_dim].data[1]
+        - data_to_be_expanded.coords[y_dim].data[0]
+    )
     y_coord_grid = np.arange(new_limits[y_dim][0], new_limits[y_dim][1], y_step)
 
     # Interpolate inputted data onto the expanded coordinate grids
-    data_to_be_rotated = data_to_be_expanded.interp({x_dim: x_coord_grid, y_dim: y_coord_grid})
+    data_to_be_rotated = data_to_be_expanded.interp(
+        {x_dim: x_coord_grid, y_dim: y_coord_grid}
+    )
 
     # Determine mapping onto rotated coordinate grid (note: y_dim is treated as the conventional x dimension,
     # owing to xarray convention)
@@ -496,10 +559,16 @@ def rotate(data, rotation, **centre_kwargs):
     new_y_coord_grid = np.zeros((len(y_coord_grid), len(x_coord_grid)))
     for i, y in enumerate(y_coord_grid):
         for j, x in enumerate(x_coord_grid):
-            new_x_coord_grid[i][j] = x_centre + (np.sin(np.radians(rotation)) * (y - y_centre)) + (
-                    np.cos(np.radians(rotation)) * (x - x_centre))
-            new_y_coord_grid[i][j] = y_centre + (np.cos(np.radians(rotation)) * (y - y_centre)) - (
-                    np.sin(np.radians(rotation)) * (x - x_centre))
+            new_x_coord_grid[i][j] = (
+                x_centre
+                + (np.sin(np.radians(rotation)) * (y - y_centre))
+                + (np.cos(np.radians(rotation)) * (x - x_centre))
+            )
+            new_y_coord_grid[i][j] = (
+                y_centre
+                + (np.cos(np.radians(rotation)) * (y - y_centre))
+                - (np.sin(np.radians(rotation)) * (x - x_centre))
+            )
 
     # Define mapping along x as xarray
     x_xarray = xr.DataArray(
@@ -516,23 +585,28 @@ def rotate(data, rotation, **centre_kwargs):
     )
 
     # Perform interpolation, and cut off any coordinates outside the plotting range
-    rotated_data = data_to_be_rotated.interp({y_dim: y_xarray, x_dim: x_xarray}).sel(
-        {y_dim: slice(rotated_y_min, rotated_y_max)}).sel({x_dim: slice(rotated_x_min, rotated_x_max)})
+    rotated_data = (
+        data_to_be_rotated.interp({y_dim: y_xarray, x_dim: x_xarray})
+        .sel({y_dim: slice(rotated_y_min, rotated_y_max)})
+        .sel({x_dim: slice(rotated_x_min, rotated_x_max)})
+    )
 
     # If there are coords units in the inputted data, add them back to the rotated data
     try:
         x_units = data_to_be_rotated.coords[x_dim].units
-        rotated_data.coords[x_dim].attrs = {'units': x_units}
+        rotated_data.coords[x_dim].attrs = {"units": x_units}
     except AttributeError:
         pass
     try:
         y_units = data_to_be_rotated.coords[y_dim].units
-        rotated_data.coords[y_dim].attrs = {'units': y_units}
+        rotated_data.coords[y_dim].attrs = {"units": y_units}
     except AttributeError:
         pass
 
     # Update analysis history
-    rotated_data.update_hist('Rotated data by {rotation} degrees'.format(rotation=rotation))
+    rotated_data.update_hist(
+        "Rotated data by {rotation} degrees".format(rotation=rotation)
+    )
 
     return rotated_data
 
@@ -589,7 +663,7 @@ def sym(data, flipped=False, fillna=True, **sym_kwarg):
 
     # If no axis has been provided in sym_kwarg, set to the default symmetrisation axis and coordinate of eV=0
     if len(sym_kwarg) == 0:
-        sym_kwarg = {'eV': 0}
+        sym_kwarg = {"eV": 0}
 
     # Get provided axis and coordinate to perform symmetrisation around
     sym_axis = next(iter(sym_kwarg))
@@ -597,17 +671,24 @@ def sym(data, flipped=False, fillna=True, **sym_kwarg):
 
     # Check that provided axis is a valid dimension of inputted DataArray, if not raise an error
     if sym_axis not in sym_data.dims:
-        raise Exception("Provided symmetrisation axis is not a valid dimension of inputted DataArray.")
+        raise Exception(
+            "Provided symmetrisation axis is not a valid dimension of inputted DataArray."
+        )
 
     # Check if the symmetrisation coordinate is within the range of the inputted DataArray, if not raise an error
-    if sym_coord < min(sym_data[sym_axis].data) or sym_coord > max(sym_data[sym_axis].data):
+    if sym_coord < min(sym_data[sym_axis].data) or sym_coord > max(
+        sym_data[sym_axis].data
+    ):
         raise Exception(
             "Provided symmetrisation coordinate ({sym_axis}={sym_coord}) is not within the coordinate range of the "
-            "inputted DataArray".format(sym_axis=sym_axis, sym_coord=sym_coord))
+            "inputted DataArray".format(sym_axis=sym_axis, sym_coord=sym_coord)
+        )
 
     # Generate flipped axis DataArray which maps the original axis to the flipped axis
     flipped_axis_values = (2 * sym_coord) - sym_data[sym_axis].data
-    flipped_axis_xarray = xr.DataArray(flipped_axis_values, dims=[sym_axis], coords={sym_axis: sym_data[sym_axis].data})
+    flipped_axis_xarray = xr.DataArray(
+        flipped_axis_values, dims=[sym_axis], coords={sym_axis: sym_data[sym_axis].data}
+    )
 
     # Flip the inputted DataArray by interpolating it onto the flipped axis (and replace NaNs with 0)
     flipped_data = sym_data.interp({sym_axis: flipped_axis_xarray})
@@ -621,14 +702,18 @@ def sym(data, flipped=False, fillna=True, **sym_kwarg):
         # Assign sym_data to just the flipped data
         sym_data = flipped_data
         # Update the analysis history
-        sym_data.update_hist('Flipped data about {sym_kwarg}'.format(sym_kwarg=sym_kwarg))
+        sym_data.update_hist(
+            "Flipped data about {sym_kwarg}".format(sym_kwarg=sym_kwarg)
+        )
 
     # If the full symmetrisation is requested
     else:
         # Sum the original and flipped data
         sym_data += flipped_data
         # Update the analysis history
-        sym_data.update_hist('Symmetrised data about {sym_kwarg}'.format(sym_kwarg=sym_kwarg))
+        sym_data.update_hist(
+            "Symmetrised data about {sym_kwarg}".format(sym_kwarg=sym_kwarg)
+        )
 
     return sym_data
 
@@ -701,8 +786,18 @@ def sym_nfold(data, nfold, expand=True, fillna=True, **centre_kwargs):
     # Perform the required rotations, and determine coordinate limits of each rotated data
     for rotation in rotation_values:
         current_rotated_data = data_to_be_symmetrised.rotate(rotation, **centre_kwargs)
-        dim1_limits.append([current_rotated_data[dim1].data.min(), current_rotated_data[dim1].data.max()])
-        dim2_limits.append([current_rotated_data[dim2].data.min(), current_rotated_data[dim2].data.max()])
+        dim1_limits.append(
+            [
+                current_rotated_data[dim1].data.min(),
+                current_rotated_data[dim1].data.max(),
+            ]
+        )
+        dim2_limits.append(
+            [
+                current_rotated_data[dim2].data.min(),
+                current_rotated_data[dim2].data.max(),
+            ]
+        )
         rotated_data.append(current_rotated_data)
 
     # Determine the extremes of the coordinate limits in the rotated data
@@ -712,8 +807,12 @@ def sym_nfold(data, nfold, expand=True, fillna=True, **centre_kwargs):
     dim2_max = round(max([item[1] for item in dim2_limits]), 4)
 
     # Determine the coordinate step size of the inputted data
-    dim1_step = round(float(data_to_be_symmetrised[dim1][1] - data_to_be_symmetrised[dim1][0]), 4)
-    dim2_step = round(float(data_to_be_symmetrised[dim2][1] - data_to_be_symmetrised[dim2][0]), 4)
+    dim1_step = round(
+        float(data_to_be_symmetrised[dim1][1] - data_to_be_symmetrised[dim1][0]), 4
+    )
+    dim2_step = round(
+        float(data_to_be_symmetrised[dim2][1] - data_to_be_symmetrised[dim2][0]), 4
+    )
 
     # Determine the number of coordinate points needed
     num_dim1 = int((dim1_max - dim1_min) / dim1_step) + 1
@@ -737,7 +836,9 @@ def sym_nfold(data, nfold, expand=True, fillna=True, **centre_kwargs):
         if fillna:
             current_rotated_data = current_rotated_data.fillna(0)
             # current_NaN_counter becomes 1 where a nan has been filled, as 0 elsewhere
-            current_NaN_counter = current_rotated_data.where(current_rotated_data == 0, -1) + 1
+            current_NaN_counter = (
+                current_rotated_data.where(current_rotated_data == 0, -1) + 1
+            )
             NaN_counter += current_NaN_counter.data
         interp_rotated_data.append(current_rotated_data)
 
@@ -746,7 +847,7 @@ def sym_nfold(data, nfold, expand=True, fillna=True, **centre_kwargs):
 
     # Remove sum_data analysis_history entry, and clear warning (given during sum_data since analysis_history attrs will
     # differ
-    sym_data.attrs['analysis_history'] = sym_data.attrs['analysis_history'][0:-1]
+    sym_data.attrs["analysis_history"] = sym_data.attrs["analysis_history"][0:-1]
     clear_output()
 
     # Rescale the data according to the NaN_counter so regions are of consistent intensity
@@ -755,10 +856,14 @@ def sym_nfold(data, nfold, expand=True, fillna=True, **centre_kwargs):
 
     # If expand is False, perform an interpolation to keep the same coordinate grid as the inputted data
     if not expand:
-        sym_data = sym_data.interp({dim1: data_to_be_symmetrised[dim1], dim2: data_to_be_symmetrised[dim2]}).fillna(0)
+        sym_data = sym_data.interp(
+            {dim1: data_to_be_symmetrised[dim1], dim2: data_to_be_symmetrised[dim2]}
+        ).fillna(0)
 
     # Update analysis history
-    sym_data.update_hist('Symmetrised data using a {nfold}-fold rotation'.format(nfold=nfold))
+    sym_data.update_hist(
+        "Symmetrised data using a {nfold}-fold rotation".format(nfold=nfold)
+    )
 
     return sym_data
 
@@ -812,7 +917,7 @@ def degrid(data, width=0.1, height=0.1, cutoff=4):
         # Copy the input data to prevent overwrite issues
         data_to_degrid = data.copy(deep=True)
     else:
-        raise Exception('Inputted data must be a 2D scan.')
+        raise Exception("Inputted data must be a 2D scan.")
 
     # Perform fast Fourier transform (FFT) of data_to_degrid
     FFT = fft2(data_to_degrid.data)
@@ -838,16 +943,22 @@ def degrid(data, width=0.1, height=0.1, cutoff=4):
         n2_values -= (FFT.shape[1] - 1) / 2
 
     # Represent the magnitude of the FFT as an xarray.DataArray for plotting/manipulation purposes.
-    FFT_DataArray = xr.DataArray(abs(FFT), dims=('n1', 'n2'), coords={'n1': n1_values, 'n2': n2_values})
+    FFT_DataArray = xr.DataArray(
+        abs(FFT), dims=("n1", "n2"), coords={"n1": n1_values, "n2": n2_values}
+    )
 
     # Define the centre region that we want to leave untouched
     n1_centre = [-1 * FFT.shape[0] * width / 2, FFT.shape[0] * width / 2]
     n2_centre = [-1 * FFT.shape[1] * height / 2, FFT.shape[1] * height / 2]
 
     # Get FFT_DataArray with just the central low-frequency region (which defines most of the important information)
-    centre_FFT_DataArray = FFT_DataArray.sel(n1=slice(n1_centre[0], n1_centre[1]),
-                                             n2=slice(n2_centre[0], n2_centre[1])).interp(
-        {'n1': n1_values, 'n2': n2_values}).fillna(0)
+    centre_FFT_DataArray = (
+        FFT_DataArray.sel(
+            n1=slice(n1_centre[0], n1_centre[1]), n2=slice(n2_centre[0], n2_centre[1])
+        )
+        .interp({"n1": n1_values, "n2": n2_values})
+        .fillna(0)
+    )
 
     # Subtract the central low-frequency region from FFT_DataArray, leaving the not so important information which we
     # can filter
@@ -858,8 +969,11 @@ def degrid(data, width=0.1, height=0.1, cutoff=4):
 
     # Create a filter where any points of centre_subtracted_FFT_DataArray for which the intensity is above the cutoff is
     # assigned to 0. All other points are assigned to 1
-    FFT_filter = xr.DataArray(np.where(centre_subtracted_FFT_DataArray.data > cutoff, 0, 1), dims=('n1', 'n2'),
-                              coords={'n1': n1_values, 'n2': n2_values})
+    FFT_filter = xr.DataArray(
+        np.where(centre_subtracted_FFT_DataArray.data > cutoff, 0, 1),
+        dims=("n1", "n2"),
+        coords={"n1": n1_values, "n2": n2_values},
+    )
 
     # Ensure n=0 components are unaffected by changing their values in the filter to 1
     FFT_filter[int(np.where(n1_values == 0)[0])] = 1
@@ -871,7 +985,9 @@ def degrid(data, width=0.1, height=0.1, cutoff=4):
     degrid_data.data = abs(ifft2(FFT * FFT_filter.data))
 
     # Update the analysis history
-    degrid_data.update_hist('Data has been degridded by removing intense high frequency Fourier components')
+    degrid_data.update_hist(
+        "Data has been degridded by removing intense high frequency Fourier components"
+    )
 
     # Determine the grid that was removed by calculating the difference between the inputted and degridded data
     grid = data_to_degrid - degrid_data
@@ -880,24 +996,50 @@ def degrid(data, width=0.1, height=0.1, cutoff=4):
     fig, axes = plt.subplots(figsize=(15, 4), ncols=4)
 
     # Plot the magnitude of the FFT, and the central low-frequency region that is excluded from filtering analysis
-    FFT_DataArray.plot(ax=axes[0], y='n2', robust=True, add_colorbar=False, cmap='binary')
-    axes[0].plot([n1_centre[0], n1_centre[1]], [n2_centre[0], n2_centre[0]], c='yellow', linewidth=2)
-    axes[0].plot([n1_centre[0], n1_centre[1]], [n2_centre[1], n2_centre[1]], c='yellow', linewidth=2)
-    axes[0].plot([n1_centre[0], n1_centre[0]], [n2_centre[0], n2_centre[1]], c='yellow', linewidth=2)
-    axes[0].plot([n1_centre[1], n1_centre[1]], [n2_centre[0], n2_centre[1]], c='yellow', linewidth=2)
-    axes[0].set_title('Data transformed to \nFourier space')
+    FFT_DataArray.plot(
+        ax=axes[0], y="n2", robust=True, add_colorbar=False, cmap="binary"
+    )
+    axes[0].plot(
+        [n1_centre[0], n1_centre[1]],
+        [n2_centre[0], n2_centre[0]],
+        c="yellow",
+        linewidth=2,
+    )
+    axes[0].plot(
+        [n1_centre[0], n1_centre[1]],
+        [n2_centre[1], n2_centre[1]],
+        c="yellow",
+        linewidth=2,
+    )
+    axes[0].plot(
+        [n1_centre[0], n1_centre[0]],
+        [n2_centre[0], n2_centre[1]],
+        c="yellow",
+        linewidth=2,
+    )
+    axes[0].plot(
+        [n1_centre[1], n1_centre[1]],
+        [n2_centre[0], n2_centre[1]],
+        c="yellow",
+        linewidth=2,
+    )
+    axes[0].set_title("Data transformed to \nFourier space")
 
     # Plot the FFT with the central central low-frequency region removed
-    centre_subtracted_FFT_DataArray.plot(ax=axes[1], y='n2', robust=True, add_colorbar=False, cmap='binary')
-    axes[1].set_title('Important low frequency data \nnot considered for filter')
+    centre_subtracted_FFT_DataArray.plot(
+        ax=axes[1], y="n2", robust=True, add_colorbar=False, cmap="binary"
+    )
+    axes[1].set_title("Important low frequency data \nnot considered for filter")
 
     # Plot the filter
-    FFT_filter.plot(ax=axes[2], y='n2', add_colorbar=False, cmap='binary_r')
-    axes[2].set_title('Filter determined by \npoints above cutoff')
+    FFT_filter.plot(ax=axes[2], y="n2", add_colorbar=False, cmap="binary_r")
+    axes[2].set_title("Filter determined by \npoints above cutoff")
 
     # Plot the FFT multiplied by the filter (thus with intense high frequency Fourier components removed)
-    (FFT_DataArray * FFT_filter).plot(ax=axes[3], y='n2', robust=True, add_colorbar=False, cmap='binary')
-    axes[3].set_title('Apply filter to data to \nremove points above cutoff')
+    (FFT_DataArray * FFT_filter).plot(
+        ax=axes[3], y="n2", robust=True, add_colorbar=False, cmap="binary"
+    )
+    axes[3].set_title("Apply filter to data to \nremove points above cutoff")
 
     plt.tight_layout()
 
@@ -905,16 +1047,16 @@ def degrid(data, width=0.1, height=0.1, cutoff=4):
     fig, axes = plt.subplots(figsize=(15, 7), ncols=3)
 
     # Plot the inputted data
-    data_to_degrid.plot(ax=axes[0], add_colorbar=False, cmap='binary')
-    axes[0].set_title('Input data')
+    data_to_degrid.plot(ax=axes[0], add_colorbar=False, cmap="binary")
+    axes[0].set_title("Input data")
 
     # Plot the degridded data
-    degrid_data.plot(ax=axes[1], add_colorbar=False, cmap='binary')
-    axes[1].set_title('Degridded data')
+    degrid_data.plot(ax=axes[1], add_colorbar=False, cmap="binary")
+    axes[1].set_title("Degridded data")
 
     # Plot the difference between the inputted and degridded data, representing the mesh grid removed
-    grid.plot(ax=axes[2], add_colorbar=False, cmap='binary')
-    axes[2].set_title('Difference')
+    grid.plot(ax=axes[2], add_colorbar=False, cmap="binary")
+    axes[2].set_title("Difference")
 
     plt.tight_layout()
 
@@ -967,11 +1109,11 @@ def sum_data(data):
     data_0_attrs = data_0_data.attrs.copy()
 
     # Ensure scan name is an attribute
-    if 'scan_name' not in data_0_attrs:
-        data_0_attrs['scan_name'] = 'Unknown'
+    if "scan_name" not in data_0_attrs:
+        data_0_attrs["scan_name"] = "Unknown"
 
     # Remove scan_name from the attributes, and assign scan name to data_0_name
-    data_0_name = data_0_attrs.pop('scan_name')
+    data_0_name = data_0_attrs.pop("scan_name")
 
     # Variable used to use to store the summed DataArray data (will be updated with other DataArrays)
     summed_data = data_0_data.copy(deep=True)
@@ -991,14 +1133,14 @@ def sum_data(data):
         # Extract attributes of current DataArray
         current_attrs = current_data.attrs.copy()
         # Ensure scan name is an attribute
-        if 'scan_name' not in current_attrs:
-            current_attrs['scan_name'] = 'Unknown'
+        if "scan_name" not in current_attrs:
+            current_attrs["scan_name"] = "Unknown"
         # Remove scan_name from the current DataArray attributes, and assign scan name to current_name
-        current_name = current_attrs.pop('scan_name')
+        current_name = current_attrs.pop("scan_name")
 
         # Ensure that the dimensions of the current DataArray match those of the first DataArray, raise an error if not
         if current_data.dims != data_0_data.dims:
-            raise Exception('Inputted DataArrays must have the same dimensions.')
+            raise Exception("Inputted DataArrays must have the same dimensions.")
 
         # Ensure that the coordinates of the current DataArray match those of the first DataArray. If not, interpolate
         # the current DataArray onto the coordinate grid of the first DataArray
@@ -1009,10 +1151,12 @@ def sum_data(data):
                 current_data = current_data.interp({dim: data_0_data[dim]})
                 coords_warn_flag = True  # Update warning flag
                 # Display warning informing the user of the interpolation
-                warning_str = ('The {dim} coordinates of scan {current_name} do not match those of scan {data_0_name}. '
-                               'Interpolated scan {current_name} onto the {dim} coordinate grid of scan {'
-                               'data_0_name}.').format(dim=dim, current_name=current_name, data_0_name=data_0_name)
-                analysis_warning(warning_str, title='Analysis info', warn_type='danger')
+                warning_str = (
+                    "The {dim} coordinates of scan {current_name} do not match those of scan {data_0_name}. "
+                    "Interpolated scan {current_name} onto the {dim} coordinate grid of scan {"
+                    "data_0_name}."
+                ).format(dim=dim, current_name=current_name, data_0_name=data_0_name)
+                analysis_warning(warning_str, title="Analysis info", warn_type="danger")
 
         # Determine any attributes (except scan name) of the current DataArray that do not match the first DataArray
         mismatched_attrs = []  # Used to store mismatched attributes
@@ -1028,45 +1172,62 @@ def sum_data(data):
             # a warning telling the user that the attributes of the first DataArray will be saved
             if len(mismatched_attrs) > 0:
                 attrs_warn_flag = True  # Update warning flag
-                warning_str = ('The following attributes of scan {current_name} do not match those of scan {'
-                               'data_0_name}: {mismatched_attrs}. '
-                               'Attributes of scan {data_0_name} kept.').format(
-                    current_name=current_name, data_0_name=data_0_name, mismatched_attrs=mismatched_attrs)
-                analysis_warning(warning_str, title='Analysis info', warn_type='danger')
+                warning_str = (
+                    "The following attributes of scan {current_name} do not match those of scan {"
+                    "data_0_name}: {mismatched_attrs}. "
+                    "Attributes of scan {data_0_name} kept."
+                ).format(
+                    current_name=current_name,
+                    data_0_name=data_0_name,
+                    mismatched_attrs=mismatched_attrs,
+                )
+                analysis_warning(warning_str, title="Analysis info", warn_type="danger")
 
         # If the current scan does not have the same attribute options (i.e. polar, x0, temp_sample etc.) as the
         # first DataArray, display a warning telling the user that the attributes of the first DataArray will be saved
         else:
             attrs_warn_flag = True
-            warning_str = ('The attribute options of scan {current_name} do not match those of scan {data_0_name}. '
-                           'Attributes of scan {data_0_name} kept.').format(
-                current_name=current_name, data_0_name=data_0_name, mismatched_attrs=mismatched_attrs)
-            analysis_warning(warning_str, title='Analysis info', warn_type='danger')
+            warning_str = (
+                "The attribute options of scan {current_name} do not match those of scan {data_0_name}. "
+                "Attributes of scan {data_0_name} kept."
+            ).format(
+                current_name=current_name,
+                data_0_name=data_0_name,
+                mismatched_attrs=mismatched_attrs,
+            )
+            analysis_warning(warning_str, title="Analysis info", warn_type="danger")
 
         # Add the current DataArray to the running summed total
         summed_data += current_data.data
 
         # Append the current DataArray scan name to the summed scan name
-        summed_name += ' + {current_name}'.format(current_name=current_name)
+        summed_name += " + {current_name}".format(current_name=current_name)
 
     # Update summed data scan name
-    summed_data.attrs['scan_name'] = summed_name
+    summed_data.attrs["scan_name"] = summed_name
     summed_data.name = summed_name
 
     # Update the analysis history
-    hist_str = '{num_data} scans summed together.'.format(num_data=num_data)
-    if attrs_warn_flag:  # If the there is an attributes mismatch, append information to analysis history
-        hist_str += ' CAUTION: mismatch of some attributes - those of scan {data_0_name} kept'.format(
-            data_0_name=data_0_name)
-    if coords_warn_flag:  # If the there is a coordinates mismatch, append information to analysis history
-        hist_str += (' CAUTION: mismatch of some coordinates - interpolated data onto scan {data_0_name} coordinate '
-                     'grid').format(data_0_name=data_0_name)
+    hist_str = "{num_data} scans summed together.".format(num_data=num_data)
+    if (
+        attrs_warn_flag
+    ):  # If the there is an attributes mismatch, append information to analysis history
+        hist_str += " CAUTION: mismatch of some attributes - those of scan {data_0_name} kept".format(
+            data_0_name=data_0_name
+        )
+    if (
+        coords_warn_flag
+    ):  # If the there is a coordinates mismatch, append information to analysis history
+        hist_str += (
+            " CAUTION: mismatch of some coordinates - interpolated data onto scan {data_0_name} coordinate "
+            "grid"
+        ).format(data_0_name=data_0_name)
     summed_data.update_hist(hist_str)
 
     return summed_data
 
 
-def merge_data(data, dim='theta_par', sel=slice(None, None), offsets=None):
+def merge_data(data, dim="theta_par", sel=slice(None, None), offsets=None):
     """Function to merge two or more DataArrays together along a given dimension.
 
     Parameters
@@ -1125,7 +1286,9 @@ def merge_data(data, dim='theta_par', sel=slice(None, None), offsets=None):
 
     # Ensure dim is a valid dimension
     if dim not in data[0].dims:
-        raise Exception('{dim} is not a valid dimension of the inputted data.'.format(dim=dim))
+        raise Exception(
+            "{dim} is not a valid dimension of the inputted data.".format(dim=dim)
+        )
 
     # Copy the input data to prevent overwriting issues, and perform the selection along dim defined by sel
     data_to_merge = []
@@ -1133,7 +1296,7 @@ def merge_data(data, dim='theta_par', sel=slice(None, None), offsets=None):
         if isinstance(item, xr.core.dataarray.DataArray):
             data_to_merge.append(item.copy(deep=True).sel({dim: sel}))
         else:
-            raise Exception('Data must be a list of xarray.DataArrays.')
+            raise Exception("Data must be a list of xarray.DataArrays.")
 
     # Apply offsets to inputted data if required
     if offsets:
@@ -1141,7 +1304,8 @@ def merge_data(data, dim='theta_par', sel=slice(None, None), offsets=None):
         if isinstance(offsets, list) or isinstance(offsets, np.ndarray):
             if not len(offsets) == len(data):
                 raise Exception(
-                    'If offsets is provided as a list (or numpy.ndarray), the length of offsets and data must match.')
+                    "If offsets is provided as a list (or numpy.ndarray), the length of offsets and data must match."
+                )
 
         # If offsets is a float or int, make offsets a list of the form [0, offsets*1, offsets*2, ...]
         elif isinstance(offsets, float) or isinstance(offsets, int):
@@ -1149,13 +1313,17 @@ def merge_data(data, dim='theta_par', sel=slice(None, None), offsets=None):
 
         # If offset is not of type list, numpy.ndarray, float or int, raise an error
         else:
-            raise Exception('Invalid type for offsets. Argument must be a list, numpy.ndarray, float or int.')
+            raise Exception(
+                "Invalid type for offsets. Argument must be a list, numpy.ndarray, float or int."
+            )
 
         # Loop through data, apply offsets, and maintain coordinate units if any are present
         for i, current_data in enumerate(data_to_merge):
             data_to_merge[i].coords[dim] = current_data.coords[dim] - offsets[i]
             try:
-                data_to_merge[i].coords[dim].attrs['units'] = data[i].coords[dim].attrs['units']
+                data_to_merge[i].coords[dim].attrs["units"] = (
+                    data[i].coords[dim].attrs["units"]
+                )
             except KeyError:
                 pass
 
@@ -1168,16 +1336,18 @@ def merge_data(data, dim='theta_par', sel=slice(None, None), offsets=None):
 
     # Initially define merged_data as the first entry of data_to_merge, and extract the scan name
     merged_data = data_to_merge[0]
-    scan_name = merged_data.attrs['scan_name']
+    scan_name = merged_data.attrs["scan_name"]
 
     # Loop through the remaining entries of data_to_merge, merge the data with merged_data (using the function
     # _merge_two_DataArrays), and update the scan name
     for current_data in data_to_merge[1:]:
         merged_data = _merge_two_DataArrays(merged_data, current_data, dim)
-        scan_name += ' & ' + current_data.attrs['scan_name']
+        scan_name += " & " + current_data.attrs["scan_name"]
 
     # Update analysis history
-    merged_data.update_hist('Merged {scan_name} along {dim}'.format(scan_name=scan_name, dim=dim))
+    merged_data.update_hist(
+        "Merged {scan_name} along {dim}".format(scan_name=scan_name, dim=dim)
+    )
 
     return merged_data
 
@@ -1219,22 +1389,30 @@ def _merge_two_DataArrays(DataArray1, DataArray2, dim):
 
     # Ensure dims of the inputted DataArrays are the same
     if not DataArray1.dims == DataArray2.dims:
-        raise Exception('The dimensions of the inputted DataArrays do not match.')
+        raise Exception("The dimensions of the inputted DataArrays do not match.")
 
     # Ensure dim is a valid dimension
     if dim not in DataArray1.dims:
-        raise Exception('{dim} is not a valid dimension of the inputted data.'.format(dim=dim))
+        raise Exception(
+            "{dim} is not a valid dimension of the inputted data.".format(dim=dim)
+        )
 
     # Copy the input data to prevent overwriting issues
     DataArray1 = DataArray1.copy(deep=True)
     DataArray2 = DataArray2.copy(deep=True)
 
     # Determine overlap region of the two DataArrays
-    overlap_limits = (DataArray2.coords[dim].data.min(), DataArray1.coords[dim].data.max())
+    overlap_limits = (
+        DataArray2.coords[dim].data.min(),
+        DataArray1.coords[dim].data.max(),
+    )
 
     # Define coordinate axis along dim for merged_data
     coord_step = abs(DataArray1.coords[dim][1] - DataArray1.coords[dim][0])
-    coord_limits = (DataArray1.coords[dim].data.min(), DataArray2.coords[dim].data.max())
+    coord_limits = (
+        DataArray1.coords[dim].data.min(),
+        DataArray2.coords[dim].data.max(),
+    )
     coord_num_points = int((coord_limits[1] - coord_limits[0]) / coord_step)
     coord_values = np.linspace(coord_limits[0], coord_limits[1], coord_num_points)
 
@@ -1245,13 +1423,21 @@ def _merge_two_DataArrays(DataArray1, DataArray2, dim):
     # The overlap region will now be slightly different due to the new coordinate system. Find the indexes of the new
     # overlap region
     overlap_limits_indexes = (
-        (np.abs(coord_values - overlap_limits[0])).argmin(), (np.abs(coord_values - overlap_limits[1])).argmin())
+        (np.abs(coord_values - overlap_limits[0])).argmin(),
+        (np.abs(coord_values - overlap_limits[1])).argmin(),
+    )
 
     # Determine the total counts within the overlap region of the two DataArrays
     DataArray1_overlap_intensity = float(
-        DataArray1.isel(theta_par=slice(overlap_limits_indexes[0], overlap_limits_indexes[1])).sum())
+        DataArray1.isel(
+            theta_par=slice(overlap_limits_indexes[0], overlap_limits_indexes[1])
+        ).sum()
+    )
     DataArray2_overlap_intensity = float(
-        DataArray2.isel(theta_par=slice(overlap_limits_indexes[0], overlap_limits_indexes[1])).sum())
+        DataArray2.isel(
+            theta_par=slice(overlap_limits_indexes[0], overlap_limits_indexes[1])
+        ).sum()
+    )
 
     # Scale DataArray2 such that the total counts within the overlap region of the two DataArrays is equal
     ratio = DataArray1_overlap_intensity / DataArray2_overlap_intensity
@@ -1264,15 +1450,21 @@ def _merge_two_DataArrays(DataArray1, DataArray2, dim):
     # overlap region, and is 0 over the theta_par region consisting of just DataArray2 (left_region). An equivalent
     # scaling for DataArray2 (called DataArray2_scaling) is obtained as DataArray2_scaling = 1 - DataArray1_scaling
     left_region = np.ones(overlap_limits_indexes[0])
-    overlap_region = np.linspace(1, 0, (overlap_limits_indexes[1] - overlap_limits_indexes[0] + 1))
+    overlap_region = np.linspace(
+        1, 0, (overlap_limits_indexes[1] - overlap_limits_indexes[0] + 1)
+    )
     right_region = np.zeros(len(coord_values) - overlap_limits_indexes[1] - 1)
     DataArray1_scaling = np.concatenate((left_region, overlap_region, right_region))
     DataArray2_scaling = 1 - DataArray1_scaling
 
     # Represent the scaling as DataArrays so that they are associated with the correct dimension (makes function
     # applicable to any N-dimensional data)
-    DataArray1_scaling = xr.DataArray(DataArray1_scaling, dims=[dim], coords={dim: coord_values})
-    DataArray2_scaling = xr.DataArray(DataArray2_scaling, dims=[dim], coords={dim: coord_values})
+    DataArray1_scaling = xr.DataArray(
+        DataArray1_scaling, dims=[dim], coords={dim: coord_values}
+    )
+    DataArray2_scaling = xr.DataArray(
+        DataArray2_scaling, dims=[dim], coords={dim: coord_values}
+    )
 
     # Normalise DataArray1 and DataArray2 by their respective scaling along dim
     DataArray1 *= DataArray1_scaling
@@ -1282,6 +1474,75 @@ def _merge_two_DataArrays(DataArray1, DataArray2, dim):
     merged_data = sum_data([DataArray1, DataArray2])
 
     # Remove sum_data analysis_history entry
-    merged_data.attrs['analysis_history'] = merged_data.attrs['analysis_history'][0:-1]
+    merged_data.attrs["analysis_history"] = merged_data.attrs["analysis_history"][0:-1]
 
     return merged_data
+
+
+@add_methods(xr.DataArray)
+def estimate_sym_point(data, dims=None, upsample_factor=100):
+    """Function to estimate the centrepoint of data that should be symmetric about an axis or axes.
+    Used for e.g. estimating normal emission of an ARPES scan.
+
+    Parameters
+    ------------
+    data : xarray.DataArray
+        The data to estimate the centrepoint of.
+
+    dims : string, tuple of string, list of string, optional
+        The dimensions to estimate the centrepoint along.
+        Defaults to None, which estimates the centrepoint along all dims of the array
+
+    upsample_factor : int, optional
+        The upsample factor used in the phase cross correlation algorithm.
+        Defaults to 100.
+
+    Returns
+    ------------
+    centre : dict
+        The estimated centrepoint of the data along the specified dims.
+
+    Examples
+    ------------
+    Example usage is as follows::
+
+        import peaks as pks
+
+        # Find the centre of the dispersion data along the theta_par dimension
+        disp = pks.load('disp.ibw')
+        centre = estimate_sym_point(disp, dims='theta_par')
+
+        # Find the centre of a Fermi surface map
+        FS = pks.load('FS.ibw')
+        centre = estimate_sym_point(FS, dims=['theta_par', 'polar'])
+
+    """
+
+    # Ensure dims is of list type
+    if isinstance(dims, str):
+        dims = [dims]
+    elif isinstance(dims, tuple):
+        dims = list(dims)
+    elif dims is None:
+        dims = data.dims
+
+    # Flip the data along the specified dimensions
+    dim_numbers = [data.dims.index(keyword) for keyword in dims if keyword in data.dims]
+    data_array = data.data
+    data_array_flipped = np.flip(data_array, axis=tuple(dim_numbers))
+
+    # Perform phase cross correlation to estimate the offsets between the arrays
+    shift, _, _ = phase_cross_correlation(
+        data_array, data_array_flipped, upsample_factor=upsample_factor
+    )
+
+    # Work out the offsets in real co-ordinates
+    centre = {}
+    for i, dim in enumerate(dims):
+        coord = data.coords[dim].values
+        coord_delta = coord[1] - coord[0]
+        coord_midpoint = (coord[0] + coord[-1]) / 2
+        midpoint = coord_midpoint + ((shift[dim_numbers[i]] / 2) * coord_delta)
+        centre[dim] = midpoint
+
+    return centre
