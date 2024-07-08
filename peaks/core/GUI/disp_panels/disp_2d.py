@@ -853,7 +853,7 @@ class _Disp2D(QtWidgets.QMainWindow):
                     * theta_par
                 )
             )
-            cursor_text += f"Cursor 0: Normal emission [{self.current_data_loc_angle_conventions.get("tilt_name")}] = {norm_tilt:.3f}</span><br>"
+            cursor_text += f"Cursor 0: Normal emission [{self.current_data_loc_angle_conventions.get('tilt_name')}] = {norm_tilt:.3f}</span><br>"
 
         else:  # Type II
             # Norm polar
