@@ -5,5 +5,5 @@
 # Phil King 19/06/2021
 
 
-def disp_3d():
-    pass
+def _disp_3d():
+    raise NotImplementedError
