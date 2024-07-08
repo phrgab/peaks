@@ -5,5 +5,5 @@
 # Phil King 19/06/2021
 
 
-def disp_4d():
-    pass
+def _disp_4d():
+    raise NotImplementedError
