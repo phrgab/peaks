@@ -1,6 +1,6 @@
 import sys
 from functools import partial
-from PyQt6 import QtCore, QtWidgets
+from PyQt6 import QtCore, QtWidgets, QtGui
 from PyQt6.QtWidgets import (
     QApplication,
     QLabel,
@@ -12,7 +12,11 @@ import pyqtgraph as pg
 import numpy as np
 
 
-from peaks.core.GUI.GUI_utils import Crosshair, CircularListWidget
+from peaks.core.GUI.GUI_utils import (
+    Crosshair,
+    CircularListWidget,
+    KeyPressGraphicsLayoutWidget,
+)
 from peaks.core.fileIO.fileIO_opts import _BL_angles
 from peaks.core.process.tools import sym, estimate_sym_point
 
@@ -63,6 +67,7 @@ class _Disp2D(QtWidgets.QMainWindow):
             [None for i in range(self.num_xhs)],
             [None for i in range(self.num_xhs)],
         ]  # Store for (dim0, dim1) DC positions
+        self.xh_visible_store = []
         self.DC_pens = [(0, 255, 0), (255, 0, 0), (0, 0, 255), (255, 255, 0)]
         self.xh_brushes = [
             (0, 255, 0, 50),
@@ -70,6 +75,27 @@ class _Disp2D(QtWidgets.QMainWindow):
             (0, 0, 255, 50),
             (255, 255, 0, 50),
         ]
+
+        # Set keys for the keyboard control
+        def _get_key(param):
+            return getattr(QtCore.Qt.Key, f"Key_{param}")
+
+        self.key_modifiers_characters = {
+            "move_csr2": "Control",
+            "move_all": "Shift",
+            "hide_all": "Space",
+        }
+        self.key_modifiers = {
+            k: _get_key(v) for k, v in self.key_modifiers_characters.items()
+        }
+        self.show_hide_csr_key_characters = [str(i) for i in range(self.num_xhs)]
+        self.show_hide_csr_keys = [
+            _get_key(key) for key in self.show_hide_csr_key_characters
+        ]
+        self.show_hide_mirror_key_character = "M"
+        self.show_hide_mirror_key = _get_key(self.show_hide_mirror_key_character)
+        self.move_csr1_key_enabled = False
+        self.move_all_key_enabled = False
 
         # Set options for dims to exclude from centering
         if isinstance(exclude_from_centering, str):
@@ -109,10 +135,13 @@ class _Disp2D(QtWidgets.QMainWindow):
 
         self._build_plot_layout(layout)  # Build the basic plot layout
         self._build_controls_layout(layout)  # Build the control panel layout
+        self._build_menu()  # Add the menu
 
     def _build_plot_layout(self, layout):
         # Create a GraphicsLayoutWidget
-        self.graphics_layout = pg.GraphicsLayoutWidget()
+        self.graphics_layout = (
+            KeyPressGraphicsLayoutWidget._KeyPressGraphicsLayoutWidget()
+        )
         self.graphics_layout.viewport().setAttribute(
             QtCore.Qt.WidgetAttribute.WA_AcceptTouchEvents, False
         )
@@ -211,7 +240,7 @@ class _Disp2D(QtWidgets.QMainWindow):
         bottom_panel_layout.addLayout(bottom_panel_layout_right)
 
         # Scans list
-        self.scans_list = CircularListWidget.CircularListWidget()
+        self.scans_list = CircularListWidget._CircularListWidget()
         self.scans_list.setFixedWidth(140)
         self.scans_list.setFixedHeight(180)
         self.scans_list.addItems([array.name for array in self.data_arrays])
@@ -229,6 +258,56 @@ class _Disp2D(QtWidgets.QMainWindow):
         lock_opts_layout.addWidget(self.range_lock)
         bottom_panel_layout_right.addWidget(self.lock_opts)
         bottom_panel_layout_right.addStretch()
+
+    def _build_menu(self):
+        """Add a menu"""
+        self.menu = self.menuBar().addMenu("Display Panel")
+        self.shortcuts_action = QtGui.QAction("Help", self)
+
+        self.help_text = f"""
+                <table style='width:100%; border: 1px solid black; border-collapse: collapse;'>
+                  <tr style='border: 1px solid black;'>
+                    <th style='border: 1px solid black; padding: 5px; font-weight: normal;'>Action</th>
+                    <th style='border: 1px solid black; padding: 5px; font-weight: normal;'>Key Binding</th>
+                  </tr>
+                  <tr>
+                    <td style='padding: 5px; font-weight: normal;'>Move crosshair 0</td>
+                    <td style='padding: 5px; font-weight: normal;'>Arrow keys</td>
+                  </tr>
+                  <tr>
+                    <td style='padding: 5px; font-weight: normal;'>Move c_rosshair 1</td>
+                    <td style='padding: 5px; font-weight: normal;'>{self.key_modifiers_characters['move_csr2']} + Arrow keys</td>
+                  </tr>
+                  <tr>
+                    <td style='padding: 5px; font-weight: normal;'>Move all crosshairs</td>
+                    <td style='padding: 5px; font-weight: normal;'>{self.key_modifiers_characters['move_all']} + Arrow keys</td>
+                  </tr>
+                  <tr>
+                    <td style='padding: 5px; font-weight: normal;'>Hide all crosshairs</td>
+                    <td style='padding: 5px; font-weight: normal;'>{self.key_modifiers_characters['hide_all']}</td>
+                  </tr>
+                """
+
+        for i in range(self.num_xhs):
+            self.help_text += f"""
+                  <tr>
+                    <td style='padding: 5px; font-weight: normal;'>Enable/disable crosshair {i}</td>
+                    <td style='padding: 5px; font-weight: normal;'>{self.show_hide_csr_key_characters[i]}</td>
+                  </tr>
+                """
+
+        self.help_text += f"""
+                  <tr>
+                    <td style='padding: 5px; font-weight: normal;'>Enable/disable mirrored mode</td>
+                    <td style='padding: 5px; font-weight: normal;'>{self.show_hide_mirror_key_character}</td>
+                  </tr>
+                </table>
+                """
+
+        self.shortcuts_action.triggered.connect(
+            lambda: QtWidgets.QMessageBox.information(self, "Help", self.help_text)
+        )
+        self.menu.addAction(self.shortcuts_action)
 
     # ##############################
     # Data handling / plotting
@@ -540,6 +619,7 @@ class _Disp2D(QtWidgets.QMainWindow):
         self._connect_signals_crosshairs()
         self._connect_signals_DCspan_change()
         self._connect_signals_align()
+        self._connect_key_press_signals()
 
         # Mark as initialized
         self.init = True
@@ -803,6 +883,74 @@ class _Disp2D(QtWidgets.QMainWindow):
         # Connect centre data button
         self.align_button.clicked.connect(self._align_data)
         self.connected_plot_signals.append(self.align_button.clicked)
+
+    def _connect_key_press_signals(self):
+        signals = [self.graphics_layout.keyPressed, self.graphics_layout.keyReleased]
+        fns = [self._key_press_event, self._key_release_event]
+        for signal, fn in zip(signals, fns):
+            signal.connect(fn)
+            self.connected_plot_signals.append(signal)
+
+    def _key_press_event(self, event):
+        # First deal with the modifiers
+        if event.key() == self.key_modifiers["move_csr2"]:
+            self.move_csr1_key_enabled = True
+        elif event.key() == self.key_modifiers["move_all"]:
+            self.move_all_key_enabled = True
+        elif event.key() == self.key_modifiers["hide_all"]:
+            # If this is the first press, store what xhs are currently visible and hide all
+            if len(self.xh_visible_store) == 0:
+                for i in range(self.num_xhs):
+                    if self.show_DCs_checkboxes[i].isChecked():
+                        self.xh_visible_store.append(self.xhs[i])
+                        self.xhs[i].set_visible(False)
+        elif event.key() in self.show_hide_csr_keys:
+            # Show/hide cursors
+            csr_no = self.show_hide_csr_keys.index(event.key())
+            self.show_DCs_checkboxes[csr_no].setChecked(
+                not self.show_DCs_checkboxes[csr_no].isChecked()
+            )
+        elif event.key() == self.show_hide_mirror_key:
+            self.show_mirror_checkbox.setChecked(
+                not self.show_mirror_checkbox.isChecked()
+            )
+        elif event.key() in [
+            QtCore.Qt.Key.Key_Up,
+            QtCore.Qt.Key.Key_Down,
+            QtCore.Qt.Key.Key_Left,
+            QtCore.Qt.Key.Key_Right,
+        ]:
+            if self.move_all_key_enabled:
+                xhs = [
+                    xh
+                    for i, xh in enumerate(self.xhs)
+                    if self.show_DCs_checkboxes[i].isChecked()
+                ]
+            elif self.move_csr1_key_enabled:
+                xhs = [self.xhs[1]]
+            else:
+                xhs = [self.xhs[0]]
+            for xh in xhs:
+                current_pos = xh.get_pos()
+                if event.key() == QtCore.Qt.Key.Key_Right:
+                    xh.set_pos((current_pos[0], current_pos[1] + self.step_sizes[1]))
+                elif event.key() == QtCore.Qt.Key.Key_Left:
+                    xh.set_pos((current_pos[0], current_pos[1] - self.step_sizes[1]))
+                elif event.key() == QtCore.Qt.Key.Key_Up:
+                    xh.set_pos((current_pos[0] + self.step_sizes[0], current_pos[1]))
+                elif event.key() == QtCore.Qt.Key.Key_Down:
+                    xh.set_pos((current_pos[0] - self.step_sizes[0], current_pos[1]))
+
+    def _key_release_event(self, event):
+        if event.key() == self.key_modifiers["move_csr2"]:
+            self.move_csr1_key_enabled = False
+        elif event.key() == self.key_modifiers["move_all"]:
+            self.move_all_key_enabled = False
+        elif event.key() == self.key_modifiers["hide_all"]:
+            # Restore xh to previous state
+            for xh in self.xh_visible_store:
+                xh.set_visible(True)
+            self.xh_visible_store = []
 
     # ##############################
     # Helper functions
