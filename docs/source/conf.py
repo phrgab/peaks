@@ -3,19 +3,17 @@
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+import re
 import os
-import sys
 from datetime import date
 
-import xarray
+__name__ = "peaks"
 
-xarray.DataArray.__module__ = "xarray"
-
-# Add the project root to the path
-sys.path.insert(0, os.path.abspath("../../"))
-
-from peaks import __name__
-from peaks.__version__ import __version__
+# Get current version
+vfpath = os.path.join(os.path.dirname(__file__), "..", "..", "peaks", "__version__.py")
+with open(vfpath, "r") as f:
+    contents = f.read()
+__version__ = re.search(r'__version__ = "(.*?)"', contents).group(1)
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -28,7 +26,7 @@ copyright = f"{date.today().year}, {author}"
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 extensions = [
-    "sphinx.ext.autodoc",
+    "autoapi.extension",
     "sphinx.ext.viewcode",
     "sphinx.ext.autosummary",
     "sphinx.ext.autosectionlabel",
@@ -39,6 +37,7 @@ extensions = [
     "sphinx_inline_tabs",
     "myst_nb",
 ]
+autoapi_dirs = ["../../peaks"]
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),

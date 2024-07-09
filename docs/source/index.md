@@ -26,7 +26,7 @@ _tutorials/*
 :caption: API Reference
 :maxdepth: 1
 
-_apidoc/peaks
+autoapi/peaks/index
 ```
 
 ```{toctree}

@@ -48,6 +48,7 @@ dev = [
         "sphinx-copybutton (>=0.5,<1)",
         "sphinx-togglebutton (>=0.3,<1)",
         "sphinx-inline-tabs (>=2023)",
+        "sphinx-autoapi (>=3.1<4)",
         "myst-parser (>=2.0,<3)",
         "myst-nb (>=1.1,<2)",
         "furo (>=2024)",

@@ -20,12 +20,11 @@ pip install -e peaks\[dev\]
 ## Documentation
 The hosted documentation is automatically built by Gitlab CI/CD, and updated on each commit. To make a local build of the documentation, first install [`sphinx`](https://www.sphinx-doc.org/en/master/) and the required additional packages:
 ```bash
-pip install sphinx sphinx-copybutton sphinx-togglebutton sphinx-inline-tabs myst-parser furo
+pip install sphinx sphinx-autoapi sphinx-copybutton sphinx-togglebutton sphinx-inline-tabs myst-parser furo
 ```
 
 To build the documentation, navigate to the `docs` directory and run:
 ```bash
-sphinx-apidoc -o source/_apidoc ../peaks
 cp -f ../tutorials/* source/_tutorials/
 make html
 ```
