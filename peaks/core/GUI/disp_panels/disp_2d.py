@@ -441,6 +441,7 @@ class _Disp2D(QtWidgets.QMainWindow):
 
     def _set_DC_plots(self):
         self.DC_plot_items = {}
+        self.DC_plots_xhs = [[], []]
         for dim_no in range(2):
             dim = self.dims[dim_no]
             select_along_dim_no = (dim_no + 1) % 2
@@ -504,6 +505,23 @@ class _Disp2D(QtWidgets.QMainWindow):
                     self.DC_plot_items[f"{dim_no}_m"][i].setVisible(
                         self.show_mirror_checkbox.isChecked()
                     )
+
+            # Add spans for crosshairs
+            for i in range(self.num_xhs):
+                self.DC_plots_xhs[dim_no].append(
+                    pg.LinearRegionItem(
+                        values=getattr(self.xhs[i], f"get_dim{dim_no}_span")(),
+                        orientation="horizontal" if dim_no == 0 else "vertical",
+                        pen=(0, 0, 0, 0),
+                        brush=self.xh_brushes[i % len(self.xh_brushes)],
+                        movable=False,
+                    )
+                )
+                self.DC_plots[dim_no].addItem(self.DC_plots_xhs[dim_no][i])
+                self.DC_plots_xhs[dim_no][i].setVisible(
+                    self.show_DCs_checkboxes[i].isChecked()
+                )  # Set visibility
+
         self.DC_plots[0].getViewBox().invertX(False)
 
     def _set_plot_ranges(self, previous_x_range, previous_y_range):
@@ -671,14 +689,14 @@ class _Disp2D(QtWidgets.QMainWindow):
 
     def _update_DC_width(self, dim_no):
         """Update the DC markers and plots when the width is changed."""
-        if dim_no == 0:
-            for i, xh in enumerate(self.xhs):
-                xh.set_dim0_width(self.DC_width_selectors[0].value())
-                self._update_DC(i)
-        else:
-            for i, xh in enumerate(self.xhs):
-                xh.set_dim1_width(self.DC_width_selectors[1].value())
-                self._update_DC(i)
+        for i, xh in enumerate(self.xhs):
+            getattr(xh, f"set_dim{dim_no}_width")(
+                self.DC_width_selectors[dim_no].value()
+            )
+            self.DC_plots_xhs[dim_no][i].setRegion(
+                getattr(xh, f"get_dim{dim_no}_span")()
+            )
+            self._update_DC(i)
         self._update_cursor_stats_text()
 
     def _update_DC_int(self, dim_no):
@@ -730,6 +748,12 @@ class _Disp2D(QtWidgets.QMainWindow):
                 self.xh_pos_store[dim_no][i] = None
                 xh.update_crosshair()
 
+    def _update_DC_crosshair_span(self, xh_no):
+        """Follow the crosshair with the DC span."""
+        xh = self.xhs[xh_no]
+        for i in range(2):
+            self.DC_plots_xhs[i][xh_no].setRegion(getattr(xh, f"get_dim{i}_span")())
+
     def _show_hide_DCs(self, xh_no):
         """Show or hide the DC plots."""
         show_DC = self.show_DCs_checkboxes[xh_no].isChecked()
@@ -740,6 +764,8 @@ class _Disp2D(QtWidgets.QMainWindow):
             elif isinstance(key, str) and not plot_item_group == []:
                 plot_item_group[xh_no].setVisible(show_mirror and show_DC)
         self.xhs[xh_no].set_visible(show_DC)
+        self.DC_plots_xhs[0][xh_no].setVisible(show_DC)
+        self.DC_plots_xhs[1][xh_no].setVisible(show_DC)
         self._update_cursor_stats_text()
 
     def _show_hide_mirror(self):
@@ -853,6 +879,7 @@ class _Disp2D(QtWidgets.QMainWindow):
         for i, xh_ in enumerate(self.xhs):
             signal = xh_.xh.sigPositionChanged
             signal.connect(partial(self._update_DC, i))  # Update DC plots
+            signal.connect(partial(self._update_DC_crosshair_span, i))  # Follow DC span
             signal.connect(self._update_cursor_stats_text)  # Update label
             self.connected_plot_signals.append(signal)
 
