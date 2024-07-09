@@ -11,7 +11,7 @@ from peaks.core.GUI.disp_panels.disp_4d import _disp_4d
 
 @add_methods(xr.DataArray)
 def disp(data, primary_dim=None, exclude_from_centering="eV"):
-    """GUI data viewer for 2D, 3D, or 4D data.
+    """GUI data viewer for 2D, 3D, or 4D data. Click on the Help menu of the GUI to see keyboard shortcuts.
 
     Parameters
     ------------
