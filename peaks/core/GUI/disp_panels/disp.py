@@ -12,6 +12,8 @@ from peaks.core.GUI.disp_panels.disp_4d import _disp_4d
 @add_methods(xr.DataArray)
 def disp(data, primary_dim=None, exclude_from_centering="eV"):
     """GUI data viewer for 2D, 3D, or 4D data. Click on the Help menu of the GUI to see keyboard shortcuts.
+    Default display mode is based on the conventional `peaks` data structure for ARPES data, but can be modified by
+    passing the relevant parameters in the function call.
 
     Parameters
     ------------
@@ -36,26 +38,12 @@ def disp(data, primary_dim=None, exclude_from_centering="eV"):
         import peaks as pks
 
         # To display a single dispersion
-        # Load the dispersion
-        disp = load('disp.ibw')
-
-        # Display it in the UI
-        disp.disp()
-
+        disp = load('disp.ibw')  # Load the dispersion
+        disp.disp()  # Display it in the UI
 
         # To display a set of 2D dispersions with theta_par axis on the vertical axis
-        # Load the dispersions
-        disp1 = load('disp1.ibw')
-        disp2 = load('disp2.ibw')
-        disp3 = load('disp3.ibw')
-        disp4 = load('disp4.ibw')
-
-        # Make a list
-        disps_to_plot = [disp1, disp2, disp3, disp4]
-
-        # Open dispersions in viewer
-        pks.disp(disps_to_plot, primary_dim='theta_par')
-
+        disps_to_plot = [load(f"disp{i}.ibw") for i in range(1, 5)]  # Load dispersions
+        pks.disp(disps_to_plot, primary_dim='theta_par')  # Open dispersions in viewer
 
         # To display a Fermi surface map
         FS_map = load('FS_map.nxs')
