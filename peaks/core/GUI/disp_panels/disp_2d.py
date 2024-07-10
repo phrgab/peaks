@@ -1,3 +1,7 @@
+"""Functions for the 2D interactive display panel.
+
+"""
+
 import sys
 from functools import partial
 from PyQt6 import QtCore, QtWidgets, QtGui
@@ -113,9 +117,9 @@ class _Disp2D(QtWidgets.QMainWindow):
 
         # Ensure the application quits when the window is closed
         self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose)
-        self.closeEvent = self.close_application
+        self.closeEvent = self._close_application
 
-    def close_application(self, event):
+    def _close_application(self, event):
         """Close the application when the window is closed."""
         self.graphics_layout.close()
         app.quit()
@@ -228,8 +232,8 @@ class _Disp2D(QtWidgets.QMainWindow):
         show_DCs_layout.addWidget(self.show_mirror_checkbox)
         self.align_button = QtWidgets.QPushButton("Align")
         show_DCs_layout.addWidget(self.align_button)
-        self.copy_button = QtWidgets.QPushButton("Copy")
-        show_DCs_layout.addWidget(self.copy_button)
+        # self.copy_button = QtWidgets.QPushButton("Copy")
+        # show_DCs_layout.addWidget(self.copy_button)
 
         DC_display_controls.addStretch()
         bottom_panel_layout_left.addStretch()
