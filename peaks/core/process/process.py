@@ -19,3 +19,7 @@ def _add_estimated_EF():
 
 def _add_estimated_hv():
     pass
+
+
+def _estimate_EF(data, fit=False):
+    pass
