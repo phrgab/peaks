@@ -18,11 +18,11 @@ import numpy as np
 
 from peaks.core.GUI.GUI_utils import (
     Crosshair,
-    CircularListWidget,
     KeyPressGraphicsLayoutWidget,
 )
 from peaks.core.fileIO.fileIO_opts import _BL_angles
 from peaks.core.process.tools import sym, estimate_sym_point
+from peaks.core.process.process import _estimate_EF
 
 
 def _disp_3d(data, primary_dim, exclude_from_centering):
@@ -64,13 +64,10 @@ class _Disp3D(QtWidgets.QMainWindow):
                 data = data.transpose(*dims)
         self.data = data.compute()
 
-        # Initialize some parameters
-        self.init = False
-        self.connected_plot_signals = []
-
         # Crosshair options
-        self.DC_pen = (0, 255, 0)
-        self.xh_brush = (0, 255, 0, 50)
+        self.DC_pen = (255, 0, 0)
+        self.xh_brush = (255, 0, 0, 50)
+        self.DC_xh_brush = (255, 0, 0, 70)
 
         # Set keys for the keyboard control
         def _get_key(param):
@@ -78,6 +75,8 @@ class _Disp3D(QtWidgets.QMainWindow):
 
         self.key_modifiers_characters = {
             "hide_all": "Space",
+            "move_primary_dim": "Shift",
+            "show_hide_mirror": "M",
         }
         self.key_modifiers = {
             k: _get_key(v) for k, v in self.key_modifiers_characters.items()
@@ -91,9 +90,9 @@ class _Disp3D(QtWidgets.QMainWindow):
         else:
             self.exclude_from_centering = []
 
-        self._set_data()  # Read some basic parameters from the data
+        self._init_data()  # Read some basic parameters from the data
         self._init_UI()  # Initialize the GUI layout
-        # self._change_data()  # Initialize with data
+        self._set_data()  # Initialize with data
 
         # Ensure the application quits when the window is closed
         self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose)
@@ -119,7 +118,7 @@ class _Disp3D(QtWidgets.QMainWindow):
 
         self._build_plot_layout(layout)  # Build the basic plot layout
         self._build_controls_layout(layout)  # Build the control panel layout
-        # self._build_menu()  # Add the menu
+        self._build_menu()  # Add the menu
 
     def _build_plot_layout(self, layout):
         # Create a GraphicsLayoutWidget
@@ -160,19 +159,27 @@ class _Disp3D(QtWidgets.QMainWindow):
         self.DC_plots[1].setXLink(self.image_plots[1])
         self.image_plots[0].setXLink(self.image_plots[1])
         self.image_plots[2].setYLink(self.image_plots[1])
-        self.DC_plots[1].getAxis("bottom").hide()
-        self.DC_plots[1].getAxis("top").show()
+        for i in [0, 1]:
+            self.DC_plots[i].getAxis("bottom").hide()
+            self.DC_plots[i].getAxis("top").show()
         self.image_plots[2].getAxis("left").hide()
         self.image_plots[2].getAxis("right").show()
-        self.graphics_layout.ci.layout.setRowStretchFactor(1, 3)
-        self.graphics_layout.ci.layout.setRowStretchFactor(2, 3)
-        self.graphics_layout.ci.layout.setColumnStretchFactor(1, 3)
-        self.graphics_layout.ci.layout.setColumnStretchFactor(2, 3)
+        for i in [1, 2]:
+            self.image_plots[i].getAxis("bottom").hide()
+            self.image_plots[i].getAxis("top").show()
 
-        # # Set margins to line up the plots
-        # self.DC_plots[0].getAxis("right").setWidth(60)
-        # self.DC_plots[1].getAxis("left").setWidth(40)
-        # self.image_plot.getAxis("left").setWidth(40)
+        self.graphics_layout.ci.layout.setRowStretchFactor(1, 4)
+        self.graphics_layout.ci.layout.setRowStretchFactor(2, 4)
+        self.graphics_layout.ci.layout.setColumnStretchFactor(1, 4)
+        self.graphics_layout.ci.layout.setColumnStretchFactor(2, 4)
+
+        # Set margins to line up the plots
+        self.DC_plots[0].getAxis("left").setWidth(40)
+        self.DC_plots[0].getAxis("bottom").setWidth(50)
+        self.DC_plots[1].getAxis("left").setWidth(60)
+        self.image_plots[0].getAxis("left").setWidth(60)
+        self.image_plots[1].getAxis("left").setWidth(60)
+        self.image_plots[2].getAxis("right").setWidth(50)
 
     def _build_controls_layout(self, layout):
         # Right panel -------------------------------------
@@ -280,6 +287,18 @@ class _Disp3D(QtWidgets.QMainWindow):
         self.copy_button = QtWidgets.QPushButton("Copy")
         hbox.addWidget(self.copy_button)
 
+        right_panel_layout.addSpacing(10)
+
+        # Add colorbar
+        colorbar_group = QtWidgets.QGroupBox("Image contrast")
+        right_panel_layout.addWidget(colorbar_group)
+        colorbar_container = QHBoxLayout()
+        colorbar_group.setLayout(colorbar_container)
+        self.colorbar_widget_container = pg.GraphicsLayoutWidget()
+        self.colorbar_widget_container.setMaximumHeight(100)
+        self.colorbar_widget_container.setMaximumWidth(400)
+        colorbar_container.addWidget(self.colorbar_widget_container)
+
         right_panel_layout.addStretch()
 
     def _build_menu(self):
@@ -294,16 +313,13 @@ class _Disp3D(QtWidgets.QMainWindow):
                     <th style='border: 1px solid black; padding: 5px; font-weight: normal;'>Key Binding</th>
                   </tr>
                   <tr>
-                    <td style='padding: 5px; font-weight: normal;'>Move crosshair 0</td>
+                    <td style='padding: 5px; font-weight: normal;'>Move crosshair in main plot</td>
                     <td style='padding: 5px; font-weight: normal;'>Arrow keys</td>
                   </tr>
                   <tr>
-                    <td style='padding: 5px; font-weight: normal;'>Move c_rosshair 1</td>
-                    <td style='padding: 5px; font-weight: normal;'>{self.key_modifiers_characters['move_csr2']} + Arrow keys</td>
-                  </tr>
-                  <tr>
-                    <td style='padding: 5px; font-weight: normal;'>Move all crosshairs</td>
-                    <td style='padding: 5px; font-weight: normal;'>{self.key_modifiers_characters['move_all']} + Arrow keys</td>
+                    <td style='padding: 5px; font-weight: normal;'>Change primary slice</td>
+                    <td style='padding: 5px; font-weight: normal;'>{self.key_modifiers_characters['move_primary_dim']} 
+                    + Up/Down arrow keys</td>
                   </tr>
                   <tr>
                     <td style='padding: 5px; font-weight: normal;'>Hide all crosshairs</td>
@@ -311,18 +327,10 @@ class _Disp3D(QtWidgets.QMainWindow):
                   </tr>
                 """
 
-        for i in range(self.num_xhs):
-            self.help_text += f"""
-                  <tr>
-                    <td style='padding: 5px; font-weight: normal;'>Enable/disable crosshair {i}</td>
-                    <td style='padding: 5px; font-weight: normal;'>{self.show_hide_csr_key_characters[i]}</td>
-                  </tr>
-                """
-
         self.help_text += f"""
                   <tr>
                     <td style='padding: 5px; font-weight: normal;'>Enable/disable mirrored mode</td>
-                    <td style='padding: 5px; font-weight: normal;'>{self.show_hide_mirror_key_character}</td>
+                    <td style='padding: 5px; font-weight: normal;'>{self.key_modifiers_characters["show_hide_mirror"]}</td>
                   </tr>
                 </table>
                 """
@@ -335,8 +343,8 @@ class _Disp3D(QtWidgets.QMainWindow):
     # ##############################
     # Data handling / plotting
     # ##############################
-    def _set_data(self):
-        """Set the current data array and extract some core parameters."""
+    def _init_data(self):
+        """Extract some core parameters from the data."""
         self.dims = self.data.dims
         self.coords = [self.data.coords[dim].values for dim in self.dims]
         self.step_sizes = [coord[1] - coord[0] for coord in self.coords]
@@ -404,260 +412,213 @@ class _Disp3D(QtWidgets.QMainWindow):
         else:
             self.analyser_type = None
 
-    def _set_main_plot(self, cmap, c_range, xh_pos):
-        # Set main image
-        self.image_item = pg.ImageItem(self.data.values, axisOrder="row-major")
-        self.image_plot.addItem(self.image_item)
-
-        # Transform to match data coordinates
-        self.image_item.setTransform(
-            pg.QtGui.QTransform(
-                self.step_sizes[1],
-                0,
-                0,
-                0,
-                self.step_sizes[0],
-                0,
-                self.coords[1][0],
-                self.coords[0][0],
-                1,
-            )
-        )
-
-        # Add colour bar
-        self.colorbar = pg.ColorBarItem(
-            label=self.data.name,
-            colorMap=cmap,
-            colorMapMenu=True,
-            limits=(self.c_min, self.c_max),
-            interactive=True,
-            orientation="h",
-            values=c_range,
-        )
-        self.colorbar.setImageItem(self.image_item, insert_in=self.image_plot)
-        self.image_item.setColorMap(cmap)
-        self.graphics_layout.addItem(self.colorbar, row=0, col=0)
-
-        # Add crosshairs
+    def _set_main_plots(self):
+        # Make arrays for plotitems and crosshairs
+        self.image_items = []
         self.xhs = []
-        for i in range(self.num_xhs):
+
+        # Populate these for each of the main plots
+        for i in range(3):
+            self.image_items.append(
+                pg.ImageItem(self.images[i].values, axisOrder="row-major")
+            )
+            self.image_plots[i].addItem(self.image_items[i])
+
+            # Transform to match data coordinates
+            active_dim_nos = self._get_active_dim_nos(i)
+            self.image_items[i].setTransform(
+                pg.QtGui.QTransform(
+                    self.step_sizes[active_dim_nos[1]],
+                    0,
+                    0,
+                    0,
+                    self.step_sizes[active_dim_nos[0]],
+                    0,
+                    self.coords[active_dim_nos[1]][0],
+                    self.coords[active_dim_nos[0]][0],
+                    1,
+                )
+            )
+
+            # Crosshairs
+            pos = tuple(
+                [self.cursor_positions_selection[i].value() for i in active_dim_nos]
+            )
             self.xhs.append(
                 Crosshair._Crosshair(
-                    self.image_plot,
-                    pos=xh_pos[i],
-                    dim0_width=self.DC_width_selectors[0].value(),
-                    dim1_width=self.DC_width_selectors[1].value(),
-                    brush=self.xh_brushes[i % len(self.xh_brushes)],
-                    bounds=[self.ranges[0], self.ranges[1]],
+                    self.image_plots[i],
+                    pos=pos,
+                    dim0_width=self.cursor_widths_selection[active_dim_nos[0]].value(),
+                    dim1_width=self.cursor_widths_selection[active_dim_nos[1]].value(),
+                    brush=self.xh_brush,
+                    bounds=[
+                        self.ranges[active_dim_nos[0]],
+                        self.ranges[active_dim_nos[1]],
+                    ],
                     axisOrder="row-major",
                 )
             )
 
-            # Set visibility
-            self.xhs[i].set_visible(self.show_DCs_checkboxes[i].isChecked())
+        # Add colour bar to main image
+        self.cmap = pg.colormap.get("Greys", source="matplotlib")
+        self.colorbar = pg.ColorBarItem(
+            label=self.data.name,
+            colorMap=self.cmap,
+            colorMapMenu=True,
+            limits=(self.c_min, self.c_max),
+            interactive=True,
+            orientation="h",
+            values=(self.c_min, self.c_max),
+        )
+        self.colorbar.setImageItem(self.image_items)
+        self.colorbar_widget_container.addItem(self.colorbar, row=0, col=0)
+
+        # Flip axes as required
+        self.image_plots[2].getViewBox().invertX(True)
 
     def _set_DC_plots(self):
         self.DC_plot_items = {}
-        self.DC_plots_xhs = [[], []]
-        for dim_no in range(2):
-            dim = self.dims[dim_no]
-            select_along_dim_no = (dim_no + 1) % 2
-            self.DC_plot_items[dim_no] = []
-            self.DC_plot_items[f"{dim_no}_m"] = []
-            for i in range(self.num_xhs):
-                DC = self._select_DC(
-                    self.data,
-                    select_along_dim_no,
-                    (
-                        self.xhs[i].get_dim1_span()
-                        if select_along_dim_no == 1
-                        else self.xhs[i].get_dim0_span()
-                    ),
+        self.DC_plots_xhs = []
+        for i in range(2):
+            dim_no = [0, 2][i]  # Select the active dim for the relevant xh plot
+            self.DC_plot_items[i] = []
+            self.DC_plot_items[f"{i}_m"] = []
+            DC = self._select_DC(dim_no)
+
+            # Add to plots - get ordering correct
+            if i == 0:
+                a, b = DC.data, DC.coords[self.dims[dim_no]].values
+            else:
+                a, b = DC.coords[self.dims[dim_no]].values, DC.data
+
+            self.DC_plot_items[i].append(
+                self.DC_plots[i].plot(
+                    a,
+                    b,
+                    pen=self.DC_pen,
                 )
-
-                # Add to plots - get ordering correct
-                if dim_no == 0:
-                    a, b = DC.data, DC.coords[self.dims[dim_no]].values
-                else:
-                    a, b = DC.coords[self.dims[dim_no]].values, DC.data
-
-                self.DC_plot_items[dim_no].append(
-                    self.DC_plots[dim_no].plot(
-                        a,
-                        b,
-                        pen=self.DC_pens[i % len(self.DC_pens)],
-                    )
-                )  # Main DC
-
-                # Set visibility
-                self.DC_plot_items[dim_no][i].setVisible(
-                    self.show_DCs_checkboxes[i].isChecked()
-                )
-
-                # Add a mirror DC if dim in mirror group
-                if dim in self.centering_dims:
-                    mirror_DC = sym(
-                        DC, flipped=True, **{dim: self.xhs[i].get_pos()[dim_no]}
-                    )
-                    if dim_no == 0:
-                        a, b = (
-                            mirror_DC.data,
-                            mirror_DC.coords[self.dims[dim_no]].values,
-                        )
-                    else:
-                        a, b = (
-                            mirror_DC.coords[self.dims[dim_no]].values,
-                            mirror_DC.data,
-                        )
-                    self.DC_plot_items[f"{dim_no}_m"].append(
-                        self.DC_plots[dim_no].plot(
-                            a,
-                            b,
-                            pen=pg.mkPen(
-                                color=self.DC_pens[i % len(self.DC_pens)],
-                                style=QtCore.Qt.PenStyle.DashLine,
-                            ),
-                        )
-                    )  # Mirrored DC
-                    self.DC_plot_items[f"{dim_no}_m"][i].setVisible(
-                        self.show_mirror_checkbox.isChecked()
-                    )
+            )
 
             # Add spans for crosshairs
-            for i in range(self.num_xhs):
-                self.DC_plots_xhs[dim_no].append(
-                    pg.LinearRegionItem(
-                        values=getattr(self.xhs[i], f"get_dim{dim_no}_span")(),
-                        orientation="horizontal" if dim_no == 0 else "vertical",
-                        pen=(0, 0, 0, 0),
-                        brush=self.xh_brushes[i % len(self.xh_brushes)],
-                        movable=False,
-                    )
+            self.DC_plots_xhs.append(
+                pg.LinearRegionItem(
+                    values=getattr(self.xhs[1], f"get_dim{i}_span")(),
+                    orientation="horizontal" if i == 0 else "vertical",
+                    pen=(0, 0, 0, 0),
+                    brush=self.DC_xh_brush,
+                    movable=False,
                 )
-                self.DC_plots[dim_no].addItem(self.DC_plots_xhs[dim_no][i])
-                self.DC_plots_xhs[dim_no][i].setVisible(
-                    self.show_DCs_checkboxes[i].isChecked()
-                )  # Set visibility
+            )
+            self.DC_plots[i].addItem(self.DC_plots_xhs[i])
 
-        self.DC_plots[0].getViewBox().invertX(False)
+        self.DC_plots[0].getViewBox().invertX(True)
 
-    def _set_plot_ranges(self, previous_x_range, previous_y_range):
-        # Get bounds of current data
-        x_min, x_max = self.ranges[1]
-        y_min, y_max = self.ranges[0]
+    def _set_plot_range_limits(self):
+        # Set limits for image plots
+        for i in range(3):
+            active_dim_nos = self._get_active_dim_nos(i)
+            xmin, xmax = self.ranges[active_dim_nos[1]]
+            ymin, ymax = self.ranges[active_dim_nos[0]]
+            self.image_plots[i].getViewBox().setLimits(
+                xMin=xmin, xMax=xmax, yMin=ymin, yMax=ymax
+            )
 
-        # Check if current view is within data limits
-        if (
-            previous_x_range[0] > x_min
-            and previous_x_range[1] < x_max
-            and self.range_lock.isChecked()
-        ):
-            x0, x1 = previous_x_range
-        else:
-            x0, x1 = x_min, x_max
-        if (
-            previous_y_range[0] > y_min
-            and previous_y_range[1] < y_max
-            and self.range_lock.isChecked()
-        ):
-            y0, y1 = previous_y_range
-        else:
-            y0, y1 = y_min, y_max
-
-        # Set ranges
-        self.DC_plots[1].getViewBox().setLimits(xMin=x_min, xMax=x_max)
-        self.DC_plots[1].getViewBox().setXRange(x0, x1, padding=0.0)
-        self.DC_plots[0].getViewBox().setLimits(yMin=y_min, yMax=y_max)
-        self.DC_plots[0].getViewBox().setYRange(y0, y1, padding=0.0)
-        self.image_plot.getViewBox().setLimits(
-            xMin=x_min,
-            xMax=x_max,
-            yMin=y_min,
-            yMax=y_max,
-        )
-        self.image_plot.getViewBox().setRange(
-            xRange=(x0, x1), yRange=(y0, y1), padding=0.0
-        )
+        # Set limits for DC plots
+        ymin, ymax = self.ranges[0]
+        xmin, xmax = self.ranges[2]
+        self.DC_plots[0].getViewBox().setLimits(yMin=ymin, yMax=ymax)
+        self.DC_plots[1].getViewBox().setLimits(xMin=xmin, xMax=xmax)
 
     def _set_plot_labels(self):
-        # Set labels
-        for i in range(2):
+        # Extract labels
+        dim_labels = []
+        for i in range(3):
             dim_units = self.data.coords[self.dims[i]].attrs.get("units")
-            dim_label = f"{self.dims[i]} ({dim_units})" if dim_units else self.dims[i]
-            self.DC_plots[i].setLabel("bottom" if i == 1 else "right", dim_label)
-            self.DC_groups[i].setTitle(self.dims[i])
+            dim_labels.append(
+                f"{self.dims[i]} ({dim_units})" if dim_units else self.dims[i]
+            )
 
-    def _select_DC(self, data, select_along_dim_no, span_range):
-        """Select a DC from the data, handling averaging."""
-        select_along_dim = self.dims[select_along_dim_no]
-        if np.abs(span_range[1] - span_range[0]) < self.step_sizes[select_along_dim_no]:
-            return data.sel({select_along_dim: np.mean(span_range)}, method="nearest")
-        else:
-            return data.sel(
-                {select_along_dim: slice(span_range[0], span_range[1])}
-            ).mean(select_along_dim)
+        # Label the relevant plots
+        self.DC_plots[0].setLabel("left", dim_labels[0])
+        self.DC_plots[0].setLabel("top", " ")
+        self.DC_plots[1].setLabel("top", dim_labels[2])
+        self.image_plots[0].setLabel("bottom", dim_labels[2])
+        self.image_plots[0].setLabel("left", dim_labels[1])
+        self.image_plots[1].setLabel("top", dim_labels[2])
+        self.image_plots[1].setLabel("left", dim_labels[0])
+        self.image_plots[2].setLabel("top", dim_labels[1])
+        self.image_plots[2].setLabel("right", dim_labels[0])
+
+    def _select_DC(self, dim_no):
+        """Select a DC along dim_no 0 from the data, handling averaging."""
+        sum_over_dim_nos = [i for i in range(3) if i != dim_no]
+        DC = self.data
+        for i in sum_over_dim_nos:
+            _pos = self.cursor_positions_selection[i].value()
+            _width = self.cursor_widths_selection[i].value() / 2
+            _range = slice(_pos - _width, _pos + _width)
+            if _width < self.step_sizes[i]:
+                DC = DC.sel({self.dims[i]: _pos}, method="nearest")
+            else:
+                DC = DC.sel({self.dims[i]: _range}).mean(self.dims[i])
+        return DC
 
     # ##############################
     # Data / plot updates
     # ##############################
-    def _change_data(self):
-        """Change the selected data array."""
-        # Disconnect signals
-        for signal in self.connected_plot_signals[:]:
-            signal.disconnect()
-            self.connected_plot_signals.remove(signal)
+    def _set_data(self):
+        """Set the data in the plots"""
 
-        # Set data
-        self._set_data()
+        self.images = [None, None, None]
 
-        # Define current view ranges and crosshair positions
-        xh_pos = []  # Desired crosshair positions
-        if self.init and self.range_lock.isChecked():
-            x_range, y_range = self.image_plot.getViewBox().viewRange()
-            for i in range(self.num_xhs):
-                xh_pos.append(self.xhs[i].get_pos())
-                if not self._check_crosshair_in_range(xh_pos[i]):
-                    xh_pos[i] = self._init_crosshair_pos(i)
-        else:
-            y_range, x_range = self.ranges
-            for i in range(self.num_xhs):
-                xh_pos.append(self._init_crosshair_pos(i))
-            for i in range(2):
-                self.DC_width_selectors[i].setValue(self.data_span[i] / 200)
+        # Initialise crosshair positions and widths - default to centre of data and 1/200th of range
+        for i in range(3):
+            self.cursor_positions_selection[i].setValue(sum(self.ranges[i]) / 2)
+            self.cursor_widths_selection[i].setValue(self.data_span[i] / 200)
 
-        # Set a colour map - once set on the graph, always keep the same one
-        if not self.init:
-            cmap = pg.colormap.get("Greys", source="matplotlib")
-        else:
-            cmap = self.image_item.getColorMap()
-        # Get colour range
-        if self.init and self.cscale_lock.isChecked():
-            c_range = self.image_item.getLevels()
-        else:
-            c_range = (self.c_min, self.c_max)
+        # If eV in data, attempt to set a Fermi level and use this as initial xh pos
+        if "eV" in self.dims:
+            eV_dim = self.data.dims.index("eV")
+            EF = _estimate_EF(self.data)
+            if not EF:
+                EF = sum(self.ranges[eV_dim]) / 2
+            self.cursor_positions_selection[eV_dim].setValue(EF)
 
-        # Clear existing plots
-        if self.init:
-            self.image_plot.clear()
-            for plot in self.DC_plots:
-                plot.clear()
-            self.graphics_layout.removeItem(self.colorbar)
+        # Make primary data slice
+        self._set_slice(1)
+
+        # Try to estimate a data centre position from this slice and update other xh positions
+        centre = estimate_sym_point(self.images[1], dims=self.centering_dims)
+        for dim, centre in centre.items():
+            self.cursor_positions_selection[self.dims.index(dim)].setValue(centre)
+        # Make the coresponding slices
+        self._set_slice(0)
+        self._set_slice(2)
 
         # Make plots
-        self._set_main_plot(cmap, c_range, xh_pos)  # Make main plot
+        self._set_main_plots()  # Make main plots
         self._set_DC_plots()  # Make DC plots
-        self._set_plot_ranges(x_range, y_range)  # Set ranges
+        self._set_plot_range_limits()  # Set plot range limits
         self._set_plot_labels()  # Set labels
-        self._update_cursor_stats_text()  # Update cursor stats
+        # self._update_cursor_stats_text()  # Update cursor stats
+        #
+        # # Connect signals
+        # self._connect_signals_crosshairs()
+        # self._connect_signals_DCspan_change()
+        # self._connect_signals_align()
+        # self._connect_key_press_signals()
+        #
+        # # Mark as initialized
+        # self.init = True
 
-        # Connect signals
-        self._connect_signals_crosshairs()
-        self._connect_signals_DCspan_change()
-        self._connect_signals_align()
-        self._connect_key_press_signals()
-
-        # Mark as initialized
-        self.init = True
+    def _set_slice(self, dim_no):
+        """Set a data slice based on the xh positions and widths"""
+        _pos = self.cursor_positions_selection[dim_no].value()
+        _width = self.cursor_widths_selection[dim_no].value() / 2
+        _range = slice(_pos - _width, _pos + _width)
+        self.images[dim_no] = self.data.sel({self.dims[dim_no]: _range}).mean(
+            dim=self.dims[dim_no]
+        )
 
     def _update_DC(self, xh_no):
         """Update the DC plots when the crosshair is moved."""
@@ -708,7 +669,7 @@ class _Disp3D(QtWidgets.QMainWindow):
         """Update the DC markers and plots when the width is changed."""
         for i, xh in enumerate(self.xhs):
             getattr(xh, f"set_dim{dim_no}_width")(
-                self.DC_width_selectors[dim_no].value()
+                self.cursor_widths_selection[dim_no].value()
             )
             self.DC_plots_xhs[dim_no][i].setRegion(
                 getattr(xh, f"get_dim{dim_no}_span")()
@@ -721,14 +682,16 @@ class _Disp3D(QtWidgets.QMainWindow):
         if self.DC_span_all_checkboxes[dim_no].isChecked():
             # Store current DC position and width if not already stored
             if self.xh_width_store[dim_no] is None:
-                self.xh_width_store[dim_no] = self.DC_width_selectors[dim_no].value()
+                self.xh_width_store[dim_no] = self.cursor_widths_selection[
+                    dim_no
+                ].value()
                 self.xh_pos_store[dim_no] = [xh.get_pos()[dim_no] for xh in self.xhs]
 
             # Set width box to full range
-            self.DC_width_selectors[dim_no].setValue(
-                self.DC_width_selectors[dim_no].maximum()
+            self.cursor_widths_selection[dim_no].setValue(
+                self.cursor_widths_selection[dim_no].maximum()
             )
-            self.DC_width_selectors[dim_no].setDisabled(True)
+            self.cursor_widths_selection[dim_no].setDisabled(True)
 
             # Force crosshair to mid point
             mid_point = np.mean(self.ranges[dim_no])
@@ -740,8 +703,8 @@ class _Disp3D(QtWidgets.QMainWindow):
                 xh.update_crosshair()
         else:
             # Set to original ranges and positions
-            self.DC_width_selectors[dim_no].setDisabled(False)
-            self.DC_width_selectors[dim_no].setValue(self.xh_width_store[dim_no])
+            self.cursor_widths_selection[dim_no].setDisabled(False)
+            self.cursor_widths_selection[dim_no].setValue(self.xh_width_store[dim_no])
             self.xh_width_store[dim_no] = None
             for i, xh in enumerate(self.xhs):
                 # Unlock the cursor position
@@ -913,7 +876,7 @@ class _Disp3D(QtWidgets.QMainWindow):
     def _connect_signals_DCspan_change(self):
         # Update when span ranges changed
         for i in range(2):
-            signal = self.DC_width_selectors[i].valueChanged
+            signal = self.cursor_widths_selection[i].valueChanged
             signal.connect(partial(self._update_DC_width, i))
             self.connected_plot_signals.append(signal)
 
@@ -999,6 +962,9 @@ class _Disp3D(QtWidgets.QMainWindow):
     # ##############################
     # Helper functions
     # ##############################
+    def _get_active_dim_nos(self, i):
+        return [dim_no for dim_no in range(3) if dim_no != i]
+
     def _init_crosshair_pos(self, xh_no):
         """Initialize the crosshair position."""
         active_xh = [
