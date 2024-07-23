@@ -21,7 +21,7 @@ from peaks.core.GUI.GUI_utils import (
     CircularListWidget,
     KeyPressGraphicsLayoutWidget,
 )
-from peaks.core.fileIO.fileIO_opts import _BL_angles
+from peaks.core.fileIO.fileIO_opts import _BLAngleConventions
 from peaks.core.process.tools import sym, estimate_sym_point
 
 
@@ -342,7 +342,9 @@ class _Disp2D(QtWidgets.QMainWindow):
         if "beamline" in self.current_data.attrs:
             attrs = self.current_data.attrs
             loc = attrs.get("beamline", "default")
-            self.current_data_loc_angle_conventions = _BL_angles.angles.get(loc, {})
+            self.current_data_loc_angle_conventions = _BLAngleConventions.angles.get(
+                loc, {}
+            )
 
             def _parse_meta(
                 param_name_field,
