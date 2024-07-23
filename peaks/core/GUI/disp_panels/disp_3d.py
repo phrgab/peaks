@@ -20,7 +20,7 @@ from peaks.core.GUI.GUI_utils import (
     Crosshair,
     KeyPressGraphicsLayoutWidget,
 )
-from peaks.core.fileIO.fileIO_opts import _BL_angles
+from peaks.core.fileIO.fileIO_opts import _BLAngleConventions
 from peaks.core.process.tools import sym, estimate_sym_point
 from peaks.core.process.process import _estimate_EF
 
@@ -66,6 +66,10 @@ class _Disp3D(QtWidgets.QMainWindow):
 
         # Crosshair options
         self.DC_pen = (255, 0, 0)
+        self.DC_mirror_pen = pg.mkPen(
+            color=(0, 255, 0),
+            style=QtCore.Qt.PenStyle.DashLine,
+        )
         self.xh_brush = (255, 0, 0, 50)
         self.DC_xh_brush = (255, 0, 0, 70)
 
@@ -81,6 +85,7 @@ class _Disp3D(QtWidgets.QMainWindow):
         self.key_modifiers = {
             k: _get_key(v) for k, v in self.key_modifiers_characters.items()
         }
+        self.move_primary_dim_key_enabled = False
 
         # Set options for dims to exclude from centering
         if isinstance(exclude_from_centering, str):
@@ -108,7 +113,7 @@ class _Disp3D(QtWidgets.QMainWindow):
     # ##############################
     def _init_UI(self):
         self.setWindowTitle("Display Panel")
-        self.setGeometry(100, 100, 1000, 700)
+        self.setGeometry(100, 100, 1200, 700)
 
         # Main window layout
         central_widget = QWidget()
@@ -185,6 +190,7 @@ class _Disp3D(QtWidgets.QMainWindow):
         # Right panel -------------------------------------
         right_panel_layout = QVBoxLayout()
         layout.addLayout(right_panel_layout)
+
         # Cursor stats etc.
         self.cursor_stats = QLabel()
         self.cursor_stats.setStyleSheet(
@@ -194,7 +200,7 @@ class _Disp3D(QtWidgets.QMainWindow):
             QtCore.Qt.AlignmentFlag.AlignTop | QtCore.Qt.AlignmentFlag.AlignLeft
         )
         self.cursor_stats.setWordWrap(True)
-        self.cursor_stats.setMaximumWidth(550)
+        self.cursor_stats.setMaximumWidth(450)
         self.cursor_stats.setMinimumWidth(300)
         self.cursor_stats.setMinimumHeight(100)
         right_panel_layout.addWidget(self.cursor_stats)
@@ -202,6 +208,7 @@ class _Disp3D(QtWidgets.QMainWindow):
         # xh positions and widths
         xh_group = QtWidgets.QGroupBox("Data selection")
         xh_group.setContentsMargins(5, 22, 5, 5)
+        xh_group.setMaximumWidth(450)
         xh_layout = QtWidgets.QVBoxLayout()
         xh_layout.setContentsMargins(5, 0, 5, 0)
         xh_group.setLayout(xh_layout)
@@ -242,6 +249,7 @@ class _Disp3D(QtWidgets.QMainWindow):
         # Alignment options
         align_group = QtWidgets.QGroupBox("Alignment")
         align_group.setContentsMargins(5, 22, 5, 5)
+        align_group.setMaximumWidth(450)
         align_layout = QtWidgets.QHBoxLayout()
         align_layout.setContentsMargins(5, 0, 5, 0)
         align_group.setLayout(align_layout)
@@ -291,6 +299,7 @@ class _Disp3D(QtWidgets.QMainWindow):
 
         # Add colorbar
         colorbar_group = QtWidgets.QGroupBox("Image contrast")
+        colorbar_group.setMaximumWidth(450)
         right_panel_layout.addWidget(colorbar_group)
         colorbar_container = QHBoxLayout()
         colorbar_group.setLayout(colorbar_container)
@@ -363,7 +372,9 @@ class _Disp3D(QtWidgets.QMainWindow):
         if "beamline" in self.data.attrs:
             attrs = self.data.attrs
             loc = attrs.get("beamline", "default")
-            self.current_data_loc_angle_conventions = _BL_angles.angles.get(loc, {})
+            self.current_data_loc_angle_conventions = _BLAngleConventions.angles.get(
+                loc, {}
+            )
 
             def _parse_meta(
                 param_name_field,
@@ -380,6 +391,7 @@ class _Disp3D(QtWidgets.QMainWindow):
                 "x2 name",
                 "x3 name",
                 "polar_name",
+                "ana_polar_name",
                 "tilt_name",
                 "azi_name",
                 "defl_par_name",
@@ -390,6 +402,7 @@ class _Disp3D(QtWidgets.QMainWindow):
                 "x2",
                 "x3",
                 "polar",
+                "ana_polar",
                 "tilt",
                 "azi",
                 "defl_par",
@@ -402,7 +415,7 @@ class _Disp3D(QtWidgets.QMainWindow):
                     attr_name,
                 )
 
-        self.metadata_text += "</span><br>"
+        self.metadata_text += "</span>"
 
         # Check if this is an ARPES analyser for automated normal emission parsing
         if "ana_slit_angle" in self.data.attrs:
@@ -600,254 +613,181 @@ class _Disp3D(QtWidgets.QMainWindow):
         self._set_DC_plots()  # Make DC plots
         self._set_plot_range_limits()  # Set plot range limits
         self._set_plot_labels()  # Set labels
-        # self._update_cursor_stats_text()  # Update cursor stats
-        #
-        # # Connect signals
-        # self._connect_signals_crosshairs()
-        # self._connect_signals_DCspan_change()
-        # self._connect_signals_align()
-        # self._connect_key_press_signals()
-        #
-        # # Mark as initialized
-        # self.init = True
+        self._update_cursor_stats_text()  # Update initial cursor stats
+
+        # Connect signals
+        self._connect_signals_crosshairs()
+        self._connect_signals_cursor_boxes_change()
+        self._connect_signals_xh_span_change()
+        self._connect_signals_align()
+        self._connect_signals_mirror_checkbox()
+        self._connect_key_press_signals()
 
     def _set_slice(self, dim_no):
         """Set a data slice based on the xh positions and widths"""
         _pos = self.cursor_positions_selection[dim_no].value()
         _width = self.cursor_widths_selection[dim_no].value() / 2
         _range = slice(_pos - _width, _pos + _width)
-        self.images[dim_no] = self.data.sel({self.dims[dim_no]: _range}).mean(
-            dim=self.dims[dim_no]
-        )
+        if _width < self.step_sizes[dim_no]:
+            self.images[dim_no] = self.data.sel(
+                {self.dims[dim_no]: _pos}, method="nearest"
+            )
+        else:
+            self.images[dim_no] = self.data.sel({self.dims[dim_no]: _range}).mean(
+                dim=self.dims[dim_no]
+            )
 
-    def _update_DC(self, xh_no):
+    def _update_cursor_boxes(self, xh_no):
+        """Update the cursor boxes when the crosshair is moved."""
+        x, y = self.xhs[xh_no].get_pos()
+        active_dim_nos = self._get_active_dim_nos(xh_no)
+        self.cursor_positions_selection[active_dim_nos[0]].setValue(x)
+        self.cursor_positions_selection[active_dim_nos[1]].setValue(y)
+
+    def _update_xh_positions(self, dim_changed):
+        """Update the crosshair positions when the cursor boxes are changed."""
+        # Update the crosshair positions on the main plots
+        for i in range(3):
+            active_dim_nos = self._get_active_dim_nos(i)
+            if dim_changed in active_dim_nos:
+                xh = self.xhs[i]
+                xh.set_pos(
+                    (
+                        self.cursor_positions_selection[active_dim_nos[0]].value(),
+                        self.cursor_positions_selection[active_dim_nos[1]].value(),
+                    )
+                )
+
+        # Update the crosshair positions on the DCs
+        if dim_changed == 0:
+            xh = self.DC_plots_xhs[0]
+            xh.setRegion(self.xhs[1].get_dim0_span())
+        elif dim_changed == 2:
+            xh = self.DC_plots_xhs[1]
+            xh.setRegion(self.xhs[1].get_dim1_span())
+
+    def _update_xh_widths(self, dim_changed):
+        """Update the crosshair widths when the cursor boxes are changed."""
+        # Update the crosshairs on the main plots
+        for i in range(3):
+            active_dim_nos = self._get_active_dim_nos(i)
+            if dim_changed in active_dim_nos:
+                xh = self.xhs[i]
+                xh.set_dim0_width(
+                    self.cursor_widths_selection[active_dim_nos[0]].value()
+                )
+                xh.set_dim1_width(
+                    self.cursor_widths_selection[active_dim_nos[1]].value()
+                )
+
+        # Update the crosshairs on the DCs
+        if dim_changed == 0:
+            xh = self.DC_plots_xhs[0]
+            xh.setRegion(self.xhs[1].get_dim0_span())
+        elif dim_changed == 2:
+            xh = self.DC_plots_xhs[1]
+            xh.setRegion(self.xhs[1].get_dim1_span())
+
+    def _update_slices(self, dim_no):
+        """Update the data slices when the crosshair is moved."""
+        self._set_slice(dim_no)
+        image_item = self.image_items[dim_no]
+        image_item.setImage(self.images[dim_no].values)
+
+    def _update_DC(self, dim_no):
         """Update the DC plots when the crosshair is moved."""
-        # Get the xh number and related plots
-        xh = self.xhs[xh_no]
+        if dim_no == 1 or self.mirror_checkbox.isChecked():  # Update both DCs
+            DCs_to_update = [0, 1]
+        elif dim_no == 0:  # Update only DC1
+            DCs_to_update = [1]
+        elif dim_no == 2:  # Update only DC0
+            DCs_to_update = [0]
 
-        for dim_no in range(2):
-            # Plot to update
-            plot = self.DC_plot_items[dim_no][xh_no]
+        for DC_no in DCs_to_update:
+            plot = self.DC_plot_items[DC_no][0]
 
             # Get the DC
-            select_along_dim_no = (dim_no + 1) % 2
-            DC = self._select_DC(
-                self.data,
-                select_along_dim_no,
-                (
-                    xh.get_dim1_span()
-                    if select_along_dim_no == 1
-                    else xh.get_dim0_span()
-                ),
-            )
+            dim_no = [0, 2][DC_no]  # Select the active dim for the relevant xh plot
+            DC = self._select_DC(dim_no)
 
-            # Update the plot
-            if dim_no == 0:
-                plot.setData(DC.data, self.coords[0])
+            # Update the plot - get ordering correct
+            if DC_no == 0:
+                a, b = DC.data, DC.coords[self.dims[dim_no]].values
             else:
-                plot.setData(self.coords[1], DC.data)
+                a, b = DC.coords[self.dims[dim_no]].values, DC.data
+
+            plot.setData(a, b)
 
             # Check if a mirrored DC exists and needs updating
-            if (
-                self.dims[dim_no] in self.centering_dims
-                and self.show_mirror_checkbox.isChecked()
-            ):
-                plot_m = self.DC_plot_items[f"{dim_no}_m"][xh_no]
+            if not len(self.DC_plot_items[f"{DC_no}_m"]) == 0:
+                plot_m = self.DC_plot_items[f"{DC_no}_m"][0]
                 mirror_DC = sym(
-                    DC, flipped=True, **{self.dims[dim_no]: xh.get_pos()[dim_no]}
+                    DC,
+                    flipped=True,
+                    **{
+                        self.dims[dim_no]: self.cursor_positions_selection[
+                            dim_no
+                        ].value()
+                    },
                 )
-                if dim_no == 0:
-                    plot_m.setData(
-                        mirror_DC.data, mirror_DC.coords[self.dims[dim_no]].values
-                    )
+                if DC_no == 0:
+                    a, b = mirror_DC.data, mirror_DC.coords[self.dims[dim_no]].values
                 else:
-                    plot_m.setData(
-                        mirror_DC.coords[self.dims[dim_no]].values, mirror_DC.data
-                    )
-
-    def _update_DC_width(self, dim_no):
-        """Update the DC markers and plots when the width is changed."""
-        for i, xh in enumerate(self.xhs):
-            getattr(xh, f"set_dim{dim_no}_width")(
-                self.cursor_widths_selection[dim_no].value()
-            )
-            self.DC_plots_xhs[dim_no][i].setRegion(
-                getattr(xh, f"get_dim{dim_no}_span")()
-            )
-            self._update_DC(i)
-        self._update_cursor_stats_text()
-
-    def _update_DC_int(self, dim_no):
-        """Update the DC plots when the integration checkbox is toggled."""
-        if self.DC_span_all_checkboxes[dim_no].isChecked():
-            # Store current DC position and width if not already stored
-            if self.xh_width_store[dim_no] is None:
-                self.xh_width_store[dim_no] = self.cursor_widths_selection[
-                    dim_no
-                ].value()
-                self.xh_pos_store[dim_no] = [xh.get_pos()[dim_no] for xh in self.xhs]
-
-            # Set width box to full range
-            self.cursor_widths_selection[dim_no].setValue(
-                self.cursor_widths_selection[dim_no].maximum()
-            )
-            self.cursor_widths_selection[dim_no].setDisabled(True)
-
-            # Force crosshair to mid point
-            mid_point = np.mean(self.ranges[dim_no])
-            for xh in self.xhs:
-                if dim_no == 0:
-                    xh.set_lock_dim0(mid_point)
-                else:
-                    xh.set_lock_dim1(mid_point)
-                xh.update_crosshair()
-        else:
-            # Set to original ranges and positions
-            self.cursor_widths_selection[dim_no].setDisabled(False)
-            self.cursor_widths_selection[dim_no].setValue(self.xh_width_store[dim_no])
-            self.xh_width_store[dim_no] = None
-            for i, xh in enumerate(self.xhs):
-                # Unlock the cursor position
-                if dim_no == 0:
-                    xh.set_lock_dim0(None)
-                else:
-                    xh.set_lock_dim1(None)
-                # Reset to stored position
-                current_pos = xh.get_pos()
-                pos0 = (
-                    self.xh_pos_store[0][i]
-                    if self.xh_pos_store[0][i] is not None
-                    else current_pos[0]
-                )
-                pos1 = (
-                    self.xh_pos_store[1][i]
-                    if self.xh_pos_store[1][i] is not None
-                    else current_pos[1]
-                )
-                xh.set_pos((pos0, pos1))
-                self.xh_pos_store[dim_no][i] = None
-                xh.update_crosshair()
-
-    def _update_DC_crosshair_span(self, xh_no):
-        """Follow the crosshair with the DC span."""
-        xh = self.xhs[xh_no]
-        for i in range(2):
-            self.DC_plots_xhs[i][xh_no].setRegion(getattr(xh, f"get_dim{i}_span")())
-
-    def _show_hide_DCs(self, xh_no):
-        """Show or hide the DC plots."""
-        show_DC = self.show_DCs_checkboxes[xh_no].isChecked()
-        show_mirror = self.show_mirror_checkbox.isChecked()
-        for key, plot_item_group in self.DC_plot_items.items():
-            if isinstance(key, int):
-                plot_item_group[xh_no].setVisible(show_DC)
-            elif isinstance(key, str) and not plot_item_group == []:
-                plot_item_group[xh_no].setVisible(show_mirror and show_DC)
-        self.xhs[xh_no].set_visible(show_DC)
-        self.DC_plots_xhs[0][xh_no].setVisible(show_DC)
-        self.DC_plots_xhs[1][xh_no].setVisible(show_DC)
-        self._update_cursor_stats_text()
+                    a, b = mirror_DC.coords[self.dims[dim_no]].values, mirror_DC.data
+                plot_m.setData(a, b)
 
     def _show_hide_mirror(self):
-        for i in range(self.num_xhs):
-            self._show_hide_DCs(i)
+        """Show or hide the mirrored DCs."""
+        show_mirror = self.mirror_checkbox.isChecked()
+        if not show_mirror:
+            for i in range(2):
+                if not len(self.DC_plot_items[f"{i}_m"]) == 0:
+                    self.DC_plots[i].removeItem(self.DC_plot_items[f"{i}_m"][0])
+                self.DC_plot_items[f"{i}_m"] = []
+        else:
+            for i in range(2):
+                if len(self.DC_plot_items[f"{i}_m"]) == 0:
+                    plot_m = self.DC_plots[i]
+                    self.DC_plot_items[f"{i}_m"].append(
+                        self.DC_plots[i].plot(
+                            [0],
+                            [0],
+                            pen=self.DC_mirror_pen,
+                        )
+                    )
+
+        self._update_DC(1)  # Update the mirror DCs
 
     def _align_data(self):
         """Estimate symmetry points in the data"""
         # Get the current view range
-        x_range, y_range = self.image_plot.getViewBox().viewRange()
-        data_to_centre = self.data.sel(
-            {self.dims[0]: slice(*y_range), self.dims[1]: slice(*x_range)}
+        x_range, y_range = self.image_plots[1].getViewBox().viewRange()
+        data_to_centre = self.images[1].sel(
+            {self.dims[0]: slice(*y_range), self.dims[2]: slice(*x_range)}
         )
 
         # Get the centre of the data
         centre = estimate_sym_point(data_to_centre, dims=self.centering_dims)
 
         # Activate mirror mode
-        self.show_mirror_checkbox.setChecked(True)
+        self.mirror_checkbox.setChecked(True)
 
-        # Set crosshairs to the aligned position
-        for xh in self.xhs:
-            current_pos = xh.get_pos()
-            dim0_pos = centre.get(self.dims[0], current_pos[0])
-            dim1_pos = centre.get(self.dims[1], current_pos[1])
-            xh.set_pos((dim0_pos, dim1_pos))
+        # Set main crosshair to the aligned position
+        for dim, value in centre.items():
+            dim_no = self.dims.index(dim)
+            self.cursor_positions_selection[dim_no].setValue(value)
 
     def _update_cursor_stats_text(self):
         """Update the cursor stats."""
-
-        cursor_colors = [f"#{r:02x}{g:02x}{b:02x}" for r, g, b in self.DC_pens]
-        cursor_text = ""
-
-        # Get data from active cursors
-        cursor_pos = [
-            xh.get_pos() if self.show_DCs_checkboxes[i].isChecked() else None
-            for i, xh in enumerate(self.xhs)
-        ]
-        cursor_spans0 = [
-            xh.get_dim0_span() if self.show_DCs_checkboxes[i].isChecked() else None
-            for i, xh in enumerate(self.xhs)
-        ]
-        cursor_spans1 = [
-            xh.get_dim1_span() if self.show_DCs_checkboxes[i].isChecked() else None
-            for i, xh in enumerate(self.xhs)
-        ]
-
-        # Show current cursor positions and values (integrated over the crosshair selection)
-        cursor_values = []
-        for i in range(self.num_xhs):
-            if cursor_pos[i] is None:
-                cursor_values.append(None)
-                cursor_text += "<br>"
-            else:
-                span0 = cursor_spans0[i]
-                span1 = cursor_spans1[i]
-                if abs(span0[1] - span0[0]) < self.step_sizes[0]:
-                    data = self.data.sel(
-                        {self.dims[0]: np.mean(span0)}, method="nearest"
-                    )
-                else:
-                    data = self.data.sel(
-                        {self.dims[0]: slice(span0[0], span0[1])}
-                    ).mean(self.dims[0])
-                if abs(span1[1] - span1[0]) < self.step_sizes[1]:
-                    data = data.sel({self.dims[1]: np.mean(span1)}, method="nearest")
-                else:
-                    data = data.sel({self.dims[1]: slice(span1[0], span1[1])}).mean(
-                        self.dims[1]
-                    )
-                cursor_values.append(data.mean().values)
-                cursor_text += (
-                    f"<span style='color:{cursor_colors[i % len(cursor_colors)]}'>"
-                    f"Csr{i} {self.dims[0]}: {cursor_pos[i][0]:.3f} | "
-                    f"{self.dims[1]}: {cursor_pos[i][1]:.3f} | "
-                    f"Value: {cursor_values[i]:.3f}</span><br>"
-                )
-
-        # Show the delta between the first two cursors if active
-        if cursor_pos[0] is not None and cursor_pos[1] is not None:
-            cursor_text += (
-                f"<span style='color:white'>"
-                f"ΔCsr1-0: Δ{self.dims[0]}: {abs(cursor_pos[1][0] - cursor_pos[0][0]):.3f} | "
-                f"Δ{self.dims[1]}: {abs(cursor_pos[1][1] - cursor_pos[0][1]):.3f}</span>"
-            )
-        else:
-            cursor_text += "<br>"
-        cursor_text += "<hr>"
+        cursor_text = "Scan manipulator positions: "
 
         # Add metadata
         cursor_text += self.metadata_text
-        cursor_text += "<br>"
+        cursor_text += "<hr>"
 
         # Add normal emission
-        if (
-            self.analyser_type
-            and "theta_par" in self.dims
-            and cursor_pos[0] is not None
-        ):
-            cursor_text += self._get_norm_values(
-                cursor_pos[0][self.dims.index("theta_par")]
-            )
+        if self.analyser_type and "theta_par" in self.dims:
+            cursor_text += self._get_norm_values()
 
         self.cursor_stats.setText(cursor_text)
 
@@ -855,109 +795,79 @@ class _Disp3D(QtWidgets.QMainWindow):
     # Signal connections
     # ##############################
     def _connect_signals_crosshairs(self):
-        # Update when crosshair moves
+        # Update display boxes when crosshairs move
         for i, xh_ in enumerate(self.xhs):
             signal = xh_.xh.sigPositionChanged
-            signal.connect(partial(self._update_DC, i))  # Update DC plots
-            signal.connect(partial(self._update_DC_crosshair_span, i))  # Follow DC span
-            signal.connect(self._update_cursor_stats_text)  # Update label
-            self.connected_plot_signals.append(signal)
+            signal.connect(partial(self._update_cursor_boxes, i))  # Update cursor boxes
 
-        # Update when show/hide crosshair boxes toggled
-        for i, checkbox in enumerate(self.show_DCs_checkboxes):
-            checkbox.stateChanged.connect(partial(self._show_hide_DCs, i))
-            self.connected_plot_signals.append(checkbox.stateChanged)
+    def _connect_signals_cursor_boxes_change(self):
+        # Update when cursor positions change
+        for i in range(3):
+            signal = self.cursor_positions_selection[i].valueChanged
+            signal.connect(partial(self._update_slices, i))
+            signal.connect(partial(self._update_DC, i))
+            signal.connect(partial(self._update_xh_positions, i))
+        signal.connect(self._update_cursor_stats_text)
 
-        # Update when show/hide mirror checkbox toggled
-        signal = self.show_mirror_checkbox.stateChanged
-        signal.connect(self._show_hide_mirror)
-        self.connected_plot_signals.append(signal)
-
-    def _connect_signals_DCspan_change(self):
+    def _connect_signals_xh_span_change(self):
         # Update when span ranges changed
-        for i in range(2):
+        for i in range(3):
             signal = self.cursor_widths_selection[i].valueChanged
-            signal.connect(partial(self._update_DC_width, i))
-            self.connected_plot_signals.append(signal)
-
-        # Update with integrate all selection
-        for i in range(2):
-            signal = self.DC_span_all_checkboxes[i].stateChanged
-            signal.connect(partial(self._update_DC_int, i))
-            self.connected_plot_signals.append(signal)
+            signal.connect(partial(self._update_slices, i))
+            signal.connect(partial(self._update_DC, i))
+            signal.connect(partial(self._update_xh_widths, i))
 
     def _connect_signals_align(self):
         # Connect centre data button
         self.align_button.clicked.connect(self._align_data)
-        self.connected_plot_signals.append(self.align_button.clicked)
+
+    def _connect_signals_mirror_checkbox(self):
+        # Connect mirror checkbox
+        self.mirror_checkbox.clicked.connect(self._show_hide_mirror)
 
     def _connect_key_press_signals(self):
-        signals = [self.graphics_layout.keyPressed, self.graphics_layout.keyReleased]
-        fns = [self._key_press_event, self._key_release_event]
-        for signal, fn in zip(signals, fns):
-            signal.connect(fn)
-            self.connected_plot_signals.append(signal)
+        # Connect key press signals
+        self.graphics_layout.keyPressed.connect(self._key_press_event)
+        self.graphics_layout.keyReleased.connect(self._key_release_event)
 
     def _key_press_event(self, event):
         # First deal with the modifiers
-        if event.key() == self.key_modifiers["move_csr2"]:
-            self.move_csr1_key_enabled = True
-        elif event.key() == self.key_modifiers["move_all"]:
-            self.move_all_key_enabled = True
+        if event.key() == self.key_modifiers["move_primary_dim"]:
+            self.move_primary_dim_key_enabled = True
         elif event.key() == self.key_modifiers["hide_all"]:
-            # If this is the first press, store what xhs are currently visible and hide all
-            if len(self.xh_visible_store) == 0:
-                for i in range(self.num_xhs):
-                    if self.show_DCs_checkboxes[i].isChecked():
-                        self.xh_visible_store.append(self.xhs[i])
-                        self.xhs[i].set_visible(False)
-        elif event.key() in self.show_hide_csr_keys:
-            # Show/hide cursors
-            csr_no = self.show_hide_csr_keys.index(event.key())
-            self.show_DCs_checkboxes[csr_no].setChecked(
-                not self.show_DCs_checkboxes[csr_no].isChecked()
-            )
-        elif event.key() == self.show_hide_mirror_key:
-            self.show_mirror_checkbox.setChecked(
-                not self.show_mirror_checkbox.isChecked()
-            )
+            for xh in self.xhs:
+                xh.set_visible(False)
+        elif event.key() == self.key_modifiers["show_hide_mirror"]:
+            self.mirror_checkbox.setChecked(not self.mirror_checkbox.isChecked())
+            self._show_hide_mirror()
+        # Now deal with the arrow keys
         elif event.key() in [
             QtCore.Qt.Key.Key_Up,
             QtCore.Qt.Key.Key_Down,
             QtCore.Qt.Key.Key_Left,
             QtCore.Qt.Key.Key_Right,
         ]:
-            if self.move_all_key_enabled:
-                xhs = [
-                    xh
-                    for i, xh in enumerate(self.xhs)
-                    if self.show_DCs_checkboxes[i].isChecked()
-                ]
-            elif self.move_csr1_key_enabled:
-                xhs = [self.xhs[1]]
-            else:
-                xhs = [self.xhs[0]]
-            for xh in xhs:
-                current_pos = xh.get_pos()
-                if event.key() == QtCore.Qt.Key.Key_Right:
-                    xh.set_pos((current_pos[0], current_pos[1] + self.step_sizes[1]))
-                elif event.key() == QtCore.Qt.Key.Key_Left:
-                    xh.set_pos((current_pos[0], current_pos[1] - self.step_sizes[1]))
-                elif event.key() == QtCore.Qt.Key.Key_Up:
-                    xh.set_pos((current_pos[0] + self.step_sizes[0], current_pos[1]))
+            if self.move_primary_dim_key_enabled:
+                if event.key() == QtCore.Qt.Key.Key_Up:
+                    self.cursor_positions_selection[1].stepUp()
                 elif event.key() == QtCore.Qt.Key.Key_Down:
-                    xh.set_pos((current_pos[0] - self.step_sizes[0], current_pos[1]))
+                    self.cursor_positions_selection[1].stepDown()
+            else:
+                if event.key() == QtCore.Qt.Key.Key_Up:
+                    self.cursor_positions_selection[0].stepUp()
+                elif event.key() == QtCore.Qt.Key.Key_Down:
+                    self.cursor_positions_selection[0].stepDown()
+                elif event.key() == QtCore.Qt.Key.Key_Left:
+                    self.cursor_positions_selection[2].stepDown()
+                elif event.key() == QtCore.Qt.Key.Key_Right:
+                    self.cursor_positions_selection[2].stepUp()
 
     def _key_release_event(self, event):
-        if event.key() == self.key_modifiers["move_csr2"]:
-            self.move_csr1_key_enabled = False
-        elif event.key() == self.key_modifiers["move_all"]:
-            self.move_all_key_enabled = False
+        if event.key() == self.key_modifiers["move_primary_dim"]:
+            self.move_primary_dim_key_enabled = False
         elif event.key() == self.key_modifiers["hide_all"]:
-            # Restore xh to previous state
-            for xh in self.xh_visible_store:
+            for xh in self.xhs:
                 xh.set_visible(True)
-            self.xh_visible_store = []
 
     # ##############################
     # Helper functions
@@ -965,69 +875,114 @@ class _Disp3D(QtWidgets.QMainWindow):
     def _get_active_dim_nos(self, i):
         return [dim_no for dim_no in range(3) if dim_no != i]
 
-    def _init_crosshair_pos(self, xh_no):
-        """Initialize the crosshair position."""
-        active_xh = [
-            self.show_DCs_checkboxes[i].isChecked() for i in range(self.num_xhs)
-        ]
-        num_active_xh = sum(active_xh)
-        csr_no_active = sum(active_xh[:xh_no])
-        percentile = min((csr_no_active + 1) * 100 / (num_active_xh + 1), 95)
-        return (
-            np.percentile(self.ranges[0], percentile),
-            np.percentile(self.ranges[1], percentile),
-        )
-
-    def _check_crosshair_in_range(self, pos):
-        """Check if crosshair pos is within the coordinate range"""
-        return (min(self.ranges[0]) <= pos[0] <= max(self.ranges[0])) and (
-            (min(self.ranges[1]) <= pos[1] <= max(self.ranges[1]))
-        )
-
-    def _get_norm_values(self, theta_par):
+    def _get_norm_values(self):
         """Attempt to extract normal emission based on analyser configuration
         and metadata.
-
-        Parameters
-        ----------
-        theta_par : float
-            theta_par value for passing to the normal emission calculation.
         """
 
-        r, g, b = self.DC_pens[0]
+        r, g, b = self.DC_pen
         cursor_text = f"<span style='color:#{r:02x}{g:02x}{b:02x}'>"
+        cursor_text += "Normal emission for crosshair position: <br>"
+
         if self.analyser_type == "I" or self.analyser_type == "Ip":  # Type I
             # Norm tilt
             tilt = self.data.attrs.get("tilt", 0) or 0
             defl_par = self.data.attrs.get("defl_par", 0) or 0
+            theta_par_index = self.dims.index("theta_par")
+            centre = self.cursor_positions_selection[theta_par_index].value()
             norm_tilt = (
                 (self.current_data_loc_angle_conventions.get("tilt", 1) * tilt)
                 + (
                     self.current_data_loc_angle_conventions.get("defl_par", 1)
                     * defl_par
                 )
-                - (
-                    self.current_data_loc_angle_conventions.get("theta_par", 1)
-                    * theta_par
-                )
+                - (self.current_data_loc_angle_conventions.get("theta_par", 1) * centre)
             )
-            cursor_text += f"Cursor 0: Normal emission [{self.current_data_loc_angle_conventions.get('tilt_name')}] = {norm_tilt:.3f}</span><br>"
+            cursor_text += (
+                f"&nbsp;&nbsp;&nbsp;&nbsp;norm_tilt "
+                f"[{self.current_data_loc_angle_conventions.get('tilt_name')}] = {norm_tilt:.3f}<br>"
+            )
+
+            # Norm polar
+            if "ana_polar" in self.data.dims:
+                defl_perp = self.data.attrs.get("defl_perp", 0) or 0
+                polar = self.data.attrs.get("polar", 0) or 0
+                ana_polar_dim_index = self.dims.index("ana_polar")
+                ana_polar = self.cursor_positions_selection[ana_polar_dim_index].value()
+            elif "polar" in self.data.dims:
+                defl_perp = self.data.attrs.get("defl_perp", 0) or 0
+                ana_polar = self.data.attrs.get("ana_polar", 0) or 0
+                polar_dim_index = self.dims.index("polar")
+                polar = self.cursor_positions_selection[polar_dim_index].value()
+            elif "defl_perp" in self.data.dims:
+                polar = self.data.attrs.get("polar", 0) or 0
+                ana_polar = self.data.attrs.get("ana_polar", 0) or 0
+                defl_perp_dim_index = self.dims.index("defl_perp")
+                defl_perp = self.cursor_positions_selection[defl_perp_dim_index].value()
+
+            norm_polar = (
+                (
+                    self.current_data_loc_angle_conventions.get("ana_polar", 1)
+                    * ana_polar
+                )
+                + (
+                    self.current_data_loc_angle_conventions.get("defl_perp", 1)
+                    * defl_perp
+                )
+                + (self.current_data_loc_angle_conventions.get("polar", 1) * polar)
+            )
+            cursor_text += (
+                f"&nbsp;&nbsp;&nbsp;&nbsp;norm_polar [{self.current_data_loc_angle_conventions.get('polar_name')}] "
+                f"= {norm_polar:.3f}<br>"
+            )
 
         else:  # Type II
             # Norm polar
             polar = self.data.attrs.get("polar", 0) or 0
             defl_par = self.data.attrs.get("defl_par", 0) or 0
+            theta_par_index = self.dims.index("theta_par")
+            centre = self.cursor_positions_selection[theta_par_index].value()
             norm_polar = (
                 (self.current_data_loc_angle_conventions.get("polar", 1) * polar)
                 + (
                     self.current_data_loc_angle_conventions.get("defl_par", 1)
                     * defl_par
                 )
-                - (
-                    self.current_data_loc_angle_conventions.get("theta_par", 1)
-                    * theta_par
-                )
+                - (self.current_data_loc_angle_conventions.get("theta_par", 1) * centre)
             )
-            cursor_text += f"Cursor 0: Normal emission [{self.current_data_loc_angle_conventions.get('polar_name')}] = {norm_polar:.3f}</span><br>"
+            cursor_text += (
+                f"&nbsp;&nbsp;&nbsp;&nbsp;norm_polar [{self.current_data_loc_angle_conventions.get('polar_name')}] = "
+                f"{norm_polar:.3f}<br>"
+            )
 
+            # Norm tilt
+            if "tilt" in self.data.dims:
+                defl_perp = self.data.attrs.get("defl_perp", 0) or 0
+                tilt_dim_index = self.dims.index("tilt")
+                tilt = self.cursor_positions_selection[tilt_dim_index].value()
+            elif "defl_perp" in self.data.dims:
+                tilt = self.data.attrs.get("tilt", 0) or 0
+                defl_perp_dim_index = self.dims.index("defl_perp")
+                defl_perp = self.cursor_positions_selection[defl_perp_dim_index].value()
+
+            norm_tilt = (
+                self.current_data_loc_angle_conventions.get("tilt", 1) * tilt
+            ) + (
+                self.current_data_loc_angle_conventions.get("defl_perp", 1) * defl_perp
+            )
+            cursor_text += (
+                f"&nbsp;&nbsp;&nbsp;&nbsp;norm_tilt "
+                f"[{self.current_data_loc_angle_conventions.get('tilt_name')}] = {norm_tilt:.3f}<br>"
+            )
+
+        # Norm azi
+        azi = self.data.attrs.get("azi", 0) or 0
+        rot = self.rotation_selection.value()
+        norm_azi = (self.current_data_loc_angle_conventions.get("azi", 1) * rot) + azi
+        cursor_text += (
+            f"&nbsp;&nbsp;&nbsp;&nbsp;norm_azi "
+            f"[{self.current_data_loc_angle_conventions.get('azi_name')}] = {norm_azi:.3f}"
+        )
+
+        cursor_text += "</span>"
         return cursor_text
