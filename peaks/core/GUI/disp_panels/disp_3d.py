@@ -1059,19 +1059,17 @@ class _Disp3D(QtWidgets.QMainWindow):
             )
 
             # Norm polar
+            # Set defaults
+            defl_perp = self.data.attrs.get("defl_perp", 0) or 0
+            polar = self.data.attrs.get("polar", 0) or 0
+            ana_polar = self.data.attrs.get("ana_polar", 0) or 0
             if "ana_polar" in self.data.dims:
-                defl_perp = self.data.attrs.get("defl_perp", 0) or 0
-                polar = self.data.attrs.get("polar", 0) or 0
                 ana_polar_dim_index = self.dims.index("ana_polar")
                 ana_polar = self.cursor_positions_selection[ana_polar_dim_index].value()
             elif "polar" in self.data.dims:
-                defl_perp = self.data.attrs.get("defl_perp", 0) or 0
-                ana_polar = self.data.attrs.get("ana_polar", 0) or 0
                 polar_dim_index = self.dims.index("polar")
                 polar = self.cursor_positions_selection[polar_dim_index].value()
             elif "defl_perp" in self.data.dims:
-                polar = self.data.attrs.get("polar", 0) or 0
-                ana_polar = self.data.attrs.get("ana_polar", 0) or 0
                 defl_perp_dim_index = self.dims.index("defl_perp")
                 defl_perp = self.cursor_positions_selection[defl_perp_dim_index].value()
 
@@ -1111,12 +1109,12 @@ class _Disp3D(QtWidgets.QMainWindow):
             )
 
             # Norm tilt
+            defl_perp = self.data.attrs.get("defl_perp", 0) or 0
+            tilt = self.data.attrs.get("tilt", 0) or 0
             if "tilt" in self.data.dims:
-                defl_perp = self.data.attrs.get("defl_perp", 0) or 0
                 tilt_dim_index = self.dims.index("tilt")
                 tilt = self.cursor_positions_selection[tilt_dim_index].value()
             elif "defl_perp" in self.data.dims:
-                tilt = self.data.attrs.get("tilt", 0) or 0
                 defl_perp_dim_index = self.dims.index("defl_perp")
                 defl_perp = self.cursor_positions_selection[defl_perp_dim_index].value()
 
