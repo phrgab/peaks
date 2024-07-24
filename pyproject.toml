@@ -24,6 +24,7 @@ dependencies = [
         "pyqtgraph (>=0.13,<1)",
         "scikit-image (>=0.24,<1)",
         "jupyterlab",
+        "pyperclip (>=1.9,<2)",
         ]
 dynamic = ["version"]
 
