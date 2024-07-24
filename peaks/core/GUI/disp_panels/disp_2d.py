@@ -4,6 +4,7 @@
 
 import sys
 from functools import partial
+import re
 from PyQt6 import QtCore, QtWidgets, QtGui
 from PyQt6.QtWidgets import (
     QApplication,
@@ -14,6 +15,7 @@ from PyQt6.QtWidgets import (
 )
 import pyqtgraph as pg
 import numpy as np
+import pyperclip
 
 
 from peaks.core.GUI.GUI_utils import (
@@ -232,8 +234,8 @@ class _Disp2D(QtWidgets.QMainWindow):
         show_DCs_layout.addWidget(self.show_mirror_checkbox)
         self.align_button = QtWidgets.QPushButton("Align")
         show_DCs_layout.addWidget(self.align_button)
-        # self.copy_button = QtWidgets.QPushButton("Copy")
-        # show_DCs_layout.addWidget(self.copy_button)
+        self.copy_button = QtWidgets.QPushButton("Copy")
+        show_DCs_layout.addWidget(self.copy_button)
 
         DC_display_controls.addStretch()
         bottom_panel_layout_left.addStretch()
@@ -877,6 +879,15 @@ class _Disp2D(QtWidgets.QMainWindow):
 
         self.cursor_stats.setText(cursor_text)
 
+    def _copy_norm_value(self):
+        """Copy the normal emission value to the clipboard."""
+        cursor_text = self.cursor_stats.text()
+        norm_value = float(cursor_text.split("=")[-1].split("<")[0].strip())
+        if self.analyser_type == "I" or self.analyser_type == "Ip":  # Type I
+            pyperclip.copy(f".attrs['norm_tilt'] = {norm_value}")
+        elif self.analyser_type == "II" or self.analyser_type == "IIp":
+            pyperclip.copy(f".attrs['norm_polar'] = {norm_value}")
+
     # ##############################
     # Signal connections
     # ##############################
@@ -916,6 +927,8 @@ class _Disp2D(QtWidgets.QMainWindow):
         # Connect centre data button
         self.align_button.clicked.connect(self._align_data)
         self.connected_plot_signals.append(self.align_button.clicked)
+        # Connect copy button
+        self.copy_button.clicked.connect(self._copy_norm_value)
 
     def _connect_key_press_signals(self):
         signals = [self.graphics_layout.keyPressed, self.graphics_layout.keyReleased]
