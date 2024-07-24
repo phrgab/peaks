@@ -4,6 +4,7 @@
 
 import sys
 from functools import partial
+import re
 from PyQt6 import QtCore, QtWidgets, QtGui
 from PyQt6.QtWidgets import (
     QApplication,
@@ -14,7 +15,7 @@ from PyQt6.QtWidgets import (
 )
 import pyqtgraph as pg
 import numpy as np
-
+import pyperclip
 
 from peaks.core.GUI.GUI_utils import (
     Crosshair,
@@ -69,6 +70,11 @@ class _Disp3D(QtWidgets.QMainWindow):
         self.DC_mirror_pen = pg.mkPen(
             color=(0, 255, 0),
             style=QtCore.Qt.PenStyle.DashLine,
+        )
+        self.align_aid_pen = pg.mkPen(
+            color=(255, 255, 50),
+            style=QtCore.Qt.PenStyle.DotLine,
+            width=2,
         )
         self.xh_brush = (255, 0, 0, 50)
         self.DC_xh_brush = (255, 0, 0, 70)
@@ -258,6 +264,7 @@ class _Disp3D(QtWidgets.QMainWindow):
         vbox = QVBoxLayout()
         align_layout.addLayout(vbox)
         hbox = QHBoxLayout()
+        hbox.setSpacing(5)
         vbox.addLayout(hbox)
         label = QLabel("Rotation:")
         label.setFixedWidth(90)
@@ -268,6 +275,14 @@ class _Disp3D(QtWidgets.QMainWindow):
         self.rotation_selection.setDecimals(2)
         self.rotation_selection.setFixedWidth(75)
         hbox.addWidget(self.rotation_selection)
+        self.rotation_delta = [-45, -30, 30, 45]
+        self.rotation_delta_buttons = []
+        for ang in self.rotation_delta:
+            button_text = f"{'+' if ang>0 else '-'}{abs(ang)}°"
+            button = QtWidgets.QPushButton(button_text)
+            button.setFixedWidth(40)
+            self.rotation_delta_buttons.append(button)
+            hbox.addWidget(button)
         hbox.addStretch()
         hbox = QHBoxLayout()
         vbox.addLayout(hbox)
@@ -278,6 +293,7 @@ class _Disp3D(QtWidgets.QMainWindow):
         self.alignment_aid.addItems(
             ["None", "Square", "Hexagon", "Hexagon (r30)", "Circle"]
         )
+        self.alignment_aid_scaling = (self.ranges[2][1] - self.ranges[2][0]) / 150
         hbox.addWidget(self.alignment_aid)
         # Add a slider to set size of alignment aid
         self.alignment_aid_size = QtWidgets.QSlider(QtCore.Qt.Orientation.Horizontal)
@@ -304,6 +320,9 @@ class _Disp3D(QtWidgets.QMainWindow):
         colorbar_container = QHBoxLayout()
         colorbar_group.setLayout(colorbar_container)
         self.colorbar_widget_container = pg.GraphicsLayoutWidget()
+        self.colorbar_widget_container.viewport().setAttribute(
+            QtCore.Qt.WidgetAttribute.WA_AcceptTouchEvents, False
+        )
         self.colorbar_widget_container.setMaximumHeight(100)
         self.colorbar_widget_container.setMaximumWidth(400)
         colorbar_container.addWidget(self.colorbar_widget_container)
@@ -472,6 +491,34 @@ class _Disp3D(QtWidgets.QMainWindow):
                 )
             )
 
+        # Add alignment xh
+        self.align_xhs = []
+        for angle in [0, 90]:
+            xh = pg.InfiniteLine(
+                pos=(
+                    self.cursor_positions_selection[2].value(),
+                    self.cursor_positions_selection[0].value(),
+                ),
+                pen=self.align_aid_pen,
+                angle=angle,
+            )
+            self.align_xhs.append(xh)
+            self.image_plots[1].addItem(xh)
+            xh.setVisible(False)
+
+        # Add alignment aid
+        dummy_centre = QtCore.QPointF(0, 0)
+        d = self._create_alignment_shape(
+            "Square",
+            dummy_centre,
+            self.alignment_aid_size.value() / 20,
+            self.rotation_selection.value(),
+        )
+        self.alignment_aid_shape = pg.QtWidgets.QGraphicsPathItem(d)
+        self.alignment_aid_shape.setPen(self.align_aid_pen)
+        self.alignment_aid_shape.setVisible(False)
+        self.image_plots[1].addItem(self.alignment_aid_shape)
+
         # Add colour bar to main image
         self.cmap = pg.colormap.get("Greys", source="matplotlib")
         self.colorbar = pg.ColorBarItem(
@@ -601,9 +648,12 @@ class _Disp3D(QtWidgets.QMainWindow):
         self._set_slice(1)
 
         # Try to estimate a data centre position from this slice and update other xh positions
-        centre = estimate_sym_point(self.images[1], dims=self.centering_dims)
-        for dim, centre in centre.items():
-            self.cursor_positions_selection[self.dims.index(dim)].setValue(centre)
+        try:
+            centre = estimate_sym_point(self.images[1], dims=self.centering_dims)
+            for dim, centre in centre.items():
+                self.cursor_positions_selection[self.dims.index(dim)].setValue(centre)
+        except:
+            pass
         # Make the coresponding slices
         self._set_slice(0)
         self._set_slice(2)
@@ -658,6 +708,19 @@ class _Disp3D(QtWidgets.QMainWindow):
                     )
                 )
 
+        if dim_changed in [0, 2]:
+            # Update the alignment crosshairs
+            for i, xh in enumerate(self.align_xhs):
+                xh.setPos(
+                    (
+                        self.cursor_positions_selection[2].value(),
+                        self.cursor_positions_selection[0].value(),
+                    )
+                )
+                xh.setAngle(self.rotation_selection.value() + i * 90)
+            if self.alignment_aid_shape.isVisible():
+                self._update_align_shape()
+
         # Update the crosshair positions on the DCs
         if dim_changed == 0:
             xh = self.DC_plots_xhs[0]
@@ -687,6 +750,40 @@ class _Disp3D(QtWidgets.QMainWindow):
         elif dim_changed == 2:
             xh = self.DC_plots_xhs[1]
             xh.setRegion(self.xhs[1].get_dim1_span())
+
+    def _update_align_xh_angle(self):
+        """Update the alignment crosshair angles when the rotation is changed."""
+        for i, xh in enumerate(self.align_xhs):
+            xh.setAngle(self.rotation_selection.value() + i * 90)
+            if self.rotation_selection.value() == 0:
+                xh.setVisible(False)
+            else:
+                xh.setVisible(True)
+
+        if self.alignment_aid_shape.isVisible():
+            self._update_align_shape()
+
+        self._update_cursor_stats_text()
+
+    def _update_align_xh_angle_change_by_delta(self, delta):
+        """Update the alignment crosshair angles when the rotation is changed by a button press."""
+        self.rotation_selection.setValue(self.rotation_selection.value() + delta)
+
+    def _update_align_shape(self):
+        """Update the shape of the alignment aid."""
+        if self.alignment_aid.currentText() == "None":
+            self.alignment_aid_shape.setVisible(False)
+        else:
+            self.alignment_aid_shape.setVisible(True)
+            shape = self.alignment_aid.currentText()
+            size = self.alignment_aid_size.value() * self.alignment_aid_scaling
+            angle = self.rotation_selection.value()
+            center = QtCore.QPointF(
+                self.cursor_positions_selection[2].value(),
+                self.cursor_positions_selection[0].value(),
+            )
+            path = self._create_alignment_shape(shape, center, size, angle)
+            self.alignment_aid_shape.setPath(path)
 
     def _update_slices(self, dim_no):
         """Update the data slices when the crosshair is moved."""
@@ -771,6 +868,7 @@ class _Disp3D(QtWidgets.QMainWindow):
 
         # Activate mirror mode
         self.mirror_checkbox.setChecked(True)
+        self._show_hide_mirror()
 
         # Set main crosshair to the aligned position
         for dim, value in centre.items():
@@ -791,6 +889,12 @@ class _Disp3D(QtWidgets.QMainWindow):
 
         self.cursor_stats.setText(cursor_text)
 
+    def _copy_norm_values(self):
+        """Copy the normal emission values to the clipboard."""
+        # Current norm values
+        norm_values = self._parse_norm_values()
+        pyperclip.copy(f".attrs.update({norm_values})")
+
     # ##############################
     # Signal connections
     # ##############################
@@ -799,6 +903,17 @@ class _Disp3D(QtWidgets.QMainWindow):
         for i, xh_ in enumerate(self.xhs):
             signal = xh_.xh.sigPositionChanged
             signal.connect(partial(self._update_cursor_boxes, i))  # Update cursor boxes
+        # Update alignment tool rotation changes
+        self.rotation_selection.valueChanged.connect(self._update_align_xh_angle)
+        for angle, button in zip(self.rotation_delta, self.rotation_delta_buttons):
+            button.clicked.connect(
+                partial(self._update_align_xh_angle_change_by_delta, angle)
+            )
+        # Update alignment tool shape changes
+        self.alignment_aid.currentIndexChanged.connect(self._update_align_shape)
+        self.alignment_aid_size.valueChanged.connect(self._update_align_shape)
+        # Copy current normal emission values
+        self.copy_button.clicked.connect(self._copy_norm_values)
 
     def _connect_signals_cursor_boxes_change(self):
         # Update when cursor positions change
@@ -874,6 +989,46 @@ class _Disp3D(QtWidgets.QMainWindow):
     # ##############################
     def _get_active_dim_nos(self, i):
         return [dim_no for dim_no in range(3) if dim_no != i]
+
+    def _create_alignment_shape(self, shape, center, size, angle):
+        """Create a QPainterPath for the alignment aid."""
+        path = QtGui.QPainterPath()
+
+        if shape == "Square":
+            points = [
+                QtCore.QPointF(
+                    center.x() + size * np.cos(np.radians(angle + i * 90 + 45)),
+                    center.y() + size * np.sin(np.radians(angle + i * 90 + 45)),
+                )
+                for i in range(4)
+            ]
+            path.moveTo(points[0])
+            for point in points[1:]:
+                path.lineTo(point)
+            path.lineTo(points[0])
+        elif shape == "Hexagon" or shape == "Hexagon (r30)":
+            if shape == "Hexagon (r30)":
+                angle += 30
+            points = [
+                QtCore.QPointF(
+                    center.x() + size * np.cos(np.radians(angle + i * 60)),
+                    center.y() + size * np.sin(np.radians(angle + i * 60)),
+                )
+                for i in range(6)
+            ]
+            path.moveTo(points[0])
+            for point in points[1:]:
+                path.lineTo(point)
+            path.lineTo(points[0])
+
+        elif shape == "Circle":
+            rect = QtCore.QRectF(
+                center.x() - size, center.y() - size, 2 * size, 2 * size
+            )
+            path.moveTo(center.x() + size, center.y())
+            path.arcTo(rect, 0, 360)
+
+        return path
 
     def _get_norm_values(self):
         """Attempt to extract normal emission based on analyser configuration
@@ -986,3 +1141,21 @@ class _Disp3D(QtWidgets.QMainWindow):
 
         cursor_text += "</span>"
         return cursor_text
+
+    def _parse_norm_values(self):
+        """Parse normal emission values from the cursor stats text."""
+        norm_text = self._get_norm_values()
+        # Define regex patterns
+        patterns = {
+            "norm_polar": r"norm_polar \[.*?\] = ([\d\.-]+)",
+            "norm_tilt": r"norm_tilt \[.*?\] = ([\d\.-]+)",
+            "norm_azi": r"norm_azi \[.*?\] = ([\d\.-]+)",
+        }
+        # Search and extract values
+        norm_values = {}
+        for key, pattern in patterns.items():
+            match = re.search(pattern, norm_text)
+            if match:
+                norm_values[key] = float(match.group(1))
+
+        return norm_values
