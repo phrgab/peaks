@@ -4,7 +4,6 @@
 
 import sys
 from functools import partial
-import re
 from PyQt6 import QtCore, QtWidgets, QtGui
 from PyQt6.QtWidgets import (
     QApplication,
