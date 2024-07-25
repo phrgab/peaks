@@ -376,7 +376,10 @@ class _Disp3D(QtWidgets.QMainWindow):
         self.dims = self.data.dims
         self.coords = [self.data.coords[dim].values for dim in self.dims]
         self.step_sizes = [coord[1] - coord[0] for coord in self.coords]
-        self.ranges = [(min(coords), max(coords)) for coords in self.coords]
+        self.ranges = [
+            (min(coords) - self.step_sizes[i] / 2, max(coords) + self.step_sizes[i] / 2)
+            for i, coords in enumerate(self.coords)
+        ]
         self.data_span = [abs(range[1] - range[0]) for range in self.ranges]
         self.c_min = float(self.data.min())
         self.c_max = float(self.data.max())
@@ -445,8 +448,8 @@ class _Disp3D(QtWidgets.QMainWindow):
                     0,
                     self.step_sizes[active_dim_nos[0]],
                     0,
-                    self.coords[active_dim_nos[1]][0],
-                    self.coords[active_dim_nos[0]][0],
+                    self.ranges[active_dim_nos[1]][0],
+                    self.ranges[active_dim_nos[0]][0],
                     1,
                 )
             )

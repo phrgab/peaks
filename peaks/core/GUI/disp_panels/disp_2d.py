@@ -323,7 +323,10 @@ class _Disp2D(QtWidgets.QMainWindow):
         self.dims = self.current_data.dims
         self.coords = [self.current_data.coords[dim].values for dim in self.dims]
         self.step_sizes = [coord[1] - coord[0] for coord in self.coords]
-        self.ranges = [(min(coords), max(coords)) for coords in self.coords]
+        self.ranges = [
+            (min(coords) - self.step_sizes[i] / 2, max(coords) + self.step_sizes[i] / 2)
+            for i, coords in enumerate(self.coords)
+        ]
         self.data_span = [abs(range[1] - range[0]) for range in self.ranges]
         self.c_min = float(self.current_data.min())
         self.c_max = float(self.current_data.max())
@@ -389,8 +392,8 @@ class _Disp2D(QtWidgets.QMainWindow):
                 0,
                 self.step_sizes[0],
                 0,
-                self.coords[1][0],
-                self.coords[0][0],
+                self.ranges[1][0],
+                self.ranges[0][0],
                 1,
             )
         )
