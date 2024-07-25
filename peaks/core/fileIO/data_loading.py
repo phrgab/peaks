@@ -15,7 +15,7 @@ import dask.array as da
 from tqdm import tqdm
 from os.path import isfile, join
 from peaks.core.utils.misc import analysis_warning
-from peaks.core.fileIO.fileIO_opts import file, loc_opts, _coords
+from peaks.core.fileIO.fileIO_opts import File, LocOpts, _Coords
 from peaks.core.fileIO.loaders.SES import _load_SES_metalines, _SES_find
 
 
@@ -30,7 +30,7 @@ def load(fname, lazy="auto", loc="auto", metadata=True, parallel=False):
 
         file.loc : str
             Location (typically a beamline) where data was acquired, e.g. file.loc = 'MAX IV Bloch' (call class
-            loc_opts() to see currently supported locations). Note: setting this prevents any automatic location
+            LocOpts() to see currently supported locations). Note: setting this prevents any automatic location
             detection.
 
     Parameters
@@ -114,23 +114,23 @@ def load(fname, lazy="auto", loc="auto", metadata=True, parallel=False):
     ext = [""]
 
     # If file.path is defined, make a list of the inputted path(s)
-    if file.path:
-        if not isinstance(file.path, list):
-            path = [str(file.path)]
+    if File.path:
+        if not isinstance(File.path, list):
+            path = [str(File.path)]
         else:
-            path = [str(item) for item in file.path]
+            path = [str(item) for item in File.path]
 
     # If file.ext is defined, make a list of the inputted extension(s)
-    if file.ext:
-        if not isinstance(file.ext, list):
-            ext = [str(file.ext)]
+    if File.ext:
+        if not isinstance(File.ext, list):
+            ext = [str(File.ext)]
         else:
-            ext = [str(item) for item in file.ext]
+            ext = [str(item) for item in File.ext]
 
-    # If the parameter loc is 'auto' and file.loc is defined (for a valid location defined in loc_opts.locs), update loc
+    # If the parameter loc is 'auto' and file.loc is defined (for a valid location defined in LocOpts.locs), update loc
     if loc == "auto":
-        if file.loc in loc_opts.locs:
-            loc = file.loc
+        if File.loc in LocOpts.locs:
+            loc = File.loc
 
     # Ensure that fname is a list of strings
     if not isinstance(fname, list):
@@ -349,88 +349,92 @@ def _load_single_data(fname, lazy="auto", loc="auto", metadata=True):
 
     # Load the data in the format of a dictionary containing the file scan type, spectrum, and coordinates (except for
     # NetCDF files where the data will be already loaded into xr.DataArray format)
-    if loc == "ALBA LOREA":
-        from .loaders.LOREA import _load_LOREA_data
 
-        data = _load_LOREA_data(fname)
+    loader = LocOpts.get_conventions(loc).loader
+    data = loader(fname)
 
-    elif loc == "CLF Artemis":
-        from .loaders.Artemis import _load_Artemis_data
-
-        data = _load_Artemis_data(fname)
-
-    elif loc == "Diamond I05-HR" or loc == "Diamond I05-nano":
-        from .loaders.I05 import _load_I05_data
-
-        data = _load_I05_data(fname)
-
-    elif loc == "Elettra APE":
-        from .loaders.APE import _load_APE_data
-
-        data = _load_APE_data(fname)
-
-    elif loc == "MAX IV Bloch":
-        from .loaders.Bloch import _load_Bloch_data
-
-        data = _load_Bloch_data(fname)
-
-    elif loc == "MAX IV Bloch-spin":
-        from .loaders.Bloch import _load_Bloch_spin_data
-
-        data = _load_Bloch_spin_data(fname)
-
-    elif loc == "SOLEIL CASSIOPEE":
-        from .loaders.CASSIOPEE import _load_CASSIOPEE_data
-
-        data = _load_CASSIOPEE_data(fname)
-
-    elif loc == "StA-MBS":
-        from .loaders.StA_MBS import _load_StA_MBS_data
-
-        data = _load_StA_MBS_data(fname)
-
-    elif loc == "StA-Phoibos":
-        from .loaders.StA_Phoibos import _load_StA_Phoibos_data
-
-        data = _load_StA_Phoibos_data(fname)
-
-    elif loc == "StA-Bruker":
-        from .loaders.StA_Bruker import _load_StA_Bruker_data
-
-        data = _load_StA_Bruker_data(fname)
-
-    elif loc == "StA-LEED":
-        from .loaders.StA_LEED import _load_StA_LEED_data
-
-        data = _load_StA_LEED_data(fname)
-
-    elif loc == "StA-RHEED":
-        from .loaders.StA_RHEED import _load_StA_RHEED_data
-
-        data = _load_StA_RHEED_data(fname)
-
-    elif loc == "Structure":
-        raise Exception("Structure is not currently supported.")
-        # from ... import ...
-        # data = ...(fname)
-        # Return data (don't want to mess up later code operations in this function so return here)
-
-    elif loc == "ibw":
-        from .loaders.ibw import _load_ibw_data
-
-        data = _load_ibw_data(fname)
-
-    elif loc == "NetCDF":
-        from .loaders.NetCDF import _load_NetCDF_data
-
-        data = _load_NetCDF_data(fname)
-
-    # If loc is not a valid location, raise an error
-    else:
-        raise Exception(
-            "Data source is not supported or could not be identified. Currently supported options are: "
-            "{locs}.".format(locs=str(loc_opts.locs))
-        )
+    # if loc == "ALBA LOREA":
+    #     from .loaders.LOREA import _load_LOREA_data
+    #
+    #     data = _load_LOREA_data(fname)
+    #
+    # elif loc == "CLF Artemis":
+    #     from .loaders.Artemis import _load_Artemis_data
+    #
+    #     data = _load_Artemis_data(fname)
+    #
+    # elif loc == "Diamond I05-HR" or loc == "Diamond I05-nano":
+    #     from .loaders.I05 import _load_I05_data
+    #
+    #     data = _load_I05_data(fname)
+    #
+    # elif loc == "Elettra APE":
+    #     from .loaders.APE import _load_APE_data
+    #
+    #     data = _load_APE_data(fname)
+    #
+    # elif loc == "MAX IV Bloch":
+    #     from .loaders.Bloch import _load_Bloch_data
+    #
+    #     data = _load_Bloch_data(fname)
+    #
+    # elif loc == "MAX IV Bloch-spin":
+    #     from .loaders.Bloch import _load_Bloch_spin_data
+    #
+    #     data = _load_Bloch_spin_data(fname)
+    #
+    # elif loc == "SOLEIL CASSIOPEE":
+    #     from .loaders.CASSIOPEE import _load_CASSIOPEE_data
+    #
+    #     data = _load_CASSIOPEE_data(fname)
+    #
+    # elif loc == "StA-MBS":
+    #     from .loaders.StA_MBS import _load_StA_MBS_data
+    #
+    #     data = _load_StA_MBS_data(fname)
+    #
+    # elif loc == "StA-Phoibos":
+    #     from .loaders.StA_Phoibos import _load_StA_Phoibos_data
+    #
+    #     data = _load_StA_Phoibos_data(fname)
+    #
+    # elif loc == "StA-Bruker":
+    #     from .loaders.StA_Bruker import _load_StA_Bruker_data
+    #
+    #     data = _load_StA_Bruker_data(fname)
+    #
+    # elif loc == "StA-LEED":
+    #     from .loaders.StA_LEED import _load_StA_LEED_data
+    #
+    #     data = _load_StA_LEED_data(fname)
+    #
+    # elif loc == "StA-RHEED":
+    #     from .loaders.StA_RHEED import _load_StA_RHEED_data
+    #
+    #     data = _load_StA_RHEED_data(fname)
+    #
+    # elif loc == "Structure":
+    #     raise Exception("Structure is not currently supported.")
+    #     # from ... import ...
+    #     # data = ...(fname)
+    #     # Return data (don't want to mess up later code operations in this function so return here)
+    #
+    # elif loc == "ibw":
+    #     from .loaders.ibw import _load_ibw_data
+    #
+    #     data = _load_ibw_data(fname)
+    #
+    # elif loc == "NetCDF":
+    #     from .loaders.NetCDF import _load_NetCDF_data
+    #
+    #     data = _load_NetCDF_data(fname)
+    #
+    # # If loc is not a valid location, raise an error
+    # else:
+    #     raise Exception(
+    #         "Data source is not supported or could not be identified. Currently supported options are: "
+    #         "{locs}.".format(locs=str(LocOpts.locs))
+    #     )
 
     # If location is NetCDF, data is already loaded in xr.DataArray format
     if loc == "NetCDF":
@@ -849,9 +853,9 @@ def _make_DataArray(data, lazy="auto"):
 
     # Loop through all the possible coordinates in saved in _coords.units. If the coordinate is present in the
     # DataArray, add the relevant unit to the coordinate attributes
-    for coord in _coords.units:
+    for coord in _Coords.units:
         if coord in DataArray.dims:
-            DataArray.coords[coord].attrs = {"units": _coords.units[coord]}
+            DataArray.coords[coord].attrs = {"units": _Coords.units[coord]}
 
     return DataArray
 
