@@ -21,7 +21,7 @@ from peaks.core.GUI.GUI_utils import (
     Crosshair,
     KeyPressGraphicsLayoutWidget,
 )
-from peaks.core.fileIO.fileIO_opts import _BLAngleConventions
+from peaks.core.fileIO.fileIO_opts import LocOpts
 from peaks.core.process.tools import sym, estimate_sym_point
 from peaks.core.process.process import _estimate_EF
 
@@ -390,51 +390,30 @@ class _Disp3D(QtWidgets.QMainWindow):
         self.metadata_text = "<span style='color:white'>"
         if "beamline" in self.data.attrs:
             attrs = self.data.attrs
-            loc = attrs.get("beamline", "default")
-            self.current_data_loc_angle_conventions = _BLAngleConventions.angles.get(
-                loc, {}
-            )
+            loc = attrs.get("beamline")
+            self.current_data_loc_angle_conventions = LocOpts.get_conventions(loc)
 
-            def _parse_meta(
-                param_name_field,
-                default_name,
-                attr_name,
-            ):
-                try:
-                    self.metadata_text += f"{self.current_data_loc_angle_conventions.get(param_name_field, default_name)}={attrs.get(attr_name, None):.3f} | "
-                except (TypeError, ValueError):
-                    pass
-
-            param_name_fields = [
-                "x1 name",
-                "x2 name",
-                "x3 name",
-                "polar_name",
-                "ana_polar_name",
-                "tilt_name",
-                "azi_name",
-                "defl_par_name",
-                "defl_perp_name",
-            ]
             attr_names = [
                 "x1",
                 "x2",
                 "x3",
-                "polar",
                 "ana_polar",
+                "polar",
                 "tilt",
                 "azi",
                 "defl_par",
                 "defl_perp",
+                "temp_sample",
+                "hv",
             ]
-            for param_name_field, attr_name in zip(param_name_fields, attr_names):
-                _parse_meta(
-                    param_name_field,
-                    attr_name,
-                    attr_name,
-                )
-
-        self.metadata_text += "</span>"
+            for attr in attr_names:
+                meta = attrs.get(attr, None)
+                meta_name = self.current_data_loc_angle_conventions.get(f"{attr}_name")
+                if meta and meta_name:
+                    self.metadata_text += f"{attr} [{meta_name}]={meta} | "
+                elif meta:
+                    self.metadata_text += f"{attr}={meta} | "
+        self.metadata_text += "</span><br>"
 
         # Check if this is an ARPES analyser for automated normal emission parsing
         if "ana_slit_angle" in self.data.attrs:

@@ -8,7 +8,7 @@
 
 import os
 import numpy as np
-from peaks.core.fileIO.data_loading import _extract_mapping_metadata
+from ..fileIO_opts import _BaseARPESConventions, _register_location
 
 
 def _load_StA_MBS_data(fname):
@@ -41,7 +41,7 @@ def _load_StA_MBS_data(fname):
     filename, file_extension = os.path.splitext(fname)
 
     # If the file is a txt file
-    if file_extension == '.txt':
+    if file_extension == ".txt":
         # Open the file and load lines
         with open(fname) as f:
             lines = f.readlines()
@@ -50,15 +50,17 @@ def _load_StA_MBS_data(fname):
         # (associated with Fermi maps) is a valid attribute (Fermi maps are only permitted as .krx files)
         try:
             # If MapStartX is a valid attribute, raise an error
-            _StA_MBS_find(lines, 'MapStartX')
-            raise Exception('Fermi maps in the txt format are not supported. Please load a krx format Fermi map '
-                            'instead.')
+            _StA_MBS_find(lines, "MapStartX")
+            raise Exception(
+                "Fermi maps in the txt format are not supported. Please load a krx format Fermi map "
+                "instead."
+            )
         except UnboundLocalError:
             # If MapStartX is not a valid attribute, we should have a dispersion
-            scan_type = 'dispersion'
+            scan_type = "dispersion"
 
         # Determine when scan data starts
-        num_lines_to_skip = lines.index('DATA:\t\n') + 1
+        num_lines_to_skip = lines.index("DATA:\t\n") + 1
 
         # Load file data
         file_data = np.loadtxt(fname, skiprows=num_lines_to_skip)
@@ -66,26 +68,31 @@ def _load_StA_MBS_data(fname):
         spectrum = file_data[:, 1:].T
 
         # Extract the theta_par values
-        theta_par_min = float(_StA_MBS_find(lines, 'ScaleMin'))
-        theta_par_max = float(_StA_MBS_find(lines, 'ScaleMax'))
-        theta_par_step = float(_StA_MBS_find(lines, 'ScaleMult'))
+        theta_par_min = float(_StA_MBS_find(lines, "ScaleMin"))
+        theta_par_max = float(_StA_MBS_find(lines, "ScaleMax"))
+        theta_par_step = float(_StA_MBS_find(lines, "ScaleMult"))
         num_theta_par = int(((theta_par_max - theta_par_min) / theta_par_step) + 1)
         theta_par_values = np.linspace(theta_par_min, theta_par_max, num_theta_par)
 
         # Define data
-        data = {'scan_type': scan_type, 'spectrum': spectrum, 'theta_par': theta_par_values, 'eV': KE_values}
+        data = {
+            "scan_type": scan_type,
+            "spectrum": spectrum,
+            "theta_par": theta_par_values,
+            "eV": KE_values,
+        }
 
     # If the file is a binary krx file
-    elif file_extension == '.krx':
+    elif file_extension == ".krx":
         # Open the file in read mode
-        with open(fname, 'rb') as f:
+        with open(fname, "rb") as f:
             # Determine whether the file is 32-bit or 64-bit. The data type is little endian, so read initially as
             # 32 bit, but if either of the first 2 32-bit words are 0, then the file is 64-bit.
-            dtype_identifier = np.fromfile(f, dtype='<i4', count=2)
+            dtype_identifier = np.fromfile(f, dtype="<i4", count=2)
             if 0 in dtype_identifier:  # File is 64 bit
-                dtype = '<i8'  # 8-byte signed integer (little endian)
+                dtype = "<i8"  # 8-byte signed integer (little endian)
             else:  # File is 32 bit
-                dtype = '<i4'  # 4-byte signed integer (little endian)
+                dtype = "<i4"  # 4-byte signed integer (little endian)
 
             # Set reading to the start of the file
             f.seek(0)
@@ -111,15 +118,17 @@ def _load_StA_MBS_data(fname):
                 X_size.append(np.fromfile(f, dtype=dtype, count=1)[0])
 
             # Read more file information to identify the scan type
-            scan_identifier = np.fromfile(f, dtype=dtype, count=1)[0]  # 5 for spin, 4 for ARPES
+            scan_identifier = np.fromfile(f, dtype=dtype, count=1)[
+                0
+            ]  # 5 for spin, 4 for ARPES
 
             # Determine the scan type
             if scan_identifier == 5:
-                scan_type = 'spin scan'
+                scan_type = "spin scan"
             elif num_images == 1:
-                scan_type = 'dispersion'
+                scan_type = "dispersion"
             else:
-                scan_type = 'FS map'
+                scan_type = "FS map"
 
             # Calculate the array size
             array_size = X_size[0] * Y_size[0]
@@ -128,13 +137,13 @@ def _load_StA_MBS_data(fname):
             f.seek((image_pos[0] + array_size + 1) * 4)
 
             # Read the header (allowing up to 1800 bytes) containing metadata and convert into ascii format
-            header = f.read(1800).decode('ascii')
+            header = f.read(1800).decode("ascii")
 
             # Shorten header to required length (i.e. up to where scan data starts)
-            header = header.split('\r\nDATA:')[0]
+            header = header.split("\r\nDATA:")[0]
 
             # Convert the header to a metadata dictionary
-            metadata = dict(i.split('\t', 1) for i in header.split('\r\n'))
+            metadata = dict(i.split("\t", 1) for i in header.split("\r\n"))
 
             # If there is a single image, load 2D spectrum
             if num_images == 1:
@@ -142,7 +151,7 @@ def _load_StA_MBS_data(fname):
                 f.seek(image_pos[0] * 4)
 
                 # Read the image spectrum (images written as 32-bit words even in 64-bit format .krx file)
-                spectrum = np.fromfile(f, dtype='<i4', count=array_size)
+                spectrum = np.fromfile(f, dtype="<i4", count=array_size)
 
                 # Reshape spectrum into the desired data structure
                 spectrum = np.reshape(spectrum, [Y_size[0], X_size[0]])
@@ -158,41 +167,67 @@ def _load_StA_MBS_data(fname):
                     f.seek(pos * 4)
 
                     # Read the current image data (images written as 32-bit words even in 64-bit format .krx file)
-                    current_image_data = np.fromfile(f, dtype='<i4', count=array_size)
+                    current_image_data = np.fromfile(f, dtype="<i4", count=array_size)
 
                     # Reshape the current image data into the desired data structure, and fill entries in spectrum
-                    spectrum[i, :, :] = np.reshape(current_image_data, [Y_size[0], X_size[0]])
+                    spectrum[i, :, :] = np.reshape(
+                        current_image_data, [Y_size[0], X_size[0]]
+                    )
 
         # Extract the kinetic energy values
-        KE_values = np.linspace(float(metadata['Start K.E.']), float(metadata['End K.E.']), X_size[0])
+        KE_values = np.linspace(
+            float(metadata["Start K.E."]), float(metadata["End K.E."]), X_size[0]
+        )
 
         # Extract the theta_par values
-        if (scan_type == 'dispersion') or (scan_type == 'FS map'):  # ARPES scans, extract analyser MCP angular scale
-            theta_par_values = np.linspace(float(metadata['ScaleMin']), float(metadata['ScaleMax']), Y_size[0])
-        elif scan_type == 'spin scan':  # Spin ARPES scans, extract spin MCP angular scale
-            theta_par_values = np.linspace(float(metadata['S0ScaleMin']), float(metadata['S0ScaleMax']), Y_size[0])
+        if (scan_type == "dispersion") or (
+            scan_type == "FS map"
+        ):  # ARPES scans, extract analyser MCP angular scale
+            theta_par_values = np.linspace(
+                float(metadata["ScaleMin"]), float(metadata["ScaleMax"]), Y_size[0]
+            )
+        elif (
+            scan_type == "spin scan"
+        ):  # Spin ARPES scans, extract spin MCP angular scale
+            theta_par_values = np.linspace(
+                float(metadata["S0ScaleMin"]), float(metadata["S0ScaleMax"]), Y_size[0]
+            )
 
         # If there is more than one image, extract the mapping variable (defl_perp for an FS map, or spin_rot_angle for
         # a spin scan)
         if num_images > 1:
             # If scan type is an FS map, extract the deflector angular values
-            if scan_type == 'FS map':  # ARPES Deflector scan
-                mapping_values = np.linspace(float(metadata['MapStartX']), float(metadata['MapEndX']), num_images)
-                mapping_label = 'defl_perp'
+            if scan_type == "FS map":  # ARPES Deflector scan
+                mapping_values = np.linspace(
+                    float(metadata["MapStartX"]), float(metadata["MapEndX"]), num_images
+                )
+                mapping_label = "defl_perp"
             # If scan type is a spin scan, extract the spin rotation angle values
-            elif scan_type == 'spin scan':  # Spin scan
+            elif scan_type == "spin scan":  # Spin scan
                 mapping_values = []
                 for i in range(num_images):
-                    current_spin_rot_angle = float(metadata['SpinComp#' + str(i)].split(',', 1)[1].split('>', 1)[0])
+                    current_spin_rot_angle = float(
+                        metadata["SpinComp#" + str(i)].split(",", 1)[1].split(">", 1)[0]
+                    )
                     mapping_values.append(current_spin_rot_angle)
-                mapping_label = 'spin_rot_angle'
+                mapping_label = "spin_rot_angle"
 
         # Define data
-        if scan_type == 'dispersion':
-            data = {'scan_type': scan_type, 'spectrum': spectrum, 'theta_par': theta_par_values, 'eV': KE_values}
+        if scan_type == "dispersion":
+            data = {
+                "scan_type": scan_type,
+                "spectrum": spectrum,
+                "theta_par": theta_par_values,
+                "eV": KE_values,
+            }
         else:
-            data = {'scan_type': scan_type, 'spectrum': spectrum, mapping_label: mapping_values,
-                    'theta_par': theta_par_values, 'eV': KE_values}
+            data = {
+                "scan_type": scan_type,
+                "spectrum": spectrum,
+                mapping_label: mapping_values,
+                "theta_par": theta_par_values,
+                "eV": KE_values,
+            }
 
     return data
 
@@ -227,55 +262,57 @@ def _load_StA_MBS_metadata(fname, scan_type):
 
     """
 
+    from peaks.core.fileIO.data_loading import _extract_mapping_metadata
+
     # Define dictionary to store metadata
     metadata = {}
 
     # Extract the scan name from the file full path
-    fname_split = fname.split('/')
-    metadata['scan_name'] = fname_split[len(fname_split)-1].split('.')[0]
+    fname_split = fname.split("/")
+    metadata["scan_name"] = fname_split[len(fname_split) - 1].split(".")[0]
 
     # Define initial attributes
-    metadata['scan_type'] = scan_type
-    metadata['sample_description'] = None
-    metadata['eV_type'] = 'kinetic'
-    metadata['beamline'] = 'StA-MBS'
-    metadata['analysis_history'] = []
-    metadata['EF_correction'] = None
+    metadata["scan_type"] = scan_type
+    metadata["sample_description"] = None
+    metadata["eV_type"] = "kinetic"
+    metadata["beamline"] = _StAMBSConventions.loc_name
+    metadata["analysis_history"] = []
+    metadata["EF_correction"] = None
 
     # Get file_extension to determine the file type, to allow other metadata to be determined
     filename, file_extension = os.path.splitext(fname)
 
     # Extract metadata present in a .txt file
-    if file_extension == '.txt':
+    if file_extension == ".txt":
         # Open the file and load lines
         with open(fname) as f:
             lines = f.readlines()
 
         # Define attributes, using the _StA_MBS_find function to obtain metadata where possible
-        metadata['PE'] = float(_StA_MBS_find(lines, 'Pass Energy').replace('PE0', ""))
-        metadata['hv'] = None
-        metadata['pol'] = None
-        metadata['frames'] = int(_StA_MBS_find(lines, 'Frames Per Step'))
-        metadata['sweeps'] = int(_StA_MBS_find(lines, 'No Scans'))
-        metadata['steps'] = int(_StA_MBS_find(lines, 'No. Steps'))
-        metadata['ana_mode'] = _StA_MBS_find(lines, 'Lens Mode')
-        metadata['ana_slit'] = None
-        metadata['ana_slit_angle'] = 0
-        metadata['exit_slit'] = None
-        metadata['defl_par'] = round(float(_StA_MBS_find(lines, 'DeflY')), 2)
-        metadata['defl_perp'] = round(float(_StA_MBS_find(lines, 'DeflX')), 2)
+        metadata["PE"] = float(_StA_MBS_find(lines, "Pass Energy").replace("PE0", ""))
+        metadata["hv"] = None
+        metadata["pol"] = None
+        metadata["frames"] = int(_StA_MBS_find(lines, "Frames Per Step"))
+        metadata["sweeps"] = int(_StA_MBS_find(lines, "No Scans"))
+        metadata["steps"] = int(_StA_MBS_find(lines, "No. Steps"))
+        metadata["ana_mode"] = _StA_MBS_find(lines, "Lens Mode")
+        metadata["ana_slit"] = None
+        metadata["ana_slit_angle"] = 0
+        metadata["exit_slit"] = None
+        metadata["defl_par"] = round(float(_StA_MBS_find(lines, "DeflY")), 2)
+        metadata["defl_perp"] = round(float(_StA_MBS_find(lines, "DeflX")), 2)
 
     # Extract metadata present in a .krx file
-    elif file_extension == '.krx':
+    elif file_extension == ".krx":
         # Open the file in read mode and extract metalines
-        with open(fname, 'rb') as f:
+        with open(fname, "rb") as f:
             # Determine whether the file is 32-bit or 64-bit. The data type is little endian, so read initially as
             # 32 bit, but if either of the first 2 32-bit words are 0, then the file is 64-bit.
-            dtype_identifier = np.fromfile(f, dtype='<i4', count=2)
+            dtype_identifier = np.fromfile(f, dtype="<i4", count=2)
             if 0 in dtype_identifier:  # File is 64 bit
-                dtype = '<i8'  # 8-byte signed integer (little endian)
+                dtype = "<i8"  # 8-byte signed integer (little endian)
             else:  # File is 32 bit
-                dtype = '<i4'  # 4-byte signed integer (little endian)
+                dtype = "<i4"  # 4-byte signed integer (little endian)
 
             # Set reading to the start of the file
             f.seek(0)
@@ -294,52 +331,54 @@ def _load_StA_MBS_metadata(fname, scan_type):
             f.seek((image_pos + array_size + 1) * 4)
 
             # Read the header (allowing up to 1800 bytes) containing metadata and convert into ascii format
-            header = f.read(1800).decode('ascii')
+            header = f.read(1800).decode("ascii")
 
             # Shorten header to required length (i.e. up to where scan data starts)
-            header = header.split('\r\nDATA:')[0]
+            header = header.split("\r\nDATA:")[0]
 
             # Convert the header to a metadata dictionary
-            metalines = dict(i.split('\t', 1) for i in header.split('\r\n'))
+            metalines = dict(i.split("\t", 1) for i in header.split("\r\n"))
 
-        metadata['PE'] = float(metalines['Pass Energy'].replace('PE0', ""))
-        metadata['hv'] = None
-        metadata['pol'] = None
-        metadata['frames'] = int(metalines['Frames Per Step'])
-        metadata['sweeps'] = int(metalines['No Scans'])
-        metadata['steps'] = int(metalines['No. Steps'])
-        metadata['ana_mode'] = metalines['Lens Mode']
-        metadata['ana_slit'] = None
-        metadata['ana_slit_angle'] = 0
-        metadata['exit_slit'] = None
-        metadata['defl_par'] = round(float(metalines['DeflY']), 2)
+        metadata["PE"] = float(metalines["Pass Energy"].replace("PE0", ""))
+        metadata["hv"] = None
+        metadata["pol"] = None
+        metadata["frames"] = int(metalines["Frames Per Step"])
+        metadata["sweeps"] = int(metalines["No Scans"])
+        metadata["steps"] = int(metalines["No. Steps"])
+        metadata["ana_mode"] = metalines["Lens Mode"]
+        metadata["ana_slit"] = None
+        metadata["ana_slit_angle"] = 0
+        metadata["exit_slit"] = None
+        metadata["defl_par"] = round(float(metalines["DeflY"]), 2)
 
         # Extract defl_perp attribute
-        if scan_type == 'FS map':
+        if scan_type == "FS map":
             # For a Fermi map, extract range of defl_perp values
-            defl_perp_min = float(metalines['MapStartX'])
-            defl_perp_max = float(metalines['MapEndX'])
-            num_defl_perp = int(metalines['MapNoXSteps'])
+            defl_perp_min = float(metalines["MapStartX"])
+            defl_perp_max = float(metalines["MapEndX"])
+            num_defl_perp = int(metalines["MapNoXSteps"])
             defl_perp_values = np.linspace(defl_perp_min, defl_perp_max, num_defl_perp)
 
             # Represent the defl_perp using a 'min:max (step)' format (rounding to 3 decimal places)
-            metadata['defl_perp'] = _extract_mapping_metadata(defl_perp_values, num_dp=3)
+            metadata["defl_perp"] = _extract_mapping_metadata(
+                defl_perp_values, num_dp=3
+            )
         else:
             # Otherwise, defl_perp is static
-            metadata['defl_perp'] = round(float(metalines['DeflX']), 2)
+            metadata["defl_perp"] = round(float(metalines["DeflX"]), 2)
 
     # Define other attributes that are not saved in the metadata
-    metadata['x1'] = None
-    metadata['x2'] = None
-    metadata['x3'] = None
-    metadata['polar'] = None
-    metadata['tilt'] = None
-    metadata['azi'] = None
-    metadata['norm_polar'] = None
-    metadata['norm_tilt'] = None
-    metadata['norm_azi'] = None
-    metadata['temp_sample'] = None
-    metadata['temp_cryo'] = None
+    metadata["x1"] = None
+    metadata["x2"] = None
+    metadata["x3"] = None
+    metadata["polar"] = None
+    metadata["tilt"] = None
+    metadata["azi"] = None
+    metadata["norm_polar"] = None
+    metadata["norm_tilt"] = None
+    metadata["norm_azi"] = None
+    metadata["temp_sample"] = None
+    metadata["temp_cryo"] = None
 
     return metadata
 
@@ -385,3 +424,20 @@ def _StA_MBS_find(lines, item):
             break
 
     return line_contents
+
+
+@_register_location
+class _StAMBSConventions(_BaseARPESConventions):
+    loc_name = "StA-MBS"
+    loader = _load_StA_MBS_data
+    metadata_loader = _load_StA_MBS_metadata
+    ana_type = "IIp"
+    azi = 1
+    polar_name = "polar"
+    tilt_name = "tilt"
+    azi_name = "azi"
+    x1_name = "y"
+    x2_name = "z"
+    x3_name = "x"
+    defl_par_name = "defl_y"
+    defl_perp_name = "defl_x"

@@ -2,6 +2,8 @@
 
 """
 
+from ..fileIO_opts import _BaseARPESConventions, _register_location
+
 # Phil King 14/10/2022
 # Brendan Edwards 09/02/2024
 
@@ -32,7 +34,7 @@ def _load_Artemis_data(fname):
 
     """
 
-    raise Exception('CLF Artemis is not currently supported')
+    raise Exception("CLF Artemis is not currently supported")
 
 
 def _load_Artemis_metadata(fname, scan_type):
@@ -64,4 +66,16 @@ def _load_Artemis_metadata(fname, scan_type):
 
     """
 
-    raise Exception('CLF Artemis is not currently supported')
+    raise Exception("CLF Artemis is not currently supported")
+
+
+@_register_location
+class _ArtemisConventions(_BaseARPESConventions):
+    loc_name = "CLF Artemis"
+    loader = _load_Artemis_data
+    metadata_loader = _load_Artemis_metadata
+    ana_type = "II"
+    tilt_name = None
+    x1_name = "X"
+    x2_name = "Z"
+    x3_name = "Y"

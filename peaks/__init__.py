@@ -58,12 +58,16 @@ from peaks.core import *
 from peaks.ML import *
 
 # Set some default xarray options
-xr.set_options(cmap_sequential='binary', use_numbagg=True)
+xr.set_options(cmap_sequential="binary", use_numbagg=True)
 
 # Import hvplot to enable the hvplot accessor and set some default options
 import holoviews as hv
 import hvplot.xarray
+
 # Set default options
-hv.opts.defaults(
-    hv.opts.Image(invert_axes=True)
-)
+hv.opts.defaults(hv.opts.Image(invert_axes=True))
+
+# Register a dask progressbar with a minimum 1 second time
+from dask.diagnostics import ProgressBar as dask_prog_bar
+
+dask_prog_bar(minimum=1).register()
