@@ -4,7 +4,7 @@
 
 from .display import *
 from .fileIO import *
-from .fit import *
+from .fitting import *
 from .GUI import *
 from .process import *
 from .utils import *

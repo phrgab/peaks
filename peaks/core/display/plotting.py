@@ -8,14 +8,25 @@
 import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
+import panel as pn
 from numpy.fft import fft
 from matplotlib import colors, cm
 from cycler import cycler
+from IPython.display import display
 from peaks.core.utils.misc import analysis_warning
 from peaks.core.utils.OOP_method import add_methods
 
 
-def plot_grid(data, ncols=3, nrows=None, titles=None, sharex=False, sharey=False, figsize=None, **plotting_kwargs):
+def plot_grid(
+    data,
+    ncols=3,
+    nrows=None,
+    titles=None,
+    sharex=False,
+    sharey=False,
+    figsize=None,
+    **plotting_kwargs,
+):
     """Plots an array of 2D DataArrays on a grid.
 
     Parameters
@@ -85,7 +96,9 @@ def plot_grid(data, ncols=3, nrows=None, titles=None, sharex=False, sharey=False
         figsize = (5 * ncols, 5 * nrows)
 
     # Make the figure layout
-    fig, axes = plt.subplots(ncols=ncols, nrows=nrows, figsize=figsize, sharex=sharex, sharey=sharey)
+    fig, axes = plt.subplots(
+        ncols=ncols, nrows=nrows, figsize=figsize, sharex=sharex, sharey=sharey
+    )
 
     # Clear any remaining subplot axes
     if nrows * ncols > nplots:
@@ -93,7 +106,7 @@ def plot_grid(data, ncols=3, nrows=None, titles=None, sharex=False, sharey=False
             # Work out grid positions
             j0 = int(np.floor((i) / ncols))
             j1 = int(i - ncols * j0)
-            axes[j0][j1].axis('off')
+            axes[j0][j1].axis("off")
 
     # Check for whether plot titles are to be displayed
     plot_titles = False
@@ -102,8 +115,10 @@ def plot_grid(data, ncols=3, nrows=None, titles=None, sharex=False, sharey=False
             plot_titles = True
         else:  # If not, don't use them and give a warning
             analysis_warning(
-                'Length of supplied titles list does not match number of plots. Supplied titles have not been used.',
-                title='Plotting info', warn_type='danger')
+                "Length of supplied titles list does not match number of plots. Supplied titles have not been used.",
+                title="Plotting info",
+                warn_type="danger",
+            )
 
     # Make the plots
     if nrows < 2 or ncols == 1:  # Figure out whether this is a 1D or 2D grid
@@ -125,8 +140,19 @@ def plot_grid(data, ncols=3, nrows=None, titles=None, sharex=False, sharey=False
     plt.tight_layout()
 
 
-def plot_DCs(DCs, titles=None, cmap='coolwarm', color=None, offset=0, norm=False, stack_dim='auto', figsize=(6,6),
-             linewidth=1, ax=None, **plotting_kwargs):
+def plot_DCs(
+    DCs,
+    titles=None,
+    cmap="coolwarm",
+    color=None,
+    offset=0,
+    norm=False,
+    stack_dim="auto",
+    figsize=(6, 6),
+    linewidth=1,
+    ax=None,
+    **plotting_kwargs,
+):
     """Plot a DC stack with the colours varying according to a colormap.
 
     Parameters
@@ -189,13 +215,13 @@ def plot_DCs(DCs, titles=None, cmap='coolwarm', color=None, offset=0, norm=False
 
     # If a list of DCs is supplied, combine them into a single DataArray
     if isinstance(DCs, list):
-        DC_array = xr.concat(DCs, dim='DC_no')
-        stack_dim = 'DC_no'
+        DC_array = xr.concat(DCs, dim="DC_no")
+        stack_dim = "DC_no"
 
     # If a DataArray is instead supplied, finding the stacking dimension if not defined
     else:
         DC_array = DCs.copy(deep=True)  # Make a copy so we can safely modify
-        if stack_dim == 'auto':
+        if stack_dim == "auto":
             # Assume the stacking dimension is the smallest dimension size
             if DC_array.shape[0] < DC_array.shape[1]:
                 stack_dim = DC_array.dims[0]
@@ -205,7 +231,8 @@ def plot_DCs(DCs, titles=None, cmap='coolwarm', color=None, offset=0, norm=False
     # Check correct dimension supplied
     if len(DC_array.shape) != 2:
         raise Exception(
-            'Incorrect dimension of data supplied. Please supply a single 2D DataArray or list of 1D DataArrays.')
+            "Incorrect dimension of data supplied. Please supply a single 2D DataArray or list of 1D DataArrays."
+        )
 
     # Get non-stacking dimension
     other_dim = [dim for dim in DC_array.dims if dim != stack_dim][0]
@@ -213,41 +240,49 @@ def plot_DCs(DCs, titles=None, cmap='coolwarm', color=None, offset=0, norm=False
     # Normalise if required
     if norm:
         for coord in DC_array[stack_dim]:
-            DC_array.loc[{stack_dim: coord}] = DC_array.loc[{stack_dim: coord}] / DC_array.loc[{stack_dim: coord}].max()
+            DC_array.loc[{stack_dim: coord}] = (
+                DC_array.loc[{stack_dim: coord}]
+                / DC_array.loc[{stack_dim: coord}].max()
+            )
 
     # Get absolute offset from fractional offset
     absolute_offset = offset * float(DC_array.max())
 
     # Define linear offset wave in steps of the supplied or guessed offset
-    offset_data = xr.DataArray(data=np.arange(len(DC_array[stack_dim])) * absolute_offset, dims=stack_dim,
-                               coords={stack_dim: DC_array[stack_dim]})
+    offset_data = xr.DataArray(
+        data=np.arange(len(DC_array[stack_dim])) * absolute_offset,
+        dims=stack_dim,
+        coords={stack_dim: DC_array[stack_dim]},
+    )
 
     # Add offset to DC data
     DC_array += offset_data
 
     # If no tiles are provided, no legend will be displayed
     if not titles:
-        plotting_kwargs['add_legend'] = False
+        plotting_kwargs["add_legend"] = False
 
     # If x and y are not defined, make a guess for which axes to plot the dimensions on.
-    if 'y' not in plotting_kwargs and 'x' not in plotting_kwargs:
+    if "y" not in plotting_kwargs and "x" not in plotting_kwargs:
         # If it seems to be an EDC plot, set vertical by default
-        if other_dim == 'eV':
-            plotting_kwargs['y'] = 'eV'
+        if other_dim == "eV":
+            plotting_kwargs["y"] = "eV"
         # For anything else, set horizontal
         else:
-            plotting_kwargs['x'] = other_dim
+            plotting_kwargs["x"] = other_dim
 
     # Set up plot
     if ax:
-        plotting_kwargs['ax'] = ax
+        plotting_kwargs["ax"] = ax
     else:
         plt.figure(figsize=figsize)
         ax = plt.gca()
 
     # If the user has requested to plot lines of a single color
     if color:
-        DC_array.plot.line(hue=stack_dim, linewidth=linewidth, color=color, **plotting_kwargs)
+        DC_array.plot.line(
+            hue=stack_dim, linewidth=linewidth, color=color, **plotting_kwargs
+        )
 
     # Else use a colormap
     else:
@@ -259,7 +294,7 @@ def plot_DCs(DCs, titles=None, cmap='coolwarm', color=None, offset=0, norm=False
         DC_array.plot.line(hue=stack_dim, linewidth=linewidth, **plotting_kwargs)
 
     # Add axis titles
-    if 'y' in plotting_kwargs:
+    if "y" in plotting_kwargs:
         plt.xlabel("Intensity [arb. units]")
     else:
         plt.ylabel("Intensity [arb. units]")
@@ -272,14 +307,89 @@ def plot_DCs(DCs, titles=None, cmap='coolwarm', color=None, offset=0, norm=False
             ax.legend()
         else:
             analysis_warning(
-                'Length of supplied titles list does not match number of DCs. Supplied titles have not been used.',
-                title='Plotting info', warn_type='danger')
+                "Length of supplied titles list does not match number of DCs. Supplied titles have not been used.",
+                title="Plotting info",
+                warn_type="danger",
+            )
 
     # Tidy up the layout
     plt.tight_layout()
 
 
-def plot_ROI(ROI, color='black', x=None, y=None, label=None, loc='best', ax=None, **plotting_kwargs):
+@add_methods(xr.Dataset)
+def plot_fit(fit_results_ds, show_components=True, figsize=None, **kwargs):
+    def _plot_single_fit(fit_results, show_components, figsize, **kwargs):
+        fig = plt.figure(figsize=figsize)
+        for dim in fit_results.dims:
+            if dim in kwargs:
+                fit_results = fit_results.isel({dim: kwargs.pop(dim)})
+        fit_model = fit_results["fit_model"].item()
+        fit_model.plot(fig=fig, **kwargs)
+        if show_components and len(fit_model.components) > 1:
+            ax = plt.gca()
+            components = fit_model.eval_components()
+            for component_name, component_data in components.items():
+                ax.plot(
+                    fit_model.userkws["x"],
+                    component_data,
+                    label=component_name,
+                    linestyle="--",
+                )
+            ax.legend()
+        plt.close(fig)
+        return fig
+
+    # Check the data array contains fit results
+    if "fit_model" not in fit_results_ds:
+        raise ValueError(
+            "The passed data does not appear to be a DataSet containing fit results. Generate the relevant fit results "
+            "by calling the `fit` method on a suitable DataArray, e.g. "
+            "`fit_results = disp1.fit(model, 'eV', params)`"
+        )
+
+    if len(fit_results_ds["fit_model"].shape) == 0:
+        fig = _plot_single_fit(fit_results_ds, show_components, figsize, **kwargs)
+        display(fig)
+    else:
+        # Initialize Panel extension
+        pn.extension()
+
+        # Create sliders for dims
+        sliders = {}
+        for dim in fit_results_ds.dims:
+            sliders[dim] = pn.widgets.IntSlider(
+                name=dim, start=0, end=len(fit_results_ds[dim]) - 1, step=1, value=0
+            )
+
+        # Bind the plot function to the sliders, updating the plot dynamically
+        interactive_plot = pn.bind(
+            _plot_single_fit,
+            fit_results=fit_results_ds,
+            show_components=show_components,
+            figsize=figsize,
+            **sliders,
+            **kwargs,
+        )
+
+        # Display the sliders and the plot in the notebook
+        dashboard = pn.Column(
+            pn.Row(*sliders.values()), pn.pane.Matplotlib(interactive_plot)
+        )
+
+        dashboard.servable()
+        return dashboard
+
+
+def plot_ROI(
+    ROI,
+    color="black",
+    x=None,
+    y=None,
+    label=None,
+    loc="best",
+    ax=None,
+    **plotting_kwargs,
+):
     """This function plots a region of interest (ROI).
 
     Parameters
@@ -385,7 +495,7 @@ def plot_ROI(ROI, color='black', x=None, y=None, label=None, loc='best', ax=None
 
 
 @add_methods(xr.DataArray)
-def plot_nanofocus(data, focus='defocus'):
+def plot_nanofocus(data, focus="defocus"):
     """Function to determine the focus of a scan obtained at the nano branch of the I05 beamline at Diamond Light
     Source, and plot the results. The function works by determining the focal position at which at scanned feature
     becomes sharpest.
@@ -414,7 +524,7 @@ def plot_nanofocus(data, focus='defocus'):
 
     # Ensure the data is a 2D DataArray by integrating in energy and angle space if required
     if len(data.dims) == 4:
-        data = data.mean(['theta_par', 'eV'], keep_attrs=True)
+        data = data.mean(["theta_par", "eV"], keep_attrs=True)
 
     # Extract the spatial dimension
     data_dims = list(data.dims)
@@ -432,91 +542,117 @@ def plot_nanofocus(data, focus='defocus'):
 
     # Plot focus-dependent cuts through the spatial dimension (using the plot_DCs function)
     try:
-        plot_DCs(data, color='black', offset=0.1, norm=False, ax=axes[0, 1], y=spatial)
+        plot_DCs(data, color="black", offset=0.1, norm=False, ax=axes[0, 1], y=spatial)
     except ValueError:
-        plot_DCs(data, color='black', offset=0.1, norm=False, ax=axes[0, 1], stack_dim=spatial)
-    axes[0, 1].set_xlabel('')
+        plot_DCs(
+            data,
+            color="black",
+            offset=0.1,
+            norm=False,
+            ax=axes[0, 1],
+            stack_dim=spatial,
+        )
+    axes[0, 1].set_xlabel("")
     axes[0, 1].set_xticks([])
-    axes[0, 1].set_title('Line cuts', fontsize=16)
+    axes[0, 1].set_title("Line cuts", fontsize=16)
 
     # Calculate and plot the focus-dependent means of the absolute values of the derivatives along the spatial
     # dimension
     mean_abs_deriv = abs(data.diff(spatial)).mean(spatial)
-    mean_abs_deriv.plot(ax=axes[1, 0], c='black')
+    mean_abs_deriv.plot(ax=axes[1, 0], c="black")
 
     # Estimate and plot the focal point from the focus-dependent means of the absolute values of the derivatives
     # along the spatial dimension
     mean_abs_deriv_smoothed = mean_abs_deriv.smooth(**{focus: 2 * focus_step})
-    mean_abs_deriv_smoothed.plot(ax=axes[1, 0], c='black', alpha=0.2)
+    mean_abs_deriv_smoothed.plot(ax=axes[1, 0], c="black", alpha=0.2)
     max_mean_abs_deriv = mean_abs_deriv_smoothed.argmax()
     focal_point_mean_abs_deriv = mean_abs_deriv[focus].data[max_mean_abs_deriv]
     axes[1, 0].set_title(
-        'Mean of the abs(deriv) estimate: {focal_point}'.format(focal_point=focal_point_mean_abs_deriv),
-        fontsize=16)
-    axes[1, 0].axvline(focal_point_mean_abs_deriv, c='black', linestyle='--')
-    axes[1, 0].set_ylabel('Intensity (arb. units)')
+        "Mean of the abs(deriv) estimate: {focal_point}".format(
+            focal_point=focal_point_mean_abs_deriv
+        ),
+        fontsize=16,
+    )
+    axes[1, 0].axvline(focal_point_mean_abs_deriv, c="black", linestyle="--")
+    axes[1, 0].set_ylabel("Intensity (arb. units)")
     axes[1, 0].set_yticks([])
 
     # Calculate and plot the focus-dependent maximums of the absolute values of the derivatives along the spatial
     # dimension
     max_abs_deriv = abs(data.diff(spatial)).max(spatial)
-    max_abs_deriv.plot(ax=axes[1, 1], c='black')
+    max_abs_deriv.plot(ax=axes[1, 1], c="black")
 
     # Estimate and plot the focal point from the focus-dependent maximums of the absolute values of the derivatives
     # along the spatial dimension
     max_abs_deriv_smoothed = max_abs_deriv.smooth(**{focus: 2 * focus_step})
-    max_abs_deriv_smoothed.plot(ax=axes[1, 1], c='black', alpha=0.2)
+    max_abs_deriv_smoothed.plot(ax=axes[1, 1], c="black", alpha=0.2)
     max_max_abs_deriv = max_abs_deriv_smoothed.argmax()
     focal_point_max_abs_deriv = max_abs_deriv[focus].data[max_max_abs_deriv]
     axes[1, 1].set_title(
-        'Max of the abs(deriv) estimate: {focal_point}'.format(focal_point=focal_point_max_abs_deriv),
-        fontsize=16)
-    axes[1, 1].axvline(focal_point_max_abs_deriv, c='black', linestyle='--')
-    axes[1, 1].set_ylabel('Intensity (arb. units)')
+        "Max of the abs(deriv) estimate: {focal_point}".format(
+            focal_point=focal_point_max_abs_deriv
+        ),
+        fontsize=16,
+    )
+    axes[1, 1].axvline(focal_point_max_abs_deriv, c="black", linestyle="--")
+    axes[1, 1].set_ylabel("Intensity (arb. units)")
     axes[1, 1].set_yticks([])
 
     # Calculate and plot the focus-dependent variance along the spatial dimension
     variance = data.var(spatial)
-    variance.plot(ax=axes[2, 0], c='black')
+    variance.plot(ax=axes[2, 0], c="black")
 
     # Estimate and plot the focal point from the focus-dependent variance along the spatial dimension
     variance_smoothed = variance.smooth(**{focus: 2 * focus_step})
-    variance_smoothed.plot(ax=axes[2, 0], c='black', alpha=0.2)
+    variance_smoothed.plot(ax=axes[2, 0], c="black", alpha=0.2)
     max_variance = variance_smoothed.argmax()
     focal_point_max_variance = variance[focus].data[max_variance]
     axes[2, 0].set_title(
-        'Max of the variance estimate: {focal_point}'.format(focal_point=focal_point_max_variance),
-        fontsize=16)
-    axes[2, 0].axvline(focal_point_max_variance, c='black', linestyle='--')
-    axes[2, 0].set_ylabel('Intensity (arb. units)')
+        "Max of the variance estimate: {focal_point}".format(
+            focal_point=focal_point_max_variance
+        ),
+        fontsize=16,
+    )
+    axes[2, 0].axvline(focal_point_max_variance, c="black", linestyle="--")
+    axes[2, 0].set_ylabel("Intensity (arb. units)")
     axes[2, 0].set_yticks([])
 
     # Perform a fast Fourier transform (FFT) analysis of the data to look for increased higher frequencies
     # indicative of a sharper step, by transforming the spatial dimension of the data to frequency space
-    FFT_data = data.copy(deep='True')
+    FFT_data = data.copy(deep="True")
     if focus != data.dims[0]:  # Ensure data shape is as expected
         FFT_data = FFT_data.T
     FFT_data.data = abs(fft(data.data))  # Perform FFT
     FFT_data_out = FFT_data.isel({spatial: FFT_data.argmax(spatial).data[0] + 1})
 
     # Plot the FFT analysis results
-    FFT_data_out.plot(ax=axes[2, 1], c='black')
+    FFT_data_out.plot(ax=axes[2, 1], c="black")
 
     # Estimate and plot the focal point from the FFT analysis
     FFT_data_out_smoothed = FFT_data_out.smooth(**{focus: 2 * focus_step})
-    FFT_data_out_smoothed.plot(ax=axes[2, 1], c='black', alpha=0.2)
+    FFT_data_out_smoothed.plot(ax=axes[2, 1], c="black", alpha=0.2)
     max_FFT = FFT_data_out_smoothed.argmax()
     focal_point_max_FFT = FFT_data_out[focus].data[max_FFT]
     axes[2, 1].set_title(
-        'Fast Fourier transform estimate: {focal_point}'.format(focal_point=focal_point_max_FFT), fontsize=16)
-    axes[2, 1].axvline(focal_point_max_FFT, c='black', linestyle='--')
-    axes[2, 1].set_ylabel('Intensity (arb. units)')
+        "Fast Fourier transform estimate: {focal_point}".format(
+            focal_point=focal_point_max_FFT
+        ),
+        fontsize=16,
+    )
+    axes[2, 1].axvline(focal_point_max_FFT, c="black", linestyle="--")
+    axes[2, 1].set_ylabel("Intensity (arb. units)")
     axes[2, 1].set_yticks([])
 
     # Determine the average focal position estimate (removing any estimate outliers that are more than 2 std away
     # from the mean of the estimates)
     estimates = np.array(
-        [focal_point_mean_abs_deriv, focal_point_max_abs_deriv, focal_point_max_variance, focal_point_max_FFT])
+        [
+            focal_point_mean_abs_deriv,
+            focal_point_max_abs_deriv,
+            focal_point_max_variance,
+            focal_point_max_FFT,
+        ]
+    )
     estimates_no_outliers = []
     for i, item in enumerate(abs(abs(estimates) - abs(estimates.mean()))):
         if item < (2 * estimates.std()):
@@ -525,12 +661,15 @@ def plot_nanofocus(data, focus='defocus'):
 
     # Plot the average focal position
     axes[0, 0].set_title(
-        'Intensity map ({focus} estimate: {avg_estimate})'.format(focus=focus, avg_estimate=avg_estimate),
-        fontsize=16)
-    axes[0, 0].axvline(avg_estimate, c='#ECDE00', linestyle='dotted')
-    axes[1, 0].axvline(avg_estimate, c='#ECDE00', linestyle='dotted')
-    axes[1, 1].axvline(avg_estimate, c='#ECDE00', linestyle='dotted')
-    axes[2, 0].axvline(avg_estimate, c='#ECDE00', linestyle='dotted')
-    axes[2, 1].axvline(avg_estimate, c='#ECDE00', linestyle='dotted')
+        "Intensity map ({focus} estimate: {avg_estimate})".format(
+            focus=focus, avg_estimate=avg_estimate
+        ),
+        fontsize=16,
+    )
+    axes[0, 0].axvline(avg_estimate, c="#ECDE00", linestyle="dotted")
+    axes[1, 0].axvline(avg_estimate, c="#ECDE00", linestyle="dotted")
+    axes[1, 1].axvline(avg_estimate, c="#ECDE00", linestyle="dotted")
+    axes[2, 0].axvline(avg_estimate, c="#ECDE00", linestyle="dotted")
+    axes[2, 1].axvline(avg_estimate, c="#ECDE00", linestyle="dotted")
 
     plt.tight_layout()
