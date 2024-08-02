@@ -68,12 +68,15 @@ def _load_I05_data(fname):
 
         # Determine the scan type and extract the data
         # Photon energy scan (kinetic energy varies)
-        if "energy" in analyser_keys:
+        if "energy" in analyser_keys or "centre_energy" in analyser_keys:
             # Assign scan type
             scan_type = "hv scan"
 
             # Extract hv coordinates and round to 2 d.p
-            hv_values = np.round(f["entry1/instrument/monochromator/energy"][()], 2)
+            if "energy" in analyser_keys:
+                hv_values = np.round(f["entry1/instrument/energy/energy"][()], 2)
+            elif "centre_energy" in analyser_keys:  # Required for nano hv scan script
+                hv_values = np.round(f["entry1/analyser/value"][()], 2)
 
             # We want to save the kinetic energy coordinates of the first scan, and also the corresponding offsets for
             # successive scans (KE_delta)
@@ -119,6 +122,17 @@ def _load_I05_data(fname):
             elif "deflector_x" in analyser_keys:  # defl_perp varies
                 mapping_coords = f["entry1/instrument/deflector_x/deflector_x"][()]
                 mapping_label = "defl_perp"
+
+            # In ana_polar continuous scans at I05-nano, you can end up with a couple of duplicated ana_polar values
+            # at the end of the scan. Check for these and remove them if present.
+            reversed_arr = mapping_coords[::-1]
+            # Find the first non-duplicate value from the end
+            last_val = reversed_arr[0]
+            count = np.argmax(reversed_arr != last_val)
+            index = count - 1
+            if index > 0:
+                mapping_coords = mapping_coords[:-index]
+                spectrum = spectrum[:-index, :, :]
 
             # Define data
             data = {
@@ -271,7 +285,7 @@ def _load_I05_data(fname):
                 # that the DataArray generated in _make_DataArray correctly assumes x2 is first dimension
                 if len(x1_values) == len(x2_values):
                     # Since x1 is the slow axis, flip the x1 and x2 ordering of spectrum so that x2 is first
-                    spectrum = np.transpose(spectrum, (1, 0, 2, 3))
+                    spectrum = np.transpose(spectrum, (1, 0, *range(2, spectrum.ndim)))
 
             # Define data
             if "analyser_total" in analyser_keys:  # If scan is in analyser_total mode
