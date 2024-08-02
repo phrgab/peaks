@@ -12,7 +12,8 @@ from numpy.fft import fft2, ifft2, fftshift
 from scipy.ndimage import gaussian_filter
 from skimage.registration import phase_cross_correlation
 from IPython.display import clear_output
-from peaks.core.fit.models import _Shirley
+from peaks.core.display import plot_grid
+from peaks.core.fitting.models import _Shirley
 from peaks.core.utils.OOP_method import add_methods
 from peaks.core.utils.misc import analysis_warning
 
@@ -1546,3 +1547,58 @@ def estimate_sym_point(data, dims=None, upsample_factor=100):
         centre[dim] = midpoint
 
     return centre
+
+
+def drift_correction(reference_data, moving_data, orig_pos=None, **kwargs):
+    """Estimate new position to correct for drift between two spatial maps.
+
+    Parameters
+    ------------
+    reference_data : xarray.DataArray
+        The original data, should be a 1D or 2D DataArray
+
+    moving_data : xarray.DataArray
+        The new data which should be over the same relative range and be of the same dimensions as orig_data,
+        but which can be over a different absolute range
+
+    orig_pos : dict, optional
+         Dictionary specifying the original positions
+
+    **kwargs : optional
+        Additional keyword arguments to be passed to :class:`skimage.registration.phase_cross_correlation` for
+        the subpixel image registration
+
+    Returns
+    ------------
+    shift : dict
+        Dictionary of shifts required to register ``moving_data`` with ``reference_data``.
+    new_pos : dict, optional
+        If orig_pos supplied, dictionary of position in new_map corresponding to orig_pos in orig_map
+    """
+
+    reference_data = reference_data.squeeze()
+    moving_data = moving_data.squeeze()
+    if len(reference_data.shape) >= 3 or len(moving_data.shape) >= 3:
+        raise ValueError("Supplied data has more than 2 dimensions. Select a 2D slice.")
+
+    # Set default upsample factor
+    kwargs.setdefault("upsample_factor", 10)
+
+    # Calculate shifts in pixel space
+    shifts, _, _ = phase_cross_correlation(
+        reference_data.data, moving_data.data, **kwargs
+    )
+
+    # Convert to real axis units
+    dim_shift = {}
+    for i, shift in enumerate(shifts):
+        dim = reference_data.dims[i]
+        orig_coord = reference_data[dim].data
+        new_coord = moving_data[dim].data
+        dim_delta = orig_coord[1] - orig_coord[0]
+        dim_shift[dim] = shift * dim_delta.data - (new_coord[0] - orig_coord[0])
+
+    if orig_pos:
+        new_pos = {dim: orig_pos[dim] - dim_shift[dim] for dim in orig_pos}
+        return dim_shift, new_pos
+    return dim_shift
