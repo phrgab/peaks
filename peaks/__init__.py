@@ -20,9 +20,10 @@ Modules
 
 Usage
 ----------
-```python
-import peaks as pks
-```
+    It is recommended to import peaks as follows::
+
+        import peaks as pks
+
 """
 
 # Import core packages to namespace
