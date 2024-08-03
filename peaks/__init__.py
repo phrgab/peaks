@@ -3,26 +3,27 @@
 peaks is a collection of analysis tools for the loading, processing and display of spectroscopic and diffraction data,
 with a core focus on tools for angle-resolved photoemission and electron diffraction techniques.
 
-Sub-packages (see peaks.<sub-package> for more information)
+Sub-packages
 ----------
-    - core: Core functionality for data loading, processing and display.
-    - ML: Machine learning tools for data analysis.
-    - diffraction: Tools for electron and x-ray diffraction data loading and analysis.
-    - SARPES: Dedicated tools for analysis of spin- and angle-resolved photoemission spectroscopy.
-    - TRARPES: Dedicated tools for analysis of time-resolved angle-resolved photoemission spectroscopy.
-    - XMCD: Dedicated tools for analysis of x-ray absorption and magnetic circular dichroism spectroscopy.
-    - structure: Helper functions for crystal structure loading and BZ plotting.
-    - utils: Miscellaneous helper functions and classes.
+(see peaks.<sub-package> for more information)
+- core: Core functionality for data loading, processing and display.
+- ML: Machine learning tools for data analysis.
+- diffraction: Tools for electron and x-ray diffraction data loading and analysis.
+- SARPES: Dedicated tools for analysis of spin- and angle-resolved photoemission spectroscopy.
+- TRARPES: Dedicated tools for analysis of time-resolved angle-resolved photoemission spectroscopy.
+- XMCD: Dedicated tools for analysis of x-ray absorption and magnetic circular dichroism spectroscopy.
+- structure: Helper functions for crystal structure loading and BZ plotting.
+- utils: Miscellaneous helper functions and classes.
 
 Modules
 ----------
-    - _lazy_import.py: Helper functions for lazy importing of modules.
+- _lazy_import.py: Helper functions for lazy importing of modules.
 
 Usage
 ----------
-    It is recommended to import peaks as follows::
+It is recommended to import peaks as follows::
 
-        import peaks as pks
+    import peaks as pks
 
 """
 
