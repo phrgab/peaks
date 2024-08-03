@@ -3,49 +3,26 @@
 peaks is a collection of analysis tools for the loading, processing and display of spectroscopic and diffraction data,
 with a core focus on tools for angle-resolved photoemission and electron diffraction techniques.
 
-It has been developed by the King group at the University of St Andrews, with contributions from the following group
-members: Phil King, Brendan Edwards, Tommaso Antonelli, Edgar Abarca Morales, Liam Trzaska and Lewis Hart.
+Sub-packages (see peaks.<sub-package> for more information)
+----------
+    - core: Core functionality for data loading, processing and display.
+    - ML: Machine learning tools for data analysis.
+    - diffraction: Tools for electron and x-ray diffraction data loading and analysis.
+    - SARPES: Dedicated tools for analysis of spin- and angle-resolved photoemission spectroscopy.
+    - TRARPES: Dedicated tools for analysis of time-resolved angle-resolved photoemission spectroscopy.
+    - XMCD: Dedicated tools for analysis of x-ray absorption and magnetic circular dichroism spectroscopy.
+    - structure: Helper functions for crystal structure loading and BZ plotting.
+    - utils: Miscellaneous helper functions and classes.
 
-This version of peaks is the result of a complete restructuring of the package in 2023 and 2024 by Brendan Edwards and
-Phil King.
+Modules
+----------
+    - _lazy_import.py: Helper functions for lazy importing of modules.
 
-Copyright the above authors. Contact pdk6@st-andrews.ac.uk for further information, to contribute, and for bug
-reporting.
-
-For documentation, please see /docs/index.html in root folder.
-
-*** Installation ***
-
-    Suggest to create a dedicated virtual environment.
-    If using conda, in a terminal/prompt type:
-
-        conda create –-name peaks python=3.12
-        conda activate peaks
-
-    Then set current directory to the package root directory and run:
-
-        pip install -e
-
-    in the terminal. Dependencies will be installed automatically.
-
-
-*** Documentation ***
-
-    To make (or update) an .html version of the documentation, in the terminal
-    set the directory to `/docs` run `make html`.
-
-    This puts a set of .html files in the `docs` folder of the package root directory.
-
-
-*** Basic Usage ***
-
-    Typically, run in a jupyter notebook or equivalent. To import peaks run:
-
-        from peaks import *
-
-    See the individual module and function descriptions for detailed information about the usage, and follow the example
-    notebooks for tutorials.
-
+Usage
+----------
+```python
+import peaks as pks
+```
 """
 
 # Import core packages to namespace
