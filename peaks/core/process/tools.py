@@ -12,10 +12,9 @@ from numpy.fft import fft2, ifft2, fftshift
 from scipy.ndimage import gaussian_filter
 from skimage.registration import phase_cross_correlation
 from IPython.display import clear_output
-from peaks.core.display import plot_grid
-from peaks.core.fitting.models import _Shirley
-from peaks.core.utils.OOP_method import add_methods
-from peaks.core.utils.misc import analysis_warning
+from peaks.core.fitting.models import _shirley_bg
+from peaks.utils.OOP_method import add_methods
+from peaks.utils import analysis_warning
 
 
 @add_methods(xr.DataArray)
@@ -195,7 +194,7 @@ def bgs(data, subtraction, num_avg=1, offset_start=0, offset_end=0, max_iteratio
         # If subtraction is 'Shirley'
         if subtraction == "Shirley":
             # Calculate the Shirley background using the function _Shirley
-            Shirley_bkg = _Shirley(
+            Shirley_bkg = _shirley_bg(
                 bgs_data,
                 num_avg=num_avg,
                 offset_start=offset_start,

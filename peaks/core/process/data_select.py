@@ -9,11 +9,11 @@
 import numpy as np
 import xarray as xr
 from matplotlib.path import Path
-from peaks.core.utils.OOP_method import add_methods
+from peaks.utils.OOP_method import add_methods
 
 
 @add_methods(xr.DataArray)
-def DC(data, coord='eV', val=0, dval=0, ana_hist=True):
+def DC(data, coord="eV", val=0, dval=0, ana_hist=True):
     """General function to extract DCs from data along any coordinate.
 
     Parameters
@@ -78,12 +78,14 @@ def DC(data, coord='eV', val=0, dval=0, ana_hist=True):
     num_pixels = int((dval / abs(data[coord].data[1] - data[coord].data[0])) + 1)
 
     # Extract single pixel DC(s)
-    dc = data.sel({coord: val}, method='nearest')
+    dc = data.sel({coord: val}, method="nearest")
 
     # Apply extra binning if required
     if num_pixels > 1:
         for i in dc[coord]:
-            dc.loc[{coord: i}] = data.sel({coord: slice(i - dval / 2, i + dval / 2)}).mean(coord, keep_attrs=True)
+            dc.loc[{coord: i}] = data.sel(
+                {coord: slice(i - dval / 2, i + dval / 2)}
+            ).mean(coord, keep_attrs=True)
 
     # If returning a single DC, want to remove the non-varying coordinate as a dimension
     try:
@@ -93,7 +95,7 @@ def DC(data, coord='eV', val=0, dval=0, ana_hist=True):
 
     # Update the analysis history if ana_hist is True (will be False when DC is called from e.g. EDC, MDC, FS)
     if ana_hist:
-        hist = 'DC extracted, integration window: ' + str(dval)
+        hist = "DC extracted, integration window: " + str(dval)
         dc.update_hist(hist)
 
     return dc
@@ -145,10 +147,10 @@ def MDC(data, E=0, dE=0):
     """
 
     # Call function to extract relevant MDC from dispersion
-    mdc = data.DC(coord='eV', val=E, dval=dE, ana_hist=False)
+    mdc = data.DC(coord="eV", val=E, dval=dE, ana_hist=False)
 
     # Update the analysis history
-    hist = 'MDC extracted, integration window: ' + str(dE)
+    hist = "MDC extracted, integration window: " + str(dE)
     mdc.update_hist(hist)
 
     return mdc
@@ -201,14 +203,14 @@ def EDC(data, k=0, dk=0):
 
     # Work out correct variable for dispersive direction (i.e. is data in angle or k-space)
     coords = list(data.dims)
-    coords.remove('eV')
+    coords.remove("eV")
     coord = coords[-1]  # Should always be the last one if data loading is consistent
 
     # Call function to extract relevant EDC from dispersion
     edc = data.DC(coord=coord, val=k, dval=dk, ana_hist=False)
 
     # Update the analysis history
-    hist = 'EDC extracted, integration window: ' + str(dk)
+    hist = "EDC extracted, integration window: " + str(dk)
     edc.update_hist(hist)
 
     return edc
@@ -264,10 +266,10 @@ def FS(data, E=0, dE=0):
         raise Exception("Function only acts on 3D data.")
 
     # Call function to extract relevant constant energy slice from Fermi map
-    fs = data.DC(coord='eV', val=E, dval=dE, ana_hist=False)
+    fs = data.DC(coord="eV", val=E, dval=dE, ana_hist=False)
 
     # Update the analysis history
-    hist = 'Constant energy slice extracted, integration window: ' + str(dE)
+    hist = "Constant energy slice extracted, integration window: " + str(dE)
     fs.update_hist(hist)
 
     return fs
@@ -306,13 +308,13 @@ def DOS(data):
     """
 
     # Get relevant dimensions to integrate over
-    int_dim = list(filter(lambda i: i != 'eV', data.dims))
+    int_dim = list(filter(lambda i: i != "eV", data.dims))
 
     # Calculate the DOS
     dos = data.mean(int_dim, keep_attrs=True)
 
     # Update the analysis history
-    hist = 'Integrated along axes: ' + str(int_dim)
+    hist = "Integrated along axes: " + str(int_dim)
     dos.update_hist(hist)
 
     return dos
@@ -353,14 +355,14 @@ def tot(data, spatial_int=False):
 
     # Integrate over spatial dimensions
     if spatial_int:
-        data_tot = data.mean(['x1', 'x2'], keep_attrs=True)
-        hist = 'Integrated along axes: ' + str(['x1', 'x2'])
+        data_tot = data.mean(["x1", "x2"], keep_attrs=True)
+        hist = "Integrated along axes: " + str(["x1", "x2"])
 
     # Integrate over non-spatial dimensions
     else:
         # Get relevant dimensions to integrate over
-        int_dim = list(filter(lambda n: n != 'x1' and n != 'x2', data.dims))
-        hist = 'Integrated along axes: ' + str(int_dim)
+        int_dim = list(filter(lambda n: n != "x1" and n != "x2", data.dims))
+        hist = "Integrated along axes: " + str(int_dim)
         data_tot = data.mean(int_dim, keep_attrs=True)
 
     # Update the analysis history
@@ -439,20 +441,27 @@ def radial_cuts(data, num_azi=361, num_points=200, radius=2, **centre_kwargs):
 
     # For each azi angle, interpolate the data onto a radial cut and append result to spectrum
     for angle in azi_angles:
-        x_values = np.linspace(0 + x_centre, (np.cos(np.radians(angle)) * radius) + x_centre, num_points)
-        y_values = np.linspace(0 + y_centre, (np.sin(np.radians(angle)) * radius) + y_centre, num_points)
-        x_xarray = xr.DataArray(x_values, dims='k')
-        y_xarray = xr.DataArray(y_values, dims='k')
+        x_values = np.linspace(
+            0 + x_centre, (np.cos(np.radians(angle)) * radius) + x_centre, num_points
+        )
+        y_values = np.linspace(
+            0 + y_centre, (np.sin(np.radians(angle)) * radius) + y_centre, num_points
+        )
+        x_xarray = xr.DataArray(x_values, dims="k")
+        y_xarray = xr.DataArray(y_values, dims="k")
         interpolated_data = data.interp({x_coord: x_xarray, y_coord: y_xarray})
         spectrum.append(interpolated_data.data)
 
     # Create xarray of radial cuts against azi
-    data_to_return = xr.DataArray(np.array(spectrum).transpose(), dims=("k", "azi"),
-                                  coords={"k": k_values, "azi": azi_angles})
+    data_to_return = xr.DataArray(
+        np.array(spectrum).transpose(),
+        dims=("k", "azi"),
+        coords={"k": k_values, "azi": azi_angles},
+    )
     data_to_return.attrs = data.attrs
 
     # Update the analysis history
-    data_to_return.update_hist('Radial cuts taken as a function of azi')
+    data_to_return.update_hist("Radial cuts taken as a function of azi")
 
     return data_to_return
 
@@ -504,9 +513,11 @@ def mask_data(data, ROI, return_integrated=True):
     """
 
     # Check function has been fed with suitable dictionary for ROI generation
-    err_str = ('ROI must be a dictionary containing two entries for the relevant axes. Each of these entries should '
-               'be a list of the vertices of the polygon for the labelled axis of the ROI. These must be of equal '
-               'length for the two axes.')
+    err_str = (
+        "ROI must be a dictionary containing two entries for the relevant axes. Each of these entries should "
+        "be a list of the vertices of the polygon for the labelled axis of the ROI. These must be of equal "
+        "length for the two axes."
+    )
     if type(ROI) != dict or len(ROI) != 2:
         raise Exception(err_str)
     else:  # Seems correct format
@@ -523,8 +534,12 @@ def mask_data(data, ROI, return_integrated=True):
     p = Path(ROI_path)  # Make a polygon defining the ROI
 
     # Restrict the data cube down to the minimum possible size (making this a copy to avoid overwriting problems)
-    data_bounded = data.sel({dims[0]: slice(min(ROI[dims[0]]), max(ROI[dims[0]])),
-                             dims[1]: slice(min(ROI[dims[1]]), max(ROI[dims[1]]))}).copy(deep=True)
+    data_bounded = data.sel(
+        {
+            dims[0]: slice(min(ROI[dims[0]]), max(ROI[dims[0]])),
+            dims[1]: slice(min(ROI[dims[1]]), max(ROI[dims[1]])),
+        }
+    ).copy(deep=True)
 
     # Broadcast coordinate data
     b, dim0 = xr.broadcast(data_bounded, data_bounded[dims[0]])
@@ -542,10 +557,25 @@ def mask_data(data, ROI, return_integrated=True):
 
     if return_integrated:  # Data should be averaged over the ROI dimensions
         ROI_selected_data = data_bounded.where(mask).mean(dims, keep_attrs=True)
-        hist = 'Data averaged over region of interest defined by polygon with vertices: ' + str(ROI)
+        hist = (
+            "Data averaged over region of interest defined by polygon with vertices: "
+            + str(ROI)
+        )
     else:  # Masked data to be returned
         ROI_selected_data = data_bounded.where(mask)
-        hist = 'Data masked by region of interest defined by polygon with vertices: ' + str(ROI)
+
+        def drop_nan_borders(da):
+            rows_to_keep = ~np.all(np.isnan(da), axis=1)
+            cols_to_keep = ~np.all(np.isnan(da), axis=0)
+            return da[rows_to_keep, :][:, cols_to_keep]
+
+        # Trim any rows or columns of only NaNs
+        ROI_selected_data = drop_nan_borders(ROI_selected_data)
+
+        hist = (
+            "Data masked by region of interest defined by polygon with vertices: "
+            + str(ROI)
+        )
 
     # Update analysis history
     ROI_selected_data.update_hist(hist)
@@ -585,29 +615,33 @@ def disp_from_hv(data, hv):
     """
 
     # Ensure the inputted data is an hv scan
-    if data.attrs['scan_type'] != 'hv scan':
-        raise Exception('The scan type of the inputted data is incompatible with disp_from_hv, which only extracts a '
-                        'single dispersion from an hv scan.')
+    if data.attrs["scan_type"] != "hv scan":
+        raise Exception(
+            "The scan type of the inputted data is incompatible with disp_from_hv, which only extracts a "
+            "single dispersion from an hv scan."
+        )
 
     # Ensure the inputted data has not already been converted to binding energy
-    if data.attrs['eV_type'] != 'kinetic':
-        raise Exception('The energy axis of the inputted data is incompatible with disp_from_hv, which only works '
-                        'when the energy axis is kinetic energy.')
+    if data.attrs["eV_type"] != "kinetic":
+        raise Exception(
+            "The energy axis of the inputted data is incompatible with disp_from_hv, which only works "
+            "when the energy axis is kinetic energy."
+        )
 
     # Extract the relevant hv slice
-    hv_scan = data.sel(hv=hv, method='nearest')
+    hv_scan = data.sel(hv=hv, method="nearest")
 
     # Rescale eV axis to get the correct kinetic energy
-    hv_scan['eV'] = hv_scan.eV.data + hv_scan.KE_delta.data
+    hv_scan["eV"] = hv_scan.eV.data + hv_scan.KE_delta.data
 
     # Delete the now redundant hv and KE_delta coordinates
-    del hv_scan['hv']
-    del hv_scan['KE_delta']
+    del hv_scan["hv"]
+    del hv_scan["KE_delta"]
 
     # Update the hv attribute
-    hv_scan.attrs['hv'] = float(hv)
+    hv_scan.attrs["hv"] = float(hv)
 
     # Update analysis history
-    hv_scan.update_hist('Dispersion extracted from hv scan at hv={hv} eV'.format(hv=hv))
+    hv_scan.update_hist("Dispersion extracted from hv scan at hv={hv} eV".format(hv=hv))
 
     return hv_scan

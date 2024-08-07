@@ -2,8 +2,6 @@
 
 """
 
-# Tommaso Antonelli 13/03/2021
-
 
 def degrid():
     pass
