@@ -1,99 +1,199 @@
 """Underlying custom fitting models or extensions for lmfit.
 """
 
+import re
 import numpy as np
 import xarray as xr
-from lmfit import Parameters, Model
-import dask.array as da
+import lmfit.models as lm_models
+from lmfit import Model, CompositeModel
 from scipy.ndimage import gaussian_filter1d
 
+from peaks.core.fitting.functions import _fermi_function, _linear_dos_fermi
 
-# Function to apply Gaussian convolution
-def _apply_gaussian_broadening(y, sigma, x):
-    """Apply Gaussian broadening to a 1D array.
+
+def create_xarray_compatible_lmfit_model(model):
+    """Dynamic class factory function to generate modified versions of lmfit models which accept 1D
+    :class:`xarray.DataArray`'s as input for the guess parameters function.
+
     Parameters
     ----------
-    y : array_like
-        The 1D array to be broadened.
-    sigma : float
-        The standard deviation of the Gaussian broadening kernel.
-    x : array_like
-        The independent variable array corresponding to y.
+    model : lmfit.Model
+        The :class:`lmfit` model.
 
     Returns
     -------
-    array_like
-        The broadened 1D array.
+    WrappedModel : lmfit.Model
+        The modified lmfit model which accepts 1D xarray.DataArray's as input for the guess parameters function.
     """
 
-    sigma_pixels = sigma / (x[1] - x[0])
-    return gaussian_filter1d(y, sigma_pixels)
+    class WrappedModel(model):
+        def guess(self, data, **kws):
+            if not isinstance(data, xr.DataArray):
+                raise TypeError(
+                    "This is a modified lmfit model which expects the data to be supplied as a 1D xarray.DataArray. "
+                    "To pass numpy arrays, use the original lmfit model."
+                )
+            if data.ndim != 1:
+                raise ValueError(
+                    "Supplied xr.DataArray should be one dimensional, with the included dimension representing the "
+                    "independent variable for the fit."
+                )
+            return super().guess(data=data.data, x=data[data.dims[0]].data, **kws)
+
+        # Modify the docstring
+        _original_guess_docstring = model.guess.__doc__
+        _modified_guess_docstring = (
+            f"Modified version of :class:`lmfit.model.Model.guess` method to accept a 1D "
+            f"xarray.DataArray instead of seperate numpy arrays for data and independent "
+            f"variable.\n{_original_guess_docstring}."
+        )
+        _new_guess_parameters = """
+            Parameters
+            ----------
+            data : xarray.DataArray
+                The data to guess fit parameters for. Should be a 1D DataArray where the dimension coresponds to the
+                independent variable.
+            **kws : optional
+                Additional keyword arguments, passed to model function.
+            """
+
+        # Replace text between "Parameters" and "Returns"
+        pattern = re.compile(
+            r"(Parameters\s*[-]+\s*)(.*?)(\s*Returns\s*[-]+\s*)", re.DOTALL
+        )
+        _modified_guess_docstring = re.sub(
+            pattern, r"\1" + _new_guess_parameters + r"\3", _modified_guess_docstring
+        )
+        guess.__doc__ = _modified_guess_docstring
+
+    WrappedModel.__doc__ = (
+        f"Modified version of :class:`lmfit.models.{model.__name__}` model with some key methods "
+        f"modified to accept xarray.DataArray as inputs.\n{model.__doc__}"
+    )
+    return WrappedModel
 
 
-def _gauss_conv(x, sigma):
-    """Dummy function used in gaussian convolution to converts sigma_conv in pixel from x axis unit"""
-    return sigma / (abs(x[-1] - x[0]) / len(x))
+# Get wrapped versions of all standard lmfit models
+for model in lm_models.lmfit_models.values():
+    model_name = model.__name__
+    wrapped_model = create_xarray_compatible_lmfit_model(model)
+    globals()[model_name] = wrapped_model
 
 
-def _convolve_gauss(model, sigma_conv_pxl):
-    """Gauss convolution to use in lmfit.ModelComposite as binary operator"""
-    return gaussian_filter1d(model, sigma_conv_pxl)
+class GaussianConvolvedFitModel(create_xarray_compatible_lmfit_model(CompositeModel)):
+    """Create a Gaussian convolved model for fitting, useful for e.g. including experimental resolution.
+
+    Parameters
+    ----------
+    model : lmfit.Model or lmfit.CompositeModel
+        The base or composite model to convolve.
+
+    Examples
+    --------
+    Example usage is as follows::
+
+        import peaks as pks
+        import lmfit
+
+        # Create a model - in this case a single Lorentzian peak
+        model = lmfit.models.LorentzianModel()
+
+        # Create a convolved model
+        convolved_model = pks.GaussianConvolvedFitModel(model)
+    """
+
+    def __init__(self, model):
+        def _gauss_conv(x, sigma_conv):
+            """Convert sigma_conv from eV units to pixels."""
+            return sigma_conv / (abs(x[-1] - x[0]) / len(x))
+
+        def _convolve_gauss(model, sigma_conv_pxl):
+            """Apply Gaussian convolution."""
+            return gaussian_filter1d(model, sigma_conv_pxl)
+
+        gauss_model = Model(_gauss_conv)
+        gauss_model.set_param_hint("sigma_conv", min=0, value=0.001, vary=False)
+        super().__init__(model, gauss_model, _convolve_gauss)
 
 
-class GaussianConvolvedFitModel(Model):
-    """A custom model class that applies Gaussian convolution to the output of another lmfit model."""
+class FermiFunctionModel(create_xarray_compatible_lmfit_model(Model)):
+    """lmfit compatible model for the Fermi function."""
 
-    def __init__(
-        self, base_model, convolution_sigma_param_name="convolution_sigma", **kwargs
-    ):
-        """
-        Initialize the ConvolvedFitModel.
+    def __init__(self, *args, **kwargs):
+        super().__init__(_fermi_function, *args, **kwargs)
+        self.set_param_hint("EF", min=-np.inf, max=np.inf)
+        self.set_param_hint("T", value=10, min=0, vary=False)
 
-        Parameters
-        ----------
-        base_model : lmfit.Model
-            The base lmfit model to which Gaussian convolution will be applied.
-        convolution_sigma_param_name : str, optional
-            The name of the parameter that specifies the standard deviation of the Gaussian convolution.
-            Default is "convolution_sigma".
-        **kwargs : dict
-            Additional keyword arguments passed to the Model superclass.
-        """
-        super().__init__(self.eval, **kwargs)
-        self.base_model = base_model
-        self.convolution_sigma_param_name = convolution_sigma_param_name
-
-    def eval(self, params=None, **kwargs):
-        """
-        Evaluate the model with Gaussian convolution.
-
-        Parameters
-        ----------
-        params : lmfit.Parameters, optional
-            The parameters for the model evaluation, including the Gaussian convolution sigma.
-        **kwargs : dict
-            Additional keyword arguments, including the independent variable array `x`.
-
-        Returns
-        -------
-        numpy.ndarray
-            The result of the base model evaluation after applying Gaussian convolution.
-        """
-        result = self.base_model.eval(params=params, **kwargs)  # Base model
-        sigma = params[self.convolution_sigma_param_name].value  # Sigma for convolution
-        x = kwargs["x"]  # Independent variable array
-        return _apply_gaussian_broadening(result, sigma, x)
+    def guess(self, data, **kws):
+        """Guess the parameters of the model."""
+        params = self.make_params()
+        params[f"{self._prefix}EF"].set(value=data.estimate_EF())
+        params[f"{self._prefix}T"].set(value=data.attrs.get("temp_sample", 10))
+        return params
 
 
-def fermi_function():
-    pass
+class LinearDosFermiModel(GaussianConvolvedFitModel):
+    """Obtain a lmfit model for fitting typical poly-Au Fermi edge data. Includes: linear bg above and below E_F (dos_),
+    Fermi cutoff (fermi_), linear background above E_F accounting for e.g. inhomogeneous detector efficiency (bg_) and
+    Gaussian broadening for experimental energy resolution (conv_sigma).
+
+    Attributes
+    ----------
+    model : lmfit.CompositeModel
+        The composite model for fitting.
+    """
+
+    def __init__(self, prefix="", *args, **kwargs):
+        self.base_model_prefix = prefix
+        base_model = Model(_linear_dos_fermi, prefix=prefix, *args, **kwargs)
+        base_model.set_param_hint("EF", min=-np.inf, max=np.inf)
+        base_model.set_param_hint("T", value=10, min=0, vary=False)
+        base_model.set_param_hint("bg_slope", value=0)
+        base_model.set_param_hint("bg_intercept", value=0)
+        base_model.set_param_hint("dos_slope", value=0)
+        super().__init__(base_model)
+
+    def guess(self, data, **kws):
+        """Guess the parameters of the model."""
+        pars = self.make_params()
+
+        dim = data.dims[0]
+        x_xr = data[dim].data
+
+        # Estimate the Fermi level
+        EF_estimate = data.estimate_EF()
+        pars[f"{self.base_model_prefix}EF"].set(
+            value=EF_estimate, max=max(x_xr), min=min(x_xr)
+        )
+        pars[f"{self.base_model_prefix}T"].set(
+            value=data.attrs.get("temp_sample", 10), min=0, max=400, vary=False
+        )
+
+        # Guess background parameters
+        cutoff = np.percentile(x_xr, 90)  # Take top 10% of data range
+        bg_guess = data.sel({dim: slice(cutoff, None)}).quick_fit.linear()
+        pars[f"{self.base_model_prefix}bg_slope"].set(value=bg_guess["slope"].data[()])
+        pars[f"{self.base_model_prefix}bg_intercept"].set(
+            value=bg_guess["intercept"].data[()]
+        )
+
+        # Guess DOS parameters
+        cutoff = np.percentile(x_xr, 15)  # Take bottom 15% of data range
+        dos_guess = data.sel({dim: slice(None, cutoff)}).quick_fit.linear()
+        pars[f"{self.base_model_prefix}dos_slope"].set(
+            value=dos_guess["slope"].data[()]
+        )
+        pars[f"{self.base_model_prefix}dos_intercept"].set(
+            value=dos_guess["intercept"].data[()]
+        )
+
+        # Set initial guess for Gaussian convolution
+        pars["sigma_conv"].set(value=0.01, vary=True)
+
+        return lm_models.update_param_vals(pars, self.base_model_prefix, **kws)
 
 
-def _gauss_conv():
-    pass
-
-
-def _Shirley(data, num_avg=1, offset_start=0, offset_end=0, max_iterations=10):
+def _shirley_bg(data, num_avg=1, offset_start=0, offset_end=0, max_iterations=10):
     """Function to calculate the Shirley background of 1D data.
 
     Parameters
@@ -219,235 +319,6 @@ def _Shirley(data, num_avg=1, offset_start=0, offset_end=0, max_iterations=10):
     Shirley_bkg = y_end + B
 
     return Shirley_bkg
-
-
-# def apply_lmfit_model(
-#     dataarray,
-#     model,
-#     indep_dim,
-#     initial_params,
-#     strategy="constant",
-#     parallelize=True,
-# ):
-#     # Convert to Dask array if parallelization is requested and dataarray is not already Dask-based
-#     if parallelize and not isinstance(dataarray.data, da.Array):
-#         dataarray = dataarray.chunk({indep_dim: -1})
-#         indep_var = dataarray[indep_dim]
-#     else:
-#         indep_var = dataarray[indep_dim].values
-#
-#     # Prepare the initial parameters
-#     prepared_initial_params = initial_params if initial_params is not None else {}
-#
-#     if strategy == "constant":
-#         # Use apply_ufunc for constant initial parameters with optional parallelization
-#         fit_results = xr.apply_ufunc(
-#             fit_lmfit_model,
-#             indep_var,
-#             dataarray,
-#             input_core_dims=[[indep_dim], [indep_dim]],
-#             output_core_dims=[[]],
-#             vectorize=True,
-#             dask="parallelized" if parallelize else None,
-#             kwargs={"model": model, "initial_params": prepared_initial_params},
-#             output_dtypes=[object],
-#         )
-#
-#     elif strategy == "sequential":
-#         # Sequential initialization requires manual looping
-#         fit_results = np.empty_like(dataarray.isel({indep_dim: 0}).values, dtype=object)
-#
-#         for index in np.ndindex(
-#             *[dataarray.sizes[dim] for dim in dataarray.dims if dim != indep_dim]
-#         ):
-#             # Extract the slice
-#             slice_data = dataarray.isel(
-#                 {dim: i for dim, i in zip(dataarray.dims, index)}
-#             ).values
-#
-#             # Perform the fit
-#             result = fit_lmfit_model(
-#                 indep_var, slice_data, model, prepared_initial_params
-#             )
-#
-#             # Update the initial parameters for the next iteration
-#             prepared_initial_params = {
-#                 name: {"value": param.value} for name, param in result.params.items()
-#             }
-#
-#             # Store the results
-#             fit_results[index] = result
-#
-#     # Extract relevant information from the lmfit results
-#     params = model.param_names
-#     param_values = np.array(
-#         [
-#             [fit_results[i].params[param].value for param in params]
-#             for i in range(len(fit_results))
-#         ]
-#     )
-#     param_errors = np.array(
-#         [
-#             [fit_results[i].params[param].stderr for param in params]
-#             for i in range(len(fit_results))
-#         ]
-#     )
-#     chisqr = np.array([fit_results[i].chisqr for i in range(len(fit_results))])
-#     redchi = np.array([fit_results[i].redchi for i in range(len(fit_results))])
-#     aic = np.array([fit_results[i].aic for i in range(len(fit_results))])
-#     bic = np.array([fit_results[i].bic for i in range(len(fit_results))])
-#
-#     # Create a Dataset for the extracted results
-#     other_dims = [dim for dim in dataarray.dims if dim != indep_dim]
-#     fit_dataset = xr.Dataset(
-#         {
-#             "params": (other_dims + ["parameter"], param_values),
-#             "param_errors": (other_dims + ["parameter"], param_errors),
-#             "chisqr": (other_dims, chisqr),
-#             "redchi": (other_dims, redchi),
-#             "aic": (other_dims, aic),
-#             "bic": (other_dims, bic),
-#         },
-#         coords={dim: dataarray.coords[dim] for dim in dataarray.dims},
-#     )
-#
-#     return fit_dataset
-#
-#
-# # Example usage:
-#
-# # Prepare data (same as previous example)
-# time = np.linspace(0, 10, 100)
-# lat = np.linspace(-90, 90, 10)
-# lon = np.linspace(-180, 180, 10)
-# data = np.sin(time[:, None, None]) + 0.1 * np.random.randn(100, 10, 10)
-# dataarray = xr.DataArray(
-#     data, coords=[time, lat, lon], dims=["time", "latitude", "longitude"]
-# )
-#
-# # Define a composite model (for demonstration purposes)
-# model1 = Model(example_func, prefix="m1_")
-# model2 = Model(example_func, prefix="m2_")
-# composite_model = model1 + model2
-#
-# # Define initial parameters and constraints
-# initial_params = {
-#     "m1_a": {"value": 1, "min": 0},
-#     "m1_b": {"value": 0.5, "min": 0, "max": 1},
-#     "m1_c": {"value": 0, "vary": True},
-#     "m2_a": {"value": 1, "min": 0},
-#     "m2_b": {"value": 0.5, "min": 0, "max": 1},
-#     "m2_c": {"value": 0, "vary": True},
-# }
-#
-# # Apply the model to the dataarray with 'constant' strategy and parallelization
-# fit_dataset_constant = apply_model_to_dataarray(
-#     dataarray,
-#     composite_model,
-#     "time",
-#     initial_params,
-#     strategy="constant",
-#     parallelize=True,
-# )
-# print(fit_dataset_constant)
-#
-# # Apply the model to the dataarray with 'sequential' strategy without parallelization
-# fit_dataset_sequential = apply_model_to_dataarray(
-#     dataarray,
-#     composite_model,
-#     "time",
-#     initial_params,
-#     strategy="sequential",
-#     parallelize=False,
-# )
-# print(fit_dataset_sequential)
-
-from lmfit import Model, Parameters
-from xarray import DataArray, Dataset, broadcast
-import numpy as np
-
-
-def _lm_model_fit(
-    dataarray,
-    coords,
-    model,
-    reduce_dims=None,
-    p0=None,
-    method="leastsq",
-    reduce_func="mean",
-    skipna=True,
-    errors="raise",
-    **kwargs,
-):
-    if isinstance(coords, (str, DataArray)) or not isinstance(coords, Iterable):
-        coords = [coords]
-    coords = [dataarray[coord] if isinstance(coord, str) else coord for coord in coords]
-
-    if reduce_dims:
-        if isinstance(reduce_dims, str):
-            reduce_dims = [reduce_dims]
-        else:
-            reduce_dims = list(reduce_dims)
-
-    coords = broadcast(*coords)
-    coords = [coord.broadcast_like(dataarray, exclude=reduce_dims) for coord in coords]
-
-    reduce_dims = reduce_dims or []
-    preserved_dims = list(set(dataarray.dims) - set(reduce_dims))
-
-    def apply_fit(data_array, *coords):
-        if skipna:
-            mask = ~np.isnan(data_array) & np.all(
-                [~np.isnan(c) for c in coords], axis=0
-            )
-            if not np.any(mask):
-                return np.full(len(model.param_names), np.nan)
-            x_data = np.vstack([c[mask] for c in coords]).T
-            y_data = data_array[mask]
-        else:
-            x_data = np.vstack([c.ravel() for c in coords]).T
-            y_data = data_array.ravel()
-
-        if x_data.shape[0] != y_data.shape[0]:
-            raise ValueError("Mismatch between x_data and y_data lengths")
-
-        params = p0 or model.make_params()
-        try:
-            result = model.fit(y_data, params, x=x_data, method=method, **kwargs)
-            return np.array([result.params[name].value for name in model.param_names])
-        except Exception as e:
-            if errors == "raise":
-                raise
-            else:
-                return np.full(len(model.param_names), np.nan)
-
-    if isinstance(dataarray, xr.DataArray):
-        dataarray = dataarray.to_dataset(name="data")
-
-    result = Dataset()
-    for name, da in dataarray.data_vars.items():
-        fit_result = xr.apply_ufunc(
-            apply_fit,
-            da,
-            *coords,
-            vectorize=True,
-            input_core_dims=[reduce_dims] * (len(coords) + 1),
-            output_core_dims=[["param"]],
-            exclude_dims=set(reduce_dims),
-            output_dtypes=[float],
-            dask="parallelized",
-            kwargs=kwargs,
-        )
-        result[name + "_fit_coefficients"] = fit_result
-
-    result = result.assign_coords({"param": list(model.param_names)})
-    result.attrs = dataarray.attrs.copy()
-
-    return result
-
-
-def create_fit_model():
-    pass
 
 
 def save_fit_model():

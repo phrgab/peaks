@@ -2,5 +2,5 @@
 
 """
 
+from .fit import fit, fit_gold, QuickFit
 from .models import GaussianConvolvedFitModel
-from .fit import fit, QuickFit

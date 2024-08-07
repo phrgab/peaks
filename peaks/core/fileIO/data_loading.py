@@ -14,7 +14,7 @@ import dask
 import dask.array as da
 from tqdm import tqdm
 from os.path import isfile, join
-from peaks.core.utils.misc import analysis_warning
+from peaks.utils import analysis_warning
 from peaks.core.fileIO.fileIO_opts import File, LocOpts, _Coords
 from peaks.core.fileIO.loaders.SES import _load_SES_metalines, _SES_find
 

@@ -6,7 +6,7 @@
 # Brendan Edwards 09/02/2024
 
 import xarray as xr
-from peaks.core.utils.OOP_method import add_methods
+from peaks.utils.OOP_method import add_methods
 
 
 @add_methods(xr.DataArray)
@@ -50,20 +50,22 @@ def save(data, fname):
 
     # Since NetCDF cannot save lists, to save the list analysis_history we convert it to a string where the items are
     # seperated by the identifier '<->'. We can convert this string back to a list when the NetCDF file is loaded.
-    analysis_history = ''
-    for item in data.attrs['analysis_history']:
-        analysis_history += '<->' + item
-    data.attrs['analysis_history'] = analysis_history
+    analysis_history = ""
+    for item in data.attrs["analysis_history"]:
+        analysis_history += "<->" + item
+    data.attrs["analysis_history"] = analysis_history
 
     # Loop through the attrs to ensure that all are of a valid type to be saved into NetCDF format
     for attr in data.attrs:
         # Since NetCDF cannot save None type, we convert any None items to an empty string
         if data.attrs[attr] is None:
-            data.attrs[attr] = ''
+            data.attrs[attr] = ""
         # Convert any other non-compatible attrs to strings
-        elif not (isinstance(data.attrs[attr], str) or
-                  isinstance(data.attrs[attr], float) or
-                  isinstance(data.attrs[attr], int)):
+        elif not (
+            isinstance(data.attrs[attr], str)
+            or isinstance(data.attrs[attr], float)
+            or isinstance(data.attrs[attr], int)
+        ):
             data.attrs[attr] = str(data.attrs[attr])
 
     # Save data as a NetCDF file

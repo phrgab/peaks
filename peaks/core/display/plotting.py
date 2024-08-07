@@ -7,14 +7,15 @@
 
 import numpy as np
 import xarray as xr
+import dask.array as da
 import matplotlib.pyplot as plt
 import panel as pn
 from numpy.fft import fft
 from matplotlib import colors, cm
 from cycler import cycler
 from IPython.display import display
-from peaks.core.utils.misc import analysis_warning
-from peaks.core.utils.OOP_method import add_methods
+from peaks.utils import analysis_warning
+from peaks.utils.OOP_method import add_methods
 
 
 def plot_grid(
@@ -323,18 +324,19 @@ def plot_fit(fit_results_ds, show_components=True, figsize=None, **kwargs):
         for dim in fit_results.dims:
             if dim in kwargs:
                 fit_results = fit_results.isel({dim: kwargs.pop(dim)})
-        fit_model = fit_results["fit_model"].item()
+        fit_model = fit_results["fit_model"].compute().item()
         fit_model.plot(fig=fig, **kwargs)
         if show_components and len(fit_model.components) > 1:
             ax = plt.gca()
             components = fit_model.eval_components()
             for component_name, component_data in components.items():
-                ax.plot(
-                    fit_model.userkws["x"],
-                    component_data,
-                    label=component_name,
-                    linestyle="--",
-                )
+                if component_name != "_gauss_conv":
+                    ax.plot(
+                        fit_model.userkws["x"],
+                        component_data,
+                        label=component_name,
+                        linestyle="--",
+                    )
             ax.legend()
         plt.close(fig)
         return fig
@@ -378,6 +380,51 @@ def plot_fit(fit_results_ds, show_components=True, figsize=None, **kwargs):
 
         dashboard.servable()
         return dashboard
+
+
+@add_methods(xr.DataArray)
+def plot_fit_test(data, model, params, show_components=True, **kwargs):
+    """Compare a fit model evaluated for some fit parameters to a 1D data array.
+
+    Parameters
+    ------------
+    data : xarray.DataArray
+        The data to compare the model to.
+    model : lmfit.Model
+        The model to evaluate.
+    params : lmfit.Parameters
+        The parameters to evaluate the model with.
+    show_components : bool, optional
+        Whether to show the individual components of the model. Defaults to True.
+    **kwargs : optional
+        Additional standard matplotlib calls arguments to pass to the plot.
+    """
+
+    if len(data.dims) != 1:
+        raise ValueError(
+            "Data must be 1D with the dimension corresponding to the indpependent variable."
+        )
+
+    # Evaluate the model
+    model_result = model.eval(params=params, x=data[data.dims[0]].data)
+    if show_components:
+        components = model.eval_components(params=params, x=data[data.dims[0]].data)
+
+    # Plot the data and the model
+    data.plot(label="Data", marker="o", **kwargs)
+    plt.plot(data[data.dims[0]].data, model_result, label="Model", **kwargs)
+    if show_components:
+        for component_name, component_data in components.items():
+            if component_name != "_gauss_conv":
+                plt.plot(
+                    data[data.dims[0]].data,
+                    component_data,
+                    label=component_name,
+                    linestyle="--",
+                    **kwargs,
+                )
+    plt.legend()
+    plt.show()
 
 
 def plot_ROI(

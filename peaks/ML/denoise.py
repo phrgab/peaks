@@ -6,7 +6,7 @@
 
 import xarray as xr
 from sklearn.decomposition import PCA
-from peaks.core.utils.OOP_method import add_methods
+from peaks.utils.OOP_method import add_methods
 
 
 @add_methods(xr.DataArray)
@@ -49,21 +49,31 @@ def SM_PCA(data, PCs=10):
     data = data.copy(deep=True)
 
     # Represent spatial mapping data as a tabular pandas DataFrame
-    df = data.ML_pre_proc(extract='dispersion', scale=False)
+    df = data.ML_pre_proc(extract="dispersion", scale=False)
 
     # Perform PCA
     pca = PCA(n_components=PCs)
     principal_components = pca.fit_transform(df)
 
     # Reconstruct the spatial map using the reduced dimensionality dataset and PCA eigenvectors
-    reconstructed_data = pca.inverse_transform(principal_components).reshape(len(data.x1), len(data.x2), data.shape[2],
-                                                                             data.shape[3])
+    reconstructed_data = pca.inverse_transform(principal_components).reshape(
+        len(data.x1), len(data.x2), data.shape[2], data.shape[3]
+    )
 
     # Represent reconstructed data using xarray format
-    coords = data.dims  # Used so function works for any eV/k_par/theta_par combination/order
-    reconstructed_SM = xr.DataArray(reconstructed_data, dims=('x1', 'x2', coords[2], coords[3]),
-                                    coords={'x1': data.x1, 'x2': data.x2, coords[2]: data.coords[coords[2]],
-                                            coords[3]: data.coords[coords[3]]})
+    coords = (
+        data.dims
+    )  # Used so function works for any eV/k_par/theta_par combination/order
+    reconstructed_SM = xr.DataArray(
+        reconstructed_data,
+        dims=("x1", "x2", coords[2], coords[3]),
+        coords={
+            "x1": data.x1,
+            "x2": data.x2,
+            coords[2]: data.coords[coords[2]],
+            coords[3]: data.coords[coords[3]],
+        },
+    )
     reconstructed_SM.attrs = data.attrs
 
     return reconstructed_SM

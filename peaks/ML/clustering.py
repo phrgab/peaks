@@ -13,13 +13,15 @@ from IPython.display import clear_output
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
-from peaks.core.utils.OOP_method import add_methods
-from peaks.core.utils.misc import analysis_warning
+from peaks.utils.OOP_method import add_methods
+from peaks.utils import analysis_warning
 from peaks.core.display.plotting import plot_grid
 
 
 @add_methods(xr.DataArray)
-def ML_pre_proc(data, extract='dispersion', E=0, dE=0, k=0, dk=0, scale=False, norm=False):
+def ML_pre_proc(
+    data, extract="dispersion", E=0, dE=0, k=0, dk=0, scale=False, norm=False
+):
     """Represent spatial mapping data as a tabular pandas DataFrame where each spatial position is a feature.
     This DataFrame format is used to represent data in machine learning functions.
 
@@ -90,7 +92,7 @@ def ML_pre_proc(data, extract='dispersion', E=0, dE=0, k=0, dk=0, scale=False, n
                 current_disp = current_disp.norm()
 
             # If we want to represent each feature to be a full dispersion
-            if extract == 'dispersion':
+            if extract == "dispersion":
                 # Get total number of dimensions (pixels) of dispersion
                 dimensions = 1
                 for coord_dim in current_disp.shape:
@@ -101,20 +103,20 @@ def ML_pre_proc(data, extract='dispersion', E=0, dE=0, k=0, dk=0, scale=False, n
                 sample_data.append(reshaped_disp)
 
             # If we want to represent each feature to be an MDC
-            elif extract == 'MDC':
+            elif extract == "MDC":
                 # Extract MDC from dispersion
                 current_MDC = current_disp.MDC(E=E, dE=dE)
                 sample_data.append(current_MDC.data)
 
             # If we want to represent each feature to be an EDC
-            elif extract == 'EDC':
+            elif extract == "EDC":
                 # Extract EDC from dispersion
                 current_EDC = current_disp.EDC(k=k, dk=dk)
                 sample_data.append(current_EDC.data)
 
             # Else user has entered an invalid method argument
             else:
-                raise Exception('Method must be dispersion, MDC or EDC.')
+                raise Exception("Method must be dispersion, MDC or EDC.")
 
     # Create tabular pandas dataframe
     df = pd.DataFrame(data=np.array(sample_data))
@@ -185,8 +187,20 @@ def perform_k_means(data, k=3, n_init="auto"):
 
 
 @add_methods(xr.DataArray)
-def clusters_explore(data, cluster_range=range(1, 7), n_init="auto", use_PCA=True, PCs=3, extract='dispersion', E=0,
-                     dE=0, k=0, dk=0, scale=False, norm=False):
+def clusters_explore(
+    data,
+    cluster_range=range(1, 7),
+    n_init="auto",
+    use_PCA=True,
+    PCs=3,
+    extract="dispersion",
+    E=0,
+    dE=0,
+    k=0,
+    dk=0,
+    scale=False,
+    norm=False,
+):
     """Perform an exploratory k-means clustering analysis on a spatial map for a range of number of clusters.
 
     Parameters
@@ -258,31 +272,49 @@ def clusters_explore(data, cluster_range=range(1, 7), n_init="auto", use_PCA=Tru
     data = data.copy(deep=True)
 
     # Represent spatial mapping data as a tabular pandas dataframe
-    df = data.ML_pre_proc(extract=extract, E=E, dE=dE, k=k, dk=dk, scale=scale, norm=norm)
+    df = data.ML_pre_proc(
+        extract=extract, E=E, dE=dE, k=k, dk=dk, scale=scale, norm=norm
+    )
 
     # Perform principal component analysis if PCA is True
     if use_PCA:
         pca = PCA(n_components=PCs)  # Define PCA model
-        principal_components = pca.fit_transform(df)  # Fit PCA model to data and get principal components
-        df = pd.DataFrame(data=principal_components)  # Get principal components in tabular pandas dataframe format
+        principal_components = pca.fit_transform(
+            df
+        )  # Fit PCA model to data and get principal components
+        df = pd.DataFrame(
+            data=principal_components
+        )  # Get principal components in tabular pandas dataframe format
 
     # Perform k-means clustering analysis for the range of number of clusters (k) requested
-    k_titles = ['k=' + str(k) for k in cluster_range]  # Titles for plots
-    inertias = []  # Empty list to store model inertias (a metric that defines spread of a cluster)
-    classification_maps = []  # Empty list to store classification maps (spatial maps of cluster labels)
-    for num_clusters in tqdm(cluster_range, desc='Calculating', colour='CYAN'):
-        model, labels = perform_k_means(data=df, k=num_clusters, n_init=n_init)  # Perform k-means clustering
+    k_titles = ["k=" + str(k) for k in cluster_range]  # Titles for plots
+    inertias = (
+        []
+    )  # Empty list to store model inertias (a metric that defines spread of a cluster)
+    classification_maps = (
+        []
+    )  # Empty list to store classification maps (spatial maps of cluster labels)
+    for num_clusters in tqdm(cluster_range, desc="Calculating", colour="CYAN"):
+        model, labels = perform_k_means(
+            data=df, k=num_clusters, n_init=n_init
+        )  # Perform k-means clustering
         inertias.append(model.inertia_)
-        classification_map_data = labels.reshape(len(data.x1), len(data.x2))  # Reshape 1D labels to 2D
-        classification_map = xr.DataArray(classification_map_data, dims=("x1", "x2"),
-                                          coords={"x1": data.x1, "x2": data.x2})
+        classification_map_data = labels.reshape(
+            len(data.x1), len(data.x2)
+        )  # Reshape 1D labels to 2D
+        classification_map = xr.DataArray(
+            classification_map_data,
+            dims=("x1", "x2"),
+            coords={"x1": data.x1, "x2": data.x2},
+        )
         classification_maps.append(classification_map)
 
-    inertias_xarray = xr.DataArray(inertias, dims="num_clusters",
-                                   coords={"num_clusters": cluster_range})  # Create xarray of inertias
+    inertias_xarray = xr.DataArray(
+        inertias, dims="num_clusters", coords={"num_clusters": cluster_range}
+    )  # Create xarray of inertias
 
     # Find optimal number of clusters
-    for item in abs(inertias_xarray.differentiate('num_clusters')).norm():
+    for item in abs(inertias_xarray.differentiate("num_clusters")).norm():
         # If rate of decrease in inertia is below 20% of the initial decrease, found optimal number of clusters
         if float(item) < 0.2:
             recommended_num_clusters = int(item.num_clusters)
@@ -295,21 +327,36 @@ def clusters_explore(data, cluster_range=range(1, 7), n_init="auto", use_PCA=Tru
     clear_output()
 
     # Plot model inertia against number of clusters, and indicate recommended number of clusters
-    inertias_xarray.plot(marker='o', figsize=(15, 4))
-    plt.xlabel('Number of clusters (k)')
-    plt.ylabel('Inertia')
-    plt.axvline(recommended_num_clusters, c='black', linestyle='--')
-    plt.title(r'Optimal k$\approx$' + str(recommended_num_clusters))
+    inertias_xarray.plot(marker="o", figsize=(15, 4))
+    plt.xlabel("Number of clusters (k)")
+    plt.ylabel("Inertia")
+    plt.axvline(recommended_num_clusters, c="black", linestyle="--")
+    plt.title(r"Optimal k$\approx$" + str(recommended_num_clusters))
     plt.show()
 
     # Plot classification map dependence on number of clusters
-    plot_grid(classification_maps, ncols=3, titles=k_titles, cmap='cividis', y='x2')
+    plot_grid(classification_maps, ncols=3, titles=k_titles, cmap="cividis", y="x2")
     plt.show()
 
 
 @add_methods(xr.DataArray)
-def clusters(data, num_clusters=3, n_init="auto", use_PCA=True, PCs=3, extract='dispersion', E=0, dE=0, k=0, dk=0,
-             scale=False, norm=False, robust=False, vmin=None, vmax=None):
+def clusters(
+    data,
+    num_clusters=3,
+    n_init="auto",
+    use_PCA=True,
+    PCs=3,
+    extract="dispersion",
+    E=0,
+    dE=0,
+    k=0,
+    dk=0,
+    scale=False,
+    norm=False,
+    robust=False,
+    vmin=None,
+    vmax=None,
+):
     """Perform a k-means clustering analysis on a spatial map.
 
     Parameters
@@ -397,18 +444,30 @@ def clusters(data, num_clusters=3, n_init="auto", use_PCA=True, PCs=3, extract='
     data = data.copy(deep=True)
 
     # Represent spatial mapping data as a tabular pandas dataframe
-    df = data.ML_pre_proc(extract=extract, E=E, dE=dE, k=k, dk=dk, scale=scale, norm=norm)
+    df = data.ML_pre_proc(
+        extract=extract, E=E, dE=dE, k=k, dk=dk, scale=scale, norm=norm
+    )
 
     # Perform principal component analysis if PCA is True
     if use_PCA:
         pca = PCA(n_components=PCs)  # Define PCA model
-        principal_components = pca.fit_transform(df)  # Fit PCA model to data and get principal components
-        df = pd.DataFrame(data=principal_components)  # Get principal components in tabular pandas dataframe format
+        principal_components = pca.fit_transform(
+            df
+        )  # Fit PCA model to data and get principal components
+        df = pd.DataFrame(
+            data=principal_components
+        )  # Get principal components in tabular pandas dataframe format
 
     # Perform k-means clustering analysis for the number of clusters (k) requested
     model, labels = perform_k_means(data=df, k=num_clusters, n_init=n_init)
-    classification_map_data = labels.reshape(len(data.x1), len(data.x2))  # Reshape 1D labels to 2D
-    classification_map = xr.DataArray(classification_map_data, dims=("x1", "x2"), coords={"x1": data.x1, "x2": data.x2})
+    classification_map_data = labels.reshape(
+        len(data.x1), len(data.x2)
+    )  # Reshape 1D labels to 2D
+    classification_map = xr.DataArray(
+        classification_map_data,
+        dims=("x1", "x2"),
+        coords={"x1": data.x1, "x2": data.x2},
+    )
 
     # Extract cluster center of each cluster (not done using cluster centers so that we can get dispersions if MDC/EDC
     # extraction is used)
@@ -437,43 +496,83 @@ def clusters(data, num_clusters=3, n_init="auto", use_PCA=True, PCs=3, extract='
 
     # Plot integrated spectral weight and k-means clustering labels spatial maps
     fig, axes = plt.subplots(figsize=(12, 5), ncols=2)
-    data.tot().plot(ax=axes[0], cmap='cividis', y='x2', cbar_kwargs={'label': 'Intensity'})
-    classification_map.plot(ax=axes[1], cmap='cividis', y='x2',
-                            cbar_kwargs={'ticks': range(num_clusters), 'label': 'Cluster'})
-    axes[0].set_title('Integrated spectral weight')
-    axes[1].set_title('k-means clustering (k=' + str(num_clusters) + ')')
+    data.tot().plot(
+        ax=axes[0], cmap="cividis", y="x2", cbar_kwargs={"label": "Intensity"}
+    )
+    classification_map.plot(
+        ax=axes[1],
+        cmap="cividis",
+        y="x2",
+        cbar_kwargs={"ticks": range(num_clusters), "label": "Cluster"},
+    )
+    axes[0].set_title("Integrated spectral weight")
+    axes[1].set_title("k-means clustering (k=" + str(num_clusters) + ")")
     plt.tight_layout()
     plt.show()
 
     # Plot average dispersion of each cluster
-    cluster_average_titles = ['Cluster ' + str(i) for i in range(num_clusters)]  # Titles for plots
+    cluster_average_titles = [
+        "Cluster " + str(i) for i in range(num_clusters)
+    ]  # Titles for plots
     if vmax:
-        plot_grid(cluster_average_disps, titles=cluster_average_titles, cmap='binary', y='eV', ncols=num_clusters,
-                  vmin=vmin, vmax=vmax, cbar_kwargs={'label': None})
+        plot_grid(
+            cluster_average_disps,
+            titles=cluster_average_titles,
+            cmap="binary",
+            y="eV",
+            ncols=num_clusters,
+            vmin=vmin,
+            vmax=vmax,
+            cbar_kwargs={"label": None},
+        )
     else:
         if not robust:
-            plot_grid(cluster_average_disps, titles=cluster_average_titles, cmap='binary', y='eV', ncols=num_clusters,
-                      vmin=vmin, vmax=max_cluster_disps_vmax, cbar_kwargs={'label': None})
+            plot_grid(
+                cluster_average_disps,
+                titles=cluster_average_titles,
+                cmap="binary",
+                y="eV",
+                ncols=num_clusters,
+                vmin=vmin,
+                vmax=max_cluster_disps_vmax,
+                cbar_kwargs={"label": None},
+            )
         else:
-            plot_grid(cluster_average_disps, titles=cluster_average_titles, cmap='binary', y='eV', ncols=num_clusters,
-                      robust=True, cbar_kwargs={'label': None})
+            plot_grid(
+                cluster_average_disps,
+                titles=cluster_average_titles,
+                cmap="binary",
+                y="eV",
+                ncols=num_clusters,
+                robust=True,
+                cbar_kwargs={"label": None},
+            )
     plt.tight_layout()
     plt.show()
 
     # If a PCA was used on full dispersions, plot also the reconstructed cluster centers
-    if use_PCA and extract == 'dispersion':
+    if use_PCA and extract == "dispersion":
         # Get non-spatial coordinates
         coords = list(data.dims)
-        coords.remove('x1')
-        coords.remove('x2')
+        coords.remove("x1")
+        coords.remove("x2")
 
         # Get reconstructed cluster center dispersions from reduced dimensionality dataset
-        reconstructed_cluster_centers = pca.inverse_transform(model.cluster_centers_).reshape(num_clusters, len(
-            data.coords[coords[0]]), len(data.coords[coords[1]]))
+        reconstructed_cluster_centers = pca.inverse_transform(
+            model.cluster_centers_
+        ).reshape(
+            num_clusters, len(data.coords[coords[0]]), len(data.coords[coords[1]])
+        )
         reconstructed_cluster_centers_disps = []
         for center in reconstructed_cluster_centers:
-            disp_xarray = xr.DataArray(center, dims=(coords[0], coords[1]),
-                                       coords={coords[0]: data.coords[coords[0]], coords[1]: data.coords[coords[1]]})
+            disp_xarray = xr.DataArray(
+                center,
+                dims=(coords[0], coords[1]),
+                coords={
+                    coords[0]: data.coords[coords[0]],
+                    coords[1]: data.coords[coords[1]],
+                },
+            )
             reconstructed_cluster_centers_disps.append(disp_xarray)
 
         # Find maximum vmax of the reconstructed cluster center dispersions so intensity variations between
@@ -485,19 +584,42 @@ def clusters(data, num_clusters=3, n_init="auto", use_PCA=True, PCs=3, extract='
                     max_reconstructed_cluster_disps_vmax = float(disp.max())
 
         # reconstructed cluster center dispersions
-        reconstructed_cluster_centers_titles = ['Cluster ' + str(i) + ' (reconstructed)' for i in
-                                                range(num_clusters)]  # Titles for plots
+        reconstructed_cluster_centers_titles = [
+            "Cluster " + str(i) + " (reconstructed)" for i in range(num_clusters)
+        ]  # Titles for plots
         if vmax:
-            plot_grid(reconstructed_cluster_centers_disps, titles=reconstructed_cluster_centers_titles, cmap='binary',
-                      y='eV', ncols=num_clusters, vmin=vmin, vmax=vmax, cbar_kwargs={'label': None})
+            plot_grid(
+                reconstructed_cluster_centers_disps,
+                titles=reconstructed_cluster_centers_titles,
+                cmap="binary",
+                y="eV",
+                ncols=num_clusters,
+                vmin=vmin,
+                vmax=vmax,
+                cbar_kwargs={"label": None},
+            )
         else:
             if not robust:
-                plot_grid(reconstructed_cluster_centers_disps, titles=reconstructed_cluster_centers_titles,
-                          cmap='binary', y='eV', ncols=num_clusters, vmin=vmin,
-                          vmax=max_reconstructed_cluster_disps_vmax, cbar_kwargs={'label': None})
+                plot_grid(
+                    reconstructed_cluster_centers_disps,
+                    titles=reconstructed_cluster_centers_titles,
+                    cmap="binary",
+                    y="eV",
+                    ncols=num_clusters,
+                    vmin=vmin,
+                    vmax=max_reconstructed_cluster_disps_vmax,
+                    cbar_kwargs={"label": None},
+                )
             else:
-                plot_grid(reconstructed_cluster_centers_disps, titles=reconstructed_cluster_centers_titles,
-                          cmap='binary', y='eV', ncols=num_clusters, robust=True, cbar_kwargs={'label': None})
+                plot_grid(
+                    reconstructed_cluster_centers_disps,
+                    titles=reconstructed_cluster_centers_titles,
+                    cmap="binary",
+                    y="eV",
+                    ncols=num_clusters,
+                    robust=True,
+                    cbar_kwargs={"label": None},
+                )
         plt.tight_layout()
         plt.show()
 
@@ -505,8 +627,18 @@ def clusters(data, num_clusters=3, n_init="auto", use_PCA=True, PCs=3, extract='
 
 
 @add_methods(xr.DataArray)
-def PCA_explore(data, PCs_range=range(1, 6), threshold=0.95, extract='dispersion', E=0, dE=0, k=0, dk=0, scale=False,
-                norm=False):
+def PCA_explore(
+    data,
+    PCs_range=range(1, 6),
+    threshold=0.95,
+    extract="dispersion",
+    E=0,
+    dE=0,
+    k=0,
+    dk=0,
+    scale=False,
+    norm=False,
+):
     """Perform an exploratory principal component analysis on a spatial map for a range of principal components.
 
     Parameters
@@ -566,38 +698,45 @@ def PCA_explore(data, PCs_range=range(1, 6), threshold=0.95, extract='dispersion
     data = data.copy(deep=True)
 
     # Represent spatial mapping data as a tabular pandas dataframes
-    df = data.ML_pre_proc(extract=extract, E=E, dE=dE, k=k, dk=dk, scale=scale, norm=norm)
+    df = data.ML_pre_proc(
+        extract=extract, E=E, dE=dE, k=k, dk=dk, scale=scale, norm=norm
+    )
 
     summed_var_ratio = []  # Empty list to store explained variance fractions
 
     # Loop through the range of principal components to test, and perform PCA at each
-    for num_principal_components in tqdm(PCs_range, desc='Calculating', colour='CYAN'):
+    for num_principal_components in tqdm(PCs_range, desc="Calculating", colour="CYAN"):
         model = PCA(n_components=num_principal_components)  # Define PCA model
         model.fit(df)  # Fit PCA model to dataset
         summed_var_ratio.append(
-            np.sum(model.explained_variance_ratio_))  # Append the total explained variance fractions of each model
+            np.sum(model.explained_variance_ratio_)
+        )  # Append the total explained variance fractions of each model
     clear_output()  # Remove progress bar
 
     # Check minimum number of principal axes required to exceed explained variance fraction threshold
-    num_principal_axes = 'Unknown'
+    num_principal_axes = "Unknown"
     for i, item in enumerate(summed_var_ratio):
         if item >= threshold:
             num_principal_axes = PCs_range[i]
             break
 
     # If explained variance could not exceed threshold, display a warning
-    if num_principal_axes == 'Unknown':
-        analysis_warning('Explained variance could not exceed threshold. Either reduce threshold or '
-                         'increase PCA_range.', title='Analysis info', warn_type='danger')
+    if num_principal_axes == "Unknown":
+        analysis_warning(
+            "Explained variance could not exceed threshold. Either reduce threshold or "
+            "increase PCA_range.",
+            title="Analysis info",
+            warn_type="danger",
+        )
 
     # Plot results of exploratory PCA, and suggest minimum required number of principal axes (if the explained
     # variance threshold has been exceeded)
     plt.figure(figsize=(8, 5))
-    plt.plot(PCs_range, summed_var_ratio, 'o-')
-    plt.axhline(threshold, c='black', linestyle='--')
-    if num_principal_axes != 'Unknown':
-        plt.axvline(num_principal_axes, c='black', linestyle='--')
-    plt.xlabel('Principal axes')
-    plt.ylabel('Explained variance fraction')
-    plt.title(r'Minimum number of required principal axes$=$' + str(num_principal_axes))
+    plt.plot(PCs_range, summed_var_ratio, "o-")
+    plt.axhline(threshold, c="black", linestyle="--")
+    if num_principal_axes != "Unknown":
+        plt.axvline(num_principal_axes, c="black", linestyle="--")
+    plt.xlabel("Principal axes")
+    plt.ylabel("Explained variance fraction")
+    plt.title(r"Minimum number of required principal axes$=$" + str(num_principal_axes))
     plt.show()

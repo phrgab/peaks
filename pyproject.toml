@@ -8,6 +8,7 @@ description = "Python Electron Spectroscopy and Diffraction Analysis by King Gro
 requires-python = ">=3.12"
 dependencies = [
         "ipykernel (>=6.25,<7)",
+        "ipywidgets (>=8.1,<9)",
         "numpy (>=2.0,<3)",
         "matplotlib (>=3.9,<4)",
         "xarray (>=2024.6.0)",

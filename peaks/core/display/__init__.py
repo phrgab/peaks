@@ -1,4 +1,4 @@
-"""Functions used for in-line displays.
+"""Core functionality for in-line data display.
 
 """
 

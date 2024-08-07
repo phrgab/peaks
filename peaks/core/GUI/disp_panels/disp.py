@@ -3,7 +3,7 @@
 """
 
 import xarray as xr
-from peaks.core.utils.OOP_method import add_methods
+from peaks.utils.OOP_method import add_methods
 from peaks.core.GUI.disp_panels.disp_2d import _disp_2d
 from peaks.core.GUI.disp_panels.disp_3d import _disp_3d
 from peaks.core.GUI.disp_panels.disp_4d import _disp_4d
