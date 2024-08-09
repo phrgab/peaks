@@ -6,29 +6,29 @@
 # Brendan Edwards 16/10/2023
 
 from functools import wraps
+from peaks.utils import analysis_warning
 
 
-def add_methods(cls):
+def register_accessor(cls):
     """Decorator (function wrapper) used to allow a function to be used as an object-oriented programming method.
 
     Parameters
     ------------
     cls : object
-        Here, this will be an:class:`xarray.DataArray`. This allows a function to be applied to an
-        :class:`xarray.DataArray` as a method.
+        Here, this will be an:class:`xarray.DataArray` or similar. This allows a function to be applied to that
+        class as a method.
 
     Examples
     ------------
     Example usage is as follows::
 
-        from peaks import *
+        import peaks as pks
+        from peaks.utils.OOP_method import add_methods
 
-        my_data = load('my_file.ibw')
+        my_data = pks.load('my_file.ibw')
 
-        # Turns the following function (data_plus_1) into a xarray.DataArray method
-        @add_methods(xr.DataArray)
-
-        # Example function that adds 1 to the data
+        # Turn the function (data_plus_1) into a xarray.DataArray method
+        @register_accessor(xr.DataArray)
         def data_plus_1(data):
             return data+1
 
@@ -42,6 +42,15 @@ def add_methods(cls):
         @wraps(func)
         def wrapper(*args, **kwargs):
             return func(*args, **kwargs)
+
+        # Give a warning if already exists
+        if hasattr(cls, func.__name__):
+            analysis_warning(
+                f"Registration of accessor for `peaks` under name {func.__name__!r} for type "
+                f"{cls.__module__}.{cls.__name__} is overriding a preexisting attribute with the same name.",
+                title=" Registration of accessor",
+                warn_type="warning",
+            )
 
         setattr(cls, func.__name__, wrapper)
         # Note we are not binding func, but instead the wrapper which accepts self but does exactly the same as func

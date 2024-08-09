@@ -3,13 +3,13 @@
 """
 
 import xarray as xr
-from peaks.utils.OOP_method import add_methods
+from peaks.utils.OOP_method import register_accessor
 from peaks.core.GUI.disp_panels.disp_2d import _disp_2d
 from peaks.core.GUI.disp_panels.disp_3d import _disp_3d
 from peaks.core.GUI.disp_panels.disp_4d import _disp_4d
 
 
-@add_methods(xr.DataArray)
+@register_accessor(xr.DataArray)
 def disp(data, primary_dim=None, exclude_from_centering="eV"):
     """GUI data viewer for 2D, 3D, or 4D data. Click on the Help menu of the GUI to see keyboard shortcuts.
     Default display mode is based on the conventional `peaks` data structure for ARPES data, but can be modified by

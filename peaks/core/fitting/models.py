@@ -8,7 +8,7 @@ import lmfit.models as lm_models
 from lmfit import Model, CompositeModel
 from scipy.ndimage import gaussian_filter1d
 
-from peaks.core.fitting.functions import _fermi_function, _linear_dos_fermi
+from peaks.core.fitting.fit_functions import _fermi_function, _linear_dos_fermi
 
 
 def create_xarray_compatible_lmfit_model(model):
@@ -319,7 +319,3 @@ def _shirley_bg(data, num_avg=1, offset_start=0, offset_end=0, max_iterations=10
     Shirley_bkg = y_end + B
 
     return Shirley_bkg
-
-
-def save_fit_model():
-    pass

@@ -6,10 +6,10 @@
 
 import xarray as xr
 from sklearn.decomposition import PCA
-from peaks.utils.OOP_method import add_methods
+from peaks.utils.OOP_method import register_accessor
 
 
-@add_methods(xr.DataArray)
+@register_accessor(xr.DataArray)
 def SM_PCA(data, PCs=10):
     """Perform a principal component analysis on a spatial map, and then reconstruct the spatial map using the reduced
     dimensionality dataset and PCA eigenvectors. Results in a reduction in the information retained by the spatial map,

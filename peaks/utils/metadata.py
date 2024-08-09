@@ -6,10 +6,10 @@
 # Brendan Edwards 16/10/2023
 
 import xarray as xr
-from peaks.utils.OOP_method import add_methods
+from peaks.utils.OOP_method import register_accessor
 
 
-@add_methods(xr.DataArray)
+@register_accessor(xr.DataArray)
 def update_hist(data, hist):
     """Updates the analysis history metadata of the supplied DataArray.
 
@@ -55,7 +55,7 @@ def update_hist(data, hist):
     return data
 
 
-@add_methods(xr.DataArray)
+@register_accessor(xr.DataArray)
 def _set_normals(data, **angle_kwargs):
     """Function to set normal emissions into the attributes of DataArrays based on arguments passed in angle_kwargs.
 
