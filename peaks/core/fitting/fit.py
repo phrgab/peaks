@@ -1,3 +1,4 @@
+import dill
 import numpy as np
 import xarray as xr
 import dask as da
@@ -7,11 +8,11 @@ from tqdm.notebook import tqdm
 import matplotlib.pyplot as plt
 
 from .models import LinearDosFermiModel
-from peaks.utils.OOP_method import add_methods
+from peaks.utils.OOP_method import register_accessor
 from peaks.utils import analysis_warning
 
 
-@add_methods(xr.DataArray)
+@register_accessor(xr.DataArray)
 def fit(
     data_array,
     model,
@@ -334,7 +335,7 @@ def _estimate_EF(y, x):
     return EF
 
 
-@add_methods(xr.DataArray)
+@register_accessor(xr.DataArray)
 def estimate_EF(data):
     """Make an approximate guess for the Fermi level from the corresponding peak in the derivative of the data
     :::{warning}
@@ -494,3 +495,45 @@ class QuickFit:
         return self._peak_model("lorentzian", independent_var, **kwargs)
 
     lorentzian.__doc__ = lorentzian.__doc__ + QUICK_FIT_COMMON_DOC
+
+
+@register_accessor(xr.Dataset)
+def save_fit(fit_result, filename):
+    """
+    Save the results of a fit.
+
+    Parameters:
+    -----------
+    fit_result : xarray.DataSet
+        The results of the fit to save.
+    filename : str
+        The name of the file to save the fit results to.
+
+    Returns:
+    --------
+    None
+    """
+
+    result_as_dict = fit_result.to_dict()
+    with open(filename, "wb") as f:
+        dill.dump(result_as_dict, f, protocol=-1)
+
+
+def load_fit(filename):
+    """
+    Load the results of a fit from a netCDF file.
+
+    Parameters:
+    -----------
+    filename : str
+        The name of the file to load the fit results from.
+
+    Returns:
+    --------
+    xarray.DataSet
+        The results of the fit.
+    """
+
+    with open(filename, "rb") as f:
+        result_as_dict = dill.load(f)
+    return xr.Dataset.from_dict(result_as_dict)
