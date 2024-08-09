@@ -9,10 +9,10 @@
 import numpy as np
 import xarray as xr
 from matplotlib.path import Path
-from peaks.utils.OOP_method import add_methods
+from peaks.utils.OOP_method import register_accessor
 
 
-@add_methods(xr.DataArray)
+@register_accessor(xr.DataArray)
 def DC(data, coord="eV", val=0, dval=0, ana_hist=True):
     """General function to extract DCs from data along any coordinate.
 
@@ -101,7 +101,7 @@ def DC(data, coord="eV", val=0, dval=0, ana_hist=True):
     return dc
 
 
-@add_methods(xr.DataArray)
+@register_accessor(xr.DataArray)
 def MDC(data, E=0, dE=0):
     """Extract MDCs from data.
 
@@ -156,7 +156,7 @@ def MDC(data, E=0, dE=0):
     return mdc
 
 
-@add_methods(xr.DataArray)
+@register_accessor(xr.DataArray)
 def EDC(data, k=0, dk=0):
     """Extract EDCs from data.
 
@@ -216,7 +216,7 @@ def EDC(data, k=0, dk=0):
     return edc
 
 
-@add_methods(xr.DataArray)
+@register_accessor(xr.DataArray)
 def FS(data, E=0, dE=0):
     """Extract constant energy slices, e.g. Fermi surfaces, from 3D data.
 
@@ -275,7 +275,7 @@ def FS(data, E=0, dE=0):
     return fs
 
 
-@add_methods(xr.DataArray)
+@register_accessor(xr.DataArray)
 def DOS(data):
     """Integrate over all but the energy axis to return the best approximation to the DOS possible from the data.
 
@@ -320,7 +320,7 @@ def DOS(data):
     return dos
 
 
-@add_methods(xr.DataArray)
+@register_accessor(xr.DataArray)
 def tot(data, spatial_int=False):
     """Integrate spatial map data over all non-spatial (energy and angle/k) or all spatial dimensions.
 
@@ -371,7 +371,7 @@ def tot(data, spatial_int=False):
     return data_tot
 
 
-@add_methods(xr.DataArray)
+@register_accessor(xr.DataArray)
 def radial_cuts(data, num_azi=361, num_points=200, radius=2, **centre_kwargs):
     """Extract radial cuts of a Fermi surface as a function of azimuthal angle.
 
@@ -466,7 +466,7 @@ def radial_cuts(data, num_azi=361, num_points=200, radius=2, **centre_kwargs):
     return data_to_return
 
 
-@add_methods(xr.DataArray)
+@register_accessor(xr.DataArray)
 def mask_data(data, ROI, return_integrated=True):
     """This function applies a polygon region of interest (ROI) as a mask to multidimensional data. By default, the
     function will then extract the mean over the two dimensions defined by the ROI. For a rectangular ROI, this is
@@ -583,7 +583,7 @@ def mask_data(data, ROI, return_integrated=True):
     return ROI_selected_data
 
 
-@add_methods(xr.DataArray)
+@register_accessor(xr.DataArray)
 def disp_from_hv(data, hv):
     """Function to extract a dispersion at a given hv from an hv scan, correcting for the kinetic energy offsets
     (KE_delta) that arise from using the hv scan loading method.

@@ -8,7 +8,7 @@
 import numpy as np
 import xarray as xr
 from peaks.core.fileIO.data_loading import _make_DataArray, _extract_mapping_metadata
-from peaks.utils.OOP_method import add_methods
+from peaks.utils.OOP_method import register_accessor
 from peaks.utils import analysis_warning
 
 
@@ -115,7 +115,7 @@ def make_hv_scan(data):
     return hv_scan
 
 
-@add_methods(xr.DataArray)
+@register_accessor(xr.DataArray)
 def slant_correct(data, factor=None):
     """Function to remove a slant that was present in data obtained using the Scienta DA30 (9ES210) analyser at the nano
     branch of the I05 beamline at Diamond Light Source in 2021/22.

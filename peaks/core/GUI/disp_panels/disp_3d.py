@@ -23,7 +23,6 @@ from peaks.core.GUI.GUI_utils import (
 )
 from peaks.core.fileIO.fileIO_opts import LocOpts
 from peaks.core.process.tools import sym, estimate_sym_point
-from peaks.core.process.process import _estimate_EF
 
 
 def _disp_3d(data, primary_dim, exclude_from_centering):
@@ -621,7 +620,7 @@ class _Disp3D(QtWidgets.QMainWindow):
         # If eV in data, attempt to set a Fermi level and use this as initial xh pos
         if "eV" in self.dims:
             eV_dim = self.data.dims.index("eV")
-            EF = _estimate_EF(self.data)
+            EF = data.estimate_EF()
             if not EF:
                 EF = sum(self.ranges[eV_dim]) / 2
             self.cursor_positions_selection[eV_dim].setValue(EF)

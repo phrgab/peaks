@@ -13,11 +13,11 @@ from scipy.ndimage import gaussian_filter
 from skimage.registration import phase_cross_correlation
 from IPython.display import clear_output
 from peaks.core.fitting.models import _shirley_bg
-from peaks.utils.OOP_method import add_methods
+from peaks.utils.OOP_method import register_accessor
 from peaks.utils import analysis_warning
 
 
-@add_methods(xr.DataArray)
+@register_accessor(xr.DataArray)
 def norm(data, dim=None):
     """Function to apply a normalisation to data.
 
@@ -100,7 +100,7 @@ def norm(data, dim=None):
     return norm_data
 
 
-@add_methods(xr.DataArray)
+@register_accessor(xr.DataArray)
 def bgs(data, subtraction, num_avg=1, offset_start=0, offset_end=0, max_iterations=10):
     """Function to subtract a background from data.
 
@@ -251,7 +251,7 @@ def bgs(data, subtraction, num_avg=1, offset_start=0, offset_end=0, max_iteratio
     return bgs_data
 
 
-@add_methods(xr.DataArray)
+@register_accessor(xr.DataArray)
 def bin_data(data, binning=None, **binning_kwargs):
     """Shortcut function to bin data.
 
@@ -334,7 +334,7 @@ def bin_data(data, binning=None, **binning_kwargs):
     return binned_data
 
 
-@add_methods(xr.DataArray)
+@register_accessor(xr.DataArray)
 def smooth(data, **smoothing_kwargs):
     """Function to smooth data by applying a Gaussian smoothing operator.
 
@@ -428,7 +428,7 @@ def smooth(data, **smoothing_kwargs):
     return smoothed_data
 
 
-@add_methods(xr.DataArray)
+@register_accessor(xr.DataArray)
 def rotate(data, rotation, **centre_kwargs):
     """Function to rotate 2D data around a given centre of rotation.
 
@@ -611,7 +611,7 @@ def rotate(data, rotation, **centre_kwargs):
     return rotated_data
 
 
-@add_methods(xr.DataArray)
+@register_accessor(xr.DataArray)
 def sym(data, flipped=False, fillna=True, **sym_kwarg):
     """Function which primarily applies a symmetrisation of data around a given axis. It can alternatively be used to
     simply flip data around a given axis.
@@ -718,7 +718,7 @@ def sym(data, flipped=False, fillna=True, **sym_kwarg):
     return sym_data
 
 
-@add_methods(xr.DataArray)
+@register_accessor(xr.DataArray)
 def sym_nfold(data, nfold, expand=True, fillna=True, **centre_kwargs):
     """Function to perform an n-fold symmetrisation of data around a centre coordinate.
 
@@ -868,7 +868,7 @@ def sym_nfold(data, nfold, expand=True, fillna=True, **centre_kwargs):
     return sym_data
 
 
-@add_methods(xr.DataArray)
+@register_accessor(xr.DataArray)
 def degrid(data, width=0.1, height=0.1, cutoff=4):
     """Function which removes a mesh grid from 2D data by filtering its fast Fourier transform (FFT).
 
@@ -1479,7 +1479,7 @@ def _merge_two_DataArrays(DataArray1, DataArray2, dim):
     return merged_data
 
 
-@add_methods(xr.DataArray)
+@register_accessor(xr.DataArray)
 def estimate_sym_point(data, dims=None, upsample_factor=100):
     """Function to estimate the centrepoint of data that should be symmetric about an axis or axes.
     Used for e.g. estimating normal emission of an ARPES scan.

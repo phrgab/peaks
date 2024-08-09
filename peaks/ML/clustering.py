@@ -13,12 +13,12 @@ from IPython.display import clear_output
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
-from peaks.utils.OOP_method import add_methods
+from peaks.utils.OOP_method import register_accessor
 from peaks.utils import analysis_warning
 from peaks.core.display.plotting import plot_grid
 
 
-@add_methods(xr.DataArray)
+@register_accessor(xr.DataArray)
 def ML_pre_proc(
     data, extract="dispersion", E=0, dE=0, k=0, dk=0, scale=False, norm=False
 ):
@@ -186,7 +186,7 @@ def perform_k_means(data, k=3, n_init="auto"):
     return model, labels
 
 
-@add_methods(xr.DataArray)
+@register_accessor(xr.DataArray)
 def clusters_explore(
     data,
     cluster_range=range(1, 7),
@@ -339,7 +339,7 @@ def clusters_explore(
     plt.show()
 
 
-@add_methods(xr.DataArray)
+@register_accessor(xr.DataArray)
 def clusters(
     data,
     num_clusters=3,
@@ -626,7 +626,7 @@ def clusters(
     return classification_map, cluster_average_disps
 
 
-@add_methods(xr.DataArray)
+@register_accessor(xr.DataArray)
 def PCA_explore(
     data,
     PCs_range=range(1, 6),

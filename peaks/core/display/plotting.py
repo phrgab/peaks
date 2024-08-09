@@ -15,7 +15,7 @@ from matplotlib import colors, cm
 from cycler import cycler
 from IPython.display import display
 from peaks.utils import analysis_warning
-from peaks.utils.OOP_method import add_methods
+from peaks.utils.OOP_method import register_accessor
 
 
 def plot_grid(
@@ -317,7 +317,7 @@ def plot_DCs(
     plt.tight_layout()
 
 
-@add_methods(xr.Dataset)
+@register_accessor(xr.Dataset)
 def plot_fit(fit_results_ds, show_components=True, figsize=None, **kwargs):
     def _plot_single_fit(fit_results, show_components, figsize, **kwargs):
         fig = plt.figure(figsize=figsize)
@@ -382,7 +382,7 @@ def plot_fit(fit_results_ds, show_components=True, figsize=None, **kwargs):
         return dashboard
 
 
-@add_methods(xr.DataArray)
+@register_accessor(xr.DataArray)
 def plot_fit_test(data, model, params, show_components=True, **kwargs):
     """Compare a fit model evaluated for some fit parameters to a 1D data array.
 
@@ -541,7 +541,7 @@ def plot_ROI(
     plt.tight_layout()
 
 
-@add_methods(xr.DataArray)
+@register_accessor(xr.DataArray)
 def plot_nanofocus(data, focus="defocus"):
     """Function to determine the focus of a scan obtained at the nano branch of the I05 beamline at Diamond Light
     Source, and plot the results. The function works by determining the focal position at which at scanned feature

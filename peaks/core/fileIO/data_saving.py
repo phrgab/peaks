@@ -6,10 +6,10 @@
 # Brendan Edwards 09/02/2024
 
 import xarray as xr
-from peaks.utils.OOP_method import add_methods
+from peaks.utils.OOP_method import register_accessor
 
 
-@add_methods(xr.DataArray)
+@register_accessor(xr.DataArray)
 def save(data, fname):
     """This function saves data in the :class:`xarray.DataArray` format as a NetCDF file. Note: The NetCDF file format
     is very restricted in what types of DataArray attributes can be saved, allowing only basic str, int,
