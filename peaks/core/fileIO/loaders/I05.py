@@ -275,7 +275,10 @@ def _load_I05_data(fname):
                 x2_values = f["entry1/instrument/manipulator/saz"][()]
 
             # Since x1 and x2 are defined on a 2D grid, we must extract the 1D axes coordinates
-            if x1_values[0][1] != x1_values[0][0]:
+            # Determine which is the fast axis, comparing end values to allow for some numerical tolerance
+            if abs(x1_values[0][-1] - x1_values[0][0]) > abs(
+                x1_values[-1][0] - x1_values[0][0]
+            ):
                 x1_values = x1_values[0]
                 x2_values = [i[0] for i in x2_values]
             else:
