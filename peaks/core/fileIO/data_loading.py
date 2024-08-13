@@ -614,45 +614,40 @@ def _make_DataArray(data, lazy="auto"):
             )
 
     # If the scan type is a spatial map, there is only one possible set of coordinates, but the spectrum shape will
-    # depend on the order of x1 and x2 (i.e. which is the fast/slow axis), show try both orders (try x2 first as this is
-    # the assumed default in the loaders). theta_par and eV may or may not be present, depending on the analyser mode.
+    # depend on the order of x1 and x2 (i.e. which is the fast/slow axis). Try to parse this from a flag.
     elif scan_type == "spatial map":
-        try:
+        coords = {"x1": data["x1"], "x2": data["x2"]}
+        if "theta_par" in data_keys:
+            coords["theta_par"] = data["theta_par"]
+            coords["eV"] = data["eV"]
+        if "fast_axis" in data_keys:
             if "theta_par" in data_keys:
-                DataArray = xr.DataArray(
-                    data["spectrum"],
-                    dims=("x2", "x1", "theta_par", "eV"),
-                    coords={
-                        "x2": data["x2"],
-                        "x1": data["x1"],
-                        "theta_par": data["theta_par"],
-                        "eV": data["eV"],
-                    },
-                )
+                if data["fast_axis"] == "x1":
+                    dims = ("x2", "x1", "theta_par", "eV")
+                else:
+                    dims = ("x1", "x2", "theta_par", "eV")
             else:
-                DataArray = xr.DataArray(
-                    data["spectrum"],
-                    dims=("x2", "x1"),
-                    coords={"x2": data["x2"], "x1": data["x1"]},
-                )
-        except ValueError:
-            if "theta_par" in data_keys:
-                DataArray = xr.DataArray(
-                    data["spectrum"],
-                    dims=("x1", "x2", "theta_par", "eV"),
-                    coords={
-                        "x1": data["x1"],
-                        "x2": data["x2"],
-                        "theta_par": data["theta_par"],
-                        "eV": data["eV"],
-                    },
-                )
-            else:
-                DataArray = xr.DataArray(
-                    data["spectrum"],
-                    dims=("x1", "x2"),
-                    coords={"x1": data["x1"], "x2": data["x2"]},
-                )
+                if data["fast_axis"] == "x1":
+                    dims = ("x2", "x1")
+                else:
+                    dims = ("x1", "x2")
+            DataArray = xr.DataArray(data["spectrum"], dims=dims, coords=coords)
+        else:
+            # If fast_axis flag missing, fall back to try in both orders (try x2 first as this is the assumed default
+            # in the loaders). theta_par and eV may or may not be present, depending on the analyser mode.
+
+            try:
+                if "theta_par" in data_keys:
+                    dims = ("x2", "x1", "theta_par", "eV")
+                else:
+                    dims = ("x2", "x1")
+                DataArray = xr.DataArray(data["spectrum"], dims=dims, coords=coords)
+            except ValueError:
+                if "theta_par" in data_keys:
+                    dims = ("x1", "x2", "theta_par", "eV")
+                else:
+                    dims = ("x1", "x2")
+                DataArray = xr.DataArray(data["spectrum"], dims=dims, coords=coords)
 
     # If the scan type is a line scan, the mapping coordinate could be x1, x2 or x3. theta_par and eV may or may not be
     # present, depending on the analyser mode
