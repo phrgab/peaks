@@ -32,7 +32,11 @@ def _is_linearly_spaced(array, tol=1e-8):
 
 @njit(parallel=True)
 def _fast_bilinear_interpolate(
-    desired_pos_dim0, desired_pos_dim1, orig_coords_dim0, orig_coords_dim1, orig_values
+    desired_pos_dim0,
+    desired_pos_dim1,
+    orig_coords_dim0,
+    orig_coords_dim1,
+    orig_values,
 ):
     """
     Perform numba-accelerated bilinear interpolation on a 2D grid of values.
@@ -113,7 +117,11 @@ def _fast_bilinear_interpolate(
 
 @njit(parallel=True)
 def _fast_bilinear_interpolate_rectilinear(
-    desired_pos_dim0, desired_pos_dim1, orig_coords_dim0, orig_coords_dim1, orig_values
+    desired_pos_dim0,
+    desired_pos_dim1,
+    orig_coords_dim0,
+    orig_coords_dim1,
+    orig_values,
 ):
     """
     Perform numba-accelerated bilinear interpolation on a rectilinear 2D grid of values.
@@ -207,6 +215,7 @@ def _fast_trilinear_interpolate(
     orig_coords_dim1,
     orig_coords_dim2,
     orig_values,
+    progress_proxy=None,
 ):
     """
     Perform numba-accelerated trilinear interpolation on a 3D grid of values.
@@ -232,6 +241,8 @@ def _fast_trilinear_interpolate(
         These should be monotonic but need not be linearly spaced.
     orig_values : np.ndarray
         The values at the original grid points.
+    progress_proxy : ProgressProxy, optional
+        A numba-progress ProgressBar proxy to update the progress of the interpolation.
 
     Returns
     -------
@@ -249,6 +260,9 @@ def _fast_trilinear_interpolate(
     result = np.empty(n_points)
 
     for idx in prange(n_points):
+        if progress_proxy is not None and (idx % 100 == 0 or idx == n_points - 1):
+            progress_proxy.update(100)
+
         x = desired_pos_dim0[idx]
         y = desired_pos_dim1[idx]
         z = desired_pos_dim2[idx]
@@ -315,6 +329,7 @@ def _fast_trilinear_interpolate_rectilinear(
     orig_coords_dim1,
     orig_coords_dim2,
     orig_values,
+    progress_proxy=None,
 ):
     """
     Perform numba-accelerated trilinear interpolation on a rectilinear 3D grid of values.
@@ -340,6 +355,8 @@ def _fast_trilinear_interpolate_rectilinear(
         These must be linearly spaced.
     orig_values : np.ndarray
         The values at the original grid points.
+    progress_proxy : ProgressProxy, optional
+        A numba-progress ProgressBar proxy to update the progress of the interpolation.
 
     Returns
     -------
@@ -368,6 +385,9 @@ def _fast_trilinear_interpolate_rectilinear(
     )
 
     for idx in prange(n_points):
+        if progress_proxy is not None and (idx % 100 == 0 or idx == n_points - 1):
+            progress_proxy.update(100)
+
         x = desired_pos_dim0[idx]
         y = desired_pos_dim1[idx]
         z = desired_pos_dim2[idx]
