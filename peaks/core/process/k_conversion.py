@@ -576,7 +576,7 @@ def _get_angles_for_k_conv(data):
     if warn_str:
         warn_str = (
             f"Some manipulator data and/or normal emission data was missing or could not be passed. "
-            f"Assuming default values of: {warn_str.rstrip(", ")}."
+            f'Assuming default values of: {warn_str.rstrip(", ")}.'
         )
         analysis_warning(warn_str, "warning", "Analysis warning")
 
