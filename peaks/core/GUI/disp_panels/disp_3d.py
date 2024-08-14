@@ -620,7 +620,7 @@ class _Disp3D(QtWidgets.QMainWindow):
         # If eV in data, attempt to set a Fermi level and use this as initial xh pos
         if "eV" in self.dims:
             eV_dim = self.data.dims.index("eV")
-            EF = data.estimate_EF()
+            EF = self.data.estimate_EF()
             if not EF:
                 EF = sum(self.ranges[eV_dim]) / 2
             self.cursor_positions_selection[eV_dim].setValue(EF)
