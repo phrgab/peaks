@@ -359,7 +359,7 @@ def estimate_EF(data):
             "Data must have an 'eV' dimension to estimate the Fermi level."
         )
 
-    return _estimate_EF(data.DOS().data, data.eV.data)
+    return _estimate_EF(data.DOS().fillna(0).data, data.eV.data)
 
 
 QUICK_FIT_COMMON_DOC = """
