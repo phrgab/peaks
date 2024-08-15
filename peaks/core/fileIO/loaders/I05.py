@@ -74,7 +74,12 @@ def _load_I05_data(fname):
 
             # Extract hv coordinates and round to 2 d.p
             if "energy" in analyser_keys:
-                hv_values = np.round(f["entry1/instrument/energy/energy"][()], 2)
+                try:
+                    hv_values = np.round(
+                        f["entry1/instrument/monochromator/energy"][()], 2
+                    )
+                except KeyError:
+                    hv_values = np.round(f["entry1/instrument/energy/energy"][()], 2)
             elif "centre_energy" in analyser_keys:  # Required for nano hv scan script
                 hv_values = np.round(f["entry1/analyser/value"][()], 2)
 
