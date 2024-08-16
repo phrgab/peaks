@@ -324,6 +324,9 @@ def plot_fit(fit_results_ds, show_components=True, figsize=None, **kwargs):
         for dim in fit_results.dims:
             if dim in kwargs:
                 fit_results = fit_results.isel({dim: kwargs.pop(dim)})
+        # Add the independent variable to the kwargs for plotting
+        kwargs.setdefault("xlabel", fit_results_ds.attrs.get("independent_var", "x"))
+
         fit_model = fit_results["fit_model"].compute().item()
         fit_model.plot(fig=fig, **kwargs)
         if show_components and len(fit_model.components) > 1:
