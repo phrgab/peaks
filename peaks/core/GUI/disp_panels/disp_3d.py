@@ -620,7 +620,13 @@ class _Disp3D(QtWidgets.QMainWindow):
         # If eV in data, attempt to set a Fermi level and use this as initial xh pos
         if "eV" in self.dims:
             eV_dim = self.data.dims.index("eV")
-            EF = self.data.estimate_EF()
+            if self.data.attrs.get("scan_type") == "hv scan":
+                # Due to the particular data structure of an hv scan, take the central slice to estimate EF
+                hv = self.data.hv.data
+                middle_hv = hv[(len(hv) - 1) // 2]
+                EF = self.data.disp_from_hv(middle_hv).estimate_EF()
+            else:
+                EF = self.data.estimate_EF()
             if not EF:
                 EF = sum(self.ranges[eV_dim]) / 2
             self.cursor_positions_selection[eV_dim].setValue(EF)
