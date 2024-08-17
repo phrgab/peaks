@@ -13,7 +13,7 @@ from IPython.display import clear_output
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
-from peaks.utils.OOP_method import register_accessor
+from peaks.utils.accessors import register_accessor
 from peaks.utils import analysis_warning
 from peaks.core.display.plotting import plot_grid
 

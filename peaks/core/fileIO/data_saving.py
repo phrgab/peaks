@@ -6,7 +6,7 @@
 # Brendan Edwards 09/02/2024
 
 import xarray as xr
-from peaks.utils.OOP_method import register_accessor
+from peaks.utils.accessors import register_accessor
 
 
 @register_accessor(xr.DataArray)

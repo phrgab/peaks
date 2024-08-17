@@ -8,7 +8,7 @@ from tqdm.notebook import tqdm
 import matplotlib.pyplot as plt
 
 from .models import LinearDosFermiModel
-from peaks.utils.OOP_method import register_accessor
+from peaks.utils.accessors import register_accessor
 from peaks.utils import analysis_warning
 
 
@@ -164,6 +164,7 @@ def fit(
             data_var = data_var.astype(np.float64)
         results_ds[param_name] = data_var
 
+    results_ds.attrs["independent_var"] = independent_var
     return results_ds
 
 
@@ -359,7 +360,34 @@ def estimate_EF(data):
             "Data must have an 'eV' dimension to estimate the Fermi level."
         )
 
-    return _estimate_EF(data.DOS().fillna(0).data, data.eV.data)
+    # Check for an hv scan
+    if "hv" in data.dims and data.attrs.get("eV_type") == "kinetic":
+        # Iterate through the photon energies and estimate at each
+        EF_values = []
+        for hv in data.hv.data:
+            data_hv = data.disp_from_hv(hv=hv)
+            EF = _estimate_EF(data_hv.DOS().fillna(0).data, data_hv.eV.data)
+            EF_values.append(EF)
+        EF_data = xr.DataArray(EF_values, dims=["hv"], coords={"hv": data.hv.data})
+        # Fit the result to a 2nd order polynomial
+        fit_order = 3
+        fit_result = EF_data.quick_fit.poly(fit_order)
+        fit_model = fit_result.fit_model.data[()]
+        params = {
+            f"c{i}": f"{fit_model.params[f'c{i}'].value:.5f}"
+            for i in range(fit_order + 1)
+        }
+        analysis_warning(
+            f"Estimated Fermi level correction across the photon energy range via an order {fit_order} polynomial fit as {params}",
+            "info",
+            "Analysis info",
+        )
+        fit_result.plot_fit(ylabel="$E_\mathrm{F}$ (eV)", xlabel="$h\\nu$ (eV)")
+        # Back-calculate the Fermi level from the fit at each photon energy
+        EF_values_out = fit_model.eval(x=EF_data.hv.data)
+        return EF_values_out
+    else:
+        return _estimate_EF(data.DOS().fillna(0).data, data.eV.data)
 
 
 QUICK_FIT_COMMON_DOC = """
