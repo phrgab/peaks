@@ -2,11 +2,11 @@
 
 """
 
-# Phil King 20/04/2021
-# Brendan Edwards 16/10/2023
-
+import json
+from datetime import datetime
 import xarray as xr
-from peaks.utils.OOP_method import register_accessor
+from .accessors import register_accessor
+from ..__version__ import __version__
 
 
 @register_accessor(xr.DataArray)
@@ -30,9 +30,9 @@ def update_hist(data, hist):
     ------------
     Example usage is as follows::
 
-        from peaks import *
+        import peaks as pks
 
-        disp = load('disp.ibw')
+        disp = pks.load('disp.ibw')
 
         disp = disp/2
 
@@ -41,18 +41,22 @@ def update_hist(data, hist):
 
     """
 
+    # Get the existing analysis history
+    analysis_history = data.attrs.get("analysis_history", [])
+
     # If analysis history is not in the DataArray attributes, define it
     if "analysis_history" not in data.attrs:
         data.attrs["analysis_history"] = []
 
-    # Update the DataArray analysis history (the following is done so that the original DataArray is not overwritten)
-    analysis_history = []
-    for item in data.attrs["analysis_history"]:
-        analysis_history.append(item)
-    analysis_history.append(hist)
-    data.attrs["analysis_history"] = analysis_history
+    # Format the new history entry as a JSON payload with additional metadata and add to the existing history
+    timestamp = datetime.now().isoformat()
+    version = str(__version__)
+    analysis_history.append(
+        json.dumps({"time": timestamp, "peaks version": version, "record": hist})
+    )
 
-    return data
+    # Update the DataArray analysis history
+    data.attrs.update({"analysis_history": analysis_history})
 
 
 @register_accessor(xr.DataArray)
