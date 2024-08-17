@@ -9,7 +9,102 @@
 import numpy as np
 import xarray as xr
 from matplotlib.path import Path
-from peaks.utils.OOP_method import register_accessor
+from peaks.utils.accessors import register_accessor
+
+
+@register_accessor(xr.DataArray)
+def drop_nan_borders(data):
+    """
+    Trims the edges of an :class:`xarray.DataArray` or :class:`xarray.Dataset` that are all NaN values.
+
+    Parameters
+    ----------
+    data : xarray.DataArray or xarray.Dataset
+        The data to trim.
+
+    Returns
+    --------
+    trimmed_data : xarray.DataArray or xarray.Dataset
+        Trimmed :class:`xarray` object with NaN edges removed.
+
+    Examples
+    --------
+    Example usage is as follows::
+
+            import peaks as pks
+
+            # Load a data file
+            data = load("data.nxs")
+
+            # Trim all zero edges from the data
+            trimmed_data = data.drop_nan_borders()
+    """
+
+    # Iterate over each dimension to trim NaN edges
+    for dim in data.dims:
+        # Create a boolean mask where data is not NaN along the dimension
+        not_nan = ~np.isnan(data).any(dim=[d for d in data.dims if d != dim])
+
+        # Find the first and last index where the data is not all NaN
+        non_nan_indices = np.where(not_nan)[0]
+        if non_nan_indices.size > 0:
+            start = non_nan_indices[0]
+            end = non_nan_indices[-1] + 1
+            data = data.isel({dim: slice(start, end)})
+
+    return data
+
+
+def _drop_nan_borders_2D(data):
+    """Function to drop rows and columns containing only NaNs from a 2D array."""
+    # Drop rows and columns containing only NaNs
+    # Depreciate in future in favour of drop_nan_borders
+    rows_to_keep = ~np.all(np.isnan(data), axis=1)
+    cols_to_keep = ~np.all(np.isnan(data), axis=0)
+    return data[rows_to_keep, :][:, cols_to_keep]
+
+
+@register_accessor(xr.DataArray)
+def drop_zero_borders(data):
+    """
+    Trims the edges of an :class:`xarray.DataArray` or :class:`xarray.Dataset` that are all zero values.
+
+    Parameters
+    ----------
+    data : xarray.DataArray or xarray.Dataset
+        The data to trim.
+
+    Returns
+    --------
+    trimmed_data : xarray.DataArray or xarray.Dataset
+        Trimmed :class:`xarray` object with NaN edges removed.
+
+    Examples
+    --------
+    Example usage is as follows::
+
+            import peaks as pks
+
+            # Load a data file
+            data = load("data.nxs")
+
+            # Trim all zero edges from the data
+            trimmed_data = data.drop_zero_borders()
+    """
+
+    # Iterate over each dimension to trim zero edges
+    for dim in data.dims:
+        # Create a boolean mask where data is not zero along the dimension
+        not_zero = (data != 0).any(dim=[d for d in data.dims if d != dim])
+
+        # Find the first and last index where the data is not all zero
+        non_zero_indices = np.where(not_zero)[0]
+        if non_zero_indices.size > 0:
+            start = non_zero_indices[0]
+            end = non_zero_indices[-1] + 1
+            data = data.isel({dim: slice(start, end)})
+
+    return data
 
 
 @register_accessor(xr.DataArray)
@@ -564,13 +659,8 @@ def mask_data(data, ROI, return_integrated=True):
     else:  # Masked data to be returned
         ROI_selected_data = data_bounded.where(mask)
 
-        def drop_nan_borders(da):
-            rows_to_keep = ~np.all(np.isnan(da), axis=1)
-            cols_to_keep = ~np.all(np.isnan(da), axis=0)
-            return da[rows_to_keep, :][:, cols_to_keep]
-
         # Trim any rows or columns of only NaNs
-        ROI_selected_data = drop_nan_borders(ROI_selected_data)
+        ROI_selected_data = _drop_nan_borders_2D(ROI_selected_data)
 
         hist = (
             "Data masked by region of interest defined by polygon with vertices: "
