@@ -8,7 +8,7 @@
 import numpy as np
 import xarray as xr
 from peaks.core.fileIO.data_loading import _make_DataArray, _extract_mapping_metadata
-from peaks.utils.OOP_method import register_accessor
+from peaks.utils.accessors import register_accessor
 from peaks.utils import analysis_warning
 
 

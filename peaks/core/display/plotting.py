@@ -15,7 +15,7 @@ from matplotlib import colors, cm
 from cycler import cycler
 from IPython.display import display
 from peaks.utils import analysis_warning
-from peaks.utils.OOP_method import register_accessor
+from peaks.utils.accessors import register_accessor
 
 
 def plot_grid(
