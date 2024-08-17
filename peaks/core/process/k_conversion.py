@@ -1144,7 +1144,7 @@ def k_convert(
     }
     hist_str += f"Angles: {raw_angles_no_theta_par}, "
     if scan_type == "hv scan":
-        hist_str += f"Inner potential: {data.attrs.get("V0", 12)} eV, "
+        hist_str += f"Inner potential: {data.attrs.get('V0', 12)} eV, "
     hist_str += f"Time taken: {pbar.format_dict['elapsed']:.2f}s."
     interpolated_data.update_hist(hist_str)
 
