@@ -9,7 +9,7 @@ import os
 from IPython.display import display, Javascript, Markdown
 
 
-def analysis_warning(text, warn_type='info', title='Analysis info'):
+def analysis_warning(text, warn_type="info", title="Analysis info", quiet=False):
     """Tool to display a string as a warning in a formatted box.
 
     Parameters
@@ -27,22 +27,31 @@ def analysis_warning(text, warn_type='info', title='Analysis info'):
     title : str, optional
         Title to be displayed in box. Defaults to `Analysis info`.
 
+    quiet : bool, optional
+        Determines whether the warning is displayed. Defaults to False.
+
     Examples
     ------------
     Example usage is as follows::
 
-        from peaks import *
+        import peaks as pks
 
         # Display a blue warning box informing the user that the data is being loaded
-        analysis_warning('Loading file into DataArray format.', warn_type='info', title='Loading info')
+        pks.analysis_warning('Loading file into DataArray format.', warn_type='info', title='Loading info')
 
         # Display a red warning box informing the user that the fitting analysis failed
-        analysis_warning('Fitting result could not converge.', warn_type='danger', title='Analysis info')
+        pks.analysis_warning('Fitting result could not converge.', warn_type='danger', title='Analysis info')
 
     """
 
     # Display warning
-    display(Markdown('<div class="alert alert-block alert-%s"><b>%s: </b> %s </div>' % (warn_type, title, text)))
+    if not quiet:
+        display(
+            Markdown(
+                '<div class="alert alert-block alert-%s"><b>%s: </b> %s </div>'
+                % (warn_type, title, text)
+            )
+        )
 
 
 def make_cell(text, below=True, execute=True):
@@ -80,28 +89,52 @@ def make_cell(text, below=True, execute=True):
     if below:
         if execute:
             # Generate and execute new cell below
-            display(Javascript("""
+            display(
+                Javascript(
+                    """
             var cell = IPython.notebook.insert_cell_below('code')
-            cell.set_text('""" + text + """')
+            cell.set_text('"""
+                    + text
+                    + """')
             cell.execute()
-            """))
+            """
+                )
+            )
         else:
             # Generate but do not execute new cell below
-            display(Javascript("""
+            display(
+                Javascript(
+                    """
             var cell = IPython.notebook.insert_cell_below('code')
-            cell.set_text('""" + text + """')
-            """))
+            cell.set_text('"""
+                    + text
+                    + """')
+            """
+                )
+            )
     else:
         if execute:
             # Generate and execute new cell above
-            display(Javascript("""
+            display(
+                Javascript(
+                    """
             var cell = IPython.notebook.insert_cell_above('code')
-            cell.set_text('""" + text + """')
+            cell.set_text('"""
+                    + text
+                    + """')
             cell.execute()
-            """))
+            """
+                )
+            )
         else:
             # Generate but do not execute new cell above
-            display(Javascript("""
+            display(
+                Javascript(
+                    """
             var cell = IPython.notebook.insert_cell_above('code')
-            cell.set_text('""" + text + """')
-            """))
+            cell.set_text('"""
+                    + text
+                    + """')
+            """
+                )
+            )
