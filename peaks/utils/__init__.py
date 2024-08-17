@@ -5,4 +5,4 @@
 from .consts import consts
 from .misc import analysis_warning, make_cell
 from .metadata import update_hist
-from .OOP_method import register_accessor
+from .accessors import register_accessor
