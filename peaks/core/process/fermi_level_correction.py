@@ -8,27 +8,18 @@ import numexpr as ne
 from ...utils import analysis_warning
 
 
-# Brendan Edwards 26/04/2021
-
-
 def apply_EF():
-    pass
+    raise NotImplementedError("This function is not yet implemented.")
 
 
-def hv_align():
-    pass
-
-
-def _get_EF_at_theta_par(data, theta_par):
-    """Gets the kinetic energy of the DataArray corresponding to the Fermi level at a given theta_par value.
-    The `EF_correction` attribute should be set first, but will be estimated if not present.
+def _get_EF_at_theta_par0(data):
+    """Gets the kinetic energy of the DataArray corresponding to the Fermi level at theta_par=0.
+    The `EF_correction` attribute will be taken if set, or estimated if not.
 
     Parameters
     ----------
     data : xarray.DataArray
         Data to use.
-    theta_par : float or np.ndarray
-        Theta_par value to extract the Fermi level kinetic energy at.
 
     Returns
     -------
@@ -37,19 +28,24 @@ def _get_EF_at_theta_par(data, theta_par):
     """
 
     # Get EF_correction, estimating if not present
-    EF_fn = data.attrs.get("EF_correction", _add_estimated_EF(data))
-    if isinstance(EF_fn, dict):
-        Ek_at_EF = np.polyval(list(EF_fn.values())[::-1], theta_par)
-    else:
-        Ek_at_EF = EF_fn
-
-    return Ek_at_EF
+    if "hv" not in data.dims:
+        if not data.attrs.get("EF_correction"):
+            _add_estimated_EF(data)
+        EF_fn = data.attrs["EF_correction"]
+        if isinstance(EF_fn, dict):
+            return EF_fn["c0"]
+        else:
+            return EF_fn
+    else:  # For photon energy scan, we need this from the coords
+        if "EF" not in data.coords:
+            _add_estimated_EF(data)
+        return data.coords["EF"].data  # EF vs hv
 
 
 def _get_E_shift_at_theta_par(data, theta_par, Ek=None):
     """Gets the energy shift that should be applied to a kinetic energy to correct for the curvature of the Fermi
-    level as a function of theta_par. The `EF_correction` attribute should be set first, but will be estimated
-    if not present. Uses numexpr to allow for fast evaluation even over large theta_par grids.
+    level as a function of theta_par. The `EF_correction` attribute should be set first.
+    Uses numexpr to allow for fast evaluation even over large theta_par grids.
 
     Parameters
     ----------
@@ -66,23 +62,20 @@ def _get_E_shift_at_theta_par(data, theta_par, Ek=None):
         Energy shift of the Fermi level at the given theta_par value(s).
     """
 
-    # Get EF_correction, estimating if not present
-    EF_fn = data.attrs.get("EF_correction", _add_estimated_EF(data))
-    if not isinstance(EF_fn, dict):  # No theta_par-dep energy shift
-        if Ek is not None:
-            return Ek  # Return original energy array if present
-        else:
-            return np.zeros_like(theta_par)  # Return zeros if no energy array
-    else:
-        Ek_at_EF_th0 = _get_EF_at_theta_par(data, 0)
-        shift_str = f"-{Ek_at_EF_th0}"
-        for i in range(len(EF_fn)):
+    # Get EF_correction
+    EF_fn = data.attrs.get("EF_correction")
+    if isinstance(EF_fn, dict) and len(EF_fn) > 1:  # Theta-par-dep EF correction
+        shift_str = ""
+        for i in range(1, len(EF_fn)):
             shift_str += f"+ {str(EF_fn[f'c{i}'])} * theta_par ** {i}"
-
         if Ek is not None:
-            return ne.evaluate(f"{shift_str} + Ek")
+            shift_str += f"+ Ek"
+        return ne.evaluate(shift_str)
+    else:
+        if Ek is not None:
+            return Ek
         else:
-            return ne.evaluate(shift_str)
+            return np.zeros_like(theta_par)
 
 
 def _get_wf(data):
@@ -95,25 +88,25 @@ def _get_wf(data):
 
     Returns
     -------
-    float
-        Work function to use for the data processing.
+    wf : float or np.ndarray
+        Work function to use for the data processing. Will be an array if an hv scan passed
     """
 
-    # Get current theta_par scale
-    theta_par_data = data.theta_par.data
+    # Get EF values, estimating if not already set
+    Ek_at_EF = _get_EF_at_theta_par0(data)
 
-    # Get EF_correction, estimating if not present
-    Ek_at_EF = _get_EF_at_theta_par(data, 0)
-
-    # Photon energy
-    hv = data.attrs.get("hv", _add_estimated_hv(data))
+    # Get photon energy
+    if "hv" in data.dims:
+        hv = data.hv.data
+    else:
+        hv = data.attrs.get("hv", _add_estimated_hv(data))
 
     return hv - Ek_at_EF
 
 
 def _get_BE_scale(data):
     """Gets the relevant binding energy scale from the kinetic energy scale, padding to account for any theta-par
-    dependence of the Fermi level on the detector.
+    dependence of the Fermi level on the detector and any shift of EF within the detector for hv-dep data.
 
     Parameters
     ----------
@@ -123,22 +116,41 @@ def _get_BE_scale(data):
     Returns
     -------
     tuple
-        (start, end, default_step) of the binding energy scale. Default step is the same as the input data.
-        Convention is used for negative BE value below Fermi level.
+        (start, end, step) of the binding energy scale. Step is the same as the input data.
+        Convention is used for negative values below Fermi level (i.e. :math:`\\omega=E-E_F` returned).
     """
+    # Function implementation
 
     # Get current scales
     theta_par = data.theta_par.data
-    eV = data.eV.data
+    # Work out theta_par-dep EF shift
+    EF_shift = _get_E_shift_at_theta_par(data, theta_par)
+
+    # Get current energy scale, taking a single hv if a hv scan
+    if "hv" in data.dims:
+        hv0 = data.hv.data[0]
+        disp = data.disp_from_hv(hv0)
+        EF_values = data.EF.sel(hv=hv0).data + EF_shift
+    else:
+        disp = data
+        EF_values = _get_EF_at_theta_par0(data) + EF_shift
+    eV = disp.eV.data
     eV_step = (eV[-1] - eV[0]) / (len(eV) - 1)
 
-    # Work out theta_par-dep EF from EF_correction
-    EF_values = _get_EF_at_theta_par(data, theta_par)
-
-    # Work out new energy range, padding to avoid loosing real data at the edges
+    # Work out new energy range, padding to avoid loosing real data at the edges due to theta_par dependence
     Emin, Emax = np.min(eV), np.max(eV)
     EF_min, EF_max = np.min(EF_values), np.max(EF_values)
     BE_min, BE_max = Emin - EF_max, Emax - EF_min
+
+    # If hv scan, add extra padding to account for shift in EF on detector with hv
+    if "hv" in data.dims:
+        KE_shift_vs_hv = data.KE_delta.data - data.KE_delta.data[0]
+        EF_shift_vs_hv = data.EF.data - data.EF.data[0]
+        shift_on_detector = KE_shift_vs_hv - EF_shift_vs_hv
+        if min(shift_on_detector) < 0:
+            BE_max += np.abs(min(shift_on_detector))
+        if max(shift_on_detector) > 0:
+            BE_min -= max(shift_on_detector)
 
     return BE_min, BE_max + eV_step, eV_step
 
@@ -148,37 +160,37 @@ def _add_estimated_EF(data):
 
     Parameters
     ----------
-    data : :class:`xarray.DataArray`
+    data : xarray.DataArray
         Data to add estimated Fermi level to.
 
     Returns
     -------
     None
-        Adds the estimated Fermi level to the data attributes.
+        Adds the estimated Fermi level to the data attributes or coordinates as appropraite.
 
-    Examples
-    --------
-    Example usage is as follows::
-
-        from peaks.core.process.process import _add_estimated_EF
-
-        disp = load('disp.ibw')
-
-        # Add estimated Fermi level to the dispersion data
-        disp = _add_estimated_EF(disp)
     """
 
     # Check no existing EF correction exists
     if data.attrs.get("EF_correction"):
-        return
+        if "hv" in data.dims and "EF" not in data.coords:
+            pass
+        else:
+            return
 
     # Estimate EF and add to data attributes
     estimated_EF = data.estimate_EF()
-    data.attrs["EF_correction"] = estimated_EF
+    if "hv" not in data.dims:
+        data.attrs["EF_correction"] = estimated_EF
+        estimated_EF_str = f"{estimated_EF} eV."
+    else:
+        data.coords.update({"EF": ("hv", estimated_EF)})
+        estimated_EF_str = (
+            f"{estimated_EF[0]:.2f}-{estimated_EF[-1]:.2f} eV (hv dependent)"
+        )
 
     # Update history and warning
     update_str = (
-        f"EF_correction set from automatic estimation of Fermi level to: {estimated_EF} eV. "
+        f"EF_correction set from automatic estimation of Fermi level to: {estimated_EF_str}. "
         f"NB may not be accurate."
     )
     analysis_warning(update_str, "warning", "Analysis warning")
@@ -198,22 +210,10 @@ def _add_estimated_hv(data):
     None
         Adds the estimated photon energy to the data attributes.
 
-
-    Examples
-    --------
-    Example usage is as follows::
-
-        from peaks.core.process.process import _add_estimated_hv
-
-        disp = load('disp.ibw')
-
-        # Add estimated photon energy to the dispersion data
-        disp = _add_estimated_hv(disp)
-
     """
 
     # Check no existing hv value exists
-    if data.attrs.get("hv"):
+    if "hv" in data.dims or data.attrs.get("hv"):
         return
 
     # Check if EF correction is present and estimate if not

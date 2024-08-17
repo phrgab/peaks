@@ -11,6 +11,7 @@ from tqdm.notebook import tqdm
 
 from .fermi_level_correction import _get_wf, _get_BE_scale, _get_E_shift_at_theta_par
 from ...utils.misc import analysis_warning
+from ...utils.accessors import register_accessor
 from ...utils.interpolation import (
     _is_linearly_spaced,
     _fast_bilinear_interpolate,
@@ -494,7 +495,7 @@ def _fIIp_inv(kx, ky, delta_, xi_, chi_, Ek):  # Type II, with deflector
     return alpha, beta
 
 
-def _get_angles_for_k_conv(data):
+def _get_angles_for_k_conv(data, return_raw=False, quiet=False):
     """
     Get the angles for the k-space conversion.
 
@@ -502,11 +503,16 @@ def _get_angles_for_k_conv(data):
     ----------
     data : xarray.DataArray
         Data to convert to k-space.
+    return_raw : bool, optional
+        Whether to return the raw angles (polar, norm_tilt etc.), or the angles in the convention for
+        k-conversion (alpha, beta etc.). Defaults to False.
+    quiet : bool, optional
+        Whether to suppress warnings. Defaults to False.
 
     Returns
     -------
-    tuple
-        Angles for the k-space conversion.
+    dict
+        Angles for the k-space conversion (if return_raw=False) or raw angles (if return_raw=True).
     """
 
     # Determine if analyser should be treated as type I, II, I' or II'
@@ -578,7 +584,7 @@ def _get_angles_for_k_conv(data):
             f"Some manipulator data and/or normal emission data was missing or could not be passed. "
             f'Assuming default values of: {warn_str.rstrip(", ")}.'
         )
-        analysis_warning(warn_str, "warning", "Analysis warning")
+        analysis_warning(warn_str, "warning", "Analysis warning", quiet)
 
     # Above analyser determination gives the analyser capabilities, but for deflector types we need to check if
     # mapping was actually being performed without deflectors - if not, fall back to the non-deflector type
@@ -621,7 +627,64 @@ def _get_angles_for_k_conv(data):
         )
         angles_out["chi_0"] = angles["norm_polar"] * _conventions.get("polar")
 
-    return angles_out
+    if return_raw:
+        return angles
+    else:
+        return angles_out
+
+
+def _f_kz(Ek, k_along_slit, k_perp_slit, V0):
+    """Forward transform to kz.
+
+    Parameters
+    ----------
+    Ek : float or np.ndarray
+        Kinetic energy (eV).
+    k_along_slit : float or np.ndarray
+        k-vector along analyser slit (1/A).
+    k_perp_slit : float or np.ndarray
+        k-vector perp to analyser slit (1/A).
+    V0 : float
+        Inner potential (eV).
+
+    Returns
+    -------
+    kz : float or np.ndarray
+        k-vector for out-of-plan direction (1/A).
+    """
+
+    return ne.evaluate(
+        "KVAC_CONST * sqrt(Ek - V0 - ((k_along_slit**2 + k_perp_slit**2)/(KVAC_CONST**2)))"
+    )
+
+
+def _f_inv_kz(kz, k_along_slit, k_perp_slit, V0, BE, wf):
+    """Inverse transform from kz.
+
+    Parameters
+    ----------
+    kz : float or np.ndarray
+        k-vector for out-of-plan direction (1/A).
+    k_along_slit : float or np.ndarray
+        k-vector along analyser slit (1/A).
+    k_perp_slit : float or np.ndarray
+        k-vector perp to analyser slit (1/A).
+    V0 : float
+        Inner potential (eV).
+    BE : float or np.ndarray
+        Binding energy (eV).
+    wf : float
+        Work function (eV).
+
+    Returns
+    -------
+    hv : float or np.ndarray
+        Photon energy (eV).
+    """
+
+    return ne.evaluate(
+        "(kz**2 + k_along_slit**2 + k_perp_slit**2) / (KVAC_CONST**2) + V0 + wf - BE"
+    )
 
 
 # --------------------------------------------------------- #
@@ -705,7 +768,16 @@ def _get_k_perpto_slit(kx, ky, ana_type):
 # --------------------------------------------------------- #
 
 
-def k_conv(data, eV=None, kx=None, ky=None, quiet=False):
+@register_accessor(xr.DataArray)
+def k_convert(
+    data,
+    eV=None,
+    kx=None,
+    ky=None,
+    kz=None,
+    return_kz_scan_in_hv=False,
+    quiet=False,
+):
     """Perform k-conversion of angle dispersion or mapping data.
 
     Parameters
@@ -718,14 +790,18 @@ def k_conv(data, eV=None, kx=None, ky=None, quiet=False):
         Only energies within the limits of the data will be considered.
     kx : slice, optional
         kx range to calculate over for the final converted data in the form slice(start, stop, step).
+        Use `None` for any componet you do not wish to restrict, e.g. `(None,None,0.01)` to set the step size to 0.01.
         Only considered if kx is a dispersive direction of the data.
         Only kx values within the limits of the data will be considered.
         If not provided, the full kx range of the data will be used.
     ky : slice, optional
         ky range to calculate over for the final converted data in the form slice(start, stop, step).
-        Only considered if ky is a dispersive direction of the data.
-        Only ky values within the limits of the data will be considered.
-        If not provided, the full ky range of the data will be used.
+        See Also: kx.
+    kz : slice, optional
+        kz range to calculate over for the final converted data in the form slice(start, stop, step).
+        See Also: kx.
+    return_kz_scan_in_hv : bool, optional
+        If True, returns the converted data as (hv, eV, k_||) not (kz, eV, k_||).
     quiet : bool, optional
         If True, suppresses warnings and hides progress bar after k-space conversion completion.
 
@@ -734,14 +810,29 @@ def k_conv(data, eV=None, kx=None, ky=None, quiet=False):
     xarray.DataArray
         Data converted to k-space.
     """
+
+    # Parse basic data properties
+    scan_type = data.attrs.get("scan_type")
+    angles = _get_angles_for_k_conv(data, quiet=quiet)  # Get angles for k-conv
+    ana_type = angles["ana_type"]
+
     # Make a progressbar
+    pb_steps = 3
+    if scan_type == "hv scan" and not return_kz_scan_in_hv:
+        pb_steps += 1
+
     pbar = tqdm(
-        total=5, desc="Converting data to k-space - initialising", leave=not quiet
+        total=pb_steps,
+        desc="Converting data to k-space - initialising",
+        leave=not quiet,
     )
 
     # Get relevant energy scale information
-    wf = _get_wf(data)
-    hv = data.attrs.get("hv")
+    wf = _get_wf(data)  # Work fn, array if hv scan else single value
+    if scan_type == "hv scan":
+        hv = data.hv.data
+    else:
+        hv = data.attrs.get("hv")
     BE_scale = _get_BE_scale(data)  # Tuple of start, stop, step
     # Restrict to manual energy range if specified
     if eV is not None:
@@ -751,28 +842,29 @@ def k_conv(data, eV=None, kx=None, ky=None, quiet=False):
             eV.step if eV.step is not None else BE_scale[2],
         )
 
-    # Get dictionary of relevant angles from the data in correct format for k-conversion functions
-    angles = _get_angles_for_k_conv(data)
-    ana_type = angles["ana_type"]
-
-    # Get bounds of data for k-conversion
-    EK_range = [hv + BE_scale[0] - wf, hv + BE_scale[1] - wf]
+    # Get bounds of data for k-conversion - use highest hv for hv scan
+    if scan_type == "hv scan" and hv[-1] > hv[0]:
+        EK_range = [hv[-1] + BE_scale[0] - wf[-1], hv[-1] + BE_scale[1] - wf[-1]]
+    elif scan_type == "hv scan" and hv[-1] < hv[0]:
+        EK_range = [hv[0] + BE_scale[0] - wf[0], hv[0] + BE_scale[1] - wf[0]]
+    else:
+        EK_range = [hv + BE_scale[0] - wf, hv + BE_scale[1] - wf]
     alpha_range = np.asarray(
         [np.min(angles["alpha"]), angles["xi_0"], np.max(angles["alpha"])]
     )
 
     # Check if a 2D or 3D conversion is required & reshape arrays to make them broadcastable
-    if isinstance(angles["beta"], np.ndarray):
+    if scan_type == "FS map":
         beta_range = (
             np.asarray([np.min(angles["beta"]), np.max(angles["beta"])])
             + angles["beta_0"]
         )
-        ndim = 3
+        n_interpolation_dims = 3
         EK_range, alpha_range, beta_range = _reshape_for_3d(
             EK_range, alpha_range, beta_range
         )
     else:
-        ndim = 2
+        n_interpolation_dims = 2
         EK_range, alpha_range = _reshape_for_2d(EK_range, alpha_range)
         beta_range = angles["beta"] + angles["beta_0"]
 
@@ -794,13 +886,13 @@ def k_conv(data, eV=None, kx=None, ky=None, quiet=False):
     kx_range = (np.min(kx_), np.max(kx_) + default_k_step, default_k_step)
     ky_range = (np.min(ky_), np.max(ky_) + default_k_step, default_k_step)
     # Restrict to manual k ranges if specified and if a relevant axis
-    if kx is not None and (ndim == 3 or ana_type in ["I", "Ip"]):
+    if kx is not None and (n_interpolation_dims == 3 or ana_type in ["I", "Ip"]):
         kx_range = (
             np.max([kx.start if kx.start is not None else float("-inf"), kx_range[0]]),
             np.min([kx.stop if kx.stop is not None else float("inf"), kx_range[1]]),
             kx.step if kx.step is not None else kx_range[2],
         )
-    if ky is not None and (ndim == 3 or ana_type in ["II", "IIp"]):
+    if ky is not None and (n_interpolation_dims == 3 or ana_type in ["II", "IIp"]):
         ky_range = (
             np.max([ky.start if ky.start is not None else float("-inf"), ky_range[0]]),
             np.min([ky.stop if ky.stop is not None else float("inf"), ky_range[1]]),
@@ -810,10 +902,20 @@ def k_conv(data, eV=None, kx=None, ky=None, quiet=False):
     # Make the arrays of required angle and energy values
     kx_values = np.arange(*kx_range)
     ky_values = np.arange(*ky_range)
-    KE_values_no_curv = np.arange(*BE_scale) + hv - wf
+
+    if scan_type != "hv scan":
+        KE_values_no_curv = np.arange(*BE_scale) + hv - wf
+    else:
+        # For an hv scan, need to extract different KE values for each hv value,
+        # but then flatten them for interpolation as we still only need bilinear interpolation
+        KE_values_no_curv = (
+            np.arange(*BE_scale).reshape(1, -1) + hv.reshape(-1, 1) - wf.reshape(-1, 1)
+        )
+        KE_values_no_curv_shape = KE_values_no_curv.shape  # Keep for later
+        KE_values_no_curv = KE_values_no_curv.flatten()
 
     # Create meshgrid of angle and energy values for the interpolation
-    if ndim == 3:
+    if n_interpolation_dims == 3:
         KE_values_no_curv, kx_values, ky_values = _reshape_for_3d(
             KE_values_no_curv, kx_values, ky_values
         )
@@ -825,6 +927,11 @@ def k_conv(data, eV=None, kx=None, ky=None, quiet=False):
         else:
             KE_values_no_curv, kx_values = _reshape_for_2d(KE_values_no_curv, kx_values)
             ky_values = np.mean(ky_values)
+
+    pbar.update(1)
+    pbar.set_description_str(
+        "Converting data to k-space - calculating inverse angle transformations"
+    )
 
     alpha, beta = _f_inv_dispatcher(
         ana_type,
@@ -839,7 +946,7 @@ def k_conv(data, eV=None, kx=None, ky=None, quiet=False):
     )
 
     # Determine the KE values including curvature correction
-    if ndim == 2:
+    if n_interpolation_dims == 2:
         Ek_new = _get_E_shift_at_theta_par(
             data,
             alpha,
@@ -851,7 +958,7 @@ def k_conv(data, eV=None, kx=None, ky=None, quiet=False):
                 ),
             ),
         )
-    elif ndim == 3:
+    elif n_interpolation_dims == 3:
         Ek_new = _get_E_shift_at_theta_par(
             data,
             alpha,
@@ -862,25 +969,111 @@ def k_conv(data, eV=None, kx=None, ky=None, quiet=False):
         )
 
     # Interpolate onto the desired range
+    pbar.update(1)
+    pbar.set_description_str("Converting data to k-space - interpolating")
     # Check if we can use the faster rectilinear methods
-    is_rectilinear = False
-    for i in data.dims:
-        if _is_linearly_spaced(
+    is_rectilinear = True
+    for i in ["eV", "theta_par"]:
+        if not _is_linearly_spaced(
             data[i].data, tol=(data[i].data[1] - data[i].data[0]) * 1e-3
         ):
-            is_rectilinear = True
+            is_rectilinear = False
 
-    if ndim == 2:
+    if n_interpolation_dims == 2:
         if is_rectilinear:
-            interpolated_data = _fast_bilinear_interpolate_rectilinear(
-                Ek_new, alpha, data.eV.data, data.theta_par.data, data.data
-            )
+            interpolation_fn = _fast_bilinear_interpolate_rectilinear
         else:
-            interpolated_data = _fast_bilinear_interpolate(
-                Ek_new, alpha, data.eV.data, data.theta_par.data, data.data
+            interpolation_fn = _fast_bilinear_interpolate
+
+        k_along_slit_label = _get_k_along_slit("kx", "ky", ana_type)
+
+        if scan_type == "hv scan":
+            interpolated_data = []
+            for i, hv in enumerate(data.hv.data):
+                data_hv = data.disp_from_hv(hv)
+                start_index = i * KE_values_no_curv_shape[1]
+                end_index = start_index + KE_values_no_curv_shape[1]
+                interpolated_data_hv_slice = xr.apply_ufunc(
+                    interpolation_fn,
+                    Ek_new[start_index:end_index, :],
+                    alpha[start_index:end_index, :],
+                    data_hv.eV.data,
+                    data_hv.theta_par.data,
+                    data_hv,
+                    input_core_dims=[
+                        ["eV", k_along_slit_label],
+                        ["eV", k_along_slit_label],
+                        ["eV"],
+                        ["theta_par"],
+                        ["eV", "theta_par"],
+                    ],
+                    output_core_dims=[["eV", k_along_slit_label]],
+                    exclude_dims={"eV"},
+                    vectorize=True,
+                    dask="parallelized",
+                    keep_attrs=True,
+                )
+                interpolated_data.append(interpolated_data_hv_slice)
+            interpolated_data = xr.concat(interpolated_data, dim="hv")
+            # Add co-ordinates
+            interpolated_data.coords.update(
+                {
+                    k_along_slit_label: _get_k_along_slit(
+                        kx_values, ky_values, ana_type
+                    ).squeeze(),
+                    "eV": np.arange(*BE_scale),
+                    "hv": data.hv.data,
+                }
             )
+
+        else:
+            interpolated_data = xr.apply_ufunc(
+                interpolation_fn,
+                Ek_new,
+                alpha,
+                data.eV.data,
+                data.theta_par.data,
+                data,
+                input_core_dims=[
+                    ["eV", k_along_slit_label],
+                    ["eV", k_along_slit_label],
+                    ["eV"],
+                    ["theta_par"],
+                    ["eV", "theta_par"],
+                ],
+                output_core_dims=[["eV", k_along_slit_label]],
+                exclude_dims={"eV"},
+                vectorize=True,
+                dask="parallelized",
+                keep_attrs=True,
+            )
+            # Add co-ordinates
+            interpolated_data.coords.update(
+                {
+                    k_along_slit_label: _get_k_along_slit(
+                        kx_values, ky_values, ana_type
+                    ).squeeze(),
+                    "eV": np.arange(*BE_scale),
+                }
+            )
+        # Add the perpendicular momentum to the data attributes
+        interpolated_data.attrs[_get_k_perpto_slit("kx", "ky", ana_type)] = (
+            _get_k_perpto_slit(kx_values, ky_values, ana_type).squeeze()
+        )
     else:
+        # Other angular dimension - assume the only remaining dimension
         other_dim = list(set(data.dims) - set(["eV", "theta_par"]))[0]
+        # Check linearity of remaining dimension
+        is_rectilinear = is_rectilinear and _is_linearly_spaced(
+            data[other_dim].data,
+            tol=(data[other_dim].data[1] - data[other_dim].data[0]) * 1e-3,
+        )
+
+        if is_rectilinear:
+            interpolation_fn = _fast_trilinear_interpolate_rectilinear
+        else:
+            interpolation_fn = _fast_trilinear_interpolate
+
         with numba_progress.ProgressBar(
             total=Ek_new.size,
             dynamic_ncols=True,
@@ -888,67 +1081,75 @@ def k_conv(data, eV=None, kx=None, ky=None, quiet=False):
             desc="Interpolating onto new grid",
             leave=False,
         ) as nb_pbar:
-            if is_rectilinear:
-                interpolated_data = _fast_trilinear_interpolate_rectilinear(
-                    Ek_new,
-                    alpha,
-                    beta,
-                    data.eV.data,
-                    data.theta_par.data,
-                    data[other_dim].data,
-                    data.transpose("eV", "theta_par", other_dim).data,
-                    nb_pbar,
-                )
-            else:
-                interpolated_data = _fast_trilinear_interpolate(
-                    Ek_new,
-                    alpha,
-                    beta,
-                    data.eV.data,
-                    data.theta_par.data,
-                    data[other_dim].data,
-                    data.transpose("eV", "theta_par", other_dim).data,
-                    nb_pbar,
-                )
-
-    # Create the new data array
-    if ndim == 2:
-        if ana_type in ["II", "IIp"]:
-            interpolated_data = xr.DataArray(
-                interpolated_data,
-                coords={"eV": np.arange(*BE_scale), "ky": ky_values.squeeze()},
-                dims=["eV", "ky"],
+            interpolated_data = xr.apply_ufunc(
+                interpolation_fn,
+                Ek_new,
+                alpha,
+                beta,
+                data.eV.data,
+                data.theta_par.data,
+                data[other_dim].data,
+                data,
+                nb_pbar,
+                input_core_dims=[
+                    ["eV", "kx", "ky"],
+                    ["eV", "kx", "ky"],
+                    ["eV", "kx", "ky"],
+                    ["eV"],
+                    ["theta_par"],
+                    [other_dim],
+                    ["eV", "theta_par", other_dim],
+                    [],
+                ],
+                output_core_dims=[["eV", "kx", "ky"]],
+                exclude_dims={"eV"},
+                vectorize=True,
+                dask="parallelized",
+                keep_attrs=True,
+            ).transpose(
+                _get_k_perpto_slit("kx", "ky", ana_type),
+                "eV",
+                _get_k_along_slit("kx", "ky", ana_type),
             )
-        elif ana_type in ["I", "Ip"]:
-            interpolated_data = xr.DataArray(
-                interpolated_data,
-                coords={"eV": np.arange(*BE_scale), "kx": kx_values.squeeze()},
-                dims=["eV", "kx"],
-            )
-    elif ndim == 3:
-        interpolated_data = xr.DataArray(
-            interpolated_data,
-            coords={
-                "eV": np.arange(*BE_scale),
+        interpolated_data.coords.update(
+            {
                 "kx": kx_values.squeeze(),
+                "eV": np.arange(*BE_scale),
                 "ky": ky_values.squeeze(),
-            },
-            dims=["eV", "kx", "ky"],
-        ).transpose("kx", "eV", "ky")
+            }
+        )
+
+    if scan_type == "hv scan" and not return_kz_scan_in_hv:
+        # If hv scan and if required, do kz-interpolation step to return the data in the form (kz, eV, k_||)
+        pbar.update(1)
+        pbar.set_description_str("Converting data to k-space - converting to kz")
+        # Convert to kz
+        interpolated_data = _convert_to_kz(
+            interpolated_data, kz, wf, [np.min(Ek_new), np.max(Ek_new)]
+        )
 
     # Do a hack to remove some noise at the boundary which can give negative values, screwing up the plots
-    if data.min() >= 0:
+    if data.min() <= 0:
         interpolated_data = interpolated_data.where(interpolated_data > 0, 0)
 
-    # If 2D data, add the perpendicular momentum to the data attributes
-    if ndim == 2:
-        if ana_type in ["II", "IIp"]:
-            interpolated_data.attrs["kx"] = kx_values.squeeze()
-        elif ana_type in ["I", "Ip"]:
-            interpolated_data.attrs["ky"] = ky_values.squeeze()
+    # Update the energy type in data attributes
+    interpolated_data.attrs["eV_type"] = "binding"
 
-    pbar.update(5)
-    pbar.set_description_str("Done")
+    # Update the history
+    hist_str = f"Converted to k-space using the following parameters: "
+    raw_angles_no_theta_par = {
+        k: v
+        for k, v in _get_angles_for_k_conv(data, return_raw=True, quiet=True).items()
+        if k != "theta_par"
+    }
+    hist_str += f"Angles: {raw_angles_no_theta_par}, "
+    if scan_type == "hv scan":
+        hist_str += f"Inner potential: {data.attrs.get("V0", 12)} eV, "
+    hist_str += f"Time taken: {pbar.format_dict['elapsed']:.2f}s."
+    interpolated_data.update_hist(hist_str)
+
+    pbar.update(1)
+    pbar.set_description_str("Converting data to k-space - complete")
 
     if pbar.format_dict["elapsed"] < 0.2:  # Hide if only ran for a short time
         pbar.leave = False
@@ -957,5 +1158,96 @@ def k_conv(data, eV=None, kx=None, ky=None, quiet=False):
     return interpolated_data
 
 
-def kz_conv():
-    pass
+def _convert_to_kz(data, kz, wf, Ek_range):
+    # Get relevant parameters
+    k_along_slit_str = list(set(data.dims) - {"hv", "eV"})[0]
+    k_perp_slit_str = "ky" if k_along_slit_str == "kx" else "kx"
+    k_perp_slit = data.attrs.get(k_perp_slit_str, 0)
+    k_along_slit = data[k_along_slit_str].data
+    V0 = data.attrs.get("V0", 12)  # Default 12 eV
+
+    # Get kz values corresponding to the extremes of the range
+    kz_ = _f_kz(
+        np.asarray(Ek_range).reshape(-1, 1),
+        np.asarray([min(k_along_slit), 0, max(k_along_slit)]).reshape(1, -1),
+        k_perp_slit,
+        V0,
+    )
+
+    # Determine the kz values to interpolate onto, including manual range if specified
+    default_k_step = (np.max(kz_) - np.min(kz_)) / (
+        2 * len(data.hv)
+    )  # Default is based on 0.5 step from the number of hv points
+    kz_range = (np.min(kz_), np.max(kz_), default_k_step)
+    # Restrict to manual kz range if specified
+    if kz is not None:
+        kz_range = (
+            np.max([kz.start if kz.start is not None else float("-inf"), kz_range[0]]),
+            np.min([kz.stop if kz.stop is not None else float("inf"), kz_range[1]]),
+            kz.step if kz.step is not None else kz_range[2],
+        )
+    kz_values = np.arange(kz_range[0], kz_range[1] + kz_range[2], kz_range[2])
+
+    # Do inverse transform to get the required hv values for interpolation [kz, eV, k_||]
+    # Take the first work function value for getting this hv scale - need to account for this in the final interpolation
+    hv_values = _f_inv_kz(
+        kz_values.reshape(-1, 1, 1),
+        k_along_slit.reshape(1, 1, -1),
+        k_perp_slit,
+        V0,
+        data.eV.data.reshape(1, -1, 1),
+        wf[0],
+    )
+
+    # Get true hv values accounting for the change which was previously encoded in an effective wf change
+    wf_diff = wf - wf[0]
+    true_hv = data.hv.data + wf_diff
+
+    # Do the interpolation, data originally [hv, eV, k_||]
+    k_along_slit_vectorised = np.broadcast_to(
+        k_along_slit.reshape(1, 1, -1), hv_values.shape
+    )
+    BE_vectorised = np.broadcast_to(data.eV.data.reshape(1, -1, 1), hv_values.shape)
+
+    with numba_progress.ProgressBar(
+        total=hv_values.size,
+        dynamic_ncols=True,
+        delay=0.2,
+        desc="Interpolating onto kz grid",
+        leave=False,
+    ) as nb_pbar:
+        interpolated_data = xr.apply_ufunc(
+            _fast_trilinear_interpolate,
+            hv_values,
+            BE_vectorised,
+            k_along_slit_vectorised,
+            true_hv,
+            data.eV.data,
+            k_along_slit,
+            data,
+            nb_pbar,
+            input_core_dims=[
+                ["kz", "eV", k_along_slit_str],
+                ["kz", "eV", k_along_slit_str],
+                ["kz", "eV", k_along_slit_str],
+                ["hv"],
+                ["eV"],
+                [k_along_slit_str],
+                ["hv", "eV", k_along_slit_str],
+                [],
+            ],
+            output_core_dims=[["kz", "eV", k_along_slit_str]],
+            exclude_dims={},
+            vectorize=True,
+            dask="parallelized",
+            keep_attrs=True,
+        )
+
+        # Add the kz axis to the data
+        interpolated_data.coords.update(
+            {
+                "kz": kz_values.squeeze(),
+            }
+        )
+
+    return interpolated_data
