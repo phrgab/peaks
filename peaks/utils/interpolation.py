@@ -31,6 +31,56 @@ def _is_linearly_spaced(array, tol=1e-8):
 
 
 @njit(parallel=True)
+def _fast_linear_interpolate(desired_pos, orig_coords, orig_values):
+    """
+    Perform numba-accelerated linear interpolation on a 1D array of values.
+
+    Parameters
+    ----------
+    desired_pos : np.ndarray
+        The desired positions for interpolation.
+    orig_coords : np.ndarray
+        The original coordinates. These should be monotonic but need not be linearly spaced.
+    orig_values : np.ndarray
+        The values at the original coordinates.
+
+    Returns
+    -------
+    np.ndarray
+        The interpolated values at the desired positions.
+    """
+    # Flatten the desired positions
+    desired_pos = desired_pos.flatten()
+    n_points = desired_pos.size
+    result = np.empty(n_points)
+
+    for idx in prange(n_points):
+        x = desired_pos[idx]
+
+        # Find the indices of the grid points surrounding x
+        x1_idx = np.searchsorted(orig_coords, x) - 1
+        x2_idx = x1_idx + 1
+
+        # Boundary check to ensure we do not go out of bounds
+        if x1_idx < 0 or x2_idx >= len(orig_coords):
+            result[idx] = np.nan
+            continue
+
+        # Coordinates for surrounding points
+        x1 = orig_coords[x1_idx]
+        x2 = orig_coords[x2_idx]
+
+        # Values at surrounding points
+        Q1 = orig_values[x1_idx]
+        Q2 = orig_values[x2_idx]
+
+        # Perform linear interpolation
+        result[idx] = (Q1 * (x2 - x) + Q2 * (x - x1)) / (x2 - x1)
+
+    return result
+
+
+@njit(parallel=True)
 def _fast_bilinear_interpolate(
     desired_pos_dim0,
     desired_pos_dim1,
