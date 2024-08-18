@@ -16,7 +16,7 @@ getting_started
 
 ```{toctree}
 :maxdepth: 2
-:caption: Tutorials
+:caption: User Guide
 :glob:
 
 _tutorials/*
