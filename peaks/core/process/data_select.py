@@ -2,14 +2,17 @@
 
 """
 
-# Phil King 24/04/2021
-# Brendan Edwards 03/12/2021
-# Brendan Edwards 26/02/2024
+import copy
 
 import numpy as np
 import xarray as xr
 from matplotlib.path import Path
-from peaks.utils.accessors import register_accessor
+from ...utils.accessors import register_accessor
+from ...utils.interpolation import (
+    _fast_bilinear_interpolate,
+    _fast_bilinear_interpolate_rectilinear,
+    _is_linearly_spaced,
+)
 
 
 @register_accessor(xr.DataArray)
@@ -190,15 +193,15 @@ def DC(data, coord="eV", val=0, dval=0, ana_hist=True):
 
     # Update the analysis history if ana_hist is True (will be False when DC is called from e.g. EDC, MDC, FS)
     if ana_hist:
-        hist = "DC extracted, integration window: " + str(dval)
-        dc.update_hist(hist)
+        hist = "DC(s) extracted, integration window: " + str(dval)
+        dc = dc.history.add(hist, update_in_place=False)
 
     return dc
 
 
 @register_accessor(xr.DataArray)
 def MDC(data, E=0, dE=0):
-    """Extract MDCs from data.
+    """Extract MDCs (i.e. slices at constant energy) from data. Broadcasts to higher dimensions as necessary.
 
     Parameters
     ------------
@@ -220,33 +223,32 @@ def MDC(data, E=0, dE=0):
     ------------
     Example usage is as follows::
 
-        from peaks import *
+        import peaks as pks
 
-        disp = load('disp.ibw')
+        # Load data
+        disp = pks.load('disp.ibw')
+        FS1 = pks.load('FS.ibw').k_convert()  # Convert to k-space and BE
 
-        # Extract an MDC at eV = -1.2 +/- 0.005
-        MDC1 = disp.MDC(E=-1.2, dE=0.01)
+        # Extract single MDCs from the dispersion
+        MDC1 = disp.MDC(E=-1.2, dE=0.01)  # at eV = -1.2 +/- 0.005
+        MDC2 = disp.MDC(55.6, 0.06)  # at eV = 55.6 +/- 0.03
+        MDC3 = disp.MDC()  # a single non-integrated MDC at eV value closest to 0
 
-        # Extract an MDC at eV = 55.6 +/- 0.03
-        MDC2 = disp.MDC(55.6, 0.06)
+        # Extract multiple MDCs from the dispersion
+        MDC4 = disp.MDC([55.6, 55.7], 0.06)  # at eV = 55.6 & 55.7, +/- 0.03
+        MDC5 = disp.MDC((-0.2, 0.1, 0.05), 0.02)  # eV = -0.2 and 0.1 in steps of 0.05 with +/- 0.01 integrations
 
-        # Extract a single non-integrated MDC at eV value closest to 0
-        MDC3 = disp.MDC()
-
-        # Extract MDCs at eV = 55.6 +/- 0.03 and 55.7 +/- 0.03
-        MDC4 = disp.MDC([55.6, 55.7], 0.06)
-
-        # Extract MDCs between eV = -0.2 and 0.1 in steps of 0.05 with +/- 0.01 integrations
-        MDC5 = disp.MDC((-0.2, 0.1, 0.05), 0.02)
-
+        # Extract a Fermi surface, data already in binding energy
+        FS_map = FS1.MDC()  # No integration required - defaults are good!
+        FS_map2 = FS1.MDC(dE=0.02)  # Integration over +/- 0.01 eV
     """
 
     # Call function to extract relevant MDC from dispersion
     mdc = data.DC(coord="eV", val=E, dval=dE, ana_hist=False)
 
     # Update the analysis history
-    hist = "MDC extracted, integration window: " + str(dE)
-    mdc.update_hist(hist)
+    hist = "MDC(s) extracted, integration window: " + str(dE)
+    mdc = mdc.history.add(hist, update_in_place=False)
 
     return mdc
 
@@ -305,69 +307,10 @@ def EDC(data, k=0, dk=0):
     edc = data.DC(coord=coord, val=k, dval=dk, ana_hist=False)
 
     # Update the analysis history
-    hist = "EDC extracted, integration window: " + str(dk)
-    edc.update_hist(hist)
+    hist = "EDC(s) extracted, integration window: " + str(dk)
+    edc = edc.history.add(hist, update_in_place=False)
 
     return edc
-
-
-@register_accessor(xr.DataArray)
-def FS(data, E=0, dE=0):
-    """Extract constant energy slices, e.g. Fermi surfaces, from 3D data.
-
-    Parameters
-    ------------
-    data : xarray.DataArray
-        The 3D Fermi map to extract an FS from.
-
-    E : float, list, numpy.ndarray, tuple, optional
-        Energy (or energies) of slice(s) to extract. If tuple, must be in the format (start, end, step). Defaults to 0.
-
-    dE : float, optional
-        Integration range (represents the total range, i.e. integrates over +/- dE/2). Defaults to 0.
-
-    Returns
-    ------------
-    fs : xarray.DataArray
-        Extracted constant energy slice(s).
-
-    Examples
-    ------------
-    Example usage is as follows::
-
-        from peaks import *
-
-        FM = load('FM.zip')
-
-        # Extract a constant energy slice at eV = -1.2 +/- 0.005
-        FS1 = FM.FS(E=-1.2, dE=0.01)
-
-        # Extract a constant energy slice at eV = 95.56 +/- 0.03
-        FS2 = FM.FS(95.56, 0.06)
-
-        # Extract a single non-integrated constant energy slice at eV value closest to 0
-        FS3 = FM.FS()
-
-        # Extract constant energy slices at eV = 95.56 +/- 0.03 and 95.60 +/- 0.03
-        FS4 = FM.FS([95.56, 95.60], 0.06)
-
-        # Extract constant energy slices between eV = -0.2 and 0.1 in steps of 0.05 with +/- 0.01 integrations
-        FS5 = FM.FS((-0.2, 0.1, 0.05), 0.02)
-
-    """
-
-    # Check data is 3D
-    if len(data.dims) != 3:
-        raise Exception("Function only acts on 3D data.")
-
-    # Call function to extract relevant constant energy slice from Fermi map
-    fs = data.DC(coord="eV", val=E, dval=dE, ana_hist=False)
-
-    # Update the analysis history
-    hist = "Constant energy slice extracted, integration window: " + str(dE)
-    fs.update_hist(hist)
-
-    return fs
 
 
 @register_accessor(xr.DataArray)
@@ -410,7 +353,7 @@ def DOS(data):
 
     # Update the analysis history
     hist = "Integrated along axes: " + str(int_dim)
-    dos.update_hist(hist)
+    dos = dos.history.add(hist, update_in_place=False)
 
     return dos
 
@@ -461,14 +404,14 @@ def tot(data, spatial_int=False):
         data_tot = data.mean(int_dim, keep_attrs=True)
 
     # Update the analysis history
-    data_tot.update_hist(hist)
+    data_tot = data_tot.history.add(hist, update_in_place=False)
 
     return data_tot
 
 
 @register_accessor(xr.DataArray)
 def radial_cuts(data, num_azi=361, num_points=200, radius=2, **centre_kwargs):
-    """Extract radial cuts of a Fermi surface as a function of azimuthal angle.
+    """Extract radial cuts of a Fermi surface slice or cube as a function of azimuthal angle, about some central point.
 
     Parameters
     ------------
@@ -497,11 +440,11 @@ def radial_cuts(data, num_azi=361, num_points=200, radius=2, **centre_kwargs):
     ------------
     Example usage is as follows::
 
-        from peaks import *
+        import peaks as pks
 
-        FM = load('FM.zip')
+        FM = pks.load('FM.zip')
 
-        FS1 = FM.FS(E=-0, dE=0.01)
+        FS1 = FM.MDC(E=-0, dE=0.01)
 
         # Extract radial cuts (radius = 15) at azi values in 2 degree increments, using a centre of
         # rotation (theta_par, ana_polar) = (-2, -5)
@@ -513,52 +456,193 @@ def radial_cuts(data, num_azi=361, num_points=200, radius=2, **centre_kwargs):
 
     """
 
-    # Check data is 2D
-    if len(data.dims) != 2:
-        raise Exception("Function only acts on 2D data.")
+    angle_dims = list(set(data.dims) - {"eV"})
+
+    # Check remaining data is 2D
+    if len(angle_dims) != 2:
+        raise Exception(
+            "Radial cuts can only be taken on data with two angle/k-space dimensions,"
+            "with optionally an additional energy dimension."
+        )
 
     # Define the coordinate system
-    x_coord = data.dims[0]
-    y_coord = data.dims[1]
+    ang0_coord = angle_dims[0]
+    ang1_coord = angle_dims[1]
 
     # Check for user-defined centre of rotations
-    x_centre = centre_kwargs.get(x_coord)
-    if not x_centre:
-        x_centre = 0
-    y_centre = centre_kwargs.get(y_coord)
-    if not y_centre:
-        y_centre = 0
+    ang0_centre = centre_kwargs.get(ang0_coord)
+    if not ang0_centre:
+        ang0_centre = 0
+    ang1_centre = centre_kwargs.get(ang1_coord)
+    if not ang1_centre:
+        ang1_centre = 0
 
     # Define coordinates to be sampled
     azi_angles = np.linspace(0, 360, num_azi)
     k_values = np.linspace(0, radius, num_points)
-    spectrum = []
 
-    # For each azi angle, interpolate the data onto a radial cut and append result to spectrum
-    for angle in azi_angles:
-        x_values = np.linspace(
-            0 + x_centre, (np.cos(np.radians(angle)) * radius) + x_centre, num_points
-        )
-        y_values = np.linspace(
-            0 + y_centre, (np.sin(np.radians(angle)) * radius) + y_centre, num_points
-        )
-        x_xarray = xr.DataArray(x_values, dims="k")
-        y_xarray = xr.DataArray(y_values, dims="k")
-        interpolated_data = data.interp({x_coord: x_xarray, y_coord: y_xarray})
-        spectrum.append(interpolated_data.data)
-
-    # Create xarray of radial cuts against azi
-    data_to_return = xr.DataArray(
-        np.array(spectrum).transpose(),
-        dims=("k", "azi"),
-        coords={"k": k_values, "azi": azi_angles},
+    # Calculate the values for interpolation
+    ang0_values = np.linspace(
+        0 + ang0_centre,
+        (np.cos(np.radians(azi_angles)) * radius) + ang0_centre,
+        num_points,
     )
-    data_to_return.attrs = data.attrs
+    ang1_values = np.linspace(
+        0 + ang1_centre,
+        (np.sin(np.radians(azi_angles)) * radius) + ang1_centre,
+        num_points,
+    )
 
-    # Update the analysis history
-    data_to_return.update_hist("Radial cuts taken as a function of azi")
+    # Check if we have a rectilinear grid to determine the interpolation function
+    if _is_linearly_spaced(data[ang0_coord].data) and _is_linearly_spaced(
+        data[ang1_coord].data
+    ):
+        interpolation_fn = _fast_bilinear_interpolate_rectilinear
+    else:
+        interpolation_fn = _fast_bilinear_interpolate
 
-    return data_to_return
+    # Do the interpolation, broadcasting over energy dimension if required
+    interpolated_data = xr.apply_ufunc(
+        interpolation_fn,
+        ang0_values,
+        ang1_values,
+        data[ang0_coord].data,
+        data[ang1_coord].data,
+        data,
+        dask="parallelized",
+        input_core_dims=[
+            ["k", "azi"],
+            ["k", "azi"],
+            [ang0_coord],
+            [ang1_coord],
+            [ang0_coord, ang1_coord],
+        ],
+        output_core_dims=[["k", "azi"]],
+        output_dtypes=[data.dtype],
+        vectorize=True,
+        dask_gufunc_kwargs={"allow_rechunk": True},
+    )
+
+    # Update co-ordinates
+    interpolated_data["k"] = k_values
+    interpolated_data["azi"] = azi_angles
+
+    # Update attributes and analysis history
+    interpolated_data.attrs = copy.deepcopy(data.attrs)
+    interpolated_data.history.add("Radial cuts taken as a function of azi")
+
+    return interpolated_data
+
+
+@register_accessor(xr.DataArray)
+def extract_cut(data, start_point, end_point, num_points=None):
+    """Extract cut between two end-points, e.g. dispersion or MDC from a Fermi map data cube.
+
+    Parameters
+    ------------
+    data : xarray.DataArray
+        Data to extract radial cuts from.
+
+    start_point : dict
+        Dictionary containing the coordinates of the start of the desired cut to extract.
+
+    end_point : dict
+        Dictionary containing the coordinates of the end of the desired cut to extract.
+
+    num_points : int, optional
+        Number of points to sample along the cut. Defaults to None, in which case spacing is determined
+        based on the original data.
+
+    Returns
+    ------------
+    data_to_return : xarray.DataArray
+        Extracted cut
+
+    Examples
+    ------------
+    Example usage is as follows::
+
+        import peaks as pks
+
+        FM = pks.load('FM.zip')
+
+        # Extract cut from (0, 0) to (15, 12) with 100 points
+        cut = FM.extract_dispersion({'theta_par': 0, 'polar': 0}, {'theta_par': 15, 'polar': 12}, num_points=100)
+
+    """
+
+    # Check the start and end points specification
+    if set(start_point.keys()) != set(end_point.keys()):
+        raise ValueError(
+            "Start and end points must be specified as dictionaries `start_point={dim0: start_point, dim1: start_point}`"
+            " and `end_point={dim0: end, dim1: end_point}`, with the same dimensions specified in both."
+        )
+    if not all([key in data.dims for key in start_point.keys()]):
+        raise ValueError(
+            "Ensure the dimensions specified in the start and end points are present in the data."
+        )
+
+    # Define the coordinate system
+    dim0, dim1 = start_point.keys()
+
+    # Calculate projection vector along the cut from the start point
+    start_coord0, start_coord1 = start_point[dim0], start_point[dim1]
+    end_coord0, end_coord1 = end_point[dim0], end_point[dim1]
+    distance = np.sqrt(
+        (end_coord0 - start_coord0) ** 2 + (end_coord1 - start_coord1) ** 2
+    )
+    # If num_points is not specified, calculate the number of points based on the step size in the original data
+    if num_points is None:
+        step_size = np.sqrt(
+            (data[dim0].data[1] - data[dim0].data[0]) ** 2
+            + (data[dim1].data[1] - data[dim1].data[0]) ** 2
+        )
+        num_points = int(np.ceil(distance / step_size))
+    projection = np.linspace(0, distance, num_points)
+
+    # Calculate the values for interpolation
+    ang0_values = np.linspace(start_point[dim0], end_point[dim0], num_points)
+    ang1_values = np.linspace(start_point[dim1], end_point[dim1], num_points)
+
+    # Check if we have a rectilinear grid to determine the interpolation function
+    if _is_linearly_spaced(data[dim0].data) and _is_linearly_spaced(data[dim1].data):
+        interpolation_fn = _fast_bilinear_interpolate_rectilinear
+    else:
+        interpolation_fn = _fast_bilinear_interpolate
+
+    # Do the interpolation, broadcasting over remaining dimensions if required
+    interpolated_data = xr.apply_ufunc(
+        interpolation_fn,
+        ang0_values,
+        ang1_values,
+        data[dim0].data,
+        data[dim1].data,
+        data,
+        input_core_dims=[
+            ["proj"],
+            ["proj"],
+            [dim0],
+            [dim1],
+            [dim0, dim1],
+        ],
+        output_core_dims=[["proj"]],
+        output_dtypes=[data.dtype],
+        vectorize=True,
+        dask="parallelized",
+        dask_gufunc_kwargs={"allow_rechunk": True},
+    )
+
+    # Update co-ordinates
+    interpolated_data["proj"] = projection
+
+    # Update attributes and analysis history
+    interpolated_data.attrs = copy.deepcopy(data.attrs)
+    interpolated_data.history.add(
+        f"Slice extracted from data from {start_point} to {end_point}. "
+        f"Data returned vs. the projected distance."
+    )
+
+    return interpolated_data
 
 
 @register_accessor(xr.DataArray)
@@ -668,7 +752,7 @@ def mask_data(data, ROI, return_integrated=True):
         )
 
     # Update analysis history
-    ROI_selected_data.update_hist(hist)
+    ROI_selected_data = ROI_selected_data.history.add(hist, update_in_place=False)
 
     return ROI_selected_data
 
@@ -732,6 +816,9 @@ def disp_from_hv(data, hv):
     hv_scan.attrs["hv"] = float(hv)
 
     # Update analysis history
-    hv_scan.update_hist("Dispersion extracted from hv scan at hv={hv} eV".format(hv=hv))
+    hv_scan = hv_scan.history.add(
+        "Dispersion extracted from hv scan at hv={hv} eV".format(hv=hv),
+        update_in_place=False,
+    )
 
     return hv_scan
