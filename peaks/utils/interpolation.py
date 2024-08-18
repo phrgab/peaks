@@ -81,6 +81,59 @@ def _fast_linear_interpolate(desired_pos, orig_coords, orig_values):
 
 
 @njit(parallel=True)
+def _fast_linear_interpolate_rectilinear(desired_pos, orig_coords, orig_values):
+    """
+    Perform numba-accelerated linear interpolation on a 1D array of values assuming a linearly spaced input grid.
+
+    Parameters
+    ----------
+    desired_pos : np.ndarray
+        The desired positions for interpolation.
+    orig_coords : np.ndarray
+        The original coordinates. These must be linearly spaced.
+    orig_values : np.ndarray
+        The values at the original coordinates.
+
+    Returns
+    -------
+    np.ndarray
+        The interpolated values at the desired positions.
+    """
+    # Flatten the desired positions
+    desired_pos = desired_pos.flatten()
+    n_points = desired_pos.size
+    result = np.empty(n_points)
+
+    # Calculate the step size
+    step = (orig_coords[-1] - orig_coords[0]) / (len(orig_coords) - 1)
+
+    for idx in prange(n_points):
+        x = desired_pos[idx]
+
+        # Calculate the indices of the grid points surrounding x
+        x1_idx = int((x - orig_coords[0]) / step)
+        x2_idx = x1_idx + 1
+
+        # Boundary check to ensure we do not go out of bounds
+        if x1_idx < 0 or x2_idx >= len(orig_coords):
+            result[idx] = np.nan
+            continue
+
+        # Coordinates for surrounding points
+        x1 = orig_coords[x1_idx]
+        x2 = orig_coords[x2_idx]
+
+        # Values at surrounding points
+        Q1 = orig_values[x1_idx]
+        Q2 = orig_values[x2_idx]
+
+        # Perform linear interpolation
+        result[idx] = (Q1 * (x2 - x) + Q2 * (x - x1)) / (x2 - x1)
+
+    return result
+
+
+@njit(parallel=True)
 def _fast_bilinear_interpolate(
     desired_pos_dim0,
     desired_pos_dim1,
