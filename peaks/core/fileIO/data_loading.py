@@ -349,92 +349,8 @@ def _load_single_data(fname, lazy="auto", loc="auto", metadata=True):
 
     # Load the data in the format of a dictionary containing the file scan type, spectrum, and coordinates (except for
     # NetCDF files where the data will be already loaded into xr.DataArray format)
-
     loader = LocOpts.get_conventions(loc).loader
     data = loader(fname)
-
-    # if loc == "ALBA LOREA":
-    #     from .loaders.LOREA import _load_LOREA_data
-    #
-    #     data = _load_LOREA_data(fname)
-    #
-    # elif loc == "CLF Artemis":
-    #     from .loaders.Artemis import _load_Artemis_data
-    #
-    #     data = _load_Artemis_data(fname)
-    #
-    # elif loc == "Diamond I05-HR" or loc == "Diamond I05-nano":
-    #     from .loaders.I05 import _load_I05_data
-    #
-    #     data = _load_I05_data(fname)
-    #
-    # elif loc == "Elettra APE":
-    #     from .loaders.APE import _load_APE_data
-    #
-    #     data = _load_APE_data(fname)
-    #
-    # elif loc == "MAX IV Bloch":
-    #     from .loaders.Bloch import _load_Bloch_data
-    #
-    #     data = _load_Bloch_data(fname)
-    #
-    # elif loc == "MAX IV Bloch-spin":
-    #     from .loaders.Bloch import _load_Bloch_spin_data
-    #
-    #     data = _load_Bloch_spin_data(fname)
-    #
-    # elif loc == "SOLEIL CASSIOPEE":
-    #     from .loaders.CASSIOPEE import _load_CASSIOPEE_data
-    #
-    #     data = _load_CASSIOPEE_data(fname)
-    #
-    # elif loc == "StA-MBS":
-    #     from .loaders.StA_MBS import _load_StA_MBS_data
-    #
-    #     data = _load_StA_MBS_data(fname)
-    #
-    # elif loc == "StA-Phoibos":
-    #     from .loaders.StA_Phoibos import _load_StA_Phoibos_data
-    #
-    #     data = _load_StA_Phoibos_data(fname)
-    #
-    # elif loc == "StA-Bruker":
-    #     from .loaders.StA_Bruker import _load_StA_Bruker_data
-    #
-    #     data = _load_StA_Bruker_data(fname)
-    #
-    # elif loc == "StA-LEED":
-    #     from .loaders.StA_LEED import _load_StA_LEED_data
-    #
-    #     data = _load_StA_LEED_data(fname)
-    #
-    # elif loc == "StA-RHEED":
-    #     from .loaders.StA_RHEED import _load_StA_RHEED_data
-    #
-    #     data = _load_StA_RHEED_data(fname)
-    #
-    # elif loc == "Structure":
-    #     raise Exception("Structure is not currently supported.")
-    #     # from ... import ...
-    #     # data = ...(fname)
-    #     # Return data (don't want to mess up later code operations in this function so return here)
-    #
-    # elif loc == "ibw":
-    #     from .loaders.ibw import _load_ibw_data
-    #
-    #     data = _load_ibw_data(fname)
-    #
-    # elif loc == "NetCDF":
-    #     from .loaders.NetCDF import _load_NetCDF_data
-    #
-    #     data = _load_NetCDF_data(fname)
-    #
-    # # If loc is not a valid location, raise an error
-    # else:
-    #     raise Exception(
-    #         "Data source is not supported or could not be identified. Currently supported options are: "
-    #         "{locs}.".format(locs=str(LocOpts.locs))
-    #     )
 
     # If location is NetCDF, data is already loaded in xr.DataArray format
     if loc == "NetCDF":
@@ -498,6 +414,18 @@ def _load_single_data(fname, lazy="auto", loc="auto", metadata=True):
         "k_par",
         missing_dims="ignore",
     ).astype("float32", order="C")
+
+    # Add relevant info to the Analysis history
+
+    DataArray.history.add(
+        {
+            "record": "Data loaded",
+            "loc": loc,
+            "loader": loader.__name__,
+            "file_name": fname,
+        },
+        update_in_place=True,
+    )
 
     return DataArray
 
