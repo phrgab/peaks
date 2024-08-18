@@ -3,13 +3,64 @@
 """
 
 import numpy as np
+import xarray as xr
 import numexpr as ne
+import copy
 
-from ...utils import analysis_warning
+from ...utils.misc import analysis_warning
+from ...utils.accessors import register_accessor
 
 
-def apply_EF():
-    raise NotImplementedError("This function is not yet implemented.")
+@register_accessor(xr.DataArray)
+def set_EF_correction(data, EF_correction):
+    """Sets the Fermi level correction for a :class:`xarray.DataArray`.
+
+    Parameters
+    ----------
+    data : xarray.DataArray
+        Data to set the Fermi level correction for.
+    EF_correction : float, int, dict or xarray.Dataset
+        Fermi level correction to apply. This should be:
+
+        - a dictionary of the form {'c0': 16.82, 'c1': -0.001, ...} specifying the coefficients of a
+        polynomial fit to the Fermi edge.
+        - a float or int, this will be taken as a constant shift in energy.
+        - an xarray.Dataset containing the fit_result as returned by the `peaks` `.fit_gold` method
+
+      Returns
+     -------
+     None
+         Adds the Fermi level correction to the data attributes.
+    """
+
+    # Do some checks on the EF_correction format
+    if isinstance(EF_correction, xr.Dataset):
+        EF_correction = copy.deepcopy(EF_correction.attrs.get("EF_correction"))
+        correction_type = "gold fit result"
+    else:
+        correction_type = type(EF_correction)
+    if not isinstance(EF_correction, (float, int, dict)):
+        raise ValueError(
+            "EF_correction must be a float, int, dict of fit coefficients or xarray.Dataset containing the fit_result "
+            "of the `.fit_gold` function."
+        )
+    if isinstance(EF_correction, dict):
+        expected_keys = [f"c{i}" for i in range(len(EF_correction))]
+        if not all(key in EF_correction for key in expected_keys):
+            raise ValueError(
+                f"EF_correction dictionary must contain keys {expected_keys} for the polynomial fit."
+            )
+        for value in EF_correction.values():
+            if not isinstance(value, (float, int)):
+                raise ValueError(
+                    "EF_correction dictionary must contain only floats or ints as values in the form "
+                    "{'c0': 16.82, 'c1': -0.001, ...} specifying the coefficients of a polynomial fit to the Fermi edge."
+                )
+
+    data.attrs["EF_correction"] = copy.deepcopy(EF_correction)
+    data.history.add(
+        f"EF_correction set to {EF_correction} from a passed {correction_type}."
+    )
 
 
 def _get_EF_at_theta_par0(data):
@@ -194,7 +245,7 @@ def _add_estimated_EF(data):
         f"NB may not be accurate."
     )
     analysis_warning(update_str, "warning", "Analysis warning")
-    data.update_hist(update_str)
+    data.history.add(update_str)
 
 
 def _add_estimated_hv(data):
@@ -245,4 +296,4 @@ def _add_estimated_hv(data):
         f"Check for accuracy."
     )
     analysis_warning(update_str, "warning", "Analysis warning")
-    data.update_hist(update_str)
+    data.history.add(update_str)

@@ -101,7 +101,7 @@ def make_hv_scan(data):
     hv_scan.attrs["hv"] = _extract_mapping_metadata(hv_values, num_dp=2)
 
     # Update analysis history
-    hv_scan.update_hist("Combined multiples dispersions into an hv scan")
+    hv_scan.history.add("Combined multiples dispersions into an hv scan")
 
     # Display warning explaining how kinetic energy values are saved
     warn_str = (
@@ -157,7 +157,7 @@ def slant_correct(data, factor=None):
     corrected_data = data.interp({"theta_par": theta_par_values, "eV": data.eV})
 
     # Update the analysis history
-    corrected_data.update_hist(
+    corrected_data.history.add(
         "Slant correction for Diamond nano-ARPES data applied: {factor} deg/eV".format(
             factor=factor
         )

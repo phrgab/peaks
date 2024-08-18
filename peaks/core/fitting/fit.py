@@ -168,6 +168,7 @@ def fit(
     return results_ds
 
 
+@register_accessor(xr.DataArray)
 def fit_gold(data, EF_correction_type="poly4", **kwargs):
     """
     Helper function for fitting a gold reference scan to a standard LinearDosFermiModel with parameters:

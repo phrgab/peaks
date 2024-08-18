@@ -772,6 +772,7 @@ def _get_k_perpto_slit(kx, ky, ana_type):
 def k_convert(
     data,
     eV=None,
+    eV_slice=None,
     kx=None,
     ky=None,
     kz=None,
@@ -788,6 +789,10 @@ def k_convert(
         Binding energy range to calculate over for the final converted data in the form slice(start, stop, step).
         If not provided, the full energy range of the data will be used.
         Only energies within the limits of the data will be considered.
+    eV_slice : float or tuple, optional
+        Optional argument to return a single slice in energy, optionally integrated over some range, akin to the MDC
+        method. Should be specified as a tuple of (energy, width) where energy is the central energy to integrate over
+        and width is the total width of the integration window. Takes precedence over eV if provided.
     kx : slice, optional
         kx range to calculate over for the final converted data in the form slice(start, stop, step).
         Use `None` for any componet you do not wish to restrict, e.g. `(None,None,0.01)` to set the step size to 0.01.
@@ -840,6 +845,12 @@ def k_convert(
             np.max([eV.start if eV.start is not None else float("-inf"), BE_scale[0]]),
             np.min([eV.stop if eV.stop is not None else float("inf"), BE_scale[1]]),
             eV.step if eV.step is not None else BE_scale[2],
+        )
+    if eV_slice is not None:  # Get the full slice
+        BE_scale = (
+            eV_slice[0] - eV_slice[1] / 2,
+            eV_slice[0] + eV_slice[1] / 2,
+            BE_scale[2],
         )
 
     # Get bounds of data for k-conversion - use highest hv for hv scan
@@ -1146,7 +1157,13 @@ def k_convert(
     if scan_type == "hv scan":
         hist_str += f"Inner potential: {data.attrs.get('V0', 12)} eV, "
     hist_str += f"Time taken: {pbar.format_dict['elapsed']:.2f}s."
-    interpolated_data.update_hist(hist_str)
+    interpolated_data.history.add(hist_str)
+
+    if eV_slice is not None:
+        interpolated_data = interpolated_data.mean("eV")
+        interpolated_data.history.add(
+            f"Data integrated in energy about {eV_slice[0]} eV +/- {eV_slice[1]/2} eV."
+        )
 
     pbar.update(1)
     pbar.set_description_str("Converting data to k-space - complete")

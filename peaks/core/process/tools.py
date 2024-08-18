@@ -66,7 +66,7 @@ def norm(data, dim=None):
             norm_data.data /= norm_data.data.mean()
 
             # Update analysis history
-            norm_data.update_hist("Data normalised by its mean value")
+            norm_data.history.add("Data normalised by its mean value")
 
         # If not, normalise data by integrated DC
         else:
@@ -85,7 +85,7 @@ def norm(data, dim=None):
             norm_data.data = (norm_data / int_data).data
 
             # Update analysis history
-            norm_data.update_hist(
+            norm_data.history.add(
                 "Data normalised an integrated DC along {dim}".format(dim=dim)
             )
 
@@ -95,7 +95,7 @@ def norm(data, dim=None):
         norm_data.data /= norm_data.data.max()
 
         # Update analysis history
-        norm_data.update_hist("Data normalised to unity")
+        norm_data.history.add("Data normalised to unity")
 
     return norm_data
 
@@ -183,7 +183,7 @@ def bgs(data, subtraction, num_avg=1, offset_start=0, offset_end=0, max_iteratio
         bgs_data -= subtraction
 
         # Update analysis history
-        bgs_data.update_hist(
+        bgs_data.history.add(
             "A constant background of {val} has been subtracted from the data".format(
                 val=str(subtraction)
             )
@@ -206,7 +206,7 @@ def bgs(data, subtraction, num_avg=1, offset_start=0, offset_end=0, max_iteratio
             bgs_data -= Shirley_bkg
 
             # Update analysis history
-            bgs_data.update_hist(
+            bgs_data.history.add(
                 "A Shirley background has been subtracted from the data"
             )
 
@@ -216,7 +216,7 @@ def bgs(data, subtraction, num_avg=1, offset_start=0, offset_end=0, max_iteratio
             bgs_data -= bgs_data.data.mean()
 
             # Update analysis history
-            bgs_data.update_hist(
+            bgs_data.history.add(
                 "A constant background equal to the mean value of the data has been subtracted from the data"
             )
 
@@ -229,7 +229,7 @@ def bgs(data, subtraction, num_avg=1, offset_start=0, offset_end=0, max_iteratio
             bgs_data.data = (bgs_data - int_data).data
 
             # Update analysis history
-            bgs_data.update_hist(
+            bgs_data.history.add(
                 "A background equal to an integrated DC along {subtraction} has been subtracted from the data".format(
                     subtraction=subtraction
                 )
@@ -325,7 +325,7 @@ def bin_data(data, binning=None, **binning_kwargs):
     binned_data = data.coarsen(binning_kwargs, boundary="pad").mean()
 
     # Update analysis history
-    binned_data.update_hist(
+    binned_data._update_hist(
         "Binned data using the bins: {binning_kwargs}".format(
             binning_kwargs=binning_kwargs
         )
@@ -423,7 +423,7 @@ def smooth(data, **smoothing_kwargs):
         )
 
     # Update the analysis history
-    smoothed_data.update_hist(hist[:-2])
+    smoothed_data.history.add(hist[:-2])
 
     return smoothed_data
 
@@ -604,7 +604,7 @@ def rotate(data, rotation, **centre_kwargs):
         pass
 
     # Update analysis history
-    rotated_data.update_hist(
+    rotated_data.history.add(
         "Rotated data by {rotation} degrees".format(rotation=rotation)
     )
 
@@ -702,7 +702,7 @@ def sym(data, flipped=False, fillna=True, **sym_kwarg):
         # Assign sym_data to just the flipped data
         sym_data = flipped_data
         # Update the analysis history
-        sym_data.update_hist(
+        sym_data.history.add(
             "Flipped data about {sym_kwarg}".format(sym_kwarg=sym_kwarg)
         )
 
@@ -711,7 +711,7 @@ def sym(data, flipped=False, fillna=True, **sym_kwarg):
         # Sum the original and flipped data
         sym_data += flipped_data
         # Update the analysis history
-        sym_data.update_hist(
+        sym_data.history.add(
             "Symmetrised data about {sym_kwarg}".format(sym_kwarg=sym_kwarg)
         )
 
@@ -861,7 +861,7 @@ def sym_nfold(data, nfold, expand=True, fillna=True, **centre_kwargs):
         ).fillna(0)
 
     # Update analysis history
-    sym_data.update_hist(
+    sym_data.history.add(
         "Symmetrised data using a {nfold}-fold rotation".format(nfold=nfold)
     )
 
@@ -985,7 +985,7 @@ def degrid(data, width=0.1, height=0.1, cutoff=4):
     degrid_data.data = abs(ifft2(FFT * FFT_filter.data))
 
     # Update the analysis history
-    degrid_data.update_hist(
+    degrid_data.history.add(
         "Data has been degridded by removing intense high frequency Fourier components"
     )
 
@@ -1222,7 +1222,7 @@ def sum_data(data):
             " CAUTION: mismatch of some coordinates - interpolated data onto scan {data_0_name} coordinate "
             "grid"
         ).format(data_0_name=data_0_name)
-    summed_data.update_hist(hist_str)
+    summed_data._update_hist(hist_str)
 
     return summed_data
 
@@ -1345,7 +1345,7 @@ def merge_data(data, dim="theta_par", sel=slice(None, None), offsets=None):
         scan_name += " & " + current_data.attrs["scan_name"]
 
     # Update analysis history
-    merged_data.update_hist(
+    merged_data.history.add(
         "Merged {scan_name} along {dim}".format(scan_name=scan_name, dim=dim)
     )
 
