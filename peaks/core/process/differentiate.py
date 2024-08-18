@@ -86,7 +86,7 @@ def deriv(data, dims):
 
     # Update analysis history
     for hist in hist_list:
-        deriv_data.update_hist(hist)
+        deriv_data.history.add(hist)
 
     return deriv_data
 
@@ -359,7 +359,7 @@ def curvature(data, **parameter_kwargs):
     hist = "2D curvature analysis performed with coefficients: {dimx}: {Cx}, {dimy}: {Cy}".format(
         dimx=dimx, Cx=Cx, dimy=dimy, Cy=Cy
     )
-    curv_data.update_hist(hist)
+    curv_data.history.add(hist)
 
     return curv_data
 
@@ -469,6 +469,6 @@ def min_gradient(data, **smoothing_kwargs):
         )
 
     # Update the analysis history
-    grad_data.update_hist(hist[:-2])
+    grad_data.history.add(hist[:-2])
 
     return grad_data
