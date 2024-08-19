@@ -2,9 +2,7 @@
 
 """
 
-# Phil King 17/04/2021
-# Brendan Edwards 21/02/2024
-
+import copy
 import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
@@ -18,7 +16,7 @@ from peaks.utils import analysis_warning
 
 
 @register_accessor(xr.DataArray)
-def norm(data, dim=None):
+def norm(data, dim=None, **kwargs):
     """Function to apply a normalisation to data.
 
     Parameters
@@ -29,7 +27,11 @@ def norm(data, dim=None):
     dim : str, optional
          Normalise data by an integrated DC along direction defined by dim, e.g. dim='eV' would normalise the data by an
          integrated MDC. Set dim='all' to normalise by the mean of the data. Defaults to None where the data is
-         normalised to unity.
+         normalised to unity (i.e. normalised by the maximum value). Takes precedence over keyword arguments.
+
+    **kwargs : slice, optional
+        Slice to normalise by. E.g. eV=slice(105, 105.1) normalises by an integrated MDC defined by the eV slice given.
+        Multiple slices can be defined to define a ROI to normalise by.
 
     Returns
     ------------
@@ -40,9 +42,10 @@ def norm(data, dim=None):
     ------------
     Example usage is as follows::
 
-        from peaks import *
+        import peaks as pks
 
-        disp = load('disp.ibw')
+        # Load data
+        disp = pks.load('disp.ibw')
 
         # Normalise the dispersion to unity
         disp_norm = disp.norm()
@@ -52,6 +55,12 @@ def norm(data, dim=None):
 
         # Normalise the dispersion by an integrated EDC
         disp_norm = disp.norm('theta_par')
+
+        # Normalise the dispersion by an EDC slice in the background
+        disp_norm = disp.norm(theta_par=slice(15, 15.5))
+
+        # Normalise by a region in the backgroun
+        disp_norm = disp.norm(eV=slice(105, 105.1), theta_par=slice(-12, -8))
 
     """
 
@@ -63,12 +72,13 @@ def norm(data, dim=None):
         # If dim is 'all', normalise by the mean value of the data
         if dim == "all":
             # Normalise by the mean value of the data
-            norm_data.data /= norm_data.data.mean()
+            norm_mean = norm_data.mean()
+            norm_data /= norm_mean
 
             # Update analysis history
-            norm_data.history.add("Data normalised by its mean value")
+            norm_data.history.add(f"Data normalised by its mean value of {norm_mean}")
 
-        # If not, normalise data by integrated DC
+        # If not, normalise data by integrated DC along specified dim
         else:
             # Ensure dim is a valid dimension
             if dim not in norm_data.dims:
@@ -78,30 +88,46 @@ def norm(data, dim=None):
                     )
                 )
 
-            # Integrate data along dim
+            # Normalise data by integrated DC along dim
             int_data = norm_data.mean(dim)
-
-            # Normalise data by integrated DC
-            norm_data.data = (norm_data / int_data).data
+            norm_data /= int_data
 
             # Update analysis history
             norm_data.history.add(
                 "Data normalised an integrated DC along {dim}".format(dim=dim)
             )
 
-    # If no dim has been provided, normalise to unity
-    else:
+    # If no dim and no *kwargs have been provided, normalise to unity
+    elif not dim and not kwargs:
         # Normalise data to unity
-        norm_data.data /= norm_data.data.max()
+        norm_data /= norm_data.max()
 
         # Update analysis history
         norm_data.history.add("Data normalised to unity")
+
+    # If kwargs have been provided, normalise by the slice defined in kwargs
+    else:
+        norm_slice = norm_data.sel(kwargs).mean(list(kwargs))
+        norm_data /= norm_slice
+
+        # Update analysis history
+        norm_data.history.add(
+            f"Data normalised by an integrated DC defined by the slice {slice}"
+        )
 
     return norm_data
 
 
 @register_accessor(xr.DataArray)
-def bgs(data, subtraction, num_avg=1, offset_start=0, offset_end=0, max_iterations=10):
+def bgs(
+    data,
+    subtraction=None,
+    num_avg=1,
+    offset_start=0,
+    offset_end=0,
+    max_iterations=10,
+    **kwargs,
+):
     """Function to subtract a background from data.
 
     Parameters
@@ -122,6 +148,8 @@ def bgs(data, subtraction, num_avg=1, offset_start=0, offset_end=0, max_iteratio
             Set to 'Shirley' to subtract a Shirley background, e.g. subtraction='Shirley'. Additional arguments num_avg,
             offset_start, offset_end and max_iterations can be defined to optimise the Shirley background.
 
+            Takes precedence over keyword arguments.
+
     num_avg : int, optional
         Shirley background optimisation parameter. The number of points to consider when calculating the average value
         of the data start and end points. Useful for noisy data. Defaults to 1.
@@ -137,6 +165,10 @@ def bgs(data, subtraction, num_avg=1, offset_start=0, offset_end=0, max_iteratio
     max_iterations : int, optional
         Shirley background optimisation parameter. The maximum number of iterations to allow for convergence of Shirley
         background. Defaults to 10.
+
+    **kwargs : slice, optional
+        Slice to define background for subtraction by. E.g. eV=slice(105, 105.1) subtracts an integrated MDC defined
+        by the eV slice given. Multiple slices can be defined to define a ROI to subtract the mean of.
 
     Returns
     ------------
@@ -174,6 +206,12 @@ def bgs(data, subtraction, num_avg=1, offset_start=0, offset_end=0, max_iteratio
 
     """
 
+    # Check a subtraction argument has been inputted
+    if not subtraction and not kwargs:
+        raise Exception(
+            "No background subtraction argument has been inputted. Please specify either via the subtraction"
+            " argument or by defining at least one slice in the kwargs with a dimension keyword."
+        )
     # Copy the input data to prevent overwriting issues
     bgs_data = data.copy(deep=True)
 
@@ -193,15 +231,22 @@ def bgs(data, subtraction, num_avg=1, offset_start=0, offset_end=0, max_iteratio
     elif isinstance(subtraction, str):
         # If subtraction is 'Shirley'
         if subtraction == "Shirley":
+            if "eV" not in bgs_data.dims:
+                raise ValueError(
+                    "Shirley background subtraction can only be performed on data with an 'eV' dimension."
+                )
+
             # Calculate the Shirley background using the function _Shirley
             Shirley_bkg = _shirley_bg(
-                bgs_data,
+                bgs_data.DOS(),  # Mean over all non-energy dimensions
                 num_avg=num_avg,
                 offset_start=offset_start,
                 offset_end=offset_end,
                 max_iterations=max_iterations,
             )
-
+            Shirley_bkg = xr.DataArray(
+                Shirley_bkg, dims="eV", coords={"eV": bgs_data.coords["eV"]}
+            )
             # Subtract the Shirley background from the data
             bgs_data -= Shirley_bkg
 
@@ -238,22 +283,33 @@ def bgs(data, subtraction, num_avg=1, offset_start=0, offset_end=0, max_iteratio
         # Inputted argument for subtraction is not valid. Raise an error
         else:
             raise Exception(
-                "Inputted subtraction argument is not an int, float, 'all', 'Shirley', or a valid dimension of the "
-                "inputted DataArray."
+                f"Subtraction type {subtraction} is not a valid argument. Expected int, float, 'all', 'Shirley', or a "
+                f"valid dimension of the inputted DataArray, or for the subtraction to be defined by keyword arguemnts."
             )
 
+    elif subtraction is None and kwargs:
+        # If kwargs have been provided, subtract data dedined by the slice defined in kwargs
+        bg_slice = bgs_data.sel(kwargs).mean(list(kwargs))
+        bgs_data -= bg_slice
+
+        # Update analysis history
+        bgs_data.history.add(
+            f"Data subtracted by an integrated DC defined by the slice {slice}"
+        )
     # Invalid data type for subtraction. Raise an error
     else:
         raise Exception(
-            "Invalid data type for subtraction. Please use an int, float or str."
+            "Invalid data type for subtraction. Please pass an int, float, 'all', 'Shirley', or a valid dimension of "
+            "the inputted DataArray to the `subtraction` argument, or supply valid slices as keyword arguemnts."
         )
 
     return bgs_data
 
 
 @register_accessor(xr.DataArray)
-def bin_data(data, binning=None, **binning_kwargs):
-    """Shortcut function to bin data.
+def bin_data(data, binning=None, boundary="trim", **binning_kwargs):
+    """Shortcut function to bin data. Thin wrapper around :class:`xarray.DataArray.coarsen` but also with updating
+    analysis history.
 
     Parameters
     ------------
@@ -263,6 +319,10 @@ def bin_data(data, binning=None, **binning_kwargs):
     binning : int, optional
         Size of bins to apply to all dimensions. Defaults to None (dimension-specific binning_kwargs must be defined).
         Takes priority over use of binning_kwargs.
+
+    boundary : str, optional
+        Determines how to handle boundaries. Defaults to 'trim' where bins are trimmed to fit the data.
+        Other options are 'exact' and 'pad'; see :class:`xarray.DataArray.coarsen` for more information.
 
     **binning_kwargs : int, optional
         Used to define dimension-specific binning in the format dim = bin_size, e.g. theta_par = 2.
@@ -276,9 +336,9 @@ def bin_data(data, binning=None, **binning_kwargs):
     ------------
     Example usage is as follows::
 
-        from peaks import *
+        import peaks as pks
 
-        disp = load('disp.ibw')
+        disp = pks.load('disp.ibw')
 
         # Bin dispersion using bin sizes of 2 in both dimensions.
         disp_binned1 = disp.bin_data(2)
@@ -322,13 +382,12 @@ def bin_data(data, binning=None, **binning_kwargs):
                 raise Exception("Binning values must be integers.")
 
     # Apply binning to data
-    binned_data = data.coarsen(binning_kwargs, boundary="pad").mean()
+    binned_data = data.coarsen(binning_kwargs, boundary=boundary).mean()
 
     # Update analysis history
-    binned_data._update_hist(
-        "Binned data using the bins: {binning_kwargs}".format(
-            binning_kwargs=binning_kwargs
-        )
+    binned_data = binned_data.history.add(
+        f"Binned data using the bins: {binning_kwargs}, boundary={boundary}",
+        update_in_place=False,
     )
 
     return binned_data
@@ -356,9 +415,9 @@ def smooth(data, **smoothing_kwargs):
     ------------
     Example usage is as follows::
 
-        from peaks import *
+        import peaks as pks
 
-        disp = load('disp.ibw')
+        disp = pks.load('disp.ibw')
 
         EDC1 = disp.EDC()
 
@@ -642,9 +701,9 @@ def sym(data, flipped=False, fillna=True, **sym_kwarg):
     ------------
     Example usage is as follows::
 
-        from peaks import *
+        import peaks as pks
 
-        disp = load('disp.ibw')
+        disp = pks.load('disp.ibw')
 
         # Symmetrise the dispersion about theta_par=3
         disp_sym = disp.sym(theta_par=3)
@@ -757,7 +816,7 @@ def sym_nfold(data, nfold, expand=True, fillna=True, **centre_kwargs):
         from peaks import *
 
         FM1 = load('FM1.zip')
-        FS1 = FM1.FS(E=75.62, dE=0.02)
+        FS1 = FM1.MDC(E=75.62, dE=0.02)
 
         # Perform a 3-fold symmetrisation of the Fermi surface around a (0,0) centre of rotation
         FS1_sym = FS1.sym_nfold(nfold=3)
@@ -1115,6 +1174,10 @@ def sum_data(data):
     # Remove scan_name from the attributes, and assign scan name to data_0_name
     data_0_name = data_0_attrs.pop("scan_name")
 
+    # Remove history from the attributes
+    data_history = []
+    data_history.append(data_0_attrs.pop("analysis_history", "NONE"))
+
     # Variable used to use to store the summed DataArray data (will be updated with other DataArrays)
     summed_data = data_0_data.copy(deep=True)
 
@@ -1135,8 +1198,9 @@ def sum_data(data):
         # Ensure scan name is an attribute
         if "scan_name" not in current_attrs:
             current_attrs["scan_name"] = "Unknown"
-        # Remove scan_name from the current DataArray attributes, and assign scan name to current_name
+        # Remove scan_name & history from the current DataArray attributes
         current_name = current_attrs.pop("scan_name")
+        data_history.append(current_attrs.pop("analysis_history", "NONE"))
 
         # Ensure that the dimensions of the current DataArray match those of the first DataArray, raise an error if not
         if current_data.dims != data_0_data.dims:
@@ -1222,7 +1286,10 @@ def sum_data(data):
             " CAUTION: mismatch of some coordinates - interpolated data onto scan {data_0_name} coordinate "
             "grid"
         ).format(data_0_name=data_0_name)
-    summed_data._update_hist(hist_str)
+    total_hist = {"record": hist_str}
+    for i in range(len(data_history)):
+        total_hist[f"original scan {i} analysis history"] = data_history[i]
+    summed_data = summed_data.history.add(total_hist, update_in_place=False)
 
     return summed_data
 
@@ -1259,28 +1326,29 @@ def merge_data(data, dim="theta_par", sel=slice(None, None), offsets=None):
     ------------
     Example usage is as follows::
 
-        from peaks import *
+        import peaks as pks
 
-        disp1 = load('disp1.ibw')
-        disp2 = load('disp2.ibw')
-        disp3 = load('disp3.ibw')
-        disp4 = load('disp4.ibw')
-        XPS_1 = load('XPS_1.ibw')
-        XPS_2 = load('XPS_2.ibw')
+        # Load some dispersions into a list
+        disps = []
+        for i in range(4):
+            disps.append(pks.load(f'disp{i+1}.ibw'))
+
+        # Load some XPS scans into a list
+        XPS_data = [pks.load(f'XPS_{i}.ibw') for i in range(1,3)]
 
         # Merge the dispersions (measured at subsequent polar values with 10 degree intervals) along 'theta_par',
         # applying the offsets [0, 10, 20, 30] as a list
-        merged_disp = merge_data([disp1, disp2, disp3, disp4], offsets=[0, 10, 20, 30])
+        merged_disp = pks.merge_data([disp1, disp2, disp3, disp4], offsets=[0, 10, 20, 30])
 
         # As above, but defining offsets=10 to produce the same result
-        merged_disp = merge_data([disp1, disp2, disp3, disp4], offsets=10)
+        merged_disp = pks.merge_data([disp1, disp2, disp3, disp4], offsets=10)
 
         # As above, but cutting the detector edges of the data by slicing theta_par between -9 and 9 to obtain a better
         # merge result
-        merged_disp = merge_data([disp1, disp2, disp3, disp4], sel=slice(-9,9), offsets=10)
+        merged_disp = pks.merge_data([disp1, disp2, disp3, disp4], sel=slice(-9,9), offsets=10)
 
         # Merge the XPS scans (measured over different energy ranges)
-        merged_XPS = merge_data([XPS_1, XPS_2], coord='eV')
+        merged_XPS = pks.merge_data([XPS_1, XPS_2], coord='eV')
 
     """
 
@@ -1292,9 +1360,14 @@ def merge_data(data, dim="theta_par", sel=slice(None, None), offsets=None):
 
     # Copy the input data to prevent overwriting issues, and perform the selection along dim defined by sel
     data_to_merge = []
+    data_history = []
     for item in data:
         if isinstance(item, xr.core.dataarray.DataArray):
             data_to_merge.append(item.copy(deep=True).sel({dim: sel}))
+            if "analysis_history" in item.attrs:
+                data_history.append(item.attrs["analysis_history"])
+            else:
+                data_history.append("None")
         else:
             raise Exception("Data must be a list of xarray.DataArrays.")
 
@@ -1345,9 +1418,17 @@ def merge_data(data, dim="theta_par", sel=slice(None, None), offsets=None):
         scan_name += " & " + current_data.attrs["scan_name"]
 
     # Update analysis history
-    merged_data.history.add(
-        "Merged {scan_name} along {dim}".format(scan_name=scan_name, dim=dim)
-    )
+    history_str = f"Merged {scan_name} along {dim} "
+    if offsets is not None:
+        history_str += f"with offsets {offsets} "
+    if sel.start is not None or sel.stop is not None:
+        history_str += f"with data cropped to {dim}={sel} "
+    history_str = history_str.rstrip() + "."
+    history_record = {"record": history_str}
+    for i in range(len(data_history)):
+        history_record[f"original scan {i} analysis history"] = data_history[i]
+    merged_data.attrs.pop("analysis_history", None)
+    merged_data = merged_data.history.add(history_record, update_in_place=False)
 
     return merged_data
 
@@ -1389,11 +1470,11 @@ def _merge_two_DataArrays(DataArray1, DataArray2, dim):
 
     # Ensure dims of the inputted DataArrays are the same
     if not DataArray1.dims == DataArray2.dims:
-        raise Exception("The dimensions of the inputted DataArrays do not match.")
+        raise ValueError("The dimensions of the inputted DataArrays do not match.")
 
     # Ensure dim is a valid dimension
     if dim not in DataArray1.dims:
-        raise Exception(
+        raise ValueError(
             "{dim} is not a valid dimension of the inputted data.".format(dim=dim)
         )
 
@@ -1474,7 +1555,9 @@ def _merge_two_DataArrays(DataArray1, DataArray2, dim):
     merged_data = sum_data([DataArray1, DataArray2])
 
     # Remove sum_data analysis_history entry
-    merged_data.attrs["analysis_history"] = merged_data.attrs["analysis_history"][0:-1]
+    merged_data.attrs["analysis_history"] = copy.deepcopy(
+        merged_data.attrs["analysis_history"][0:-1]
+    )
 
     return merged_data
 
