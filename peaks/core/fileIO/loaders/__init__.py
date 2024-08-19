@@ -2,4 +2,4 @@
 
 """
 
-from . import APE, Artemis, Bloch, CASSIOPEE, I05, LOREA, StA_MBS, StA_Phoibos
+from . import APE, Artemis, Bloch, CASSIOPEE, I05, LOREA, StA_MBS, StA_Phoibos, NetCDF
