@@ -47,6 +47,7 @@ intersphinx_mapping = {
     "dask": ("https://docs.dask.org/en/latest/", None),
     "matplotlib": ("https://matplotlib.org/stable/", None),
     "lmfit": ("https://lmfit.github.io/lmfit-py/index.html", None),
+    "peaks": ("../build/html", "../build/html/objects.inv"),
 }
 
 source_suffix = [".rst", ".md"]
