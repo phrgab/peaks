@@ -384,6 +384,19 @@ def _load_single_data(fname, lazy="auto", loc="auto", metadata=True):
     #  - the dimensions of the DataArray are arranged in the standard order
     #  - the data is float32 (always enough for the ARPES intensity)
     #  - the underlying array is C-contiguous
+
+    # For loaded data, may already be k-converted and we need to check the right ana_type to figure out the ordering
+    if loc == "NetCDF":
+        ana_type = LocOpts.get_conventions(data.attrs.get("loc"))
+    else:
+        ana_type = LocOpts.get_conventions(loc)
+    if ana_type == "I" or ana_type == "Ip":
+        k_along_slit = "kx"
+        k_perp_slit = "ky"
+    else:
+        k_along_slit = "ky"
+        k_perp_slit = "kx"
+
     DataArray = DataArray.transpose(
         "scan_no",
         "t",
@@ -405,13 +418,14 @@ def _load_single_data(fname, lazy="auto", loc="auto", metadata=True):
         "tilt",
         "phi",
         "defl_perp",
-        "k_perp",
+        k_perp_slit,
         "azi",
         "spin_rot_angle",
         "eV",
         "defl_par",
         "theta_par",
-        "k_par",
+        k_along_slit,
+        ...,
         missing_dims="ignore",
     ).astype("float32", order="C")
 
