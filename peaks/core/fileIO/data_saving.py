@@ -2,9 +2,8 @@
 
 """
 
-# Brendan Edwards 16/02/2021
-# Brendan Edwards 09/02/2024
-
+import copy
+import json
 import xarray as xr
 from peaks.utils.accessors import register_accessor
 
@@ -46,14 +45,14 @@ def save(data, fname):
     # will also change the attrs of the inputted xarray.DataArray. We do not want this, so revert changes at the end of
     # the function so that the altered attrs only apply to the saved NetCDF file. This method is less  memory-intensive
     # than just copying the full xarray.DataArray
-    data_attrs = data.attrs.copy()
+    data_attrs = copy.deepcopy(data.attrs)
 
-    # Since NetCDF cannot save lists, to save the list analysis_history we convert it to a string where the items are
-    # seperated by the identifier '<->'. We can convert this string back to a list when the NetCDF file is loaded.
-    analysis_history = ""
-    for item in data.attrs["analysis_history"]:
-        analysis_history += "<->" + item
-    data.attrs["analysis_history"] = analysis_history
+    # Add a history entry for the data saving to the analysis_history
+    data.history.add(f"Data saved as a NetCDF file to {fname}.")
+
+    # Since NetCDF cannot save lists, to save the list analysis_history we convert it to a JSON string on saving.
+    # We can convert this back to a list when the NetCDF file is loaded.
+    data.attrs["analysis_history"] = json.dumps(data.attrs.get("analysis_history", []))
 
     # Loop through the attrs to ensure that all are of a valid type to be saved into NetCDF format
     for attr in data.attrs:
