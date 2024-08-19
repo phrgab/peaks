@@ -744,7 +744,10 @@ def mask_data(data, ROI, return_integrated=True):
         ROI_selected_data = data_bounded.where(mask)
 
         # Trim any rows or columns of only NaNs
-        ROI_selected_data = _drop_nan_borders_2D(ROI_selected_data)
+        try:  # The top method works for 2D, but seems to fail for higher dimensions
+            ROI_selected_data = _drop_nan_borders_2D(ROI_selected_data)
+        except:
+            ROI_selected_data = drop_nan_borders(ROI_selected_data)
 
         hist = (
             "Data masked by region of interest defined by polygon with vertices: "
