@@ -6,6 +6,7 @@ from datetime import datetime
 import copy
 import inspect
 import json
+from pprint import pprint
 import pandas as pd
 import xarray as xr
 from IPython.display import display
@@ -128,8 +129,8 @@ def update_history_decorator(record_text):
                     "the xarray.DataArray object on which the function is to act."
                 )
             # Update the history, including passing the function name
-            updated_dataarray = _update_hist(
-                args[0], record_text, fn_name=func.__name__
+            updated_dataarray = args[0].history.add(
+                record_text, fn_name=func.__name__, update_in_place=False
             )
             return func(updated_dataarray, *args[1:], **kwargs)
 
@@ -201,6 +202,29 @@ class History:
             except:
                 fn_name = ""
         return _update_hist(self._obj, record_text, fn_name, update_in_place)
+
+    def get(self, index=-1, return_history=False):
+        """Display (and optionally return) a specific item of the history metadata of the DataArray.
+
+        Parameters
+        ----------
+        index : int, optional
+            The index of the history metadata item to display. Defaults to most recent entry.
+
+        return_history : bool, optional
+            If True, returns the relevant history metadata item. Defaults to False where the data is just displayed.
+
+        Returns
+        -------
+        str or dict, optional
+            The relevant history metadata item if `return_history` is set `True`.
+        """
+
+        record = self._obj.attrs.get("analysis_history")[index].copy()
+        if return_history:
+            return record
+        else:
+            pprint(record)
 
     def save(self, fname):
         """Save the history metadata as a JSON-formatted string.
