@@ -27,4 +27,5 @@ from .tools import (
     degrid,
     sum_data,
     merge_data,
+    drift_correction
 )
