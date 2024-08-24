@@ -383,7 +383,7 @@ def estimate_EF(data):
             "info",
             "Analysis info",
         )
-        fit_result.plot_fit(ylabel="$E_\mathrm{F}$ (eV)", xlabel="$h\\nu$ (eV)")
+        fit_result.plot_fit(ylabel="$E_\\mathrm{F}$ (eV)", xlabel="$h\\nu$ (eV)")
         # Back-calculate the Fermi level from the fit at each photon energy
         EF_values_out = fit_model.eval(x=EF_data.hv.data)
         return EF_values_out
