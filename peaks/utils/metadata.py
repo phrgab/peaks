@@ -17,7 +17,9 @@ from ..__version__ import __version__
 
 def _update_hist(data, record_text, fn_name=None, update_in_place=True):
     """Updates the analysis history metadata of the supplied DataArray. Can be used as a standalone function
-    or via the :class:`xarray.DataArray` accessor `.history.add()`.
+    or via the :class:`xarray.DataArray` accessors `.history.add()` to update the history of the passed
+    :class:`xarray.DataArray` in place or `history.assign()` to return a copy of the :class:`xarray.DataArray` with
+    the updated history.
 
     Parameters
     ------------
@@ -129,8 +131,8 @@ def update_history_decorator(record_text):
                     "the xarray.DataArray object on which the function is to act."
                 )
             # Update the history, including passing the function name
-            updated_dataarray = args[0].history.add(
-                record_text, fn_name=func.__name__, update_in_place=False
+            updated_dataarray = args[0].history.assign(
+                record_text, fn_name=func.__name__
             )
             return func(updated_dataarray, *args[1:], **kwargs)
 
@@ -193,15 +195,41 @@ class History:
         if return_history:
             return self._obj.attrs.get("analysis_history")
 
-    def add(self, record_text, fn_name=None, update_in_place=True):
-        """Alias to _update_hist"""
+    def add(self, record_text, fn_name=None):
+        """Update the analysis history metadata of the :class:`xarray.DataArray` in place.
+
+        See Also
+        --------
+        _update_hist : The underlying function that updates the history metadata of the DataArray. This is called
+        with `update_in_place=True` to update the history metadata in place.
+
+        assign : Alternative method to update the history metadata in a copy of the DataArray.
+        """
         # If not provided, try to automatically parse the function name of the caller
         if fn_name is None:
             try:
                 fn_name = inspect.stack()[1].function
             except:
                 fn_name = ""
-        return _update_hist(self._obj, record_text, fn_name, update_in_place)
+        return _update_hist(self._obj, record_text, fn_name, True)
+
+    def assign(self, record_text, fn_name=None):
+        """Assign a new history item to a copy of self.
+
+        See Also
+        --------
+        _update_hist : The underlying function that updates the history metadata of the DataArray. This is called
+        with `update_in_place=False` to return a copy of the DataArray with the updated history metadata.
+
+        add : Alternative method to update the history metadata in place.
+        """
+        # If not provided, try to automatically parse the function name of the caller
+        if fn_name is None:
+            try:
+                fn_name = inspect.stack()[1].function
+            except:
+                fn_name = ""
+        return _update_hist(self._obj, record_text, fn_name, False)
 
     def get(self, index=-1, return_history=False):
         """Display (and optionally return) a specific item of the history metadata of the DataArray.

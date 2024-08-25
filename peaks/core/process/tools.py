@@ -385,9 +385,8 @@ def bin_data(data, binning=None, boundary="trim", **binning_kwargs):
     binned_data = data.coarsen(binning_kwargs, boundary=boundary).mean()
 
     # Update analysis history
-    binned_data = binned_data.history.add(
-        f"Binned data using the bins: {binning_kwargs}, boundary={boundary}",
-        update_in_place=False,
+    binned_data = binned_data.history.assign(
+        f"Binned data using the bins: {binning_kwargs}, boundary={boundary}"
     )
 
     return binned_data
@@ -663,9 +662,7 @@ def rotate(data, rotation, **centre_kwargs):
         pass
 
     # Update analysis history
-    rotated_data.history.add(
-        "Rotated data by {rotation} degrees".format(rotation=rotation)
-    )
+    rotated_data.history.add(f"Rotated data by {rotation} degrees")
 
     return rotated_data
 
@@ -761,18 +758,14 @@ def sym(data, flipped=False, fillna=True, **sym_kwarg):
         # Assign sym_data to just the flipped data
         sym_data = flipped_data
         # Update the analysis history
-        sym_data.history.add(
-            "Flipped data about {sym_kwarg}".format(sym_kwarg=sym_kwarg)
-        )
+        sym_data.history.add(f"Flipped data about {sym_kwarg}")
 
     # If the full symmetrisation is requested
     else:
         # Sum the original and flipped data
         sym_data += flipped_data
         # Update the analysis history
-        sym_data.history.add(
-            "Symmetrised data about {sym_kwarg}".format(sym_kwarg=sym_kwarg)
-        )
+        sym_data.history.add(f"Symmetrised data about {sym_kwarg}")
 
     return sym_data
 
@@ -920,9 +913,7 @@ def sym_nfold(data, nfold, expand=True, fillna=True, **centre_kwargs):
         ).fillna(0)
 
     # Update analysis history
-    sym_data.history.add(
-        "Symmetrised data using a {nfold}-fold rotation".format(nfold=nfold)
-    )
+    sym_data.history.add(f"Symmetrised data using a {nfold}-fold rotation")
 
     return sym_data
 
@@ -1289,7 +1280,7 @@ def sum_data(data):
     total_hist = {"record": hist_str}
     for i in range(len(data_history)):
         total_hist[f"original scan {i} analysis history"] = data_history[i]
-    summed_data = summed_data.history.add(total_hist, update_in_place=False)
+    summed_data = summed_data.history.assign(total_hist)
 
     return summed_data
 
@@ -1428,7 +1419,7 @@ def merge_data(data, dim="theta_par", sel=slice(None, None), offsets=None):
     for i in range(len(data_history)):
         history_record[f"original scan {i} analysis history"] = data_history[i]
     merged_data.attrs.pop("analysis_history", None)
-    merged_data = merged_data.history.add(history_record, update_in_place=False)
+    merged_data = merged_data.history.assign(history_record)
 
     return merged_data
 

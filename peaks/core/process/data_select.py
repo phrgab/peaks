@@ -194,7 +194,7 @@ def DC(data, coord="eV", val=0, dval=0, ana_hist=True):
     # Update the analysis history if ana_hist is True (will be False when DC is called from e.g. EDC, MDC, FS)
     if ana_hist:
         hist = "DC(s) extracted, integration window: " + str(dval)
-        dc = dc.history.add(hist, update_in_place=False)
+        dc = dc.history.assign(hist)
 
     return dc
 
@@ -248,7 +248,7 @@ def MDC(data, E=0, dE=0):
 
     # Update the analysis history
     hist = "MDC(s) extracted, integration window: " + str(dE)
-    mdc = mdc.history.add(hist, update_in_place=False)
+    mdc = mdc.history.assign(hist)
 
     return mdc
 
@@ -308,7 +308,7 @@ def EDC(data, k=0, dk=0):
 
     # Update the analysis history
     hist = "EDC(s) extracted, integration window: " + str(dk)
-    edc = edc.history.add(hist, update_in_place=False)
+    edc = edc.history.assign(hist)
 
     return edc
 
@@ -353,7 +353,7 @@ def DOS(data):
 
     # Update the analysis history
     hist = "Integrated along axes: " + str(int_dim)
-    dos = dos.history.add(hist, update_in_place=False)
+    dos = dos.history.assign(hist)
 
     return dos
 
@@ -404,7 +404,7 @@ def tot(data, spatial_int=False):
         data_tot = data.mean(int_dim, keep_attrs=True)
 
     # Update the analysis history
-    data_tot = data_tot.history.add(hist, update_in_place=False)
+    data_tot = data_tot.history.assign(hist)
 
     return data_tot
 
@@ -755,7 +755,7 @@ def mask_data(data, ROI, return_integrated=True):
         )
 
     # Update analysis history
-    ROI_selected_data = ROI_selected_data.history.add(hist, update_in_place=False)
+    ROI_selected_data = ROI_selected_data.history.assign(hist)
 
     return ROI_selected_data
 
@@ -819,9 +819,8 @@ def disp_from_hv(data, hv):
     hv_scan.attrs["hv"] = float(hv)
 
     # Update analysis history
-    hv_scan = hv_scan.history.add(
-        "Dispersion extracted from hv scan at hv={hv} eV".format(hv=hv),
-        update_in_place=False,
+    hv_scan = hv_scan.history.assign(
+        "Dispersion extracted from hv scan at hv={hv} eV".format(hv=hv)
     )
 
     return hv_scan
