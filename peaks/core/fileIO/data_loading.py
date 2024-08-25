@@ -437,8 +437,7 @@ def _load_single_data(fname, lazy="auto", loc="auto", metadata=True):
             "loc": loc,
             "loader": loader.__name__,
             "file_name": fname,
-        },
-        update_in_place=True,
+        }
     )
 
     return DataArray
