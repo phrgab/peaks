@@ -207,7 +207,7 @@ class _BaseARPESConventions(_BaseManipulatorConventions):
 
     loc_name = "Default ARPES"
     ana_type = "Ip"
-    theta_par = -1
+    theta_par = 1
     defl_par = 1
     defl_perp = 1
     ana_polar = 0
