@@ -10,7 +10,7 @@ import numba_progress
 from tqdm.notebook import tqdm
 
 from .fermi_level_correction import _get_wf, _get_BE_scale, _get_E_shift_at_theta_par
-from ...utils.misc import analysis_warning
+from ...utils.angles import _get_angles_for_k_conv
 from ...utils.accessors import register_accessor
 from ...utils.interpolation import (
     _is_linearly_spaced,
@@ -19,7 +19,6 @@ from ...utils.interpolation import (
     _fast_bilinear_interpolate_rectilinear,
     _fast_trilinear_interpolate_rectilinear,
 )
-from ..fileIO.fileIO_opts import LocOpts
 
 # Calculate kvac_const
 KVAC_CONST = (2 * m_e / (hbar**2)) ** 0.5 * (electron_volt**0.5) * angstrom
@@ -495,144 +494,6 @@ def _fIIp_inv(kx, ky, delta_, xi_, chi_, Ek):  # Type II, with deflector
     return alpha, beta
 
 
-def _get_angles_for_k_conv(data, return_raw=False, quiet=False):
-    """
-    Get the angles for the k-space conversion.
-
-    Parameters
-    ----------
-    data : xarray.DataArray
-        Data to convert to k-space.
-    return_raw : bool, optional
-        Whether to return the raw angles (polar, norm_tilt etc.), or the angles in the convention for
-        k-conversion (alpha, beta etc.). Defaults to False.
-    quiet : bool, optional
-        Whether to suppress warnings. Defaults to False.
-
-    Returns
-    -------
-    dict
-        Angles for the k-space conversion (if return_raw=False) or raw angles (if return_raw=True).
-    """
-
-    # Determine if analyser should be treated as type I, II, I' or II'
-    # using nomenclature from Ishida and Shin, Rev. Sci. Instrum. 89 (2018) 043903
-    loc = data.attrs.get("beamline")
-    _conventions = LocOpts.get_conventions(loc)
-    ana_type = _conventions.get("ana_type")
-
-    angles_to_extract = [
-        "theta_par",
-        "polar",
-        "tilt",
-        "azi",
-        "ana_polar",
-        "defl_par",
-        "defl_perp",
-    ]
-
-    # Get the raw angles from the data
-    angles_to_warn = ["polar", "tilt", "azi"]
-    angles = {}
-    warn_str = ""
-    for i in angles_to_extract:
-        if i in data.coords:
-            angles[i] = data.coords[i].data
-        else:
-            angle = data.attrs.get(i)
-            if angle is not None:
-                angles[i] = angle
-            else:
-                angles[i] = 0
-                if i in angles_to_warn:
-                    warn_str += f"{i}: 0, "
-
-    # Extract normal emissions, trying to make some sensible guesses for parameters not specified
-    norm_angles_to_extract = [
-        "norm_polar",
-        "norm_tilt",
-        "norm_azi",
-    ]
-    for i in norm_angles_to_extract:
-        angle = data.attrs.get(i)
-        if angle is not None:
-            angles[i] = angle
-        elif i == "norm_azi":
-            norm_azi = angles["azi"]
-            angles[i] = norm_azi
-            warn_str += f"{i}: {norm_azi}, "
-        elif i == "norm_polar" and (ana_type == "I" or ana_type == "Ip"):
-            norm_polar = angles["polar"]
-            if isinstance(norm_polar, np.ndarray):
-                norm_polar = 0
-            angles[i] = norm_polar
-            warn_str += f"{i}: {norm_polar}, "
-        elif i == "norm_tilt" and "II" in ana_type:
-            norm_tilt = angles["tilt"]
-            if isinstance(norm_tilt, np.ndarray):
-                norm_tilt = 0
-            angles[i] = norm_tilt
-            warn_str += f"{i}: {norm_tilt}, "
-        else:
-            angles[i] = 0
-            if i in angles_to_warn:
-                warn_str += f"{i}:"
-
-    # Give a warning if parameters have been assumed
-    if warn_str:
-        warn_str = (
-            f"Some manipulator data and/or normal emission data was missing or could not be passed. "
-            f'Assuming default values of: {warn_str.rstrip(", ")}.'
-        )
-        analysis_warning(warn_str, "warning", "Analysis warning", quiet)
-
-    # Above analyser determination gives the analyser capabilities, but for deflector types we need to check if
-    # mapping was actually being performed without deflectors - if not, fall back to the non-deflector type
-    if ana_type == "Ip" or ana_type == "IIp":
-        if np.all(angles["defl_par"] == 0) and np.all(angles["defl_perp"] == 0):
-            ana_type = "I" if ana_type == "Ip" else "II"
-
-    # Put angles in correct notation cf. Ishida and Shin, Rev. Sci. Instrum. 89 (2018) 043903
-    angles_out = {}
-    angles_out["ana_type"] = ana_type
-    angles_out["delta_"] = (angles["azi"] - angles["norm_azi"]) * _conventions.get(
-        "azi"
-    )
-    if ana_type == "I":  # Type I
-        angles_out["alpha"] = angles["theta_par"] * _conventions.get("theta_par")
-        angles_out["beta"] = (angles["polar"] * _conventions.get("polar")) + (
-            angles["ana_polar"] * _conventions.get("ana_polar")
-        )
-        angles_out["beta_0"] = angles["norm_polar"] * _conventions.get("polar")
-        angles_out["xi"] = angles["tilt"] * _conventions.get("tilt")
-        angles_out["xi_0"] = angles["norm_tilt"] * _conventions.get("tilt")
-    elif ana_type == "II":  # Type II
-        angles_out["alpha"] = angles["theta_par"] * _conventions.get("theta_par")
-        angles_out["beta"] = angles["tilt"] * _conventions.get("tilt")
-        angles_out["beta_0"] = angles["norm_tilt"] * _conventions.get("tilt")
-        angles_out["xi"] = (angles["polar"] * _conventions.get("polar")) + (
-            angles["ana_polar"] * _conventions.get("ana_polar")
-        )
-        angles_out["xi_0"] = angles["norm_polar"] * _conventions.get("polar")
-    elif ana_type == "Ip" or ana_type == "IIp":  # Type I' or Type II'
-        angles_out["alpha"] = angles["theta_par"] * _conventions.get("theta_par") + (
-            angles["defl_par"] * _conventions.get("defl_par")
-        )
-        angles_out["beta"] = angles["defl_perp"] * _conventions.get("defl_perp")
-        angles_out["beta_0"] = None
-        angles_out["xi"] = (angles["tilt"]) * _conventions.get("tilt")
-        angles_out["xi_0"] = angles["norm_tilt"] * _conventions.get("tilt")
-        angles_out["chi"] = (angles["polar"] * _conventions.get("polar")) + (
-            angles["ana_polar"] * _conventions.get("ana_polar")
-        )
-        angles_out["chi_0"] = angles["norm_polar"] * _conventions.get("polar")
-
-    if return_raw:
-        return angles
-    else:
-        return angles_out
-
-
 def _f_kz(Ek, k_along_slit, k_perp_slit, V0):
     """Forward transform to kz.
 
@@ -825,7 +686,6 @@ def k_convert(
     pb_steps = 3
     if scan_type == "hv scan" and not return_kz_scan_in_hv:
         pb_steps += 1
-
     pbar = tqdm(
         total=pb_steps,
         desc="Converting data to k-space - initialising",
@@ -866,10 +726,7 @@ def k_convert(
 
     # Check if a 2D or 3D conversion is required & reshape arrays to make them broadcastable
     if scan_type == "FS map":
-        beta_range = (
-            np.asarray([np.min(angles["beta"]), np.max(angles["beta"])])
-            + angles["beta_0"]
-        )
+        beta_range = np.asarray([np.min(angles["beta"]), np.max(angles["beta"])])
         n_interpolation_dims = 3
         EK_range, alpha_range, beta_range = _reshape_for_3d(
             EK_range, alpha_range, beta_range
@@ -877,7 +734,7 @@ def k_convert(
     else:
         n_interpolation_dims = 2
         EK_range, alpha_range = _reshape_for_2d(EK_range, alpha_range)
-        beta_range = angles["beta"] + angles["beta_0"]
+        beta_range = angles["beta"]
 
     # Get k-space values corresponding to extremes of range
     kx_, ky_ = _f_dispatcher(
@@ -955,6 +812,9 @@ def k_convert(
         angles["beta_0"],
         angles.get("chi", 0) - angles.get("chi_0", 0),
     )
+
+    # Deal with theta_par sign convention
+    # alpha *= angles["theta_par_sign"]
 
     # Determine the KE values including curvature correction
     if n_interpolation_dims == 2:
@@ -1071,9 +931,16 @@ def k_convert(
         interpolated_data.attrs[_get_k_perpto_slit("kx", "ky", ana_type)] = (
             _get_k_perpto_slit(kx_values, ky_values, ana_type).squeeze()
         )
-    else:
+    else:  # Should be Fermi map
         # Other angular dimension - assume the only remaining dimension
         other_dim = list(set(data.dims) - set(["eV", "theta_par"]))[0]
+
+        # Deal with stacked polar angles
+        if other_dim == "polar":
+            beta -= data.attrs.get("ana_polar", 0)
+        elif other_dim == "ana_polar":
+            beta -= data.attrs.get("polar", 0)
+
         # Check linearity of remaining dimension
         is_rectilinear = is_rectilinear and _is_linearly_spaced(
             data[other_dim].data,

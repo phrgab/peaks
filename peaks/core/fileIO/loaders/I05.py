@@ -587,7 +587,7 @@ def _load_I05_metadata(fname, scan_type, loc):
             tilt_handles = ["entry1/instrument/manipulator/satilt"]
             metadata["tilt"] = _h5py_find_coord(f, tilt_handles, "tilt", num_dp=2)
         else:
-            metadata["tilt"] = None
+            metadata["tilt"] = 0
 
         # Extract azi
         azi_handles = [
@@ -734,6 +734,8 @@ class _I05NanoConventions(_BaseARPESConventions):
     loader = _load_I05_data
     metadata_loader = _load_I05_metadata
     ana_type = "Ip"
+    theta_par = 1
+    polar = 1
     ana_polar = 1
     ana_polar_name = "ana_polar"
     polar_name = "smpolar"
