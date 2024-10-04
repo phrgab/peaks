@@ -2,8 +2,8 @@ import numbers
 import numpy as np
 import xarray as xr
 
-from ..core.fileIO.fileIO_opts import LocOpts
-from ..utils import analysis_warning
+from ..fileIO.fileIO_opts import LocOpts
+from ...utils import analysis_warning
 
 # Constants for angle names
 ANGLE_NAMES = [
@@ -47,7 +47,6 @@ def _get_raw_angles(
     data,
     angle_names,
     default_value=0,
-    warn_if_missing=True,
     quiet=False,
     warn_prefix="",
 ):
@@ -62,10 +61,8 @@ def _get_raw_angles(
         List of angle names to retrieve from the data.
     default_value : int or float, optional
         Default value to use if an angle is missing. Defaults to 0.
-    warn_if_missing : bool, optional
-        Whether to issue a warning if an angle is missing. Defaults to True.
     quiet : bool, optional
-        Whether to suppress warnings. Defaults to False.
+        Whether to suppress warnings of missing angles. Defaults to False.
     warn_prefix : str, optional
         Prefix to add to warning messages. Defaults to an empty string.
 
@@ -85,7 +82,7 @@ def _get_raw_angles(
                 angles[angle_name] = angle
             else:
                 angles[angle_name] = default_value
-                if warn_if_missing:
+                if not quiet:
                     warn_str += f"{angle_name}: {default_value}, "
     if warn_str:
         warn_message = f"{warn_prefix}Assuming default values for missing angles: {warn_str.rstrip(', ')}."
@@ -178,7 +175,7 @@ def _parse_norm_angles(data, norm_angles, quiet):
         )
 
     # Get the raw angles from the data
-    angles = _get_raw_angles(data, ANGLE_NAMES, quiet=quiet, warn_if_missing=False)
+    angles = _get_raw_angles(data, ANGLE_NAMES, quiet=quiet)
 
     # Calculate the normal emission angles
     if "norm_polar" in norm_angles:
@@ -462,6 +459,74 @@ class NormAngles:
         return _get_norm_angles(self._obj)
 
 
+def _convert_angles_to_Ishida_Shin(data, quiet=False):
+    """
+    Convert the angles from friendly manipulator names into the conventions from Y. Ishida and S. Shin,
+    Functions to map photoelectron distributions in a variety of setups in angle-resolved photoemission spectroscopy,
+    Rev. Sci. Instrum. 89, 043903 (2018), taking care of the sign conventionsi.
+
+    Parameters
+    ----------
+    data : xarray.DataArray
+        Data for converting to k-space.
+    quiet : bool, optional
+        Whether to suppress warnings. Defaults to False.
+
+    Returns
+    -------
+    dict
+        Angles of converted angles.
+    """
+
+    # Get angle conventions and analyser type
+    conventions = _get_conventions(data)
+    ana_type = conventions.get("ana_type")
+
+    # Get the raw angles from the data
+    angles = _get_raw_angles(data, ANGLE_NAMES, quiet=quiet)
+
+    # Adjust analyser type if necessary
+    if ana_type in ["Ip", "IIp"]:
+        if np.all(angles.get("defl_par", 0) == 0) and np.all(
+            angles.get("defl_perp", 0) == 0
+        ):
+            ana_type = "I" if ana_type == "Ip" else "II"
+
+    # Put angles in correct notation cf. Ishida and Shin
+    angles_out = dict()
+    angles_out["ana_type"] = ana_type
+    angles_out["delta"] = angles.get("azi", 0) * conventions.get("azi", 1)
+    if ana_type == "I":  # Type I
+        angles_out["alpha"] = angles.get("theta_par", 0) * conventions.get(
+            "theta_par", 1
+        )
+        angles_out["beta"] = (angles.get("polar", 0) * conventions.get("polar", 1)) + (
+            angles.get("ana_polar", 0) * conventions.get("ana_polar", 1)
+        )
+        angles_out["xi"] = angles.get("tilt", 0) * conventions.get("tilt", 1)
+    elif ana_type == "II":  # Type II
+        angles_out["alpha"] = angles.get("theta_par", 0) * conventions.get(
+            "theta_par", 1
+        )
+        angles_out["beta"] = angles.get("tilt", 0) * conventions.get("tilt", 1)
+        angles_out["xi"] = (angles.get("polar", 0) * conventions.get("polar", 1)) + (
+            angles.get("ana_polar", 0) * conventions.get("ana_polar", 1)
+        )
+    elif ana_type in ["Ip", "IIp"]:  # Type I' or Type II'
+        angles_out["alpha"] = angles.get("theta_par", 0) * conventions.get(
+            "theta_par", 1
+        ) + (angles.get("defl_par", 0) * conventions.get("defl_par", 1))
+        angles_out["beta"] = angles.get("defl_perp", 0) * conventions.get(
+            "defl_perp", 1
+        )
+        angles_out["xi"] = angles.get("tilt", 0) * conventions.get("tilt", 1)
+        angles_out["chi"] = (angles.get("polar", 0) * conventions.get("polar", 1)) + (
+            angles.get("ana_polar", 0) * conventions.get("ana_polar", 1)
+        )
+
+    return angles_out
+
+
 def _get_angles_for_k_conv(data, return_raw=False, quiet=False, warn_norm=True):
     """
     Get the angles for the k-space conversion.
@@ -489,7 +554,7 @@ def _get_angles_for_k_conv(data, return_raw=False, quiet=False, warn_norm=True):
     ana_type = conventions.get("ana_type")
 
     # Get the raw angles from the data
-    angles = _get_raw_angles(data, ANGLE_NAMES, quiet=quiet, warn_if_missing=not quiet)
+    angles = _get_raw_angles(data, ANGLE_NAMES, quiet=quiet)
 
     # Extract normal emission angles
     norm_angles = data.norm_angles.get()
