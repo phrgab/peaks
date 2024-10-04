@@ -74,7 +74,9 @@ def _update_hist(data, record_text, fn_name=None, update_in_place=True):
     """
 
     # Get current analysis history metadata list
-    analysis_history = data.attrs.get("analysis_history", [])
+    if "analysis_history" not in data.attrs:
+        data.attrs["analysis_history"] = []
+    analysis_history = data.attrs.get("analysis_history")
     # If updating in place, modify the existing history list, otherwise make a deep copy to avoid in-place modification
     if not update_in_place:
         analysis_history = copy.deepcopy(analysis_history)

@@ -2,10 +2,6 @@
 
 """
 
-# Brendan Edwards 28/06/2021
-# Phil King 14/05/2022
-# Brendan Edwards 14/02/2024
-
 import os
 import natsort
 import h5py
@@ -14,24 +10,29 @@ import dask
 import dask.array as da
 from tqdm import tqdm
 from os.path import isfile, join
-from peaks.utils import analysis_warning
-from peaks.core.fileIO.fileIO_opts import File, LocOpts, _Coords
-from peaks.core.fileIO.loaders.SES import _load_SES_metalines, _SES_find
+from .fileIO_opts import File, LocOpts, _Coords
+from .loaders.SES import _load_SES_metalines, _SES_find
+from ...utils.misc import analysis_warning
+from ..process.angles import _convert_angles_to_Ishida_Shin
 
 
 def load(fname, lazy="auto", loc="auto", metadata=True, parallel=False):
-    """Shortcut function to load_data where much of the file path can be set by the file global options:
+    """Core function to load data. Provides a shortcut to _load_data where much of the file path can be set
+    by the :class:`peaks.File` global options:
 
-        file.path : str, list
+        File.path : str, list
             Path (or list of paths) to folder(s) where data is stored, e.g. file.path = 'C:/User/Documents/i05-1-123'.
 
-        file.ext : str, list
+        File.ext : str, list
             Extension (or list of extensions) of data, e.g. file.ext = ['ibw', 'zip'].
 
-        file.loc : str
+        File.loc : str
             Location (typically a beamline) where data was acquired, e.g. file.loc = 'MAX IV Bloch' (call class
             LocOpts() to see currently supported locations). Note: setting this prevents any automatic location
             detection.
+
+        File.lazy_size : int
+            Size in bytes above which data is loaded in a lazily evaluated dask format. Defaults to 1 GB.
 
     Parameters
     ------------
@@ -58,40 +59,41 @@ def load(fname, lazy="auto", loc="auto", metadata=True, parallel=False):
 
     Returns
     ------------
-    loaded_data : xarray.DataArray, xarray.DataSet, list
+    loaded_data : xarray.DataArray, xarray.DataSet, xarray.DataTree
         The loaded data.
 
     Examples
     ------------
     Example usage is as follows::
 
-        from peaks import *
+        import peaks as pks
 
         # Load data using a complete data path
-        disp1 = load('C:/User/Documents/disp1.ibw')
-        FM1 = load('C:/User/Documents/FM1.ibw')
+        disp1 = pks.load('C:/User/Documents/disp1.ibw')
+        FM1 = pks.load('C:/User/Documents/FM1.ibw')
 
-        # Define global options in the class file to aid loading
-        file.path = 'C:/User/Documents/Data/'
-        file.ext = ['ibw', 'zip']
+        # Define global options to define file loading
+        pks.File.path = 'C:/User/Documents/Data/'
+        pks.File.ext = ['ibw', 'zip']
 
-        # Load data without needing to define data path or extension (determined from global options defined in file)
-        disp2 = load('disp2')
-        FM2 = load('FM2')
+        # Load data without needing to define data path or extension
+        #  (determined from options defined in :class:`peaks.File`)
+        disp2 = pks.load('disp2')
+        FM2 = pks.load('FM2')
 
-        # Define global options in the class file to aid loading, and include a partial part of the scan name
-        file.path = 'C:/User/Documents/Data/i05-1-123'
-        file.ext = 'nxs'
+        # Define global options to define file structure, including a partial part of the scan name
+        pks.File.path = 'C:/User/Documents/Data/i05-1-123'
+        pks.File.ext = 'nxs'
 
-        # Load data without needing to define data path or extension, nor the repeated part of the scan name (determined
-        # from global options defined in file)
+        # Load data without needing to define data path or extension, nor the repeated part of the scan name
+        #  (determined from global options defined in :class:`peaks.File`)
         disp3 = load(456)
         disp4 = load(457)
 
         # Load multiple files at once
         disps = load([456, 457, 458])
 
-        # Still can load data using a complete data path, and global options defined in file will be ignored
+        # Still can load data using a complete data path; global options defined in :class:`peaks.File` will be ignored
         disp1 = load('C:/User/Documents/Data/disp1.ibw')
 
         # Load data in a lazily evaluated dask format
@@ -100,12 +102,17 @@ def load(fname, lazy="auto", loc="auto", metadata=True, parallel=False):
         # Load data without metadata
         disp1 = load('C:/User/Documents/Data/disp1.ibw', metadata=False)
 
-        # Load data file a pre-defined location (use if automatic location identification fails)
+        # Load data file for a defined location (use if automatic location identification fails)
         disp1 = load('C:/User/Documents/Data/disp1.ibw', loc='MAX IV Bloch')
 
         # Alternatively could define location using global options. Here loc will be defined as 'MAX IV Bloch'
-        file.loc = 'MAX IV Bloch'
+        pks.File.loc = 'MAX IV Bloch'
         disp1 = load('C:/User/Documents/Data/disp1.ibw')
+
+        # Set the data size to trigger lazy loading by default to 500 MB
+        pks.File.lazy_size = 500000000
+        FM3 = pks.load('C:/User/Documents/FM3.ibw')
+
 
     """
 
@@ -172,7 +179,7 @@ def load(fname, lazy="auto", loc="auto", metadata=True, parallel=False):
 
     # Load data by calling load_data if a valid file has been found. If not raise an error
     if len(file_list) > 0:
-        loaded_data = load_data(
+        loaded_data = _load_data(
             file_list, lazy=lazy, loc=loc, metadata=metadata, parallel=parallel
         )
     else:
@@ -181,7 +188,7 @@ def load(fname, lazy="auto", loc="auto", metadata=True, parallel=False):
     return loaded_data
 
 
-def load_data(fname, lazy="auto", loc="auto", metadata=True, parallel=False):
+def _load_data(fname, lazy="auto", loc="auto", metadata=True, parallel=False):
     """Function to load data files into the xarray DataArray format.
 
     Parameters
@@ -191,7 +198,8 @@ def load_data(fname, lazy="auto", loc="auto", metadata=True, parallel=False):
 
     lazy : str, bool, optional
         Whether to load data in a lazily evaluated dask format. Set explicitly using True/False Boolean. Defaults
-        to 'auto' where a file is only loaded in the dask format if its spectrum is above 500 MB.
+        to 'auto' where a file is only loaded in the :class:`dask` format if its spectrum is above threshold
+        in :class:peaks.File.
 
     loc : str, optional
         The name of the location (typically a beamline). Defaults to 'auto', where the location will be attempted to be
@@ -214,23 +222,23 @@ def load_data(fname, lazy="auto", loc="auto", metadata=True, parallel=False):
     ------------
     Example usage is as follows::
 
-        from peaks import *
+        from peaks.core.fileIO.data_loading import _load_data
 
         # Load data
-        disp1 = load_data('disp1.ibw')
-        FM1 = load_data('C:/User/Documents/FM1.ibw')
+        disp1 = _load_data('disp1.ibw')
+        FM1 = _load_data('C:/User/Documents/FM1.ibw')
 
         # Load multiple data files at once
-        disps = load(['disp1.ibw', 'disp2.ibw', 'disp3.ibw'])
+        disps = _load_data(['disp1.ibw', 'disp2.ibw', 'disp3.ibw'])
 
         # Load data in a lazily evaluated dask format
-        FM1 = load('FM1.ibw', lazy=True)
+        FM1 = _load_data('FM1.ibw', lazy=True)
 
         # Load data without metadata
-        FM1 = load('FM1.ibw', metadata=False)
+        FM1 = _load_data('FM1.ibw', metadata=False)
 
         # Load data file a pre-defined location (use if automatic location identification fails)
-        FM1 = load('FM1.ibw', loc='MAX IV Bloch')
+        FM1 = _load_data('FM1.ibw', loc='MAX IV Bloch')
 
     """
 
@@ -293,6 +301,7 @@ def load_data(fname, lazy="auto", loc="auto", metadata=True, parallel=False):
             break
 
     # If there is only one loaded item in loaded_data, return the xr.DataArray (xr.DataSet) entry instead of a list
+    # TODO Make this put the data directly into a datatree
     if len(loaded_data) == 1:
         loaded_data = loaded_data[0]
 
@@ -355,8 +364,8 @@ def _load_single_data(fname, lazy="auto", loc="auto", metadata=True):
     # If location is NetCDF, data is already loaded in xr.DataArray format
     if loc == "NetCDF":
         # Convert the data to dask format if the user has requested to load data in a lazily evaluated dask format, or
-        # if the data spectrum is above 500 MB (and lazy='auto')
-        if lazy is True or (lazy == "auto" and data.nbytes > 500000000):
+        # if the data spectrum is above default size specified in File.lazy_size (and lazy='auto')
+        if lazy is True or (lazy == "auto" and data.nbytes > File.lazy_size):
             data.data = da.from_array(data.data, chunks="auto")
         DataArray = data
 
@@ -375,7 +384,7 @@ def _load_single_data(fname, lazy="auto", loc="auto", metadata=True):
             len(DataArray[dim]) > 1
         ):  # If there are multiple coordinates along the given dimension
             if (
-                DataArray[dim].data[1] - DataArray[dim].data[0] < 0
+                DataArray[dim].data[-1] - DataArray[dim].data[0] < 0
             ):  # If the DataArray currently has decreasing order
                 # Flip the order of the coordinates along the given dimension
                 DataArray = DataArray.reindex({dim: data[dim][::-1]})
@@ -429,8 +438,23 @@ def _load_single_data(fname, lazy="auto", loc="auto", metadata=True):
         missing_dims="ignore",
     ).astype("float32", order="C")
 
-    # Add relevant info to the Analysis history
+    # Add relevant coordinates and metadata for angles in Ishida & Shin convention
+    IandS_angles = _convert_angles_to_Ishida_Shin(DataArray)
+    if "theta_par" in DataArray.dims:
+        DataArray = DataArray.assign_coords(alpha=("theta_par", IandS_angles["alpha"]))
+    # Check for the presence of any other relevant angular dimensions
+    other_dim = list(
+        set(DataArray.dims) & set(["polar", "tilt", "azi", "ana_polar", "defl_perp"])
+    )
+    if len(other_dim) == 1:
+        DataArray = DataArray.assign_coords(beta=(other_dim[0], IandS_angles["beta"]))
+    else:
+        DataArray.attrs["beta"] = IandS_angles["beta"]
+    DataArray.attrs["xi"] = IandS_angles["xi"]
+    if IandS_angles["ana_type"] in ["Ip", "IIp"]:
+        DataArray.attrs["chi"] = IandS_angles["chi"]
 
+    # Add relevant info to the Analysis history
     DataArray.history.add(
         {
             "record": "Data loaded",
@@ -488,7 +512,7 @@ def _make_DataArray(data, lazy="auto"):
 
     # Convert the data spectrum to dask format if the user has requested to load data in a lazily evaluated dask format,
     # or if the data spectrum is above 500 MB (and lazy='auto')
-    if lazy is True or (lazy == "auto" and data["spectrum"].nbytes > 500000000):
+    if lazy is True or (lazy == "auto" and data["spectrum"].nbytes > 1000000000):
         data["spectrum"] = da.from_array(data["spectrum"], chunks="auto")
 
     # If the scan type is a standard dispersion, there is only one possible set of coordinates

@@ -27,5 +27,6 @@ from .tools import (
     degrid,
     sum_data,
     merge_data,
-    drift_correction
+    drift_correction,
 )
+from .angles import NormAngles

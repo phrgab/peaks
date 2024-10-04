@@ -719,6 +719,7 @@ class _I05HRConventions(_BaseARPESConventions):
     loader = _load_I05_data
     metadata_loader = _load_I05_metadata
     ana_type = "Ip"
+    theta_par = 1
     polar_name = "sapolar"
     tilt_name = "satilt"
     azi_name = "saazimuth"

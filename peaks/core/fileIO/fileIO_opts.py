@@ -46,10 +46,10 @@ class File:
     def __init__(self):
         """This function prints the current file variables."""
 
-        # Print the currently supported locations
-        print(f"file.path: {self.path};")
-        print(f"file.ext: {self.ext};")
-        print(f"file.loc: {self.loc}.")
+        print(f"File.path: {self.path};")
+        print(f"File.ext: {self.ext};")
+        print(f"File.loc: {self.loc};")
+        print(f"File.lazy_size: {self.lazy_size}.")
 
     @classmethod
     def clear_path(cls):
@@ -66,10 +66,17 @@ class File:
         """This function clears the loc variable."""
         cls.loc = None
 
-    # Initialise variables as None
+    @classmethod
+    def clear_lazy_size(cls):
+        """This function clears the lazy_size variable."""
+        cls.lazy_size = None
+
+    # Initialise fpath variables as None
     path = None  # Path(s) to files
     ext = None  # Extension(s) of files
     loc = None  # Location where files were measured
+    # Initialise lazy_size variable as 1 Gb
+    lazy_size = 1000000000
 
 
 class LocOpts:
