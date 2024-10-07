@@ -3,6 +3,7 @@ import pint
 import pint_xarray
 from pydantic import BaseModel, ConfigDict
 from pydantic_core import core_schema
+from typing import Optional, Union
 
 # Define the appropriate unit registry
 ureg = pint_xarray.unit_registry
@@ -30,10 +31,17 @@ class Quantity(pint.Quantity):
                 raise ValueError(
                     'Invalid quantity dictionary. Must have "value" and "units".'
                 )
+        elif (
+            isinstance(v, tuple)
+            and len(v) == 2
+            and isinstance(v[1], str)
+            and isinstance(v[0], (int, float, list, np.ndarray))
+        ):
+            return v[0] * ureg(v[1])
         elif isinstance(v, (int, float)):
             return v * ureg("")
         elif isinstance(v, np.ndarray):
-            return v * ureg("")  # Handle ndarray without units
+            return v * ureg("")
         else:
             raise TypeError(f"Invalid type for Quantity: {type(v)}")
 
@@ -50,8 +58,144 @@ def _quantity_encoder(quantity: pint.Quantity):
 
 
 # Base class for passing a pint Quantity
-class BaseMetadataUnitsModel(BaseModel):
-    """Generalized model to store metadata, with value as the primary attribute."""
+class BaseMetadataModel(BaseModel):
+    """Generalized model to store metadata, allowing serialising pint.Quantity objects."""
 
-    value: Quantity  # Primary value can be a scalar or ndarray
     model_config = ConfigDict(json_encoders={pint.Quantity: _quantity_encoder})
+
+
+class BaseScanMetadataModel(BaseMetadataModel):
+    """Model to store basic scan identifier metadata."""
+
+    name: str
+    filepath: str
+    loc: str
+    timestamp: str
+    scan_command: Optional[str] = None
+
+
+# Define the manipulator metadata models
+class AxisMetadataModel(BaseMetadataModel):
+    """Base model to store metadata for a single manipulator axis.
+
+    Attributes
+    ----------
+    name : Optional[str]
+        The local name of the axis on the actual system manipulator.
+    value : Optional[Union[Quantity, str, None]]
+        The value of the axis. If an array (e.g. for movement during the scan), this should return a string that
+        describes the axis movement in the form x0:x_step:x1.
+    reference_value : Optional[Union[Quantity, None]]
+        The reference value of the axis. Supplied as None on initial load, but can be used later for keeping track
+        e.g. of normal emission values.
+    """
+
+    name: Optional[str] = None
+    value: Optional[Union[str, Quantity]] = None
+    reference_value: Optional[Quantity] = None
+
+    def set(self, value):
+        """Set the value of the axis.
+
+        Parameters
+        ----------
+        value : float, int, str, pint.Unit
+            The value to set the axis to.
+            If passed without units, will assume units are the same as the existing value if possible.
+        """
+        if isinstance(value, pint.Quantity):
+            self.value = value
+        else:
+            if self.value and isinstance(self.value, pint.Quantity):
+                self.value = value * self.value.units
+            else:
+                self.value = value
+
+    def set_reference(self, value):
+        """Set the reference value of the axis.
+
+        Parameters
+        ----------
+        value : float, int, str, pint.Unit
+            The value to set the reference axis value to.
+            If passed without units, will assume units are the same as the axis value if possible.
+        """
+        if isinstance(value, pint.Quantity):
+            self.reference_value = value
+        else:
+            if self.value and isinstance(self.value, pint.Quantity):
+                self.reference_value = value * self.value.units
+            else:
+                self.reference_value = value
+
+
+# Define the temperature metadata models
+class TemperatureMetadataModel(BaseMetadataModel):
+    """Model to store temperature metadata."""
+
+    sample: Optional[Union[str, Quantity]] = None
+    cryostat: Optional[Union[str, Quantity]] = None
+    shield: Optional[Union[str, Quantity]] = None
+    setpoint: Optional[Union[str, Quantity]] = None
+
+
+# Define the photon metadata models
+class PhotonMetadataModel(BaseMetadataModel):
+    """Model to store photon-linked metadata."""
+
+    hv: Optional[Union[str, Quantity]] = None
+    polarisation: Optional[Union[str, int, float]] = None
+    exit_slit: Optional[Union[str, Quantity]] = None
+
+
+class ARPESSlitMetadataModel(BaseMetadataModel):
+    """Model to store slit width metadata."""
+
+    width: Optional[Union[str, Quantity]] = None
+    identifier: Optional[str] = None
+
+
+class ARPESAnalyserMetadataModel(BaseMetadataModel):
+    """Model to store core analyser-linked metadata."""
+
+    model: Optional[str] = None
+    slit: ARPESSlitMetadataModel = ARPESSlitMetadataModel()
+
+
+class ARPESScanMetadataModel(BaseMetadataModel):
+    """Model to store scan metadata."""
+
+    eV: Optional[Union[str, Quantity]] = None
+    step_size: Optional[Union[str, Quantity]] = None
+    PE: Optional[Union[str, Quantity]] = None
+    sweeps: Optional[int] = None
+    dwell: Optional[Union[str, Quantity]] = None
+    lens_mode: Optional[str] = None
+    acquisition_mode: Optional[str] = None
+    eV_type: Optional[str] = None
+
+
+class ARPESAnalyserAnglesMetadataModel(BaseMetadataModel):
+    """Model to store analyser angles metadata.
+    This is a general definiton which allows distinguishing analyser type (slit parallel or perp to slit)
+    as well as allowing for the general case where the analyser can move."""
+
+    polar: Optional[Union[str, Quantity]] = None
+    tilt: Optional[Union[str, Quantity]] = None
+    azi: Optional[Union[str, Quantity]] = None
+
+
+class ARPESDeflectorMetadataModel(BaseMetadataModel):
+    """Model to store deflector metadata."""
+
+    parallel: Optional[Union[str, Quantity]] = None
+    perp: Optional[Union[str, Quantity]] = None
+
+
+class ARPESMetadataModel(BaseMetadataModel):
+    """Model to store ARPES metadata."""
+
+    analyser: ARPESAnalyserMetadataModel = ARPESAnalyserMetadataModel()
+    scan: ARPESScanMetadataModel = ARPESScanMetadataModel()
+    angles: ARPESAnalyserAnglesMetadataModel = ARPESAnalyserAnglesMetadataModel()
+    deflector: ARPESDeflectorMetadataModel = ARPESDeflectorMetadataModel()
