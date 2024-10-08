@@ -45,6 +45,8 @@ class BaseDataLoader:
 
     # Define core attributes as class variables
     _loc_name = "Base"  # Identifier for the location/loader
+    _loc_description = "Base data loader class - generally not used directly"  # Description of the location
+    _loc_url = None  # Link to some descriptor of the location
     _desired_dim_order = []  # List of the desired dimension order in final da
     _dtype = None  # Desired dtype for the main data
     _dorder = None  # Desired array order for the main data
@@ -56,6 +58,16 @@ class BaseDataLoader:
     def loc_name(self):
         """Return the location name."""
         return self._loc_name  # Identifier
+
+    @property
+    def loc_description(self):
+        """Return the location description."""
+        return self._loc_description
+
+    @property
+    def loc_url(self):
+        """Return the location URL."""
+        return self._loc_url
 
     @property
     def desired_dim_order(self):
@@ -472,6 +484,8 @@ class BaseIBWDataLoader(BaseDataLoader):
     """Base class for data loaders for Igor Binary Wave files."""
 
     _loc_name = "ibw"
+    _loc_description = "General loader for Igor Binary Wave files"
+    _loc_url = "https://www.wavemetrics.com/products"
     _metadata_parsers = ["_parse_wavenote_metadata"]
 
     @classmethod
@@ -778,7 +792,7 @@ class BasePhotonSourceDataLoader(BaseDataLoader):
 
         # Build and populate the photon metadata model
         photon_metadata = PhotonMetadataModel(
-            hv=metadata_dict.get("photon_eV"),
+            hv=metadata_dict.get("photon_hv"),
             polarisation=metadata_dict.get("photon_polarisation"),
             exit_slit=metadata_dict.get("photon_exit_slit"),
         )

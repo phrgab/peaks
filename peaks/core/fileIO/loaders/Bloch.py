@@ -15,6 +15,28 @@ from peaks.core.fileIO.loaders.SES import (
     _SES_find,
 )
 from ..fileIO_opts import _BaseARPESConventions, _register_location
+from ..base_arpes_data_classes import BaseSESDataLoader
+from ..loc_registry import register_loader
+
+
+@register_loader
+class BlochArpesLoader(BaseSESDataLoader):
+    _loc_name = "MAXIV_Bloch_A"
+    _loc_description = "MAX IV Bloch beamline A branch"
+    _loc_url = "https://www.maxiv.lu.se/beamlines-accelerators/beamlines/bloch/"
+
+    _manipulator_name_conventions = {
+        "polar": "P",
+        "tilt": "T",
+        "azi": "A",
+        "x1": "X",
+        "x2": "Y",
+        "x3": "Z",
+    }
+    _SES_metadata_units = {
+        f"manipulator_{dim}": ("mm" if dim in ["x1", "x2", "x3"] else "deg")
+        for dim in _manipulator_name_conventions.keys()
+    }
 
 
 def _load_Bloch_data(fname):

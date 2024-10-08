@@ -1,6 +1,4 @@
-import os
 import zipfile
-from datetime import datetime
 import numpy as np
 import re
 import pint_xarray
@@ -20,7 +18,6 @@ from .base_metadata_models import (
     ARPESAnalyserAnglesMetadataModel,
     ARPESAnalyserMetadataModel,
 )
-from .loaders.ibw import _load_ibw_data, _load_ibw_wavenote
 from ...utils.misc import analysis_warning
 
 # Define the unit registry
@@ -130,7 +127,17 @@ class BaseARPESDataLoader(
                 f"emissions for that axis, required for e.g. ARPES k-conversions."
             )
 
-        return super()._load(fname, lazy, metadata)
+        # Run the main _load method returning a DataArray
+        da = super()._load(fname, lazy, metadata)
+
+        # Try to parse to counts/s if possible
+        try:
+            t = da.analyser.scan.dwell.to("s") * da.analyser.scan.sweeps
+            da = da / t
+        except ValueError:
+            pass
+
+        return da
 
     @classmethod
     def _parse_analyser_metadata(cls, metadata_dict):
@@ -179,13 +186,21 @@ class BaseSESDataLoader(BaseARPESDataLoader):
     Notes
     ------------
     This class is intended to be subclassed to provide specific loaders for different locs using SES data formats.
-    Subclasses should define the `_SES_metadata_key_mappings` and `_SES_metadata_units` class variables to map any
-    custom metadata fields or fixed values to the standard peaks metadata keys and units. See the docstrings for
-    `_SES_metadata_dict_keys_to_peaks_keys` for more information.
+
+    Subclasses should define the `_SES_metadata_key_mappings` class variable to map any custom metadata fields or
+    fixed values to the standard peaks metadata keys. See the docstrings for `_SES_metadata_dict_keys_to_peaks_keys`
+    for more information.
+
+    Subclasses should also define the `_SES_metadata_units` dictionary to map any fixed units that are not determined
+    as part of the metadata loader.
 
     """
 
     _loc_name = "SES"
+    _loc_description = (
+        "Loader for data acquired using the Scienta Omicron SES software."
+    )
+    _loc_url = "https://scientaomicron.com"
     # Dictionary to overwrite or add:
     _SES_metadata_key_mappings = {}  # mappings from SES metadata key to peaks key
     _SES_metadata_units = {}  # standard SES units
@@ -337,17 +352,25 @@ class BaseSESDataLoader(BaseARPESDataLoader):
         data = BaseIBWDataLoader._load_data(fname, lazy=False)
 
         # Load the metadata if needed for parsing the data
-        pos_or_point_scan = [
+        pos_or_point_scan_dim = [
             axis
             for axis in data["dims"]
             if "position" in axis.lower() or "point" in axis.lower()
         ]
-        if "binding" in data["dims"] or pos_or_point_scan:
+        has_binding_energy_dim = [
+            axis for axis in data["dims"] if "binding" in axis.lower()
+        ]
+        has_hv_dim = [
+            axis
+            for axis in data["dims"]
+            if "hv" in axis.lower() or "photon" in axis.lower()
+        ]
+        if has_binding_energy_dim or pos_or_point_scan_dim or has_hv_dim:
             metadata_dict_SES_keys = cls._load_metadata(
                 fname, return_in_SES_format=True
             )
 
-            if pos_or_point_scan:
+            if pos_or_point_scan_dim:
                 # Parse the manipulator (or other external) data for the scan
 
                 # Extract the run mode information
@@ -386,25 +409,33 @@ class BaseSESDataLoader(BaseARPESDataLoader):
                     else:
                         axis_mapping[b] = a
 
-                independent_axes = set(header) - all_matched_keys
-                for axis in independent_axes:
-                    # Check if it varies or is static
-                    if abs(np.ptp(manipulator_data[axis])) < 1e-3:  # Same within noise
-                        metadata_dict_SES_keys[axis] = manipulator_data[axis].mean()
-                    else:
-                        metadata_dict_SES_keys[axis] = manipulator_data[axis]
                 inverse_manipulator_name_mapping = {
                     v: k
                     for k, v in cls._manipulator_name_conventions.items()
                     if v is not None
                 }
+                for axis in inverse_manipulator_name_mapping.keys():
+                    # Check if it varies or is static
+                    if abs(np.ptp(manipulator_data[axis])) < 1e-3:  # Same within noise
+                        metadata_dict_SES_keys[axis] = manipulator_data[axis].mean()
+                    else:
+                        if axis in all_matched_keys:
+                            # This is a scannable - just return min and max for some basic info in metadata
+                            metadata_dict_SES_keys[axis] = np.asarray(
+                                [
+                                    np.min(manipulator_data[axis]),
+                                    np.max(manipulator_data[axis]),
+                                ]
+                            )
 
-            # Cache the metadata
-            cls._metadata_cache[fname] = metadata_dict_SES_keys
+                        else:
+                            # This is likely an independent axis - return the full array to allow parsing if required
+                            metadata_dict_SES_keys[axis] = manipulator_data[axis]
 
         # Handle some mapping of dimension names
         dim_new_name = data["dims"].copy()
         units = {}
+        units["spectrum"] = "counts"
         for i, dim in enumerate(data["dims"]):
             if "kinetic" in dim.lower():
                 dim_new_name[i] = "eV"
@@ -415,10 +446,17 @@ class BaseSESDataLoader(BaseARPESDataLoader):
                         float(metadata_dict_SES_keys.get("Low Energy"))
                         - data["coords"][dim][0]
                     )
+                    dim_new_name[i] = "eV"
+                    units["eV"] = "eV"
                     cls._SES_metadata_key_mappings["analyser_eV_type"] = (
                         lambda x: "Kinetic"
                     )
                 else:
+                    dim_new_name[i] = "eV"
+                    units["eV"] = "eV"
+                    cls._SES_metadata_key_mappings["analyser_eV_type"] = (
+                        lambda x: "Binding"
+                    )
                     analysis_warning(
                         "Data energy axis has been loaded as binding energy.",
                         title="Loading info",
@@ -426,8 +464,12 @@ class BaseSESDataLoader(BaseARPESDataLoader):
                     )
             elif "photon" in dim.lower() or "hv" in dim.lower():
                 KE_delta = data["coords"][dim] - data["coords"][dim][0]
-                data["coords"]["KE_delta"] = ("hv", KE_delta)
+                units["hv"] = "eV"
                 dim_new_name[i] = "hv"
+                metadata_dict_SES_keys["Excitation Energy"] = [
+                    data["coords"][dim][0],
+                    data["coords"][dim][-1],
+                ]
             elif "deg" in dim.lower():
                 dim_new_name[i] = "theta_par"
                 units["theta_par"] = "deg"
@@ -450,8 +492,15 @@ class BaseSESDataLoader(BaseARPESDataLoader):
         data["coords"] = {
             dim_new_name[i]: data["coords"][dim] for i, dim in enumerate(data["dims"])
         }
+        if "hv" in data["coords"]:
+            data["coords"]["KE_delta"] = ("hv", KE_delta)
+            units["KE_delta"] = "eV"
         data["dims"] = dim_new_name
         data["units"].update(units)
+
+        # Cache the metadata if it was loaded
+        if "metadata_dict_SES_keys" in locals():
+            cls._metadata_cache[fname] = metadata_dict_SES_keys
 
         return data
 
@@ -488,7 +537,6 @@ class BaseSESDataLoader(BaseARPESDataLoader):
 
             except ValueError:
                 pass
-        print(metadata_dict_SES_keys)
         if return_in_SES_format:
             return metadata_dict_SES_keys
 
@@ -642,6 +690,7 @@ class BaseSESDataLoader(BaseARPESDataLoader):
             "manipulator_x1": cls._manipulator_name_conventions.get("x1", None),
             "manipulator_x2": cls._manipulator_name_conventions.get("x2", None),
             "manipulator_x3": cls._manipulator_name_conventions.get("x3", None),
+            "photon_hv": "Excitation Energy",
         }
         # Define standard units
         standard_units = {
@@ -660,6 +709,7 @@ class BaseSESDataLoader(BaseARPESDataLoader):
             "analyser_azi": "deg",
             "analyser_deflector_parallel": "deg",
             "analyser_deflector_perp": "deg",
+            "photon_hv": "eV",
         }
 
         # If custom key mappings or units have been supplied, update the standard keys

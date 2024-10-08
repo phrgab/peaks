@@ -103,7 +103,7 @@ class IdentifyLoc:
             # Extract and determine the location using the _SES_find function
             location = _SES_find(metadata_lines, "Location=")
             if "bloch" in location.lower() or "maxiv" in location.lower():
-                return "MAX IV Bloch"
+                return "MAXIV_Bloch_A"
             elif "ape" in location.lower() or "elettra" in location.lower():
                 return "Elettra APE"
             elif "cassiopee" in location.lower() or "soleil" in location.lower():
@@ -122,7 +122,7 @@ class IdentifyLoc:
         # Extract and determine the location using the _SES_find function
         location = _SES_find(metadata_lines, "Location=")
         if "bloch" in location.lower() or "maxiv" in location.lower():
-            return "MAX IV Bloch"
+            return "MAXIV_Bloch_A"
         elif "ape" in location.lower() or "elettra" in location.lower():
             return "Elettra APE"
         elif "cassiopee" in location.lower() or "soleil" in location.lower():
@@ -146,7 +146,7 @@ class IdentifyLoc:
             )
             location = metadata_dict_SES_keys.get("Location")
             if "bloch" in location.lower() or "maxiv" in location.lower():
-                return "MAX IV Bloch"
+                return "MAXIV_Bloch_A"
             elif "ape" in location.lower() or "elettra" in location.lower():
                 return "Elettra APE"
             elif "cassiopee" in location.lower() or "soleil" in location.lower():
