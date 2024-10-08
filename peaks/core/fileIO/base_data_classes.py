@@ -506,21 +506,12 @@ class BaseIBWDataLoader(BaseDataLoader):
             )
             counter += dim_size[i]
 
-        # While we are here we can extract and cache the metadata from the wavenote
-        wavenote = file_contents["wave"]["note"].decode("ascii")
-        cls._metadata_cache[fname] = wavenote
-
         return {"spectrum": spectrum, "dims": dims, "coords": coords, "units": {}}
 
     @classmethod
     def _load_metadata(cls, fname):
         """Load metadata from an Igor Binary Wave file."""
-        # Check if metadata already cached
-        wavenote = cls._metadata_cache.get(fname)
-        if wavenote:
-            return {"wavenote": wavenote}
-
-        # If not cached, load just the wavenote
+        # Load just the wavenote
         # Define maximum number of dimensions
         max_dims = 4
 
@@ -585,6 +576,7 @@ class BaseIBWDataLoader(BaseDataLoader):
             f.seek(pointer_location - offset)
             # read that bytes/characters to determine the wavenote
             wavenote = f.read(offset).decode()
+            # NB No not cache the wavenote, as other loaders rely on this method and that screws things up
 
         return {"wavenote": wavenote}
 
