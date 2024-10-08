@@ -336,6 +336,72 @@ class BaseSESDataLoader(BaseARPESDataLoader):
         # Load the data from the ibw file using the default IBW loader
         data = BaseIBWDataLoader._load_data(fname, lazy=False)
 
+        # Load the metadata if needed for parsing the data
+        pos_or_point_scan = [
+            axis
+            for axis in data["dims"]
+            if "position" in axis.lower() or "point" in axis.lower()
+        ]
+        if "binding" in data["dims"] or pos_or_point_scan:
+            metadata_dict_SES_keys = cls._load_metadata(
+                fname, return_in_SES_format=True
+            )
+
+            if pos_or_point_scan:
+                # Parse the manipulator (or other external) data for the scan
+
+                # Extract the run mode information
+                rmi = metadata_dict_SES_keys.get("Run Mode Information")
+                # Remove the scan name line if present
+                raw_manipulator_data = rmi[1:] if "Name" in rmi[0] else rmi
+
+                # Parse the data into arrays
+                split_data = [line.split("\x0b") for line in raw_manipulator_data]
+                header = split_data[0]
+                numeric_data = split_data[1:]
+                numeric_array = np.array(numeric_data, dtype=float)
+                manipulator_data = {
+                    header[i]: numeric_array[:, i] for i in range(len(header))
+                }
+
+                # In the SES data format the Point and Position columns define the scan and are duplicated in the raw axis columns
+                # Check which arrays match
+                matching_pairs = []
+                keys = list(header)
+                all_matched_keys = set()
+                for i in range(len(keys)):
+                    for j in range(i + 1, len(keys)):
+                        key1 = keys[i]
+                        key2 = keys[j]
+                        if np.array_equal(
+                            manipulator_data[key1], manipulator_data[key2]
+                        ):
+                            matching_pairs.append((key1, key2))
+                            all_matched_keys.update([key1, key2])
+                axis_mapping = {}
+                for i in matching_pairs:
+                    a, b = i
+                    if "position" in a.lower() or "point" in a.lower():
+                        axis_mapping[a] = b
+                    else:
+                        axis_mapping[b] = a
+
+                independent_axes = set(header) - all_matched_keys
+                for axis in independent_axes:
+                    # Check if it varies or is static
+                    if abs(np.ptp(manipulator_data[axis])) < 1e-3:  # Same within noise
+                        metadata_dict_SES_keys[axis] = manipulator_data[axis].mean()
+                    else:
+                        metadata_dict_SES_keys[axis] = manipulator_data[axis]
+                inverse_manipulator_name_mapping = {
+                    v: k
+                    for k, v in cls._manipulator_name_conventions.items()
+                    if v is not None
+                }
+
+            # Cache the metadata
+            cls._metadata_cache[fname] = metadata_dict_SES_keys
+
         # Handle some mapping of dimension names
         dim_new_name = data["dims"].copy()
         units = {}
@@ -344,12 +410,6 @@ class BaseSESDataLoader(BaseARPESDataLoader):
                 dim_new_name[i] = "eV"
                 units["eV"] = "eV"
             elif "binding" in dim.lower():
-                # Load the metadata to get the energy scale
-                metalines = cls._load_SES_metadata_ibw(fname)
-                metadata_dict_SES_keys = cls._SES_metadata_to_dict_w_SES_keys(metalines)
-                # Cache the metadata
-                cls._metadata_cache[fname] = metadata_dict_SES_keys
-
                 if metadata_dict_SES_keys.get("Energy Unit") == "Kinetic":
                     data["coords"][dim] += (
                         float(metadata_dict_SES_keys.get("Low Energy"))
@@ -376,12 +436,22 @@ class BaseSESDataLoader(BaseARPESDataLoader):
                 units["y_scale"] = cls._parse_SES_units_from_name(dim)
             elif "iteration" in dim.lower():
                 dim_new_name[i] = "scan_no"
+            elif "position" in dim.lower() or "point" in dim.lower():
+                axis_name = axis_mapping[dim]
+                peaks_axis_name = inverse_manipulator_name_mapping.get(
+                    axis_name, axis_name
+                )
+                dim_new_name[i] = peaks_axis_name
+                units[f"manipulator_{peaks_axis_name}"] = cls._SES_metadata_units.get(
+                    peaks_axis_name
+                )
 
-        # Replace dimension names and co-ordinate labels where required
+        # Replace dimension names, co-ordinate labels, and units where required
         data["coords"] = {
             dim_new_name[i]: data["coords"][dim] for i, dim in enumerate(data["dims"])
         }
         data["dims"] = dim_new_name
+        data["units"].update(units)
 
         return data
 
@@ -403,6 +473,22 @@ class BaseSESDataLoader(BaseARPESDataLoader):
             metadata_dict_SES_keys = cls._SES_metadata_to_dict_w_SES_keys(
                 metadata_lines
             )
+            # Check if there is additional run mode information in the metadata
+            try:
+                run_mode_info_start_index = metadata_lines.index(
+                    "[Run Mode Information]"
+                )
+                run_mode_info_stop_index = (
+                    metadata_lines[run_mode_info_start_index:].index("")
+                    + run_mode_info_start_index
+                )
+                metadata_dict_SES_keys["Run Mode Information"] = metadata_lines[
+                    run_mode_info_start_index + 1 : run_mode_info_stop_index
+                ]
+
+            except ValueError:
+                pass
+        print(metadata_dict_SES_keys)
         if return_in_SES_format:
             return metadata_dict_SES_keys
 
@@ -464,33 +550,8 @@ class BaseSESDataLoader(BaseARPESDataLoader):
         """Extract the lines containing metadata in an SES format .ibw file."""
         # Load wavenote using the BaseIBWDataLoader
         wavenote = BaseIBWDataLoader._load_metadata(fname).get("wavenote")
+
         return wavenote.split("\r")
-
-    @staticmethod
-    def _find_SES_metaline(metadata_lines, item):
-        """Parse the metadata values for a given key for the format of an SES file.
-
-        Parameters
-        ------------
-        metadata_lines : list
-            List of lines containing metadata.
-
-        item : str
-            Key for the metadata to extract.
-
-        Returns
-        ------------
-        field : str or None
-            The parsed metadata value or None if no relevant parameter found.
-        """
-        return next(
-            (
-                line.split("=" if "=" in line else ":")[-1].strip()
-                for line in metadata_lines
-                if line.startswith(item) and ("=" in line or ":" in line)
-            ),
-            None,
-        )
 
     @staticmethod
     def _parse_SES_units_from_name(name):
@@ -572,9 +633,15 @@ class BaseSESDataLoader(BaseARPESDataLoader):
             "analyser_polar": None,
             "analyser_tilt": None,
             "analyser_azi": None,
-            "analyser_deflector_parallel": ["Thetax_Low", "Thetax_High"],
-            "analyser_deflector_perp": ["Thetay_Low", "Thetay_High"],
+            "analyser_deflector_parallel": ["Thetax_Low", "Thetax_High", "ThetaX"],
+            "analyser_deflector_perp": ["Thetay_Low", "Thetay_High", "ThetaY"],
             "timestamp": _parse_timestamp,
+            "manipulator_polar": cls._manipulator_name_conventions.get("polar", None),
+            "manipulator_tilt": cls._manipulator_name_conventions.get("tilt", None),
+            "manipulator_azi": cls._manipulator_name_conventions.get("azi", None),
+            "manipulator_x1": cls._manipulator_name_conventions.get("x1", None),
+            "manipulator_x2": cls._manipulator_name_conventions.get("x2", None),
+            "manipulator_x3": cls._manipulator_name_conventions.get("x3", None),
         }
         # Define standard units
         standard_units = {
