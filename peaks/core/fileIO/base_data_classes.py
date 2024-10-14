@@ -7,17 +7,21 @@ import inspect
 from pydantic import create_model
 from typing import Optional
 from igor2 import binarywave
-from pydantic.v1.errors import cls_kwargs
+import h5py
+import pint
+import pint_xarray
 
 from .loc_registry import LOC_REGISTRY, IdentifyLoc
 from .base_metadata_models import (
     BaseScanMetadataModel,
-    AxisMetadataModel,
+    AxisMetadataModelWithReference,
     TemperatureMetadataModel,
     PhotonMetadataModel,
 )
 from ...utils.misc import analysis_warning
 from .loc_registry import register_loader
+
+ureg = pint_xarray.unit_registry
 
 
 class BaseDataLoader:
@@ -101,12 +105,12 @@ class BaseDataLoader:
 
     # Public methods
     @classmethod
-    def load(cls, fname, lazy="auto", loc="auto", metadata=True):
+    def load(cls, fpath, lazy="auto", loc="auto", metadata=True):
         """Top-level method to load data and return a DataArray.
 
         Parameters
         ------------
-        fname : str
+        fpath : str
             Path to the file to be loaded.
 
         lazy : bool or str, optional
@@ -132,10 +136,10 @@ class BaseDataLoader:
 
             from peaks.core.fileIO.base_data_classes import BaseDataLoader
 
-            fname = 'C:/User/Documents/Research/disp1.xy'
+            fpath = 'C:/User/Documents/Research/disp1.xy'
 
             # Load the data
-            da = BaseDataLoader.load(fname)
+            da = BaseDataLoader.load(fpath)
 
         Notes
         -----
@@ -145,27 +149,31 @@ class BaseDataLoader:
         """
 
         # Make sure the metadata cache for this file is empty
-        cls._metadata_cache.pop(fname, None)
+        cls._metadata_cache.pop(fpath, None)
 
         # Parse the loc
-        loc = cls._get_loc(fname) if loc == "auto" else loc
+        loc = cls._get_loc(fpath) if loc == "auto" else loc
         cls._check_valid_loc(loc)  # Check a valid loc
         # Trigger the loader for the correct loc
         loader_class = cls.get_loader(loc)
-        return loader_class._load(fname, lazy, metadata)
+        return loader_class._load(fpath, lazy, metadata)
 
     @classmethod
-    def load_metadata(cls, fname, loc="auto"):
+    def load_metadata(cls, fpath, loc="auto", return_as_dict=False):
         """Top-level method to load metadata and return it in a dictionary.
 
         Parameters
         ------------
-        fname : str
+        fpath : str
             Path to the file to be loaded.
 
         loc : str, optional
             The location at which the data was obtained. If not specified, the location will be attempted to be
             determined automatically.
+
+        return_as_dict : bool, optional
+            Whether to return the metadata as a simple dictionary of metadata_keys: values or as a dictionary
+            of the parsed (i.e. structured) metadata models. Defaults to False.
 
         Returns
         ------------
@@ -178,10 +186,10 @@ class BaseDataLoader:
 
             from peaks.core.fileIO.base_data_classes import BaseDataLoader
 
-            fname = 'C:/User/Documents/Research/disp1.xy'
+            fpath = 'C:/User/Documents/Research/disp1.xy'
 
             # Determine the location at which the data was obtained
-            loc = BaseDataLoader._get_loc(fname)
+            loc = BaseDataLoader._get_loc(fpath)
 
         Notes
         -----
@@ -190,31 +198,38 @@ class BaseDataLoader:
         _load_metadata method.
         """
 
-        # Parse the loc - if the base class is used, determine the loc automatically
+        # Parse the loc - if the base class is used, determine the loc automatically and route to the subclass
         if cls._loc_name == "Base":
-            loc = cls._get_loc(fname) if loc == "auto" else loc
-        else:  # Otherwise, use the loc defined in the subclass
-            loc = cls._loc_name
-        cls._check_valid_loc(loc)  # Check a valid loc
+            loc = cls._get_loc(fpath) if loc == "auto" else loc
+            cls._check_valid_loc(loc)  # Check a valid loc
+            if loc != "Base":
+                return cls.get_loader(loc).load_metadata(fpath)
+        # Otherwise, use the loc defined in the subclass
+        loc = cls._loc_name
 
         # Parse some baseline metadata from the file
         # Extract a timestamp from last modification time - overwrite in subclass if more robust method available
-        timestamp = os.path.getmtime(fname)
+        timestamp = os.path.getmtime(fpath)
         # Convert the timestamp to a human-readable format
         readable_timestamp = datetime.fromtimestamp(timestamp).strftime(
             "%Y-%m-%d %H:%M:%S"
         )
-        metadata_dict = {"timestamp": readable_timestamp, "fname": fname}
+        metadata_dict = {"timestamp": readable_timestamp, "fpath": fpath}
 
         # Method to extract any specific metadata, which should be updated in subclasses
         metadata_dict.update(
             {
                 k: v
-                for k, v in cls.get_loader(loc)._load_metadata(fname).items()
+                for k, v in cls.get_loader(loc)._load_metadata(fpath).items()
                 if v is not None
             }
         )
-        return metadata_dict
+        if return_as_dict:
+            return metadata_dict
+        parsed_metadata = {}
+        parsed_metadata.update(cls._parse_general_metadata(metadata_dict))
+        parsed_metadata.update(cls._parse_specific_metadata(metadata_dict))
+        return parsed_metadata
 
     @staticmethod
     def get_loader(loc):
@@ -254,12 +269,12 @@ class BaseDataLoader:
 
     # Private methods
     @staticmethod
-    def _get_loc(fname):
+    def _get_loc(fpath):
         """This function determines the location at which the data was obtained.
 
         Parameters
         ------------
-        fname : str
+        fpath : str
             Path to the file to be loaded.
 
         Returns
@@ -267,7 +282,7 @@ class BaseDataLoader:
         loc : str
             The name of the location (typically a beamline).
         """
-        file_extension = os.path.splitext(fname)[1]
+        file_extension = os.path.splitext(fpath)[1]
         # Define the handlers for the different file extensions
         # No extension
         handlers = {
@@ -285,7 +300,7 @@ class BaseDataLoader:
         )
         handler = handlers.get(file_extension, IdentifyLoc._default_handler)
 
-        return handler(fname)
+        return handler(fpath)
 
     @staticmethod
     def _check_valid_loc(loc):
@@ -297,32 +312,31 @@ class BaseDataLoader:
             )
 
     @classmethod
-    def _load(cls, fname, lazy, metadata):
+    def _load(cls, fpath, lazy, metadata):
         """Generic method for loading the data."""
-        data = cls._load_data(fname, lazy)  # Load the actual data from the file
+        data = cls._load_data(fpath, lazy)  # Load the actual data from the file
         da = cls._make_dataarray(data)  # Convert to DataArray
         # Add a name to the DataArray
-        da.name = fname.split("/")[-1].split(".")[0]
+        da.name = fpath.split("/")[-1].split(".")[0]
         if metadata:  # Load metadata if requested
-            metadata_dict = cls.load_metadata(fname, cls._loc_name)
-            cls._apply_general_metadata(da, metadata_dict)
-            cls._apply_specific_metadata(da, metadata_dict)
+            parsed_metadata = cls.load_metadata(fpath, cls._loc_name)
+            da.attrs.update(parsed_metadata)
             cls._metadata_cache.pop(
-                fname, None
+                fpath, None
             )  # Clear any metadata cache for this file
         # Apply any specific conventions and add a history of the load
         da = cls._apply_conventions(da)
-        cls._add_load_history(da, fname)
+        cls._add_load_history(da, fpath)
 
         return da
 
     @classmethod
-    def _load_data(cls, fname, lazy):
+    def _load_data(cls, fpath, lazy):
         """Load the data. To be implemented by subclasses.
 
         Parameters
         ------------
-        fname : str
+        fpath : str
             Path to the file to be loaded.
 
         lazy : bool or str
@@ -341,13 +355,13 @@ class BaseDataLoader:
         raise NotImplementedError("Subclasses should implement this method.")
 
     @classmethod
-    def _load_metadata(cls, fname):
+    def _load_metadata(cls, fpath):
         """Load the metadata. Should return a dictionary `metadata_dict` mapping relevant metadata keys to values.
         Loaders that subclass this class should implement this method.
 
         Parameters
         ------------
-        fname : str
+        fpath : str
             Path to the file to be loaded.
 
         Returns
@@ -360,29 +374,32 @@ class BaseDataLoader:
         raise NotImplementedError("Subclasses should implement this method.")
 
     @classmethod
-    def _apply_general_metadata(cls, da, metadata_dict):
+    def _parse_general_metadata(cls, metadata_dict):
         """Apply general metadata to the DataArray - implemented irrespective of the loader."""
 
+        fpath = metadata_dict.get("fpath")
         general_scan_metadata = BaseScanMetadataModel(
-            name=da.name,
-            filepath=metadata_dict.get("fname"),
+            name=fpath.split("/")[-1].split(".")[0],
+            filepath=fpath,
             loc=cls._loc_name,
             timestamp=metadata_dict.get("timestamp"),
             scan_command=metadata_dict.get("scan_command"),
         )
-        da.attrs.update({"scan": general_scan_metadata})
+        return {"scan": general_scan_metadata}
 
     @classmethod
-    def _apply_specific_metadata(cls, da, metadata_dict):
+    def _parse_specific_metadata(cls, metadata_dict):
         """Method to orchastrate applying loader-specific metadata to the DataArray.
 
         Parameters
         ------------
-        da : xarray.DataArray
-            The DataArray to which metadata should be applied.
-
         metadata_dict : dict
             Dictionary containing all available metadata as returned by `_load_metadata`.
+
+        Returns
+        ------------
+        parsed_metadata : dict
+            Dictionary containing all parsed metadata as Pydantic models.
 
         Notes
         -----
@@ -396,6 +413,7 @@ class BaseDataLoader:
         if they exist and a warning be raised if they are missing.
         """
         metadata_warning_list = []
+        parsed_metadata = {}
         for parser in cls._metadata_parsers:
             _parser = getattr(cls, parser, None)
             if _parser is None:
@@ -404,9 +422,10 @@ class BaseDataLoader:
                     f"change the entries of class attribute `_metadata_parsers`."
                 )
             metadata_to_apply, metadata_to_add_to_warning_list = _parser(metadata_dict)
-            da.attrs.update(metadata_to_apply)
+            parsed_metadata.update(metadata_to_apply)
             metadata_warning_list.extend(metadata_warning_list)
         cls._warn_metadata(metadata_dict, metadata_warning_list)
+        return parsed_metadata
 
     @staticmethod
     def _parse_exclude_attribute_from_metadata_warning(attributes, exclude_list):
@@ -467,16 +486,155 @@ class BaseDataLoader:
         return da
 
     @classmethod
-    def _add_load_history(cls, da, fname):
+    def _add_load_history(cls, da, fpath):
         """Add a history of the load to the DataArray."""
         da.history.add(
             {
                 "record": "Data loaded",
                 "loc": cls._loc_name,
                 "loader": cls.__name__,
-                "file_name": fname,
+                "file_name": fpath,
             }
         )
+
+
+class BaseHDF5DataLoader:
+    """Helper class for automating parsing data and metadata from hdf5 files.
+
+    Notes
+    -----
+    Subclasses should define the _hdf5_metadata_key_mappings and _hdf5_metadata_fixed_units class attributes.
+    The extraction process supports different types of keys:
+        - If a single key is given, the value is attempted to be extracted directly using that key.
+        - If a `list` or `tuple` of keys is given, the function tries to extract values for each key in turn, returning
+        the first value which returns a result.
+        - If a callable is given, the function is passed the h5py file object. It should return either a key (string)
+        or directly return a value (float, int etc.).
+        - A constant value (:class:`pint.Quantity`, `float`, `int`) can be provided by giving that value directly.
+        - A constant string can be given by passing a string that starts with "FIXED_VALUE:", e.g. "FIXED_VALUE:LH".
+
+    Note, if a key is passed as a string, units will attempt to be parsed from the relevant hdf5 dataset attributes.
+    If units are present in the file, this takes precedence over any fixed units defined in the
+    `_hdf5_metadata_fixed_units` class attribute. If units are not present in the file, the fixed units will be used
+    if supplied. If passing a callable in the metadata mapping, the recommended approach is to use the function to
+    parse the relevant key to call, and then finally pass the key to the `_extract_hdf5_value` method to extract the
+    value from the hdf5 file. In this way, consistent handling of units is ensured.
+    """
+
+    # mappings from desired metadata keys to hdf5 field addresses
+    _hdf5_metadata_key_mappings = {}
+    # mappings from metadata keys to fixed units,
+    # otherwise these will be attempted to be determined from the hdf5 field attributes
+    _hdf5_metadata_fixed_units = {}
+
+    @classmethod
+    def _make_dataarray(cls, data):
+        """Ensure data is in a :class:`xarray.DataArray` format for HDF5 loaders, which typically already convert to
+        :class:`xarray.DataArray` in the `_load_data` method.
+
+        Parameters
+        ----------
+        data : dict or xarray.DataArray
+            If a dictionary, should follow convention in :meth:`BaseDataLoader._load_data`.
+        """
+        if isinstance(data, dict):
+            return BaseDataLoader._make_dataarray(data)
+        return data
+
+    @classmethod
+    def _load_metadata(cls, fpath):
+        """Load metadata from a Diamond hdf5 file.
+
+        Parameters
+        ----------
+        fpath : str
+            Path to the file to be loaded.
+
+        Returns
+        -------
+        metadata : dict
+            Dictionary containing the extracted metadata.
+
+        """
+        # Open the file (read only)
+        with h5py.File(fpath, "r") as f:
+            metadata = {}
+            for (
+                peaks_key,
+                hdf5_key,
+            ) in cls._hdf5_metadata_key_mappings.items():
+                if isinstance(hdf5_key, (list, tuple)):
+                    # Iterate through all keys until a value is returned
+                    metadata_entry = None
+                    for key in hdf5_key:
+                        metadata_entry = cls._extract_hdf5_value(f, key)
+                        if metadata_entry is not None:
+                            break
+                    metadata[peaks_key] = metadata_entry
+                elif hdf5_key is not None:
+                    metadata[peaks_key] = cls._extract_hdf5_value(f, hdf5_key)
+                else:
+                    metadata[peaks_key] = None
+            return metadata
+
+    @classmethod
+    def _extract_hdf5_value(cls, f, key, return_extreme_values=True):
+        """Extract a value from a hdf5 file, adding units if possible.
+
+        Parameters
+        ----------
+        f : h5py.File
+            The h5py file object (should be open).
+        key : pint.Quantity, str, float, int, list, np.ndarray, callable
+            The key to extract from the file.
+        return_extreme_values : bool, optional
+            Whether to return the extreme values of an array if it is an array or list.
+            Defaults to True. If False, returns entire array.
+
+        Returns
+        -------
+        extracted_value : Union[Quantity, str, float, int, list, np.ndarray, None]
+            The extracted value. Preference is given to pint.Quantity objects where possible.
+
+        """
+        if isinstance(key, (float, int, list, np.ndarray, pint.Quantity)):
+            return key
+        elif callable(key):
+            # Call the function and pass it back here.
+            # This works if a key returned as a string from the function, otherwise also to check for units
+            return cls._extract_hdf5_value(f, key(f))
+        elif isinstance(key, str):
+            # Check for a direct string flag
+            if key.startswith("FIXED_VALUE:"):
+                return key.split("FIXED_VALUE:")[1]
+            # Otherwise this should be a key. Try and extract the value from the hdf5 file
+            try:
+                value = f[key][()]
+                if isinstance(value, (np.ndarray, list)):
+                    if len(value) == 1:
+                        value = value[0]
+                    elif return_extreme_values:
+                        value = np.array([np.min(value), np.max(value)])
+                if isinstance(value, (bytes, np.bytes_)):
+                    value = value.decode()
+                units = f[key].attrs.get("units")
+                units = (
+                    units.decode() if isinstance(units, (bytes, np.bytes_)) else units
+                )
+                if not units:
+                    # If can't parse from the file, check for a fixed units string
+                    units = cls._hdf5_metadata_fixed_units.get(key)
+
+                return value * ureg(units) if units else value
+            except KeyError:
+                return None
+        if key is None:
+            return None
+        else:
+            raise ValueError(
+                f"Invalid key in metadata mapping key: {type(key)}. "
+                f"Expected pint.Quantity, str, float, int, or callable."
+            )
 
 
 @register_loader
@@ -489,11 +647,11 @@ class BaseIBWDataLoader(BaseDataLoader):
     _metadata_parsers = ["_parse_wavenote_metadata"]
 
     @classmethod
-    def _load_data(cls, fname, lazy):
+    def _load_data(cls, fpath, lazy):
         """Load the data from an Igor Binary Wave file."""
 
         # Open the file and load its contents
-        file_contents = binarywave.load(fname)
+        file_contents = binarywave.load(fpath)
 
         # Extract spectrum
         spectrum = file_contents["wave"]["wData"]
@@ -523,14 +681,14 @@ class BaseIBWDataLoader(BaseDataLoader):
         return {"spectrum": spectrum, "dims": dims, "coords": coords, "units": {}}
 
     @classmethod
-    def _load_metadata(cls, fname):
+    def _load_metadata(cls, fpath):
         """Load metadata from an Igor Binary Wave file."""
         # Load just the wavenote
         # Define maximum number of dimensions
         max_dims = 4
 
         # Read the ibw bin header segment of the file (IBW version 2,5 only)
-        with open(fname, "rb") as f:
+        with open(fpath, "rb") as f:
             # Determine file version and extract file information
             version = np.fromfile(f, dtype=np.dtype("int16"), count=1)[0]
             if version == 2:
@@ -565,7 +723,7 @@ class BaseIBWDataLoader(BaseDataLoader):
                 optionsSize2 = np.fromfile(f, dtype=np.dtype("int32"), count=1)[0]
 
         # Open the file and read the wavenote
-        with open(fname, "rb") as f:
+        with open(fpath, "rb") as f:
             # Move the cursor to the end of the file
             f.seek(0, os.SEEK_END)
             # Get the current position of pointer
@@ -639,7 +797,7 @@ class BaseManipulatorDataLoader(BaseDataLoader):
     _manipulator_axes = ["polar", "tilt", "azi", "x1", "x2", "x3"]
     _desired_dim_order = ["x3", "x2", "x1", "polar", "tilt", "azi"]
     _manipulator_sign_conventions = {}  # Mapping of axes to sign conventions
-    _manipulator_name_conventions = {}  # Mapping of axes to physical names
+    _manipulator_name_conventions = {}  # Mapping of peaks axes to local names
     _manipulator_exclude_from_metadata_warn = (
         []
     )  # List of axes to ignore if the metadata is missing
@@ -669,7 +827,8 @@ class BaseManipulatorDataLoader(BaseDataLoader):
 
         # Build manipulator metadata model
         fields = {
-            axis: (Optional[AxisMetadataModel], None) for axis in cls._manipulator_axes
+            axis: (Optional[AxisMetadataModelWithReference], None)
+            for axis in cls._manipulator_axes
         }
         ManipulatorMetadataModel = create_model("ManipulatorMetadataModel", **fields)
 
@@ -677,7 +836,7 @@ class BaseManipulatorDataLoader(BaseDataLoader):
         manipulator_metadata_dict = {}
         for axis in cls._manipulator_axes:
             manipulator_metadata_dict[axis] = {
-                "name": cls._manipulator_name_conventions.get(axis, None),
+                "local_name": cls._manipulator_name_conventions.get(axis, None),
                 "value": metadata_dict.get(f"manipulator_{axis}"),
                 "reference_value": None,
             }

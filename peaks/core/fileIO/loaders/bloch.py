@@ -8,6 +8,7 @@
 # Brendan Edwards 29/02/2024
 
 import numpy as np
+import pint_xarray
 from peaks.core.fileIO.loaders.SES import (
     _load_SES_data,
     _load_SES_metalines,
@@ -18,12 +19,15 @@ from ..fileIO_opts import _BaseARPESConventions, _register_location
 from ..base_arpes_data_classes import BaseSESDataLoader
 from ..loc_registry import register_loader
 
+ureg = pint_xarray.unit_registry
+
 
 @register_loader
 class BlochArpesLoader(BaseSESDataLoader):
     _loc_name = "MAXIV_Bloch_A"
-    _loc_description = "MAX IV Bloch beamline A branch"
+    _loc_description = "A branch (ARPES) of Bloch beamline at Max-IV"
     _loc_url = "https://www.maxiv.lu.se/beamlines-accelerators/beamlines/bloch/"
+    _analyser_slit_angle = 90 * ureg("deg")
 
     _manipulator_name_conventions = {
         "polar": "P",

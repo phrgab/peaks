@@ -882,12 +882,12 @@ def _add_metadata(DataArray, fname, loc, scan_type):
         metadata = _load_APE_metadata(fname, scan_type)
 
     elif loc == "MAX IV Bloch":
-        from .loaders.Bloch import _load_Bloch_metadata
+        from .loaders.bloch import _load_Bloch_metadata
 
         metadata = _load_Bloch_metadata(fname, scan_type)
 
     elif loc == "MAX IV Bloch-spin":
-        from .loaders.Bloch import _load_Bloch_spin_metadata
+        from .loaders.bloch import _load_Bloch_spin_metadata
 
         metadata = _load_Bloch_spin_metadata(fname, scan_type)
 

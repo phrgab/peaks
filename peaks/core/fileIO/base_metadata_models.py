@@ -74,25 +74,32 @@ class BaseScanMetadataModel(BaseMetadataModel):
     scan_command: Optional[str] = None
 
 
-# Define the manipulator metadata models
-class AxisMetadataModel(BaseMetadataModel):
-    """Base model to store metadata for a single manipulator axis.
+class NamedAxisMetadataModel(BaseMetadataModel):
+    """Based model to store metadata for a single named axis.
 
     Attributes
     ----------
-    name : Optional[str]
-        The local name of the axis on the actual system manipulator.
+    local_name : Optional[str]
+        The name of the axis.
     value : Optional[Union[Quantity, str, None]]
-        The value of the axis. If an array (e.g. for movement during the scan), this should return a string that
-        describes the axis movement in the form x0:x_step:x1.
-    reference_value : Optional[Union[Quantity, None]]
-        The reference value of the axis. Supplied as None on initial load, but can be used later for keeping track
-        e.g. of normal emission values.
+        The value of the axis.
+
+    Methods
+    -------
+    set(value)
+        Set the value of the axis.
+    get()
+        Get the value of the axis.
+
+    local_name : Optional[str]
+        The name of the axis.
+    value : Optional[Union[Quantity, str, None]]
+        The value of the axis.
+
     """
 
-    name: Optional[str] = None
+    local_name: Optional[str] = None
     value: Optional[Union[str, Quantity]] = None
-    reference_value: Optional[Quantity] = None
 
     def set(self, value):
         """Set the value of the axis.
@@ -110,6 +117,41 @@ class AxisMetadataModel(BaseMetadataModel):
                 self.value = value * self.value.units
             else:
                 self.value = value
+
+    def get(self):
+        """Get the value of the axis.
+
+        Returns
+        -------
+        value : Union[Quantity, str, None]
+            The value of the axis.
+        """
+        return self.value
+
+
+# Define the manipulator metadata models
+class AxisMetadataModelWithReference(NamedAxisMetadataModel):
+    """Base model to store metadata for a single axis (e.g. manipulator axis) where a reference value is needed.
+
+    Attributes
+    ----------
+    name : Optional[str]
+        The local name of the axis on the actual system manipulator.
+    value : Optional[Union[Quantity, str, None]]
+        The value of the axis. If an array (e.g. for movement during the scan), this should return a string that
+        describes the axis movement in the form x0:x_step:x1.
+    reference_value : Optional[Union[Quantity, None]]
+        The reference value of the axis. Supplied as None on initial load, but can be used later for keeping track
+        e.g. of normal emission values.
+
+    Methods
+    -------
+    In addition to the methods of NamedAxisMetadataModel, this class also has the following methods:
+    set_reference(value)
+        Set the reference value of the axis.
+    """
+
+    reference_value: Optional[Quantity] = None
 
     def set_reference(self, value):
         """Set the reference value of the axis.
@@ -188,8 +230,8 @@ class ARPESAnalyserAnglesMetadataModel(BaseMetadataModel):
 class ARPESDeflectorMetadataModel(BaseMetadataModel):
     """Model to store deflector metadata."""
 
-    parallel: Optional[Union[str, Quantity]] = None
-    perp: Optional[Union[str, Quantity]] = None
+    parallel: NamedAxisMetadataModel = NamedAxisMetadataModel()
+    perp: NamedAxisMetadataModel = NamedAxisMetadataModel()
 
 
 class ARPESMetadataModel(BaseMetadataModel):

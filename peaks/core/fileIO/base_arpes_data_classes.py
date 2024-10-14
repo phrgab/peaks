@@ -11,6 +11,7 @@ from .base_data_classes import (
     BaseIBWDataLoader,
 )
 from .base_metadata_models import (
+    NamedAxisMetadataModel,
     ARPESMetadataModel,
     ARPESScanMetadataModel,
     ARPESDeflectorMetadataModel,
@@ -54,9 +55,12 @@ class BaseARPESDataLoader(
     _loc_name = "Default ARPES"
     _dtype = "float32"
     _dorder = "C"
-    _analyser_sign_conventions = (
-        {}
-    )  # Any sign conventions to apply to the  analyser axes cf. `peaks` convention
+    # Any sign and name conventions to apply to the analyser cf. `peaks` convention
+    _analyser_sign_conventions = {}
+    _analyser_name_conventions = {}
+    # Define analyser slit angle in subclass, otherwise it must be passed to the metadata dict from the metadata loader
+    _analyser_slit_angle = None
+    # Core attributes
     _analyser_attributes = [
         "model",
         "slit_width",
@@ -113,11 +117,11 @@ class BaseARPESDataLoader(
         return self._analyser_attributes
 
     @classmethod
-    def _load(cls, fname, lazy, metadata):
+    def _load(cls, fpath, lazy, metadata):
         # Raise an exception if the manipulator doesn't have at least the core 6 axes required in other data handling
         required_axis_list = ["polar", "tilt", "azi", "x1", "x2", "x3"]
         if not hasattr(cls, "_manipulator_axes") or not all(
-            item in required_axis_list for item in cls._manipulator_axes
+            item in cls._manipulator_axes for item in required_axis_list
         ):
             raise ValueError(
                 f"ARPES data loaders are expected to subclass a BaseManipulatorDataLoader and include all of "
@@ -128,13 +132,13 @@ class BaseARPESDataLoader(
             )
 
         # Run the main _load method returning a DataArray
-        da = super()._load(fname, lazy, metadata)
+        da = super()._load(fpath, lazy, metadata)
 
         # Try to parse to counts/s if possible
         try:
             t = da.analyser.scan.dwell.to("s") * da.analyser.scan.sweeps
             da = da / t
-        except ValueError:
+        except (ValueError, AttributeError, TypeError):
             pass
 
         return da
@@ -142,6 +146,21 @@ class BaseARPESDataLoader(
     @classmethod
     def _parse_analyser_metadata(cls, metadata_dict):
         """Parse metadata specific to the analyser."""
+
+        # Get the analyser slit angle
+        slit_angle = (
+            cls._analyser_slit_angle
+            if cls._analyser_slit_angle is not None
+            else metadata_dict.get("analyser_azi")
+        )
+        if not slit_angle:
+            analysis_warning(
+                "Analyser slit angle not found in metadata. Please ensure that the analyser slit angle is "
+                "defined in the loader class via the `_analyser_slit_angle` class variable or is parsed in the "
+                "metadata loader with a key `analyser_azi`.",
+                "warning",
+                "Missing metadata",
+            )
 
         # Make and populate the analyser metadata model
         arpes_metadata = ARPESMetadataModel(
@@ -165,11 +184,21 @@ class BaseARPESDataLoader(
             angles=ARPESAnalyserAnglesMetadataModel(
                 polar=metadata_dict.get("analyser_polar"),
                 tilt=metadata_dict.get("analyser_tilt"),
-                azi=metadata_dict.get("analyser_azi"),
+                azi=(
+                    cls._analyser_slit_angle
+                    if cls._analyser_slit_angle is not None
+                    else metadata_dict.get("analyser_azi")
+                ),
             ),
             deflector=ARPESDeflectorMetadataModel(
-                parallel=metadata_dict.get("analyser_deflector_parallel"),
-                perp=metadata_dict.get("analyser_deflector_perp"),
+                parallel=NamedAxisMetadataModel(
+                    value=metadata_dict.get("analyser_deflector_parallel"),
+                    local_name=cls._analyser_name_conventions.get("deflector_parallel"),
+                ),
+                perp=NamedAxisMetadataModel(
+                    value=metadata_dict.get("analyser_deflector_perp"),
+                    local_name=cls._analyser_name_conventions.get("deflector_perp"),
+                ),
             ),
         )
 
@@ -201,29 +230,33 @@ class BaseSESDataLoader(BaseARPESDataLoader):
         "Loader for data acquired using the Scienta Omicron SES software."
     )
     _loc_url = "https://scientaomicron.com"
-    # Dictionary to overwrite or add:
+    # Dictionary to overwrite or add to default metadata keys:
     _SES_metadata_key_mappings = {}  # mappings from SES metadata key to peaks key
     _SES_metadata_units = {}  # standard SES units
+    _analyser_name_conventions = {
+        "deflector_parallel": "ThetaX",
+        "deflector_perp": "ThetaY",
+    }
 
     @classmethod
-    def _load_data(cls, fname, lazy):
+    def _load_data(cls, fpath, lazy):
         """Load SES data from different file types."""
         handlers = {
             "txt": cls._load_from_txt,
             "zip": cls._load_from_zip,
             "ibw": cls._load_from_ibw,
         }
-        ext = fname.split(".")[-1]
+        ext = fpath.split(".")[-1]
         if ext not in handlers:
             raise ValueError(
                 f"File extension {ext} is not supported for loader {cls.__name__}"
             )
 
         # Load data
-        return handlers[ext](fname)
+        return handlers[ext](fpath)
 
     @classmethod
-    def _load_from_txt(cls, fname):
+    def _load_from_txt(cls, fpath):
         """Load data from a .txt file."""
         # Give a legacy warning
         analysis_warning(
@@ -234,13 +267,13 @@ class BaseSESDataLoader(BaseARPESDataLoader):
         )
 
         # Get the metadata here returning with keys in SES format - this as needed for parsing the core data.
-        metadata_dict_ses_keys = cls._load_metadata(fname, return_in_SES_format=True)
+        metadata_dict_ses_keys = cls._load_metadata(fpath, return_in_SES_format=True)
         # Cahce it in the metadata cache to avoid having to load it again later
-        cls._metadata_cache[fname] = metadata_dict_ses_keys
+        cls._metadata_cache[fpath] = metadata_dict_ses_keys
 
         # Load file data and core data-related metadata
         file_data = np.loadtxt(
-            fname, skiprows=int(metadata_dict_ses_keys["metadata_lines_length"])
+            fpath, skiprows=int(metadata_dict_ses_keys["metadata_lines_length"])
         )
         spectrum = file_data[:, 1:]
         eV_values = file_data[:, 0]
@@ -266,10 +299,10 @@ class BaseSESDataLoader(BaseARPESDataLoader):
         }
 
     @classmethod
-    def _load_from_zip(cls, fname):
+    def _load_from_zip(cls, fpath):
         """Load data from standard SES .zip format. Adapted from the PESTO file loader by Craig Polley."""
         # Open the file and load the data
-        with zipfile.ZipFile(fname) as z:
+        with zipfile.ZipFile(fpath) as z:
             files = z.namelist()
             file_bin = [file for file in files if ".bin" in file]
             file_ini = [
@@ -330,11 +363,11 @@ class BaseSESDataLoader(BaseARPESDataLoader):
 
         return {
             "spectrum": spectrum,
-            "dims": ["eV", "theta_par", "defl_par"],
+            "dims": ["eV", "theta_par", "defl_perp"],
             "coords": {
                 "eV": KE_values,
                 "theta_par": theta_par_values,
-                "defl_par": defl_perp_values,
+                "defl_perp": defl_perp_values,
             },
             "units": {
                 "eV": KE_units,
@@ -345,11 +378,11 @@ class BaseSESDataLoader(BaseARPESDataLoader):
         }
 
     @classmethod
-    def _load_from_ibw(cls, fname):
+    def _load_from_ibw(cls, fpath):
         """Load data from an Igor binary wave (ibw) file."""
 
         # Load the data from the ibw file using the default IBW loader
-        data = BaseIBWDataLoader._load_data(fname, lazy=False)
+        data = BaseIBWDataLoader._load_data(fpath, lazy=False)
 
         # Load the metadata if needed for parsing the data
         pos_or_point_scan_dim = [
@@ -367,7 +400,7 @@ class BaseSESDataLoader(BaseARPESDataLoader):
         ]
         if has_binding_energy_dim or pos_or_point_scan_dim or has_hv_dim:
             metadata_dict_SES_keys = cls._load_metadata(
-                fname, return_in_SES_format=True
+                fpath, return_in_SES_format=True
             )
 
             if pos_or_point_scan_dim:
@@ -500,15 +533,15 @@ class BaseSESDataLoader(BaseARPESDataLoader):
 
         # Cache the metadata if it was loaded
         if "metadata_dict_SES_keys" in locals():
-            cls._metadata_cache[fname] = metadata_dict_SES_keys
+            cls._metadata_cache[fpath] = metadata_dict_SES_keys
 
         return data
 
     @classmethod
-    def _load_metadata(cls, fname, return_in_SES_format=False):
+    def _load_metadata(cls, fpath, return_in_SES_format=False):
         """Load metadata from an SES file."""
         # Check if there is a cached version (only cache in this loader with keys in SES format)
-        metadata_dict_SES_keys = cls._metadata_cache.get(fname)
+        metadata_dict_SES_keys = cls._metadata_cache.get(fpath)
 
         # If no metadata in the cache, load it
         if not metadata_dict_SES_keys:
@@ -517,8 +550,8 @@ class BaseSESDataLoader(BaseARPESDataLoader):
                 "zip": cls._load_SES_metadata_zip,
                 "ibw": cls._load_SES_metadata_ibw,
             }
-            ext = fname.split(".")[-1]
-            metadata_lines = handlers[ext](fname)
+            ext = fpath.split(".")[-1]
+            metadata_lines = handlers[ext](fpath)
             metadata_dict_SES_keys = cls._SES_metadata_to_dict_w_SES_keys(
                 metadata_lines
             )
@@ -544,7 +577,7 @@ class BaseSESDataLoader(BaseARPESDataLoader):
         return cls._SES_metadata_dict_keys_to_peaks_keys(metadata_dict_SES_keys)
 
     @staticmethod
-    def _load_SES_metadata_txt(fname):
+    def _load_SES_metadata_txt(fpath):
         """Extract the lines containing metadata in an SES format .txt file.
 
         Returns
@@ -554,7 +587,7 @@ class BaseSESDataLoader(BaseARPESDataLoader):
 
         """
         # Open the file and extract the lines containing metadata
-        with open(fname) as f:
+        with open(fpath) as f:
             metadata_lines = []
             while True:
                 line = f.readline()
@@ -567,7 +600,7 @@ class BaseSESDataLoader(BaseARPESDataLoader):
         return metadata_lines
 
     @staticmethod
-    def _load_SES_metadata_zip(fname):
+    def _load_SES_metadata_zip(fpath):
         """Extract the lines containing metadata in an SES format .zip file.
 
         Returns
@@ -577,7 +610,7 @@ class BaseSESDataLoader(BaseARPESDataLoader):
 
         """
         # Open the file and extract the lines containing metadata
-        with zipfile.ZipFile(fname, "r") as z:
+        with zipfile.ZipFile(fpath, "r") as z:
             files = z.namelist()
             file_ini = [
                 file for file in files if "Spectrum_" not in file and ".ini" in file
@@ -594,10 +627,10 @@ class BaseSESDataLoader(BaseARPESDataLoader):
         return metadata_lines
 
     @staticmethod
-    def _load_SES_metadata_ibw(fname):
+    def _load_SES_metadata_ibw(fpath):
         """Extract the lines containing metadata in an SES format .ibw file."""
         # Load wavenote using the BaseIBWDataLoader
-        wavenote = BaseIBWDataLoader._load_metadata(fname).get("wavenote")
+        wavenote = BaseIBWDataLoader._load_metadata(fpath).get("wavenote")
 
         return wavenote.split("\r")
 
