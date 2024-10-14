@@ -35,3 +35,11 @@ hv_opts.defaults(hv_opts.Image(invert_axes=True))
 from dask.diagnostics import ProgressBar as dask_prog_bar
 
 dask_prog_bar(minimum=1).register()
+
+# Enable pint accessor
+import pint_xarray
+
+ureg = pint_xarray.unit_registry
+ureg.formatter.default_format = (
+    "~P"  # Set formatting option to short form (with symbols)
+)

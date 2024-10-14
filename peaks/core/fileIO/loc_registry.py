@@ -166,9 +166,9 @@ class IdentifyLoc:
             identifier = _h5py_str(f, "entry1/instrument/name")
         # From the identifier, determine the location
         if "i05-1" in identifier:
-            return "Diamond I05-nano"
+            return "Diamond_I05_Nano-ARPES"
         elif "i05" in identifier:
-            return "Diamond I05-HR"
+            return "Diamond_I05_ARPES"
         elif "lorea" in identifier:
             return "ALBA LOREA"
 
