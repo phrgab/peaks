@@ -5,7 +5,10 @@ import h5py
 from datetime import datetime
 from typing import Optional, Union
 
-from ....utils.misc import analysis_warning
+from sqlalchemy.dialects.postgresql import array
+
+from peaks.core.utils.misc import analysis_warning
+from peaks.core.options import opts
 from ..loc_registry import register_loader
 from ..base_data_classes import BaseHDF5DataLoader
 from ..base_metadata_models import BaseMetadataModel, Quantity
@@ -102,6 +105,10 @@ class DiamondNXSLoader(BaseHDF5DataLoader):
     @staticmethod
     def _parse_nxs_axis_attr(attr):
         """Parse the attribute value for an axis key to a standard format"""
+        if isinstance(attr, (list, np.ndarray)):
+            attr = attr[0]
+        if isinstance(attr, bytes):
+            attr = attr.decode()
         return attr.decode() if isinstance(attr, bytes) else attr
 
     @classmethod
@@ -168,7 +175,6 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
         "x1": "sax",
         "x2": "say",
         "x3": "saz",
-        "salong": "salong",
     }
 
     _analyser_name_conventions = {
@@ -316,13 +322,16 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
                 "units", "counts"
             )
             units = {
-                key: (value.decode() if isinstance(value, bytes) else value)
-                for key, value in units.items()
+                key: (cls._parse_nxs_axis_attr(value)) for key, value in units.items()
             }
 
         # Load the core data in a way that supports lazy loading
         da = xr.open_dataset(
-            fpath, group=data_group_addr, engine="h5netcdf", phony_dims="sort"
+            fpath,
+            group=data_group_addr,
+            engine="h5netcdf",
+            phony_dims="sort",
+            chunks="auto",
         )[core_data_key]
 
         da.attrs = {}
@@ -366,13 +375,8 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
                         break
         da = da.rename(dim_names_to_update)
 
-        # Set lazy loading if requested
-        if lazy:
-            da = da.chunk(
-                {dim: (-1 if dim in ["eV", "theta_par"] else "auto") for dim in da.dims}
-            )
-        else:
-            # Otherwise compute here to load data before doing pint.quantify to avoid significant speed penalty
+        # Load array into memory if lazy loading not required
+        if not (lazy or (lazy == None and da.size > opts.FileIO.lazy_size)):
             da = da.compute()
 
         # Add units where available
@@ -522,13 +526,13 @@ class I05NanoARPESLoader(I05ARPESLoader):
     ]  # List of metadata parsers to apply
 
     @classmethod
-    def _load(cls, fpath, lazy, metadata):
+    def _load(cls, fpath, lazy, metadata, quiet):
         """Load the data from Diamond I05 Nano ARPES."""
         if fpath.split(".")[-1] == "zip":
             # Load the data using the SES loader for .zip files
             return cls.load(fpath, loc="SES", lazy=lazy, metadata=metadata)
         # Todo consider adding slant correct in here...
-        return super()._load(fpath, lazy, metadata)
+        return super()._load(fpath, lazy, metadata, quiet)
 
     @classmethod
     def _parse_optics_metadata(cls, metadata_dict):

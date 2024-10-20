@@ -6,7 +6,7 @@
 # Brendan Edwards 22/02/2024
 
 import numpy as np
-from peaks.utils.consts import consts
+from peaks.core.utils.consts import consts
 
 
 def _load_StA_Bruker_data(fname):

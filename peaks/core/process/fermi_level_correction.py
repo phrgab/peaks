@@ -7,8 +7,8 @@ import xarray as xr
 import numexpr as ne
 import copy
 
-from ...utils.misc import analysis_warning
-from ...utils.accessors import register_accessor
+from peaks.core.utils.misc import analysis_warning
+from peaks.core.utils.accessors import register_accessor
 
 
 @register_accessor(xr.DataArray)

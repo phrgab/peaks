@@ -21,7 +21,7 @@ from peaks.core.GUI.GUI_utils import (
     Crosshair,
     KeyPressGraphicsLayoutWidget,
 )
-from peaks.core.fileIO.fileIO_opts import LocOpts
+from peaks.core.options import LocOpts
 from peaks.core.process.tools import sym, estimate_sym_point
 
 

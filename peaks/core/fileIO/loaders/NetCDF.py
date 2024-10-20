@@ -5,7 +5,7 @@
 import xarray as xr
 import json
 
-from ..fileIO_opts import _BaseDataConventions, _register_location
+from peaks.core.options import _BaseDataConventions, _register_location
 
 
 def _load_NetCDF_data(fname):

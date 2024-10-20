@@ -10,7 +10,7 @@
 import os
 import h5py
 import numpy as np
-from ..fileIO_opts import _BaseARPESConventions, _register_location
+from peaks.core.options import _BaseARPESConventions, _register_location
 
 
 def _load_I05_data(fname):
@@ -418,7 +418,6 @@ def _load_I05_metadata(fname, scan_type, loc):
 
     from peaks.core.fileIO.data_loading import _h5py_find_attr, _h5py_find_coord
     from peaks.core.fileIO.loaders.SES import (
-        _load_SES_data,
         _load_SES_metalines,
         _SES_find,
     )

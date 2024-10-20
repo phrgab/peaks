@@ -10,8 +10,8 @@ import xarray as xr
 import h5py
 from termcolor import colored
 from peaks.core.fileIO.data_loading import _make_DataArray, _extract_mapping_metadata
-from peaks.utils.accessors import register_accessor
-from peaks.utils import analysis_warning
+from peaks.core.utils.accessors import register_accessor
+from peaks.core.utils.misc import analysis_warning
 
 
 def make_hv_scan(data):

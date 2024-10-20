@@ -11,8 +11,8 @@ from tqdm.notebook import tqdm
 
 from .fermi_level_correction import _get_wf, _get_BE_scale, _get_E_shift_at_theta_par
 from peaks.core.process.angles import _get_angles_for_k_conv
-from ...utils.accessors import register_accessor
-from ...utils.interpolation import (
+from peaks.core.utils.accessors import register_accessor
+from peaks.core.utils.interpolation import (
     _is_linearly_spaced,
     _fast_bilinear_interpolate,
     _fast_trilinear_interpolate,

@@ -2,7 +2,7 @@
 
 """
 
-from ..fileIO_opts import _BaseARPESConventions, _register_location
+from peaks.core.options import _BaseARPESConventions, _register_location
 
 # Phil King 14/10/2022
 # Brendan Edwards 09/02/2024

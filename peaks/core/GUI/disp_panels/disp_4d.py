@@ -4,7 +4,7 @@
 
 import sys
 from functools import partial
-from PyQt6 import QtCore, QtWidgets, QtGui
+from PyQt6 import QtCore, QtWidgets
 from PyQt6.QtWidgets import (
     QApplication,
     QLabel,
@@ -22,8 +22,7 @@ from ..GUI_utils import (
     KeyPressGraphicsLayoutWidget,
 )
 from .disp_2d import _Disp2D
-from peaks.core.fileIO.fileIO_opts import LocOpts
-import time
+from peaks.core.options import LocOpts
 
 
 def _disp_4d(data, primary_dim):

@@ -5,11 +5,12 @@ from os.path import isfile, join
 import h5py
 import natsort
 
-from peaks.core.fileIO.data_loading import _h5py_str
-from peaks.core.fileIO.loaders.SES import _load_SES_metalines, _SES_find
-
-
 LOC_REGISTRY = {}
+
+
+def locs():
+    """Return the list of available locations."""
+    return set(LOC_REGISTRY.copy().keys())
 
 
 def register_loader(loader_class):
@@ -160,10 +161,15 @@ class IdentifyLoc:
     def _handler_nxs(fname):
         # If the file is .nxs format, the location should be Diamond I05-nano, Diamond I05-HR or ALBA LOREA
 
+        from peaks.core.fileIO.base_data_classes import BaseHDF5DataLoader
+
         # Open the file (read only)
         with h5py.File(fname, "r") as f:
+
             # .nxs files at Diamond and Alba contain approximately the same identifier format
-            identifier = _h5py_str(f, "entry1/instrument/name")
+            identifier = BaseHDF5DataLoader._extract_hdf5_value(
+                f, "entry1/instrument/name"
+            )
         # From the identifier, determine the location
         if "i05-1" in identifier:
             return "Diamond_I05_Nano-ARPES"

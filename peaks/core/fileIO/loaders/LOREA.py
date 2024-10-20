@@ -7,7 +7,7 @@
 
 import h5py
 import numpy as np
-from ..fileIO_opts import _BaseARPESConventions, _register_location
+from peaks.core.options import _BaseARPESConventions, _register_location
 
 
 def _load_LOREA_data(fname):

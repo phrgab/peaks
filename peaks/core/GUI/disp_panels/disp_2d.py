@@ -22,7 +22,7 @@ from peaks.core.GUI.GUI_utils import (
     CircularListWidget,
     KeyPressGraphicsLayoutWidget,
 )
-from peaks.core.fileIO.fileIO_opts import LocOpts
+from peaks.core.options import LocOpts
 from peaks.core.process.tools import sym, estimate_sym_point
 
 
@@ -612,9 +612,9 @@ class _Disp2D(QtWidgets.QMainWindow):
 
         # Clear existing plots
         if self.init:
-            self.image_plot.clear()
+            self.image_plot.reset()
             for plot in self.DC_plots:
-                plot.clear()
+                plot.reset()
             self.graphics_layout.removeItem(self.colorbar)
 
         # Make plots

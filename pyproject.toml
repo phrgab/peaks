@@ -33,6 +33,7 @@ dependencies = [
         "pydantic (>=2.9,<3)",
         "termcolor (>=2.5,<3)",
         "h5netcdf (>=1.4,<2)",
+        "xarray-datatree (>=0.0.14,<1)",
         ]
 dynamic = ["version"]
 

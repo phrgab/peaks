@@ -5,7 +5,7 @@
 import copy
 import json
 import xarray as xr
-from peaks.utils.accessors import register_accessor
+from peaks.core.utils.accessors import register_accessor
 
 
 @register_accessor(xr.DataArray)

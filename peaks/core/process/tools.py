@@ -11,7 +11,7 @@ from scipy.ndimage import gaussian_filter
 from skimage.registration import phase_cross_correlation
 from IPython.display import clear_output
 from peaks.core.fitting.models import _shirley_bg
-from peaks.utils.accessors import register_accessor
+from peaks.core.utils.accessors import register_accessor
 from peaks.utils import analysis_warning
 
 

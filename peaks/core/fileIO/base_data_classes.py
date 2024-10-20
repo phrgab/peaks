@@ -18,7 +18,7 @@ from .base_metadata_models import (
     TemperatureMetadataModel,
     PhotonMetadataModel,
 )
-from ...utils.misc import analysis_warning
+from peaks.core.utils.misc import analysis_warning
 from .loc_registry import register_loader
 
 ureg = pint_xarray.unit_registry
@@ -105,25 +105,28 @@ class BaseDataLoader:
 
     # Public methods
     @classmethod
-    def load(cls, fpath, lazy="auto", loc="auto", metadata=True):
+    def load(cls, fpath, lazy=None, loc=None, metadata=True, quiet=False):
         """Top-level method to load data and return a DataArray.
 
         Parameters
         ------------
-        fpath : str
-            Path to the file to be loaded.
+        fpath : str, list
+            Full file path of file to load.
 
-        lazy : bool or str, optional
-            Whether to load data in a lazily evaluated dask format. Set explicitly using True/False Boolean. Defaults
-            to 'auto' where a file is only loaded in the :class:`dask` format if its spectrum is above threshold
-            in :class:peaks.File.
+        lazy : str, bool, optional
+            Whether to load data in a lazily evaluated dask format. Set explicitly using True/False Boolean.
+            Defaults to `None` where a file is only loaded in the dask format if its spectrum is above threshold
+            set in `opts.FileIO.lazy_size`
 
         loc : str, optional
-            The location at which the data was obtained. If not specified, the location will be attempted to be
-            determined automatically.
+            Location identifier for where data was acquired. Defaults to `None`, where the location will be attempted
+            to be automatically determined.
 
         metadata : bool, optional
             Whether to attempt to load metadata into the attributes of the :class:`xarray.DataArray`. Defaults to True.
+
+        quiet : bool, optional
+            Whether to suppress analysis warnings when loading data. Defaults to False.
 
         Returns
         ------------
@@ -152,14 +155,14 @@ class BaseDataLoader:
         cls._metadata_cache.pop(fpath, None)
 
         # Parse the loc
-        loc = cls._get_loc(fpath) if loc == "auto" else loc
+        loc = loc if loc else cls._get_loc(fpath)
         cls._check_valid_loc(loc)  # Check a valid loc
         # Trigger the loader for the correct loc
         loader_class = cls.get_loader(loc)
-        return loader_class._load(fpath, lazy, metadata)
+        return loader_class._load(fpath, lazy, metadata, quiet)
 
     @classmethod
-    def load_metadata(cls, fpath, loc="auto", return_as_dict=False):
+    def load_metadata(cls, fpath, loc=None, return_as_dict=False, quiet=True):
         """Top-level method to load metadata and return it in a dictionary.
 
         Parameters
@@ -168,12 +171,15 @@ class BaseDataLoader:
             Path to the file to be loaded.
 
         loc : str, optional
-            The location at which the data was obtained. If not specified, the location will be attempted to be
+            The location at which the data was obtained. Defaults to `None` where the location will be attempted to be
             determined automatically.
 
         return_as_dict : bool, optional
             Whether to return the metadata as a simple dictionary of metadata_keys: values or as a dictionary
             of the parsed (i.e. structured) metadata models. Defaults to False.
+
+        quiet : bool, optional
+            Whether to suppress missing metadata warnings when loading data. Defaults to True.
 
         Returns
         ------------
@@ -189,7 +195,7 @@ class BaseDataLoader:
             fpath = 'C:/User/Documents/Research/disp1.xy'
 
             # Determine the location at which the data was obtained
-            loc = BaseDataLoader._get_loc(fpath)
+            loc = BaseDataLoader.load_metadata(fpath)
 
         Notes
         -----
@@ -198,9 +204,9 @@ class BaseDataLoader:
         _load_metadata method.
         """
 
-        # Parse the loc - if the base class is used, determine the loc automatically and route to the subclass
+        # Parse the loc - if the base class is used, determine the loc automatically and route to the right subclass
         if cls._loc_name == "Base":
-            loc = cls._get_loc(fpath) if loc == "auto" else loc
+            loc = loc if loc else cls._get_loc(fpath)
             cls._check_valid_loc(loc)  # Check a valid loc
             if loc != "Base":
                 return cls.get_loader(loc).load_metadata(fpath)
@@ -228,7 +234,7 @@ class BaseDataLoader:
             return metadata_dict
         parsed_metadata = {}
         parsed_metadata.update(cls._parse_general_metadata(metadata_dict))
-        parsed_metadata.update(cls._parse_specific_metadata(metadata_dict))
+        parsed_metadata.update(cls._parse_specific_metadata(metadata_dict, quiet))
         return parsed_metadata
 
     @staticmethod
@@ -265,7 +271,9 @@ class BaseDataLoader:
         if loader_class:
             return loader_class
         else:
-            raise ValueError(f"No loader found for location {loc}")
+            raise ValueError(
+                f"No loader found for location {loc}. Expected one of {set(LOC_REGISTRY.keys())}."
+            )
 
     # Private methods
     @staticmethod
@@ -312,14 +320,14 @@ class BaseDataLoader:
             )
 
     @classmethod
-    def _load(cls, fpath, lazy, metadata):
+    def _load(cls, fpath, lazy, metadata, quiet):
         """Generic method for loading the data."""
         data = cls._load_data(fpath, lazy)  # Load the actual data from the file
         da = cls._make_dataarray(data)  # Convert to DataArray
         # Add a name to the DataArray
         da.name = fpath.split("/")[-1].split(".")[0]
         if metadata:  # Load metadata if requested
-            parsed_metadata = cls.load_metadata(fpath, cls._loc_name)
+            parsed_metadata = cls.load_metadata(fpath, loc=cls._loc_name, quiet=quiet)
             da.attrs.update(parsed_metadata)
             cls._metadata_cache.pop(
                 fpath, None
@@ -388,13 +396,16 @@ class BaseDataLoader:
         return {"scan": general_scan_metadata}
 
     @classmethod
-    def _parse_specific_metadata(cls, metadata_dict):
+    def _parse_specific_metadata(cls, metadata_dict, quiet):
         """Method to orchastrate applying loader-specific metadata to the DataArray.
 
         Parameters
         ------------
         metadata_dict : dict
             Dictionary containing all available metadata as returned by `_load_metadata`.
+
+        quiet : bool
+            Whether to suppress missing metadata warnings when loading data.
 
         Returns
         ------------
@@ -423,14 +434,10 @@ class BaseDataLoader:
                 )
             metadata_to_apply, metadata_to_add_to_warning_list = _parser(metadata_dict)
             parsed_metadata.update(metadata_to_apply)
-            metadata_warning_list.extend(metadata_warning_list)
-        cls._warn_metadata(metadata_dict, metadata_warning_list)
+            metadata_warning_list.extend(metadata_to_add_to_warning_list)
+        if not quiet:
+            cls._warn_metadata(metadata_dict, metadata_warning_list)
         return parsed_metadata
-
-    @staticmethod
-    def _parse_exclude_attribute_from_metadata_warning(attributes, exclude_list):
-        """Remove any attributes in exclude_list from the metadata dictionary."""
-        return [i for i in attributes if i not in exclude_list]
 
     @classmethod
     def _warn_metadata(cls, metadata_dict, metadata_warning_list=None):
@@ -615,9 +622,15 @@ class BaseHDF5DataLoader:
                         value = value[0]
                     elif return_extreme_values:
                         value = np.array([np.min(value), np.max(value)])
-                if isinstance(value, (bytes, np.bytes_)):
-                    value = value.decode()
+                        if np.ptp(value) == 0:
+                            value = value[0]
+                value = value.decode() if isinstance(value, bytes) else value
                 units = f[key].attrs.get("units")
+                units = (
+                    units[0]
+                    if isinstance(units, (np.ndarray, list)) and len(units) == 1
+                    else units
+                )
                 units = (
                     units.decode() if isinstance(units, (bytes, np.bytes_)) else units
                 )
@@ -846,9 +859,9 @@ class BaseManipulatorDataLoader(BaseDataLoader):
         # Parse list of axes that are names, so where a metadata warning should be given unless excluded by passing
         # in the class variable _manipulator_ignore_missing_metadata
         metadata_to_warn_if_missing = [
-            axis
-            for axis in cls._manipulator_name_conventions
-            if axis not in cls._manipulator_exclude_from_metadata_warn
+            f"manipulator_{axis}"
+            for axis, name in cls._manipulator_name_conventions.items()
+            if name and axis not in cls._manipulator_exclude_from_metadata_warn
         ]
 
         # Return the model, and a list of any metadata that should be warned if missing
@@ -904,9 +917,9 @@ class BaseTemperatureDataLoader(BaseDataLoader):
         )
 
         metadata_to_warn_if_missing = (
-            cls._parse_exclude_attribute_from_metadata_warning(
-                cls._temperature_attributes, cls._temperature_exclude_from_metadata_warn
-            )
+            f"temperature_{attribute}"
+            for attribute in cls._temperature_attributes
+            if attribute not in cls._temperature_exclude_from_metadata_warn
         )
 
         # Return the model, and a list of any metadata that should be warned if missing
@@ -957,9 +970,9 @@ class BasePhotonSourceDataLoader(BaseDataLoader):
         )
 
         metadata_to_warn_if_missing = (
-            cls._parse_exclude_attribute_from_metadata_warning(
-                cls._photon_attributes, cls._photon_exclude_from_metadata_warn
-            )
+            f"photon_{attribute}"
+            for attribute in cls._photon_attributes
+            if attribute not in cls._photon_exclude_from_metadata_warn
         )
 
         # Return the model, and a list of any metadata that should be warned if missing
