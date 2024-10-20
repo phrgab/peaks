@@ -7,8 +7,8 @@ import copy
 import numpy as np
 import xarray as xr
 from matplotlib.path import Path
-from ...utils.accessors import register_accessor
-from ...utils.interpolation import (
+from peaks.core.utils.accessors import register_accessor
+from peaks.core.utils.interpolation import (
     _fast_bilinear_interpolate,
     _fast_bilinear_interpolate_rectilinear,
     _is_linearly_spaced,

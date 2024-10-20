@@ -9,7 +9,7 @@ import numpy as np
 import xarray as xr
 from scipy.ndimage import gaussian_gradient_magnitude
 from peaks.utils import analysis_warning
-from peaks.utils.accessors import register_accessor
+from peaks.core.utils.accessors import register_accessor
 
 
 @register_accessor(xr.DataArray)

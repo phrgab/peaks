@@ -19,7 +19,7 @@ from .base_metadata_models import (
     ARPESAnalyserAnglesMetadataModel,
     ARPESAnalyserMetadataModel,
 )
-from ...utils.misc import analysis_warning
+from peaks.core.utils.misc import analysis_warning
 
 # Define the unit registry
 ureg = pint_xarray.unit_registry
@@ -117,7 +117,7 @@ class BaseARPESDataLoader(
         return self._analyser_attributes
 
     @classmethod
-    def _load(cls, fpath, lazy, metadata):
+    def _load(cls, fpath, lazy, metadata, quiet):
         # Raise an exception if the manipulator doesn't have at least the core 6 axes required in other data handling
         required_axis_list = ["polar", "tilt", "azi", "x1", "x2", "x3"]
         if not hasattr(cls, "_manipulator_axes") or not all(
@@ -132,7 +132,7 @@ class BaseARPESDataLoader(
             )
 
         # Run the main _load method returning a DataArray
-        da = super()._load(fpath, lazy, metadata)
+        da = super()._load(fpath, lazy, metadata, quiet)
 
         # Try to parse to counts/s if possible
         try:
@@ -147,20 +147,9 @@ class BaseARPESDataLoader(
     def _parse_analyser_metadata(cls, metadata_dict):
         """Parse metadata specific to the analyser."""
 
-        # Get the analyser slit angle
-        slit_angle = (
-            cls._analyser_slit_angle
-            if cls._analyser_slit_angle is not None
-            else metadata_dict.get("analyser_azi")
-        )
-        if not slit_angle:
-            analysis_warning(
-                "Analyser slit angle not found in metadata. Please ensure that the analyser slit angle is "
-                "defined in the loader class via the `_analyser_slit_angle` class variable or is parsed in the "
-                "metadata loader with a key `analyser_azi`.",
-                "warning",
-                "Missing metadata",
-            )
+        # Get the analyser slit angle from default option for loader if specified and not already in metadata dict
+        if not metadata_dict.get("analyser_azi"):
+            metadata_dict["analyser_azi"] = cls._analyser_slit_angle
 
         # Make and populate the analyser metadata model
         arpes_metadata = ARPESMetadataModel(
@@ -184,11 +173,7 @@ class BaseARPESDataLoader(
             angles=ARPESAnalyserAnglesMetadataModel(
                 polar=metadata_dict.get("analyser_polar"),
                 tilt=metadata_dict.get("analyser_tilt"),
-                azi=(
-                    cls._analyser_slit_angle
-                    if cls._analyser_slit_angle is not None
-                    else metadata_dict.get("analyser_azi")
-                ),
+                azi=metadata_dict.get("analyser_azi"),
             ),
             deflector=ARPESDeflectorMetadataModel(
                 parallel=NamedAxisMetadataModel(
@@ -202,8 +187,10 @@ class BaseARPESDataLoader(
             ),
         )
 
-        # Retrun the model, and a list of any metadata that should be warned if missing
-        return {"analyser": arpes_metadata}, cls._analyser_include_in_metadata_warn
+        # Return the model, and a list of any metadata that should be warned if missing
+        return {"analyser": arpes_metadata}, [
+            f"analyser_{i}" for i in cls._analyser_include_in_metadata_warn
+        ]
 
     # TODO add methods in here to cope with angular conversions etc.
 

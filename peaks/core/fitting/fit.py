@@ -8,7 +8,7 @@ from tqdm.notebook import tqdm
 import matplotlib.pyplot as plt
 
 from .models import LinearDosFermiModel
-from peaks.utils.accessors import register_accessor
+from peaks.core.utils.accessors import register_accessor
 from peaks.utils import analysis_warning
 
 

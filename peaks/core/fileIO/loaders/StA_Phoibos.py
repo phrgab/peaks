@@ -7,7 +7,7 @@
 # Brendan Edwards 09/02/2024
 
 import numpy as np
-from ..fileIO_opts import _BaseARPESConventions, _register_location
+from peaks.core.options import _BaseARPESConventions, _register_location
 
 
 def _load_StA_Phoibos_data(fname):

@@ -2,7 +2,7 @@ import numbers
 import numpy as np
 import xarray as xr
 
-from ..fileIO.fileIO_opts import LocOpts
+from peaks.core.options import LocOpts
 from ...utils import analysis_warning
 
 # Constants for angle names

@@ -7,7 +7,6 @@
 
 import numpy as np
 import xarray as xr
-import dask.array as da
 import matplotlib.pyplot as plt
 import panel as pn
 from numpy.fft import fft
@@ -15,7 +14,7 @@ from matplotlib import colors, cm
 from cycler import cycler
 from IPython.display import display
 from peaks.utils import analysis_warning
-from peaks.utils.accessors import register_accessor
+from peaks.core.utils.accessors import register_accessor
 
 
 def plot_grid(

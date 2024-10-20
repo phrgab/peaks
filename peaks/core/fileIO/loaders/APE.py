@@ -8,7 +8,7 @@
 # Brendan Edwards 28/02/2024
 
 from peaks.core.fileIO.loaders.SES import _load_SES_data, _load_SES_metalines, _SES_find
-from ..fileIO_opts import _BaseARPESConventions, _register_location
+from peaks.core.options import _BaseARPESConventions, _register_location
 
 
 def _load_APE_data(fname):
