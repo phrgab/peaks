@@ -12,7 +12,7 @@ import pint
 import pint_xarray
 
 from .loc_registry import LOC_REGISTRY, IdentifyLoc
-from .base_metadata_models import (
+from peaks.core.metadata.base_metadata_models import (
     BaseScanMetadataModel,
     AxisMetadataModelWithReference,
     TemperatureMetadataModel,

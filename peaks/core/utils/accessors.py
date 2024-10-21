@@ -2,9 +2,6 @@
 
 """
 
-# Lewis Hart 20/09/2021
-# Brendan Edwards 16/10/2023
-
 from functools import wraps
 from peaks.core.utils.misc import analysis_warning
 

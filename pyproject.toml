@@ -34,6 +34,7 @@ dependencies = [
         "termcolor (>=2.5,<3)",
         "h5netcdf (>=1.4,<2)",
         "xarray-datatree (>=0.0.14,<1)",
+        "zarr (>=2.18,<3)",
         ]
 dynamic = ["version"]
 

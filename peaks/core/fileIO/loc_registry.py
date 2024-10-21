@@ -181,8 +181,12 @@ class IdentifyLoc:
     @staticmethod
     def _handler_nc(fname):
         # If the file is .nc format, the location should be NetCDF
-        # Set location to NetCDF, since the location information should be in the NetCDF attributes
         return "NetCDF"
+
+    @staticmethod
+    def _handler_zarr(fname):
+        # If the file is .zarr format, the location should be Zarr
+        return "Zarr"
 
     @staticmethod
     def _handler_cif(fname):

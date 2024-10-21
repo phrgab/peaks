@@ -51,9 +51,10 @@ from peaks.core.fileIO.loc_registry import LOC_REGISTRY
 from peaks.core.fileIO.loc_registry import locs
 from peaks.core.fileIO.base_data_classes import BaseIBWDataLoader
 from peaks.core.fileIO.base_arpes_data_classes import BaseSESDataLoader
-from peaks.core.fileIO.loaders import diamond, bloch
+from peaks.core.fileIO.loaders import *
 from peaks.core.fileIO.data_loading import load
+from peaks.core.fileIO.data_saving import save
 
 # Register the relevant accessor functions
-from peaks.core.utils.history import History
+from peaks.core.metadata.history import History
 from peaks.core.utils.datatree_utils import list_scans
