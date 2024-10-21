@@ -35,7 +35,7 @@ def load(
     lazy : str, bool, optional
         Whether to load data in a lazily evaluated dask format. Set explicitly using True/False Boolean. Defaults
         to `None` where a file is only loaded in the dask format if its spectrum is above threshold set in
-        `opts.FileIO.lazy_size`
+        `opts.FileIO.lazy_size` or is a Zarr store, where it is lazily loaded by default.
 
     loc : str, optional
         Location identifier for where data was acquired. Defaults to `None`, where the location will be attempted to be
@@ -173,7 +173,7 @@ def load(
 
     # If the parameter loc is not defined and opts.FileIO.loc is defined, update loc
     if loc is None:
-        loc = opts.FileIO.loc
+        load_opts["loc"] = opts.FileIO.loc
 
     # Ensure that fpath is a list of strings
     fpath = [str(path) for path in fpath] if isinstance(fpath, list) else [str(fpath)]
@@ -198,7 +198,7 @@ def load(
     # Obtain all valid file addresses
     file_list = []
     # Loop through the non-duplicated addresses in possible_file_addresses
-    for address in set(possible_file_addresses):
+    for address in possible_file_addresses:
         for extension in ext:
             # For standard data files
             if extension:
@@ -273,20 +273,23 @@ def _load_data(fpath, lazy, loc, metadata, parallel, names, quiet):
 
     # Check if any of the loaded data have been lazily evaluated. If so, inform the user
     for data in loaded_data:
-        if isinstance(data.data, dask.array.core.Array) or (
-            isinstance(data.data, pint.Quantity)
-            and isinstance(data.data.magnitude, dask.array.core.Array)
-        ):
-            analysis_warning(
-                "DataArray has been lazily evaluated in the dask format (set lazy=False to load as DataArray in xarray "
-                "format). Use the .compute() method to load DataArray into RAM in the xarray format, or the .persist() "
-                "method to instead load DataArray into RAM in the dask format. Note: these operations load all of the "
-                "data into memory, so large files may require an initial reduction in size through either a slicing or "
-                "binning operation.",
-                title="Loading info",
-                warn_type="info",
-            )
-            break
+        try:
+            if isinstance(data.data, dask.array.core.Array) or (
+                isinstance(data.data, pint.Quantity)
+                and isinstance(data.data.magnitude, dask.array.core.Array)
+            ):
+                analysis_warning(
+                    "DataArray has been lazily evaluated in the dask format (set lazy=False to load as DataArray in xarray "
+                    "format). Use the .compute() method to load DataArray into RAM in the xarray format, or the .persist() "
+                    "method to instead load DataArray into RAM in the dask format. Note: these operations load all of the "
+                    "data into memory, so large files may require an initial reduction in size through either a slicing or "
+                    "binning operation.",
+                    title="Loading info",
+                    warn_type="info",
+                )
+                break
+        except AttributeError:
+            pass
 
     # If there is only one loaded item in loaded_data, return the xr.DataArray (xr.DataSet) entry instead of a list
     if len(loaded_data) == 1:

@@ -10,7 +10,7 @@ from .base_data_classes import (
     BasePhotonSourceDataLoader,
     BaseIBWDataLoader,
 )
-from .base_metadata_models import (
+from peaks.core.metadata.base_metadata_models import (
     NamedAxisMetadataModel,
     ARPESMetadataModel,
     ARPESScanMetadataModel,

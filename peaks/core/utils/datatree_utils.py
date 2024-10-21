@@ -92,7 +92,7 @@ def _dataarrays_to_datatree(data, names=None):
 
     ds_dict = {
         da_name: (
-            da.to_dataset(name="data", promote_attrs=True)
+            da.to_dataset(name="data", promote_attrs=False)
             if isinstance(da, xr.DataArray)
             else da  # Pass a DataSet directly if it is already a DataSet
         )

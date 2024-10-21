@@ -5,13 +5,11 @@ import h5py
 from datetime import datetime
 from typing import Optional, Union
 
-from sqlalchemy.dialects.postgresql import array
-
 from peaks.core.utils.misc import analysis_warning
 from peaks.core.options import opts
 from ..loc_registry import register_loader
 from ..base_data_classes import BaseHDF5DataLoader
-from ..base_metadata_models import BaseMetadataModel, Quantity
+from peaks.core.metadata.base_metadata_models import BaseMetadataModel, Quantity
 from ..base_arpes_data_classes import BaseARPESDataLoader
 
 
