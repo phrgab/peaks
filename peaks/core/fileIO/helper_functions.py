@@ -281,28 +281,3 @@ def hdf5_explorer(file_path):
         for i, key in enumerate(keys):
             obj = f[key]
             _print_hdf5_structure(key, obj, f, is_last=(i == len(keys) - 1))
-
-
-@register_accessor(xr.DataArray)
-def display_metadata(da):
-    # Recursive function to display dictionary with colored keys
-    colours = ["green", "blue", "red", "yellow"]
-
-    # Recursive function to display dictionary with cycling colors for each indent level
-    def display_colored_dict(d, indent_level=0, col_cycle=0):
-        indent = "    " * indent_level
-        current_color = colours[col_cycle % len(colours)]  # Cycle through colors
-        for key, value in d.items():
-            if isinstance(value, dict):  # Nested dictionary (recursive case)
-                print(f"{indent}{colored(key, current_color)}:")
-                display_colored_dict(value, indent_level + 1, col_cycle + 1)
-            else:  # Base case (simple value)
-                print(f"{indent}{colored(key, current_color)}: {value}")
-
-    # Display the model with colored keys
-    metadata = {
-        key: value.dict()
-        for key, value in da.attrs.items()
-        if key not in ["analysis_history"]
-    }
-    display_colored_dict(metadata)

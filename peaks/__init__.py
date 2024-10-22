@@ -57,4 +57,5 @@ from peaks.core.fileIO.data_saving import save
 
 # Register the relevant accessor functions
 from peaks.core.metadata.history import History
+from peaks.core.metadata.meatdata_methods import Metadata
 from peaks.core.utils.datatree_utils import list_scans

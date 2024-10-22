@@ -61,7 +61,9 @@ def _quantity_encoder(quantity: pint.Quantity):
 class BaseMetadataModel(BaseModel):
     """Generalized model to store metadata, allowing serialising pint.Quantity objects."""
 
-    model_config = ConfigDict(json_encoders={pint.Quantity: _quantity_encoder})
+    model_config = ConfigDict(
+        json_encoders={pint.Quantity: _quantity_encoder}, validate_assignment=True
+    )
 
 
 class BaseScanMetadataModel(BaseMetadataModel):

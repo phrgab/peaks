@@ -9,6 +9,7 @@ import pint_xarray
 from peaks.core.fileIO.loc_registry import register_loader
 from peaks.core.fileIO.base_data_classes import BaseDataLoader
 from peaks.core.metadata.base_metadata_models import AxisMetadataModelWithReference
+from peaks.core.options import opts
 
 
 # Classes for data loaders
@@ -63,6 +64,8 @@ class NetCDFLoader(BaseDataLoader):
             data = data.pint.quantify()
         except AttributeError:
             pass
+
+        cls._add_load_history(data, fpath)
 
         return data
 
