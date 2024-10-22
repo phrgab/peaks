@@ -191,33 +191,8 @@ class History:
     def __init__(self, xarray_obj):
         self._obj = xarray_obj
 
-    def __call__(self, return_history=False):
-        """
-        Display (and optionally return) the history metadata of the DataArray.
-
-        Parameters
-        ----------
-        return_history : bool, optional
-            If True, returns the full history metadata dictionary. Defaults to False.
-
-        Returns
-        -------
-        list of dict, optional
-            The current history metadata if `return_history` is set `True`
-
-        Examples
-        --------
-        Example usage is as follows::
-            from peaks import *
-
-            disp = load('disp.ibw')
-            disp_k = disp.k_convert()  # Convert the data to k-space
-
-            # Display the current history metadata
-            disp_k.history()
-
-        """
-
+    def __repr__(self):
+        """Make a nice in-line display of the history metadata and return a timestamp string."""
         analysis_history = self._obj.attrs.get("analysis_history")
         if analysis_history:
             analysis_history = analysis_history.dict(by_alias=True)["records"]
@@ -226,9 +201,41 @@ class History:
             "display.max_colwidth", None, "display.colheader_justify", "left"
         ):
             display(df.fillna(""))
+        return f"History as of {datetime.now().strftime('%y-%m-%d %H-%M-%S')}"
 
-        if return_history:
-            return self._obj.attrs.get("analysis_history")
+    def __call__(self, index=None):
+        """
+        Return the history metadata of the DataArray.
+
+        Returns
+        -------
+        list of dict
+            List of the current history metadata entries
+
+        index : int, optional
+            The index of the history metadata item to display. Defaults to most recent entry.
+
+
+        Examples
+        --------
+        Example usage is as follows::
+            import peaks as pks
+
+            disp = pks.load('disp.ibw')
+            disp_k = disp.k_convert()  # Convert the data to k-space
+
+            # Display the current history metadata
+            disp_k.history()
+
+        """
+
+        record = (
+            self._obj.attrs.get("analysis_history")
+            .records[index if index is not None else -1]
+            .dict(by_alias=True)
+            .copy()
+        )
+        pprint(record)
 
     def add(self, record_text, fn_name=None):
         """Update the analysis history metadata of the :class:`xarray.DataArray` in place.
@@ -266,33 +273,25 @@ class History:
                 fn_name = ""
         return _update_hist(self._obj, record_text, fn_name, False)
 
-    def get(self, index=-1, return_history=False):
-        """Display (and optionally return) a specific item of the history metadata of the DataArray.
+    def get(self, index=None, return_history=False):
+        """Return all of or an item of the history metadata of the DataArray.
 
         Parameters
         ----------
         index : int, optional
-            The index of the history metadata item to display. Defaults to most recent entry.
-
-        return_history : bool, optional
-            If True, returns the relevant history metadata item. Defaults to False where the data is just displayed.
+            The index of the history metadata item to return. Defaults to returning a list of all entries.
 
         Returns
         -------
-        str or dict, optional
-            The relevant history metadata item if `return_history` is set `True`.
+        list or dict
+            The relevant history metadata item(s)
         """
 
-        record = (
+        return (
             self._obj.attrs.get("analysis_history")
-            .records[index]
             .dict(by_alias=True)
-            .copy()
+            .copy()["records"][index if index is not None else slice(None)]
         )
-        if return_history:
-            return record
-        else:
-            pprint(record)
 
     def json(self):
         """Return the history metadata as a JSON-formatted string.
