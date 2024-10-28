@@ -243,3 +243,14 @@ class ARPESMetadataModel(BaseMetadataModel):
     scan: ARPESScanMetadataModel = ARPESScanMetadataModel()
     angles: ARPESAnalyserAnglesMetadataModel = ARPESAnalyserAnglesMetadataModel()
     deflector: ARPESDeflectorMetadataModel = ARPESDeflectorMetadataModel()
+
+
+class EFCorrectionModel(BaseMetadataModel):
+
+    EF_correction: Optional[
+        Union[
+            float,
+            dict,
+            int,
+        ]
+    ] = None

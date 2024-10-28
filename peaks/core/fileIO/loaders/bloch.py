@@ -4,18 +4,18 @@
 
 import pint_xarray
 
-from ..base_arpes_data_classes import BaseSESDataLoader
-from ..loc_registry import register_loader
+from peaks.core.fileIO.base_arpes_data_classes.base_ses_class import SESDataLoader
+from peaks.core.fileIO.loc_registry import register_loader
 
 ureg = pint_xarray.unit_registry
 
 
 @register_loader
-class BlochArpesLoader(BaseSESDataLoader):
+class BlochArpesLoader(SESDataLoader):
     _loc_name = "MAXIV_Bloch_A"
     _loc_description = "A branch (ARPES) of Bloch beamline at Max-IV"
     _loc_url = "https://www.maxiv.lu.se/beamlines-accelerators/beamlines/bloch/"
-    _analyser_slit_angle = 90 * ureg("deg")
+    _analyser_slit_angle = 0 * ureg("deg")
 
     _manipulator_name_conventions = {
         "polar": "P",

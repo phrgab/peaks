@@ -2,7 +2,8 @@ import xarray as xr
 from termcolor import colored
 import functools
 import re
-from peaks.core.utils.accessors import register_accessor
+
+from peaks.core.utils.misc import analysis_warning
 
 
 # Helper functions
@@ -103,9 +104,8 @@ def _dataarrays_to_datatree(data, names=None):
 
 
 # General accessor methods for DataTree
-@register_accessor(xr.DataTree)
-def list_scans(dt):
-    """Make a nice tree List all scans in the DataTree.
+def view(dt):
+    """Make a nice view of all branches and scans in the DataTree.
 
     Parameters
     ----------
@@ -145,7 +145,6 @@ def list_scans(dt):
     print(display_datatree(dt))
 
 
-@register_accessor(xr.DataTree)
 @_ensure_empty_node
 @_ensure_name_does_not_exist
 def add_scan_group(dt, name=None):
@@ -179,7 +178,6 @@ def add_scan_group(dt, name=None):
     xr.DataTree(name=_make_name_callable(name), parent=dt)
 
 
-@register_accessor(xr.DataTree)
 @_ensure_empty_node
 @_ensure_name_does_not_exist
 def add(dt, data_source, name=None, add_at_root=False, **kwargs):
@@ -264,3 +262,51 @@ def add(dt, data_source, name=None, add_at_root=False, **kwargs):
         loaded_data = pks_load(data_source, **kwargs)
         # Add loaded data to the DataTree
         add(dt=dt, data_source=loaded_data, name=name, add_at_root=add_at_root)
+
+
+def get_DataArray(dt):
+    """Get a :class:`xarray.DataArray` stored as the only entry of a :class:`xarray.DataSet` with
+     data variable `data` which is the leaf node of a :class:`xarray.DataTree`.
+
+    Parameters
+    ----------
+    dt : DataTree leaf
+        The DataTree leaf to return the :class:`xarray.DataArray` from.
+
+    Returns
+    -------
+    xarray.DataArray
+        The :class:`xarray.DataArray` stored in the leaf node.
+    """
+    if not dt.is_empty and hasattr(dt, "data") and isinstance(dt.data, xr.DataArray):
+        da = dt.data
+        da.name = dt.name
+        return da
+
+
+def _map_over_dt_containing_single_das(data_tree, func, *args, **kwargs):
+    """Applies a function to each leaf node in a DataTree assuming that any leaf with data contains a single
+    :class:`xarray.Dataset` with a single data variable `data` containing the :class:`xarray.DataArray`.
+
+    Parameters
+    ----------
+    data_tree : xarray.DataTree
+        The DataTree to apply the function to.
+    func : callable
+        The function to apply to each leaf node.
+    *args, **kwargs
+        Additional arguments to pass to the function.
+
+    Returns
+    -------
+    xarray.DataTree
+        The DataTree with the function applied to each leaf node.
+    """
+
+    def map_over_ds(node):
+        if hasattr(node, "data") and len(node) == 1:
+            return node.map(lambda da: func(da, *args, **kwargs) or da)
+        else:
+            return node
+
+    return data_tree.map_over_subtree(map_over_ds)

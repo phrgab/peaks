@@ -2,17 +2,11 @@
 
 """
 
-# Phil King 30/04/2021
-# Brendan Edwards 13/11/2023
-
 import numpy as np
-import xarray as xr
 from scipy.ndimage import gaussian_gradient_magnitude
-from peaks.utils import analysis_warning
-from peaks.core.utils.accessors import register_accessor
+from peaks.core.utils.misc import analysis_warning
 
 
-@register_accessor(xr.DataArray)
 def deriv(data, dims):
     """General function to perform differentiations along the specified dimensions of data.
 
@@ -91,7 +85,6 @@ def deriv(data, dims):
     return deriv_data
 
 
-@register_accessor(xr.DataArray)
 def d2E(data):
     """Shortcut function to perform a double differentiation along the eV dimension of data.
 
@@ -131,7 +124,6 @@ def d2E(data):
     return deriv_data
 
 
-@register_accessor(xr.DataArray)
 def d2k(data):
     """Shortcut function to perform a double differentiation along the momentum (or angle) dimension of data.
 
@@ -173,7 +165,6 @@ def d2k(data):
     return deriv_data
 
 
-@register_accessor(xr.DataArray)
 def dEdk(data):
     """Shortcut function to perform sequential differentiations along the eV then momentum (or angle) dimensions of
     data.
@@ -225,7 +216,6 @@ def dEdk(data):
     return deriv_data
 
 
-@register_accessor(xr.DataArray)
 def dkdE(data):
     """Shortcut function to perform sequential differentiations along the momentum (or angle) then eV dimensions of
     data.
@@ -277,7 +267,6 @@ def dkdE(data):
     return deriv_data
 
 
-@register_accessor(xr.DataArray)
 def curvature(data, **parameter_kwargs):
     """Perform 2D curvature analysis of data (see Rev. Sci. Instrum.  82, 043712 (2011) for analysis procedure).
 
@@ -364,7 +353,6 @@ def curvature(data, **parameter_kwargs):
     return curv_data
 
 
-@register_accessor(xr.DataArray)
 def min_gradient(data, **smoothing_kwargs):
     """Perform minimum gradient analysis of data, using Gaussian filtering (see Rev. Sci. Instrum 88 (2017) 07390 for
     analysis procedure).

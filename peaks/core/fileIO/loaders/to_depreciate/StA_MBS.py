@@ -276,7 +276,7 @@ def _load_StA_MBS_metadata(fname, scan_type):
     metadata["sample_description"] = None
     metadata["eV_type"] = "kinetic"
     metadata["beamline"] = _StAMBSConventions.loc_name
-    metadata["analysis_history"] = []
+    metadata["_analysis_history"] = []
     metadata["EF_correction"] = None
 
     # Get file_extension to determine the file type, to allow other metadata to be determined

@@ -249,7 +249,7 @@ def _load_LOREA_metadata(fname, scan_type):
     metadata["sample_description"] = None
     metadata["eV_type"] = "kinetic"
     metadata["beamline"] = _LoreaConventions.loc_name
-    metadata["analysis_history"] = []
+    metadata["_analysis_history"] = []
     metadata["EF_correction"] = None
 
     # Define other attributes, using the _h5py_find_attr _h5py_find_coord functions to obtain metadata where possible

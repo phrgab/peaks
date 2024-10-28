@@ -5,6 +5,7 @@
 import os
 from IPython.display import display, Javascript, Markdown
 from termcolor import colored
+import xarray as xr
 
 
 def analysis_warning(text, warn_type="info", title="Analysis info", quiet=False):
@@ -50,6 +51,26 @@ def analysis_warning(text, warn_type="info", title="Analysis info", quiet=False)
                 % (warn_type, title, text)
             )
         )
+
+
+def dequantify_quantify_wrapper(func):
+    def wrapper(*args, **kwargs):
+        # Apply dequantify to the first argument
+        args = (args[0].pint.dequantify(),) + args[1:]
+
+        # Call the original function
+        result = func(*args, **kwargs)
+
+        # Apply quantify to the result
+        if isinstance(result, (xr.DataArray, xr.Dataset)):
+            result = result.pint.quantify()
+            # Check if there is a single-length coord with Units that should be dequantified
+            for dim, coord in result.coords.items():
+                if coord.size == 1:
+                    result = result.assign_coords({dim: coord.pint.dequantify()})
+        return result
+
+    return wrapper
 
 
 def format_colored_dict(d, indent_level=0, col_cycle=0):

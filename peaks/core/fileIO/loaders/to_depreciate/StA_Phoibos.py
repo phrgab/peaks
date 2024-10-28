@@ -172,7 +172,7 @@ def _load_StA_Phoibos_metadata(fname, scan_type):
     metadata["sample_description"] = None
     metadata["eV_type"] = "kinetic"
     metadata["beamline"] = _StAPhoibosConventions.loc_name
-    metadata["analysis_history"] = []
+    metadata["_analysis_history"] = []
     metadata["EF_correction"] = None
 
     # Define attributes, using the _StA_Phoibos_find function to obtain metadata where possible

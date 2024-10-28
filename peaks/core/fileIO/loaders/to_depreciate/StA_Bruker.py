@@ -118,7 +118,7 @@ def _load_StA_Bruker_metadata(fname, scan_type):
     metadata["scan_type"] = scan_type
     metadata["sample_description"] = None
     metadata["beamline"] = "StA-Bruker"
-    metadata["analysis_history"] = []
+    metadata["_analysis_history"] = []
     metadata["anode"] = metaline.split('Anode: "')[1].split('"')[0]
     if metadata["anode"] == "Cu":
         # If the copper anode is used, we know the wavelength of X-ray

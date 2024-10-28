@@ -7,10 +7,12 @@ from typing import Optional, Union
 
 from peaks.core.utils.misc import analysis_warning
 from peaks.core.options import opts
-from ..loc_registry import register_loader
-from ..base_data_classes import BaseHDF5DataLoader
+from peaks.core.fileIO.loc_registry import register_loader
+from peaks.core.fileIO.base_data_classes.base_hdf5_class import BaseHDF5DataLoader
 from peaks.core.metadata.base_metadata_models import BaseMetadataModel, Quantity
-from ..base_arpes_data_classes import BaseARPESDataLoader
+from peaks.core.fileIO.base_arpes_data_classes.base_arpes_data_class import (
+    BaseARPESDataLoader,
+)
 
 
 ureg = pint_xarray.unit_registry
@@ -89,15 +91,17 @@ class DiamondNXSLoader(BaseHDF5DataLoader):
         """Parse the attribute value for a signal or primary key to a standard format"""
         if isinstance(attr, bytes):
             attr = attr.decode()
+
         if isinstance(attr, str):
             if "," in attr:
                 attr = [int(i) for i in attr.split(",")]
             else:
                 attr = int(attr)
         elif isinstance(attr, list):
-            attr = [int(i) for i in attr]
+            attr = [int(i.decode()) if isinstance(i, bytes) else int(i) for i in attr]
             if len(attr) == 1:
                 attr = attr[0]
+
         return attr
 
     @staticmethod
@@ -164,7 +168,7 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
     _loc_name = "Diamond_I05_ARPES"
     _loc_description = "HR-ARPES branch line of I05 beamline at Diamond Light Source"
     _loc_url = "https://www.diamond.ac.uk/Instruments/Structures-and-Surfaces/I05.html"
-    _analyser_slit_angle = 90 * ureg.deg
+    _analyser_slit_angle = 0 * ureg.deg
 
     _manipulator_name_conventions = {
         "polar": "sapolar",
@@ -176,8 +180,8 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
     }
 
     _analyser_name_conventions = {
-        "defl_perp": "deflector_x",
-        "defl_par": "deflector_y",
+        "deflector_perp": "deflector_x",
+        "deflector_parallel": "deflector_y",
         "eV": ["energies", "kinetic_energy_center"],
         "theta_par": "angles",
         "hv": ["energy", "value"],
@@ -263,6 +267,7 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
                 )
                 for dim in dim_names
             }
+
             # Parse the possible dimensions for each axis, excluding current which is always a `metadata` entry
             axis_to_dim_name_mapping = {
                 axis: [
@@ -273,15 +278,21 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
                 for axis in set(dim_name_to_axis_mapping.values())
             }
             # Sort these based on their primary attribute
+            # Get rid of attributes that don't have an axis link
+            axis_to_dim_name_mapping.pop(None, None)
             axis_to_dim_name_mapping_sorted = {}
             for axis, dims in axis_to_dim_name_mapping.items():
                 axis_to_dim_name_mapping_sorted[axis] = sorted(
                     dims,
-                    key=lambda k: cls._parse_nxs_primary_attr(
-                        f[f"{data_group_addr}/{k}"].attrs.get("primary", 99)
+                    key=lambda k: int(
+                        cls._parse_nxs_primary_attr(
+                            f[f"{data_group_addr}/{k}"].attrs.get("primary", 99)
+                        )
                     ),
                 )
-                # Handle edge case with ana_polar scan via dummy motor (I05 Nano)
+
+                # Handle edge cases ############################################
+                # ana_polar scan via dummy motor (I05 Nano)
                 if axis_to_dim_name_mapping_sorted[axis] == [
                     "dummy_motor",
                     "analyser_polar_angle",
@@ -290,6 +301,23 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
                         "analyser_polar_angle",
                         "dummy_motor",
                     ]
+                # Secondary spatial axis in a polar map
+                if "sapolar" in axis_to_dim_name_mapping_sorted[axis]:
+                    other_dim = list(
+                        set(axis_to_dim_name_mapping_sorted[axis]) - set(["sapolar"])
+                    )
+                    if len(other_dim) == 1 and other_dim[0] in ["sax", "say", "salong"]:
+                        axis_to_dim_name_mapping_sorted[axis] = [
+                            "sapolar",
+                            other_dim[0],
+                        ]
+                # hv scan
+                if "energy" in axis_to_dim_name_mapping_sorted[axis]:
+                    other_dim = list(
+                        set(axis_to_dim_name_mapping_sorted[axis]) - set(["energy"])
+                    )
+                    axis_to_dim_name_mapping_sorted[axis] = ["energy"]
+                    axis_to_dim_name_mapping_sorted[axis].extend(other_dim)
 
             # Define the primary dims and coords
             data_ndim = f[f"{data_group_addr}/{core_data_key}"].ndim
@@ -343,9 +371,15 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
         for dim, coord in coords_to_apply.copy().items():
             if coord.ndim == 2:
                 # Should be a 2D array with shape (value, KE) where value is the changing hv dim
-                # Check that
-                if coords_to_apply.get("value").shape[0] == coord.shape[0]:
-                    coords_to_apply["KE_delta"] = ("value", coord[:, 0] - coord[0, 0])
+                hv_coord_label = (
+                    {"value", "energy"}.intersection(set(coords_to_apply.keys())).pop()
+                )
+
+                if coords_to_apply.get(hv_coord_label).shape[0] == coord.shape[0]:
+                    coords_to_apply["KE_delta"] = (
+                        hv_coord_label,
+                        coord[:, 0] - coord[0, 0],
+                    )
                     coords_to_apply[dim] = coord[0]
                 else:
                     analysis_warning(
@@ -400,7 +434,7 @@ class I05NanoARPESLoader(I05ARPESLoader):
     _loc_name = "Diamond_I05_Nano-ARPES"
     _loc_description = "Nano-ARPES branch line of I05 beamline at Diamond Light Source"
     _loc_url = "https://www.diamond.ac.uk/Instruments/Structures-and-Surfaces/I05.html"
-    _analyser_slit_angle = 90 * ureg.deg
+    _analyser_slit_angle = 0 * ureg.deg
 
     _manipulator_axes = ["polar", "tilt", "azi", "x1", "x2", "x3", "defocus"]
     _manipulator_name_conventions = {
@@ -414,8 +448,8 @@ class I05NanoARPESLoader(I05ARPESLoader):
     }
 
     _analyser_name_conventions = {
-        "defl_perp": "ThetaY",
-        "defl_par": "ThetaX",
+        "deflector_perp": "ThetaY",
+        "deflector_parallel": "ThetaX",
         "eV": ["energies", "kinetic_energy_center"],
         "theta_par": "angles",
         "hv": ["energy", "value"],
