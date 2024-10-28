@@ -41,23 +41,23 @@ def _load_NetCDF_data(fname):
     # (except for analysis_history which if it happens to be empty, we want it to be an empty list)
     for attr in data.attrs:
         if data.attrs[attr] == "":
-            if attr != "analysis_history":
+            if attr != "_analysis_history":
                 data.attrs[attr] = None
             else:
                 data.attrs[attr] = []
 
     # Since NetCDF file attributes cannot be saved as a list, we represent the list analysis_history as a json string.
     # We want to revert analysis_history to a list.
-    try:  # If data.attrs['analysis_history'] is a string, split it into a list
-        data.attrs["analysis_history"] = json.loads(data.attrs["analysis_history"])
+    try:  # If data.attrs['_analysis_history'] is a string, split it into a list
+        data.attrs["_analysis_history"] = json.loads(data.attrs["_analysis_history"])
     except (
         AttributeError
-    ):  # If data.attrs['analysis_history'] is not a string, do nothing (future proofing)
+    ):  # If data.attrs['_analysis_history'] is not a string, do nothing (future proofing)
         pass
     except (
         KeyError
-    ):  # If data.attrs['analysis_history'] does not exist, define it with no history
-        data.attrs["analysis_history"] = []
+    ):  # If data.attrs['_analysis_history'] does not exist, define it with no history
+        data.attrs["_analysis_history"] = []
 
     return data
 

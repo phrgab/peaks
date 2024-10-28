@@ -11,11 +11,9 @@ from scipy.ndimage import gaussian_filter
 from skimage.registration import phase_cross_correlation
 from IPython.display import clear_output
 from peaks.core.fitting.models import _shirley_bg
-from peaks.core.utils.accessors import register_accessor
 from peaks.core.utils.misc import analysis_warning
 
 
-@register_accessor(xr.DataArray)
 def norm(data, dim=None, **kwargs):
     """Function to apply a normalisation to data.
 
@@ -118,7 +116,6 @@ def norm(data, dim=None, **kwargs):
     return norm_data
 
 
-@register_accessor(xr.DataArray)
 def bgs(
     data,
     subtraction=None,
@@ -306,7 +303,6 @@ def bgs(
     return bgs_data
 
 
-@register_accessor(xr.DataArray)
 def bin_data(data, binning=None, boundary="trim", **binning_kwargs):
     """Shortcut function to bin data. Thin wrapper around :class:`xarray.DataArray.coarsen` but also with updating
     analysis history.
@@ -392,7 +388,59 @@ def bin_data(data, binning=None, boundary="trim", **binning_kwargs):
     return binned_data
 
 
-@register_accessor(xr.DataArray)
+def bin_spectra(data, binning=2, boundary="trim"):
+    """Shortcut to .bin_data where spectral dimensions (energy, angle or k along slit) are attempted to be
+    automatically determined and binned with the factor set in binning. All other dimensions are left as they are.
+
+    Parameters
+    ------------
+    data : xarray.DataArray
+        The data to be binned.
+
+    binning : int, optional
+        The factor by which to bin the spectral dimensions. Defaults to 2.
+
+    boundary : str, optional
+        Determines how to handle boundaries. Defaults to 'trim' where bins are trimmed to fit the data.
+        Other options are 'exact' and 'pad'; see :class:`xarray.DataArray.coarsen` for more information.
+
+    Returns
+    ------------
+    binned_data : xarray.DataArray
+        The binned data.
+
+    Examples
+    ------------
+    Example usage is as follows::
+
+        import peaks as pks
+
+        disp = pks.load('disp.ibw')
+
+        # Bin dispersion by a factor of 2 along the spectral dimensions
+        disp_binned = disp.bin_spectra()
+
+    See Also
+    ------------
+    :meth:`xarray.DataArray.bin_data`
+
+    """
+    # Get the spectral dimensions
+    spectral_dims = set(data.dims).intersection({"eV", "theta_par", "k_par"})
+
+    # If no spectral dimensions are found, raise an error
+    if len(spectral_dims) == 0:
+        raise Exception("No spectral dimensions found in the inputted DataArray.")
+
+    # Define the binning_kwargs
+    binning_kwargs = {dim: binning for dim in spectral_dims}
+
+    # Apply binning to data
+    binned_data = data.bin_data(**binning_kwargs, boundary=boundary)
+
+    return binned_data
+
+
 def smooth(data, **smoothing_kwargs):
     """Function to smooth data by applying a Gaussian smoothing operator.
 
@@ -486,7 +534,6 @@ def smooth(data, **smoothing_kwargs):
     return smoothed_data
 
 
-@register_accessor(xr.DataArray)
 def rotate(data, rotation, **centre_kwargs):
     """Function to rotate 2D data around a given centre of rotation.
 
@@ -667,7 +714,6 @@ def rotate(data, rotation, **centre_kwargs):
     return rotated_data
 
 
-@register_accessor(xr.DataArray)
 def sym(data, flipped=False, fillna=True, **sym_kwarg):
     """Function which primarily applies a symmetrisation of data around a given axis. It can alternatively be used to
     simply flip data around a given axis.
@@ -770,7 +816,6 @@ def sym(data, flipped=False, fillna=True, **sym_kwarg):
     return sym_data
 
 
-@register_accessor(xr.DataArray)
 def sym_nfold(data, nfold, expand=True, fillna=True, **centre_kwargs):
     """Function to perform an n-fold symmetrisation of data around a centre coordinate.
 
@@ -899,7 +944,7 @@ def sym_nfold(data, nfold, expand=True, fillna=True, **centre_kwargs):
 
     # Remove sum_data analysis_history entry, and clear warning (given during sum_data since analysis_history attrs will
     # differ
-    sym_data.attrs["analysis_history"] = sym_data.attrs["analysis_history"][0:-1]
+    sym_data.attrs["_analysis_history"] = sym_data.attrs["_analysis_history"][0:-1]
     clear_output()
 
     # Rescale the data according to the NaN_counter so regions are of consistent intensity
@@ -918,7 +963,6 @@ def sym_nfold(data, nfold, expand=True, fillna=True, **centre_kwargs):
     return sym_data
 
 
-@register_accessor(xr.DataArray)
 def degrid(data, width=0.1, height=0.1, cutoff=4):
     """Function which removes a mesh grid from 2D data by filtering its fast Fourier transform (FFT).
 
@@ -1167,7 +1211,7 @@ def sum_data(data):
 
     # Remove history from the attributes
     data_history = []
-    data_history.append(data_0_attrs.pop("analysis_history", "NONE"))
+    data_history.append(data_0_attrs.pop("_analysis_history", "NONE"))
 
     # Variable used to use to store the summed DataArray data (will be updated with other DataArrays)
     summed_data = data_0_data.copy(deep=True)
@@ -1191,7 +1235,7 @@ def sum_data(data):
             current_attrs["scan_name"] = "Unknown"
         # Remove scan_name & history from the current DataArray attributes
         current_name = current_attrs.pop("scan_name")
-        data_history.append(current_attrs.pop("analysis_history", "NONE"))
+        data_history.append(current_attrs.pop("_analysis_history", "NONE"))
 
         # Ensure that the dimensions of the current DataArray match those of the first DataArray, raise an error if not
         if current_data.dims != data_0_data.dims:
@@ -1355,8 +1399,8 @@ def merge_data(data, dim="theta_par", sel=slice(None, None), offsets=None):
     for item in data:
         if isinstance(item, xr.core.dataarray.DataArray):
             data_to_merge.append(item.copy(deep=True).sel({dim: sel}))
-            if "analysis_history" in item.attrs:
-                data_history.append(item.attrs["analysis_history"])
+            if "_analysis_history" in item.attrs:
+                data_history.append(item.attrs["_analysis_history"])
             else:
                 data_history.append("None")
         else:
@@ -1418,7 +1462,7 @@ def merge_data(data, dim="theta_par", sel=slice(None, None), offsets=None):
     history_record = {"record": history_str}
     for i in range(len(data_history)):
         history_record[f"original scan {i} analysis history"] = data_history[i]
-    merged_data.attrs.pop("analysis_history", None)
+    merged_data.attrs.pop("_analysis_history", None)
     merged_data = merged_data.history.assign(history_record)
 
     return merged_data
@@ -1546,14 +1590,13 @@ def _merge_two_DataArrays(DataArray1, DataArray2, dim):
     merged_data = sum_data([DataArray1, DataArray2])
 
     # Remove sum_data analysis_history entry
-    merged_data.attrs["analysis_history"] = copy.deepcopy(
-        merged_data.attrs["analysis_history"][0:-1]
+    merged_data.attrs["_analysis_history"] = copy.deepcopy(
+        merged_data.attrs["_analysis_history"][0:-1]
     )
 
     return merged_data
 
 
-@register_accessor(xr.DataArray)
 def estimate_sym_point(data, dims=None, upsample_factor=100):
     """Function to estimate the centrepoint of data that should be symmetric about an axis or axes.
     Used for e.g. estimating normal emission of an ARPES scan.

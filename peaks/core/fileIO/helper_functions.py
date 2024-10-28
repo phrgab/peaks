@@ -10,7 +10,6 @@ import xarray as xr
 import h5py
 from termcolor import colored
 from peaks.core.fileIO.data_loading import _make_DataArray, _extract_mapping_metadata
-from peaks.core.utils.accessors import register_accessor
 from peaks.core.utils.misc import analysis_warning
 
 
@@ -117,7 +116,6 @@ def make_hv_scan(data):
     return hv_scan
 
 
-@register_accessor(xr.DataArray)
 def slant_correct(data, factor=None):
     """Function to remove a slant that was present in data obtained using the Scienta DA30 (9ES210) analyser at the nano
     branch of the I05 beamline at Diamond Light Source in 2021/22.
@@ -166,118 +164,3 @@ def slant_correct(data, factor=None):
     )
 
     return corrected_data
-
-
-def _print_hdf5_structure(
-    name, obj, parent_group, indent_level=0, is_last=False, branch=""
-):
-    """Recursive function to print the structure of the HDF5 file with colored keys and default (black) data, and indentation lines.
-
-    Parameters
-    ----------
-    name : str
-        The name of the current object.
-
-    obj : h5py.Group, h5py.Dataset, h5py.SoftLink, h5py.ExternalLink
-        The object to explore.
-
-    parent_group : h5py.Group
-        The parent group of the current object.
-
-    indent_level : int, optional
-        The current indentation level of the object.
-
-    is_last : bool, optional
-        Whether the current object is the last child of the parent group.
-
-    branch : str, optional
-        The current branch of the object.
-
-    """
-    # Color definitions
-    group_color = "cyan"
-    dataset_color = "yellow"
-    attribute_color = "green"
-    link_color = "magenta"
-    grey_line = colored("|-- ", "light_grey")
-
-    # Set the line connector based on whether the node is the last child
-    connector = "└── " if is_last else "├── "
-
-    # Build the branch line for current level
-    new_branch = branch + ("    " if is_last else "│   ")
-
-    if isinstance(obj, h5py.Group):
-        # Print groups in cyan
-        group_name = colored(
-            f"{name.split('/')[-1]}:NX{obj.attrs.get('NX_class', 'unknown')}",
-            group_color,
-        )
-        print(f"{branch}{connector}{group_name}")
-
-        # Recursively explore the contents of the group
-        keys = list(obj.keys())
-        for i, key in enumerate(keys):
-            sub_obj = obj[key]
-            _print_hdf5_structure(
-                key,
-                sub_obj,
-                obj,
-                indent_level + 1,
-                is_last=(i == len(keys) - 1),
-                branch=new_branch,
-            )
-
-    elif isinstance(obj, h5py.Dataset):
-        # Print datasets in yellow, but display data in default black if large data is compacted
-        data_info = (
-            f"shape={obj.shape}, dtype={obj.dtype}" if obj.size > 10 else f"{obj[()]}"
-        )
-        dataset_name = colored(f"{name.split('/')[-1]} =", dataset_color)
-        print(f"{branch}{connector}{dataset_name} {data_info}")
-
-        # Print dataset attributes in green, but display attribute values in default black
-        for attr_name, attr_value in obj.attrs.items():
-            attr_display = colored(f"@{attr_name} =", attribute_color)
-            print(f"{new_branch}  {attr_display} {attr_value}")
-
-    elif isinstance(obj, h5py.SoftLink) or isinstance(obj, h5py.ExternalLink):
-        # Handle links (even though we said we'd resolve them, this is here if needed)
-        link_name = colored(f"{name.split('/')[-1]} -> {obj.path} (Link)", link_color)
-        print(f"{branch}{connector}{link_name}")
-
-
-def hdf5_explorer(file_path):
-    """Function to explore the structure of an HDF5 file, printing the keys, groups, datasets and attributes.
-
-    Parameters
-    ----------
-    file_path : str
-        The path to the HDF5 file to explore.
-
-    Examples
-    --------
-    Example usage is as follows::
-
-        import peaks as pks
-
-        # Explore the structure of an HDF5 file
-        pks.hdf5_explorer('data.h5')
-
-    Notes
-    -----
-    Colored output is used to distinguish between groups, datasets, attributes and links:
-        - Cyan: For groups (NX classes like NXentry, NXdata, etc.)
-        - Yellow: For datasets (the actual data arrays)
-        - Green: For attributes (metadata attached to datasets or groups, typically prefixed with @)
-        - Magenta: For soft links (references to other datasets or groups within the file)
-        - Black: For data values (the actual contents of datasets and attributes)
-
-    Note, soft links may resolve automatically and so not show as links in the output.
-    """
-    with h5py.File(file_path, "r") as f:
-        # Manually explore the root level items
-        keys = list(f.keys())
-        for i, key in enumerate(keys):
-            obj = f[key]
-            _print_hdf5_structure(key, obj, f, is_last=(i == len(keys) - 1))

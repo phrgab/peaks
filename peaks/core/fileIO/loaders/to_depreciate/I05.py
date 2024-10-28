@@ -434,7 +434,7 @@ def _load_I05_metadata(fname, scan_type, loc):
     metadata["sample_description"] = None
     metadata["eV_type"] = "kinetic"
     metadata["beamline"] = loc
-    metadata["analysis_history"] = []
+    metadata["_analysis_history"] = []
     metadata["EF_correction"] = None
 
     # Get file_extension to determine the file type, to allow other metadata to be determined

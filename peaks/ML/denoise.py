@@ -6,7 +6,7 @@
 
 import xarray as xr
 from sklearn.decomposition import PCA
-from peaks.core.utils.accessors import register_accessor
+from peaks.core.accessors.accessor_methods import register_accessor
 
 
 @register_accessor(xr.DataArray)

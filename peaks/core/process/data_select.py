@@ -6,16 +6,16 @@ import copy
 
 import numpy as np
 import xarray as xr
+import pint_xarray  # noqa: F401
 from matplotlib.path import Path
-from peaks.core.utils.accessors import register_accessor
 from peaks.core.utils.interpolation import (
     _fast_bilinear_interpolate,
     _fast_bilinear_interpolate_rectilinear,
     _is_linearly_spaced,
 )
+from peaks.core.utils.misc import dequantify_quantify_wrapper
 
 
-@register_accessor(xr.DataArray)
 def drop_nan_borders(data):
     """
     Trims the edges of an :class:`xarray.DataArray` or :class:`xarray.Dataset` that are all NaN values.
@@ -67,7 +67,6 @@ def _drop_nan_borders_2D(data):
     return data[rows_to_keep, :][:, cols_to_keep]
 
 
-@register_accessor(xr.DataArray)
 def drop_zero_borders(data):
     """
     Trims the edges of an :class:`xarray.DataArray` or :class:`xarray.Dataset` that are all zero values.
@@ -110,7 +109,7 @@ def drop_zero_borders(data):
     return data
 
 
-@register_accessor(xr.DataArray)
+@dequantify_quantify_wrapper
 def DC(data, coord="eV", val=0, dval=0, ana_hist=True):
     """General function to extract DCs from data along any coordinate.
 
@@ -199,7 +198,6 @@ def DC(data, coord="eV", val=0, dval=0, ana_hist=True):
     return dc
 
 
-@register_accessor(xr.DataArray)
 def MDC(data, E=0, dE=0):
     """Extract MDCs (i.e. slices at constant energy) from data. Broadcasts to higher dimensions as necessary.
 
@@ -253,7 +251,6 @@ def MDC(data, E=0, dE=0):
     return mdc
 
 
-@register_accessor(xr.DataArray)
 def EDC(data, k=0, dk=0):
     """Extract EDCs from data.
 
@@ -313,7 +310,6 @@ def EDC(data, k=0, dk=0):
     return edc
 
 
-@register_accessor(xr.DataArray)
 def DOS(data):
     """Integrate over all but the energy axis to return the best approximation to the DOS possible from the data.
 
@@ -358,7 +354,6 @@ def DOS(data):
     return dos
 
 
-@register_accessor(xr.DataArray)
 def tot(data, spatial_int=False):
     """Integrate spatial map data over all non-spatial (energy and angle/k) or all spatial dimensions.
 
@@ -409,7 +404,7 @@ def tot(data, spatial_int=False):
     return data_tot
 
 
-@register_accessor(xr.DataArray)
+@dequantify_quantify_wrapper
 def radial_cuts(data, num_azi=361, num_points=200, radius=2, **centre_kwargs):
     """Extract radial cuts of a Fermi surface slice or cube as a function of azimuthal angle, about some central point.
 
@@ -534,7 +529,7 @@ def radial_cuts(data, num_azi=361, num_points=200, radius=2, **centre_kwargs):
     return interpolated_data
 
 
-@register_accessor(xr.DataArray)
+@dequantify_quantify_wrapper
 def extract_cut(data, start_point, end_point, num_points=None):
     """Extract cut between two end-points, e.g. dispersion or MDC from a Fermi map data cube.
 
@@ -642,10 +637,11 @@ def extract_cut(data, start_point, end_point, num_points=None):
         f"Data returned vs. the projected distance."
     )
 
+    interpolated_data = interpolated_data.pint.quantify()
+
     return interpolated_data
 
 
-@register_accessor(xr.DataArray)
 def mask_data(data, ROI, return_integrated=True):
     """This function applies a polygon region of interest (ROI) as a mask to multidimensional data. By default, the
     function will then extract the mean over the two dimensions defined by the ROI. For a rectangular ROI, this is
@@ -760,7 +756,6 @@ def mask_data(data, ROI, return_integrated=True):
     return ROI_selected_data
 
 
-@register_accessor(xr.DataArray)
 def disp_from_hv(data, hv):
     """Function to extract a dispersion at a given hv from an hv scan, correcting for the kinetic energy offsets
     (KE_delta) that arise from using the hv scan loading method.

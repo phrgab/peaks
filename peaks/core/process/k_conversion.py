@@ -9,9 +9,12 @@ from scipy.constants import m_e, hbar, electron_volt, angstrom
 import numba_progress
 from tqdm.notebook import tqdm
 
-from .fermi_level_correction import _get_wf, _get_BE_scale, _get_E_shift_at_theta_par
+from peaks.core.process.fermi_level_correction import (
+    _get_wf,
+    _get_BE_scale,
+    _get_E_shift_at_theta_par,
+)
 from peaks.core.process.angles import _get_angles_for_k_conv
-from peaks.core.utils.accessors import register_accessor
 from peaks.core.utils.interpolation import (
     _is_linearly_spaced,
     _fast_bilinear_interpolate,
@@ -629,7 +632,6 @@ def _get_k_perpto_slit(kx, ky, ana_type):
 # --------------------------------------------------------- #
 
 
-@register_accessor(xr.DataArray)
 def k_convert(
     data,
     eV=None,

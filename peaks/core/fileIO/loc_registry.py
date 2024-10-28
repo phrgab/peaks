@@ -71,7 +71,7 @@ class IdentifyLoc:
                     if "PhoibosSpin" in f.readline():
                         return "MAX IV Bloch-spin"
             # Otherwise by default, assume StA-Phoibos
-            return "StA-Phoibos"
+            return "StA_Phoibos"
 
         elif "Anode" in line0:
             # If the identifier 'Anode' is present, then measurement was XRD using StA-Bruker
@@ -99,15 +99,27 @@ class IdentifyLoc:
         # MAX IV Bloch, Elettra APE or SOLEIL CASSIOPEE .txt files follow the same SES data format, so we can identify
         # the location from the location line in the file
         if line0 == "[Info]\n":  # Identifier of the SES data format
-            # Extract metadata information from file using the _load_SES_metalines function
-            metadata_lines = _load_SES_metalines(fname)
-            # Extract and determine the location using the _SES_find function
-            location = _SES_find(metadata_lines, "Location=")
-            if "bloch" in location.lower() or "maxiv" in location.lower():
+            from peaks.core.fileIO.base_data_classes.base_data_class import (
+                BaseDataLoader,
+            )
+
+            # Extract metadata dictionary from file
+            metadata = BaseDataLoader.load_metadata(fname, loc="SES", quiet=True)
+            location_identifier = metadata.get("local_location_identifier")
+            if (
+                "bloch" in location_identifier.lower()
+                or "maxiv" in location_identifier.lower()
+            ):
                 return "MAXIV_Bloch_A"
-            elif "ape" in location.lower() or "elettra" in location.lower():
+            elif (
+                "ape" in location_identifier.lower()
+                or "elettra" in location_identifier.lower()
+            ):
                 return "Elettra APE"
-            elif "cassiopee" in location.lower() or "soleil" in location.lower():
+            elif (
+                "cassiopee" in location_identifier.lower()
+                or "soleil" in location_identifier.lower()
+            ):
                 return "SOLEIL CASSIOPEE"
             # If the file does not follow the SES format, it must be StA-MBS
             else:
@@ -117,32 +129,46 @@ class IdentifyLoc:
     def _handler_zip(fname):
         # If the file is .zip format, the file must be of SES format. Thus, the location must be MAX IV Bloch,
         # Elettra APE, SOLEIL CASSIOPEE or Diamond I05-nano (defl map)
+        from peaks.core.fileIO.base_data_classes.base_data_class import BaseDataLoader
 
-        # Extract metadata information from file using the _load_SES_metalines function
-        metadata_lines = _load_SES_metalines(fname)
-        # Extract and determine the location using the _SES_find function
-        location = _SES_find(metadata_lines, "Location=")
-        if "bloch" in location.lower() or "maxiv" in location.lower():
+        # Extract metadata dictionary from file
+        metadata = BaseDataLoader.load_metadata(fname, loc="SES", quiet=True)
+        location_identifier = metadata.get("local_location_identifier")
+        if (
+            "bloch" in location_identifier.lower()
+            or "maxiv" in location_identifier.lower()
+        ):
             return "MAXIV_Bloch_A"
-        elif "ape" in location.lower() or "elettra" in location.lower():
+        elif (
+            "ape" in location_identifier.lower()
+            or "elettra" in location_identifier.lower()
+        ):
             return "Elettra APE"
-        elif "cassiopee" in location.lower() or "soleil" in location.lower():
+        elif (
+            "cassiopee" in location_identifier.lower()
+            or "soleil" in location_identifier.lower()
+        ):
             return "SOLEIL CASSIOPEE"
-        elif "i05" in location.lower() or "diamond" in location.lower():
+        elif (
+            "i05" in location_identifier.lower()
+            or "diamond" in location_identifier.lower()
+        ):
             return "Diamond I05-nano"
 
     @staticmethod
     def _handler_ibw(fname):
-        from .base_data_classes import BaseIBWDataLoader
+        from peaks.core.fileIO.base_data_classes.base_ibw_class import BaseIBWDataLoader
 
         # Read the wavenote
         wavenote = BaseIBWDataLoader._load_metadata(fname)["wavenote"]
 
         # If the file is .ibw format, the file is likely SES format.
         if "SES" in wavenote:
-            from .base_arpes_data_classes import BaseSESDataLoader
+            from peaks.core.fileIO.base_arpes_data_classes.base_ses_class import (
+                SESDataLoader,
+            )
 
-            metadata_dict_SES_keys = BaseSESDataLoader._SES_metadata_to_dict_w_SES_keys(
+            metadata_dict_SES_keys = SESDataLoader._SES_metadata_to_dict_w_SES_keys(
                 wavenote.split("\r")
             )
             location = metadata_dict_SES_keys.get("Location")
@@ -161,7 +187,9 @@ class IdentifyLoc:
     def _handler_nxs(fname):
         # If the file is .nxs format, the location should be Diamond I05-nano, Diamond I05-HR or ALBA LOREA
 
-        from peaks.core.fileIO.base_data_classes import BaseHDF5DataLoader
+        from peaks.core.fileIO.base_data_classes.base_hdf5_class import (
+            BaseHDF5DataLoader,
+        )
 
         # Open the file (read only)
         with h5py.File(fname, "r") as f:

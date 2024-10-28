@@ -4,13 +4,11 @@
 
 import os
 import pint
-import re
 import dask
 import dask.array as da
-import xarray as xr
 from tqdm.notebook import tqdm
 from peaks.core.options import opts
-from peaks.core.fileIO.base_data_classes import BaseDataLoader
+from peaks.core.fileIO.base_data_classes.base_data_class import BaseDataLoader
 from peaks.core.utils.misc import analysis_warning
 from peaks.core.utils.datatree_utils import _dataarrays_to_datatree
 

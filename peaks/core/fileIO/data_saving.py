@@ -7,8 +7,7 @@ import json
 import os
 import numpy as np
 import xarray as xr
-import pint_xarray
-from peaks.core.utils.accessors import register_accessor
+import pint_xarray  # noqa: F401
 
 
 def _serialise_attrs(attrs):
@@ -146,7 +145,7 @@ def _save_dt(data, fpath):
         xarray.Dataset : The parsed data
         """
         # Add history entries to the Dataset or DataArray as appropriate
-        if "analysis_history" in ds.attrs:
+        if "_analysis_history" in ds.attrs:
             ds = _add_history_entry(ds)
         else:
             ds = ds.map(_add_history_entry)
@@ -179,9 +178,6 @@ def _save_dt(data, fpath):
     data = data.map_over_subtree(_quantify_da_in_dt)
 
 
-@register_accessor(xr.DataTree)
-@register_accessor(xr.Dataset)
-@register_accessor(xr.DataArray)
 def save(data, fpath):
     """This function saves data in the :class:`xarray.DataArray` or :class:`xarray.DataSet` format as a NetCDF file
     or a :class:`xarray.DataTree` as a zarr file. These formats are restricted in what types of attributes can be

@@ -102,7 +102,7 @@ def _load_APE_metadata(fname, scan_type):
     metadata["sample_description"] = None
     metadata["eV_type"] = "kinetic"
     metadata["beamline"] = _APEConventions.loc_name
-    metadata["analysis_history"] = []
+    metadata["_analysis_history"] = []
     metadata["EF_correction"] = None
 
     # Define attributes, using the _SES_find function to obtain metadata where possible

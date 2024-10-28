@@ -1,21 +1,21 @@
 """
-- Make a set method for updating each metadata entry, which handles units etc. and validation
-- Make a general metadata function which parses a dict-like or attr-like syntax to set that metadata on the da or iterating over ds or dt and applying at each relevant node, e.g. `dt.metadata.set('analyser/slit/width', 0.2)` or `dt.metadata.set('analyser.slit.width', 0.3)`
-- Should it also accept a fully qualified metadata Model? Or maybe a `dict`?
-- Make a specific method for setting normal emissions which can parse relevant data but only when called on a scan, e.g. `da.metadata.set_normal_emission(theta_par=2)` which then parses to the `reference_angle`
-- Make a `set_normal_emission_like` method which can then iterate over a tree, e.g. `dt.metadata.set_normal_emission_like(da)`
-- When calling `.metadata`, should print the nice nested display [from peaks.core.fileIO.helper_functions]
+Helper functions and xarray accessors for providing the user interface to metadata
 """
 
 from datatree import register_datatree_accessor
 from pydantic import BaseModel
 import xarray as xr
 import pint
+import pint_xarray
 from termcolor import colored
 import pprint
 
+from peaks.core.fileIO.base_data_classes.base_data_class import BaseDataLoader
 
-def display_metadata(da_or_model):
+ureg = pint_xarray.unit_registry
+
+
+def display_metadata(da_or_model, mode="ANSI"):
     # Recursive function to display dictionary with colored keys
     colours = ["green", "blue", "red", "yellow"]
 
@@ -34,16 +34,38 @@ def display_metadata(da_or_model):
                 lines.append(f"{indent}{colored(key, current_color)}: {value}")
         return lines
 
+    def display_colored_dict_html(d, indent_level=0, col_cycle=0):
+        indent = "&nbsp;" * 4 * indent_level
+        colours = ["green", "blue", "red", "yellow"]
+        current_color = colours[col_cycle % len(colours)]  # Cycle through colors
+        lines = []
+        for key, value in d.items():
+            if isinstance(value, dict):  # Nested dictionary (recursive case)
+                lines.append(
+                    f"{indent}<span style='color:{current_color}'>{key}:</span>"
+                )
+                lines.extend(
+                    display_colored_dict_html(value, indent_level + 1, col_cycle + 1)
+                )
+            else:  # Base case (simple value)
+                lines.append(
+                    f"{indent}<span style='color:{current_color}'>{key}:</span> {value}"
+                )
+        return lines
+
     # Display the model with colored keys
     try:
         metadata = {
-            key: value.dict()
+            key.lstrip("_"): value.dict()
             for key, value in da_or_model.attrs.items()
-            if key not in ["analysis_history"]
+            if key.startswith("_") and key not in ["_analysis_history"]
         }
-    except AttributeError:
+    except AttributeError as e:
         metadata = da_or_model.dict()
-    return "\n".join(display_colored_dict(metadata))
+    if mode.upper() == "ANSI":
+        return "\n".join(display_colored_dict(metadata))
+    elif mode.upper() == "HTML":
+        return "<br>".join(display_colored_dict_html(metadata))
 
 
 @xr.register_dataset_accessor("metadata")
@@ -59,19 +81,257 @@ class Metadata:
 
     def __getattr__(self, name):
         # Return a MetadataItem for the attribute
-        if name in self._obj.attrs:
-            return MetadataItem(self._obj.attrs[name], path=name, obj=self._obj)
+        if f"_{name}" in self._obj.attrs:
+            return MetadataItem(self._obj.attrs[f"_{name}"], path=name, obj=self._obj)
+        elif name == "history":  # Add a shortcut to the history attribute
+            return self._obj.history
         else:
             raise AttributeError(f"'Metadata' object has no attribute '{name}'")
 
     def __dir__(self):
         # Include dynamic attributes in the list of available attributes
-        return super().__dir__() + list(self.keys())
+        return super().__dir__() + list(self.keys()) + ["history"]
 
     def keys(self):
         return {
-            k: v for k, v in self._obj.attrs.items() if k != "analysis_history"
+            k.lstrip("_"): v
+            for k, v in self._obj.attrs.items()
+            if k.startswith("_") and k != "_analysis_history"
         }.keys()
+
+    def set_normal_emission(self, norm_values={}, **kwargs):
+        """Set the normal emission angles for the scan from a dictionary of key: value pairs to specify
+        the requires angles. Like `get_normal_emission_for`, but sets the values rather than returning them.
+
+        Parameters
+        ----------
+        norm_values : dict
+            A dictionary of the normal emission angles to set.
+
+        **kwargs :
+            Additional keyword arguments. Alternative way to pass the normal emission angles to set.
+            Takes precedence over values supplied in `norm_values`.
+
+        See Also
+        --------
+        get_normal_emission_for : Get the normal emission angles for the scan corresponding to a dictionary of
+        key: value pairs.
+        set_normal_emission_like : Set the normal emission angles for the scan to match another scan.
+        assign_normal_emission : Assign the normal emission angles to a copy of the data.
+
+
+        Examples
+        --------
+        Example usage is as follows::
+            import peaks as pks
+
+            # Load data
+            FS = pks.load("path/to/data")
+
+            # Set the normal emission angles in FS
+            FS.metadata.set_normal_emission(theta_par=12, polar=5)
+
+            # Alternatively, to return a copy of the data with the normal emission angles applied
+            FS_with_norm = FS.metadata.assign_normal_emission(theta_par=12, polar=5)
+
+
+        """
+        # Get loc and loader class
+        loc = self._obj.metadata.scan.loc
+        loader = BaseDataLoader.get_loader(loc)
+
+        if not hasattr(loader, "_parse_manipulator_reference_values"):
+            raise NotImplementedError(
+                "The loader for this data does not support setting normal emission angles."
+            )
+
+        # Get and apply the new reference data to the current dataarray
+        normal_emission = self.get_normal_emission_from_values(norm_values, **kwargs)
+        normal_emission_dict = {
+            k: {"reference_value": v} for k, v in normal_emission.items()
+        }  # For passing the metadata set methods
+
+        self._obj.metadata.manipulator(normal_emission_dict)
+
+    def get_normal_emission_from_values(self, norm_values={}, **kwargs):
+        """Get the normal emission angles for the scan corresponding to a dictionary of key: value pairs to
+        specify the required angles.
+
+        Parameters
+        ----------
+        norm_values : dict
+            A dictionary of the normal emission angles to set.
+
+        **kwargs :
+            Additional keyword arguments. Alternative way to pass the normal emission angles to set.
+            Takes precedence over values supplied in `norm_values`.
+
+        See Also
+        --------
+        set_normal_emission_like : Set the normal emission angles for the scan to match another scan.
+        assign_normal_emission : Assign the normal emission angles to a copy of the data.
+
+
+        Examples
+        --------
+        Example usage is as follows::
+            import peaks as pks
+
+            # Load data
+            FS = pks.load("path/to/data")
+
+            # Set the normal emission angles in FS
+            FS.metadata.set_normal_emission(theta_par=12, polar=5)
+
+            # Alternatively, to return a copy of the data with the normal emission angles applied
+            FS_with_norm = FS.metadata.assign_normal_emission(theta_par=12, polar=5)
+
+
+        """
+        loc = self._obj.metadata.scan.loc
+        loader = BaseDataLoader.get_loader(loc)
+
+        if not hasattr(loader, "_parse_manipulator_reference_values"):
+            return None
+
+        # Update the normal emission angles with any additional kwargs
+        norm_values.update(kwargs)
+
+        # If a pint Quantity is passed in tuple format, convert it
+        for key, value in norm_values.items():
+            if isinstance(value, str):
+                norm_values[key] = ureg.Quantity(value)
+
+        # Get the normal emission angles
+        normal_emission = loader._parse_manipulator_reference_values(
+            self._obj, norm_values
+        )
+
+        return normal_emission
+
+    def assign_normal_emission(self, norm_values, **kwargs):
+        raise NotImplementedError("This method is not yet implemented.")
+
+    def set_normal_emission_like(self, da):
+        """Set the normal emission angles for the scan to match another scan.
+
+        Parameters
+        ----------
+        da : xarray.DataArray
+            The data array to match the normal emission angles to.
+        """
+
+        # Get any set reference data in da
+        current_reference_data = self._get_normal_emission_dict(da)
+        # Apply the new reference data to the current dataarray
+        self._apply_normal_emission(self._obj, current_reference_data)
+
+    @staticmethod
+    def _apply_normal_emission(da, normal_emission_dict):
+        """Apply the normal emission angles to the scan. Used as part of the `set_normal_emission_like` method.
+
+        Parameters
+        ----------
+        da : xarray.DataArray
+            The data array to apply the normal emission angles to.
+
+        normal_emission_dict : dict
+            A dictionary of the normal emission angles to apply.
+        """
+        scan_name = normal_emission_dict["scan_name"]
+        normal_emission_data = {
+            k: v for k, v in normal_emission_dict.items() if k != "scan_name"
+        }
+        if normal_emission_dict:
+            # Apply the new reference data to the current dataarray
+            da.metadata.manipulator(normal_emission_data)
+            # Patch the analysis history
+            current_history = da._analysis_history.records[-1].record
+            new_history = current_history.replace(
+                "were manually updated from a dictionary",
+                f"were set to match the reference values from scan {scan_name}",
+            )
+            da._analysis_history.records[-1].record = new_history
+
+    @staticmethod
+    def _get_normal_emission_dict(da):
+        """Get the normal emission angles for the scan.
+
+        Parameters
+        ----------
+        da : xarray.DataArray
+            The data array to get the normal emission angles of.
+
+        Returns
+        -------
+        dict
+            A dictionary of the normal emission angles and also scan name.
+        """
+        # Get the axis names in da
+        axes = list(da._manipulator.dict().keys())
+        # Get any set reference data in da
+        current_reference_data = {
+            axis: {
+                "reference_value": getattr(
+                    da.metadata.manipulator, axis
+                ).reference_value
+            }
+            for axis in axes
+            if getattr(da.metadata.manipulator, axis).reference_value is not None
+        }
+        current_reference_data["scan_name"] = da.name
+        return current_reference_data
+
+
+@register_datatree_accessor("metadata")
+class MetadataDT:
+    """Accessor for metadata on xarray DataTrees."""
+
+    def __init__(self, xarray_obj):
+        self._obj = xarray_obj
+
+    def __call__(self, metadata_dict={}, **kwargs):
+
+        metadata_dict.update(kwargs)
+
+        def apply_metadata_to_ds(ds):
+            # Apply the metadata to the dataset if it exists at dataset level
+            if len(ds.metadata.keys()) > 0:
+                for key, value in metadata_dict.items():
+                    getattr(ds.metadata, key)(value)
+            else:
+                # Otherwise map over all dataarrays in the dataset
+                for key, value in metadata_dict.items():
+                    ds.map(lambda da: getattr(da.metadata, key)(value) or da)
+            return ds
+
+        for key, value in metadata_dict.items():
+            self._obj.map_over_subtree(apply_metadata_to_ds)
+
+        return self
+
+    def set_normal_emission(self):
+        raise NotImplementedError("This method is not yet implemented.")
+
+    def set_normal_emission_like(self, da):
+        # Get any set reference data in da
+        current_reference_data = Metadata._get_normal_emission_dict(da)
+
+        def apply_normal_to_ds(ds):
+            # Apply the metadata to the dataset if it exists at dataset level
+            if len(ds.metadata.keys()) > 0:
+                Metadata._apply_normal_emission(ds, current_reference_data)
+            else:
+                # Otherwise map over all dataarrays in the dataset
+                ds.map(
+                    lambda da: Metadata._apply_normal_emission(
+                        da, current_reference_data
+                    )
+                    or da
+                )
+            return ds
+
+        self._obj.map_over_subtree(apply_normal_to_ds)
 
 
 class MetadataItem:
@@ -169,8 +429,6 @@ class MetadataItem:
                     f"Cannot set attribute '{name}' on type {type(data)}"
                 )
 
-    import pprint  # Import pprint at the top of your file
-
     def __call__(self, value=None):
         if value is not None:
             data = self._data
@@ -256,31 +514,3 @@ class MetadataItem:
             return super().__dir__() + list(data.keys())
         else:
             return super().__dir__()
-
-
-@register_datatree_accessor("metadata")
-class MetadataDT:
-    """Accessor for metadata on xarray DataTrees."""
-
-    def __init__(self, xarray_obj):
-        self._obj = xarray_obj
-
-    def __call__(self, metadata_dict={}, **kwargs):
-
-        metadata_dict.update(kwargs)
-
-        def apply_metadata_to_ds(ds):
-            # Apply the metadata to the dataset if it exists at dataset level
-            if len(ds.metadata.keys()) > 0:
-                for key, value in metadata_dict.items():
-                    getattr(ds.metadata, key)(value)
-            else:
-                # Otherwise map over all dataarrays in the dataset
-                for key, value in metadata_dict.items():
-                    ds.map(lambda da: getattr(da.metadata, key)(value) or da)
-            return ds
-
-        for key, value in metadata_dict.items():
-            self._obj.map_over_subtree(apply_metadata_to_ds)
-
-        return self

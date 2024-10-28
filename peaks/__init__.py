@@ -43,19 +43,17 @@ ureg.formatter.default_format = (
     "~P"  # Set formatting option to short form (with symbols)
 )
 
-# Import the core functions that should be accessible from the main peaks namespace
-from peaks.core.options import opts
-
-# Register the relevant data loaders and load method
+# Register the relevant data loaders and load method (do this first to get the loc_registry populated)
 from peaks.core.fileIO.loc_registry import LOC_REGISTRY
 from peaks.core.fileIO.loc_registry import locs
-from peaks.core.fileIO.base_data_classes import BaseIBWDataLoader
-from peaks.core.fileIO.base_arpes_data_classes import BaseSESDataLoader
+from peaks.core.fileIO.base_data_classes.base_ibw_class import BaseIBWDataLoader
+from peaks.core.fileIO.base_arpes_data_classes.base_ses_class import SESDataLoader
 from peaks.core.fileIO.loaders import *
+
+# Import the core functions that should be accessible from the main peaks namespace
 from peaks.core.fileIO.data_loading import load
-from peaks.core.fileIO.data_saving import save
+from peaks.core.options import opts
+from peaks.core.display.plotting import plot_grid, plot_DCs
 
 # Register the relevant accessor functions
-from peaks.core.metadata.history import History
-from peaks.core.metadata.meatdata_methods import Metadata
-from peaks.core.utils.datatree_utils import list_scans
+from peaks.core.accessors import *

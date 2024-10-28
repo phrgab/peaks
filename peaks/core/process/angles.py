@@ -3,7 +3,7 @@ import numpy as np
 import xarray as xr
 
 from peaks.core.options import LocOpts
-from ...utils import analysis_warning
+from peaks.core.utils.misc import analysis_warning
 
 # Constants for angle names
 ANGLE_NAMES = [

@@ -230,7 +230,7 @@ def _load_CASSIOPEE_metadata(fname, scan_type):
     metadata["sample_description"] = None
     metadata["eV_type"] = "kinetic"
     metadata["beamline"] = _CassiopeeConventions.loc_name
-    metadata["analysis_history"] = []
+    metadata["_analysis_history"] = []
     metadata["EF_correction"] = None
 
     # Define attributes, using the _SES_find function to obtain metadata where possible
