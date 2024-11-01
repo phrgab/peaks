@@ -21,6 +21,7 @@ def load(
     parallel=False,
     names=None,
     quiet=False,
+    **kwargs,
 ):
     """Core function to load data.
 
@@ -55,6 +56,9 @@ def load(
 
     quiet : bool, optional
         Whether to suppress analysis warnings when loading data. Defaults to False.
+
+    kwargs : dict
+        Additional keyword arguments to pass to the data loader.
 
     Returns
     ------------
@@ -210,12 +214,12 @@ def load(
 
     # Load data by calling load_data if a valid file has been found. If not raise an error
     if len(file_list) > 0:
-        return _load_data(file_list, **load_opts)
+        return _load_data(file_list, **load_opts, **kwargs)
 
     raise Exception("No valid file paths could be found.")
 
 
-def _load_data(fpath, lazy, loc, metadata, parallel, names, quiet):
+def _load_data(fpath, lazy, loc, metadata, parallel, names, quiet, **kwargs):
     """Function to handle loading of single or multiple data files into the xarray DataArray format.
 
     Returns
@@ -230,6 +234,7 @@ def _load_data(fpath, lazy, loc, metadata, parallel, names, quiet):
     """
 
     load_opts = {"lazy": lazy, "loc": loc, "metadata": metadata, "quiet": quiet}
+    load_opts.update(kwargs)
 
     # Ensure fname is of type list
     if not isinstance(fpath, list):

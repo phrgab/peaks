@@ -756,13 +756,13 @@ def mask_data(data, ROI, return_integrated=True):
     return ROI_selected_data
 
 
-def disp_from_hv(data, hv):
+def disp_from_hv(da, hv):
     """Function to extract a dispersion at a given hv from an hv scan, correcting for the kinetic energy offsets
     (KE_delta) that arise from using the hv scan loading method.
 
     Parameters
     ------------
-    data : xarray.DataArray
+    da : xarray.DataArray
         The hv scan extract a single dispersion from.
 
     hv : float
@@ -787,21 +787,18 @@ def disp_from_hv(data, hv):
     """
 
     # Ensure the inputted data is an hv scan
-    if data.attrs["scan_type"] != "hv scan":
+    if "hv" not in da.dims:
         raise Exception(
             "The scan type of the inputted data is incompatible with disp_from_hv, which only extracts a "
             "single dispersion from an hv scan."
         )
 
-    # Ensure the inputted data has not already been converted to binding energy
-    if data.attrs["eV_type"] != "kinetic":
-        raise Exception(
-            "The energy axis of the inputted data is incompatible with disp_from_hv, which only works "
-            "when the energy axis is kinetic energy."
-        )
-
     # Extract the relevant hv slice
-    hv_scan = data.sel(hv=hv, method="nearest")
+    hv_scan = da.sel(hv=hv, method="nearest")
+
+    # If the inputted data is in binding energy, we are done
+    if "binding" in da.metadata.analyser.scan.eV_type.lower():
+        return hv_scan
 
     # Rescale eV axis to get the correct kinetic energy
     hv_scan["eV"] = hv_scan.eV.data + hv_scan.KE_delta.data
@@ -811,7 +808,7 @@ def disp_from_hv(data, hv):
     del hv_scan["KE_delta"]
 
     # Update the hv attribute
-    hv_scan.attrs["hv"] = float(hv)
+    hv_scan.metadata.photon.set("hv", float(hv), add_history=False)
 
     # Update analysis history
     hv_scan = hv_scan.history.assign(

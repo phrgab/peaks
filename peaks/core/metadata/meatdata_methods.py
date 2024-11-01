@@ -99,13 +99,13 @@ class Metadata:
             if k.startswith("_") and k != "_analysis_history"
         }.keys()
 
-    def set_normal_emission(self, norm_values={}, **kwargs):
+    def set_normal_emission(self, norm_values=None, **kwargs):
         """Set the normal emission angles for the scan from a dictionary of key: value pairs to specify
         the requires angles. Like `get_normal_emission_for`, but sets the values rather than returning them.
 
         Parameters
         ----------
-        norm_values : dict
+        norm_values : dict, optional
             A dictionary of the normal emission angles to set.
 
         **kwargs :
@@ -136,11 +136,12 @@ class Metadata:
 
 
         """
+
         # Get loc and loader class
         loc = self._obj.metadata.scan.loc
         loader = BaseDataLoader.get_loader(loc)
 
-        if not hasattr(loader, "_parse_manipulator_reference_values"):
+        if not hasattr(loader, "_parse_manipulator_references"):
             raise NotImplementedError(
                 "The loader for this data does not support setting normal emission angles."
             )
@@ -149,11 +150,11 @@ class Metadata:
         normal_emission = self.get_normal_emission_from_values(norm_values, **kwargs)
         normal_emission_dict = {
             k: {"reference_value": v} for k, v in normal_emission.items()
-        }  # For passing the metadata set methods
+        }  # For passing to the metadata set methods
 
         self._obj.metadata.manipulator(normal_emission_dict)
 
-    def get_normal_emission_from_values(self, norm_values={}, **kwargs):
+    def get_normal_emission_from_values(self, norm_values=None, **kwargs):
         """Get the normal emission angles for the scan corresponding to a dictionary of key: value pairs to
         specify the required angles.
 
@@ -188,14 +189,18 @@ class Metadata:
 
 
         """
-        loc = self._obj.metadata.scan.loc
-        loader = BaseDataLoader.get_loader(loc)
-
-        if not hasattr(loader, "_parse_manipulator_reference_values"):
-            return None
-
+        if norm_values is None:
+            norm_values = {}
         # Update the normal emission angles with any additional kwargs
         norm_values.update(kwargs)
+
+        # Get relevant loader class
+        loc = self._obj.metadata.scan.loc
+        loader = BaseDataLoader.get_loader(loc)
+        if not hasattr(loader, "_parse_manipulator_references"):
+            raise NotImplementedError(
+                "The loader for this data does not support setting normal emission angles."
+            )
 
         # If a pint Quantity is passed in tuple format, convert it
         for key, value in norm_values.items():
@@ -203,9 +208,7 @@ class Metadata:
                 norm_values[key] = ureg.Quantity(value)
 
         # Get the normal emission angles
-        normal_emission = loader._parse_manipulator_reference_values(
-            self._obj, norm_values
-        )
+        normal_emission = loader._parse_manipulator_references(self._obj, norm_values)
 
         return normal_emission
 
@@ -391,43 +394,46 @@ class MetadataItem:
         if name in ("_data", "_path", "_obj"):
             object.__setattr__(self, name, value)
         else:
-            data = self._data
-            full_path = f"{self._path}.{name}" if self._path else name
-            if isinstance(data, BaseModel):
-                if hasattr(data, name):
-                    current_value = getattr(data, name)
-                    if isinstance(current_value, pint.Quantity) and not isinstance(
-                        value, pint.Quantity
-                    ):
-                        new_value = value * current_value.units
-                    else:
-                        new_value = value
-                    setattr(data, name, new_value)
-                    self._obj.history.add(
-                        f"Metadata attribute '{full_path}' was manually set to {new_value}",
-                        ".metadata",
-                    )
-                else:
-                    raise AttributeError(
-                        f"'{data.__class__.__name__}' object has no attribute '{name}'"
-                    )
-            elif isinstance(data, dict):
-                current_value = data.get(name)
+            self.set(name, value)
+
+    def set(self, name, value, add_history=True):
+        data = self._data
+        full_path = f"{self._path}.{name}" if self._path else name
+        if isinstance(data, BaseModel):
+            if hasattr(data, name):
+                current_value = getattr(data, name)
                 if isinstance(current_value, pint.Quantity) and not isinstance(
                     value, pint.Quantity
                 ):
                     new_value = value * current_value.units
                 else:
                     new_value = value
-                data[name] = new_value
+                setattr(data, name, new_value)
+                if add_history:
+                    self._obj.history.add(
+                        f"Metadata attribute '{full_path}' was manually set to {new_value}",
+                        ".metadata",
+                    )
+            else:
+                raise AttributeError(
+                    f"'{data.__class__.__name__}' object has no attribute '{name}'"
+                )
+        elif isinstance(data, dict):
+            current_value = data.get(name)
+            if isinstance(current_value, pint.Quantity) and not isinstance(
+                value, pint.Quantity
+            ):
+                new_value = value * current_value.units
+            else:
+                new_value = value
+            data[name] = new_value
+            if add_history:
                 self._obj.history.add(
                     f"Metadata attribute '{full_path}' was manually set to {new_value}",
                     ".metadata",
                 )
-            else:
-                raise AttributeError(
-                    f"Cannot set attribute '{name}' on type {type(data)}"
-                )
+        else:
+            raise AttributeError(f"Cannot set attribute '{name}' on type {type(data)}")
 
     def __call__(self, value=None):
         if value is not None:

@@ -103,33 +103,6 @@ class NamedAxisMetadataModel(BaseMetadataModel):
     local_name: Optional[str] = None
     value: Optional[Union[str, Quantity]] = None
 
-    def set(self, value):
-        """Set the value of the axis.
-
-        Parameters
-        ----------
-        value : float, int, str, pint.Unit
-            The value to set the axis to.
-            If passed without units, will assume units are the same as the existing value if possible.
-        """
-        if isinstance(value, pint.Quantity):
-            self.value = value
-        else:
-            if self.value and isinstance(self.value, pint.Quantity):
-                self.value = value * self.value.units
-            else:
-                self.value = value
-
-    def get(self):
-        """Get the value of the axis.
-
-        Returns
-        -------
-        value : Union[Quantity, str, None]
-            The value of the axis.
-        """
-        return self.value
-
 
 # Define the manipulator metadata models
 class AxisMetadataModelWithReference(NamedAxisMetadataModel):
@@ -190,6 +163,16 @@ class PhotonMetadataModel(BaseMetadataModel):
     hv: Optional[Union[str, Quantity]] = None
     polarisation: Optional[Union[str, int, float]] = None
     exit_slit: Optional[Union[str, Quantity]] = None
+
+
+class PumpPhotonMetadataModel(BaseMetadataModel):
+    """Model to store pump beam metadata for pump-probe experiments."""
+
+    hv: Optional[Union[str, Quantity]] = None
+    polarisation: Optional[Union[str, int, float]] = None
+    power: Optional[Union[str, Quantity]] = None
+    delay: Optional[Union[str, Quantity]] = None
+    t0_position: Optional[Union[str, Quantity]] = None
 
 
 class ARPESSlitMetadataModel(BaseMetadataModel):

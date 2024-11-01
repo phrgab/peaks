@@ -103,6 +103,6 @@ class BaseManipulatorDataLoader(BaseDataLoader):
         return {"_manipulator": manipulator_metadata}, metadata_to_warn_if_missing
 
     @classmethod
-    def _parse_manipulator_reference_values(cls, da):
+    def _parse_manipulator_references(cls, da, specified_values):
         """Methods to parse the reference values for the manipulator based on input from the user."""
         raise NotImplementedError("Subclasses should implement this method.")

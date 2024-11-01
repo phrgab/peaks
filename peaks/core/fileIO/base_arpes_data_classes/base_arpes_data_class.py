@@ -1,5 +1,10 @@
 import pint
 import pint_xarray
+import numpy as np
+import copy
+
+from h5py.h5r import get_region
+from sphinx.ext.intersphinx import missing_reference
 
 from peaks.core.fileIO.base_data_classes.base_manipulator_class import (
     BaseManipulatorDataLoader,
@@ -7,7 +12,7 @@ from peaks.core.fileIO.base_data_classes.base_manipulator_class import (
 from peaks.core.fileIO.base_data_classes.base_temperature_class import (
     BaseTemperatureDataLoader,
 )
-from peaks.core.fileIO.base_data_classes.base_photon_source_class import (
+from peaks.core.fileIO.base_data_classes.base_photon_source_classes import (
     BasePhotonSourceDataLoader,
 )
 
@@ -119,7 +124,7 @@ class BaseARPESDataLoader(
         return self._analyser_attributes
 
     @classmethod
-    def _load(cls, fpath, lazy, metadata, quiet):
+    def _load(cls, fpath, lazy, metadata, quiet, **kwargs):
         # Raise an exception if the manipulator doesn't have at least the core 6 axes required in other data handling
         required_axis_list = ["polar", "tilt", "azi", "x1", "x2", "x3"]
         if not hasattr(cls, "_manipulator_axes") or not all(
@@ -134,7 +139,7 @@ class BaseARPESDataLoader(
             )
 
         # Run the main _load method returning a DataArray
-        da = super()._load(fpath, lazy, metadata, quiet)
+        da = super()._load(fpath, lazy, metadata, quiet, **kwargs)
 
         # Try to parse to counts/s if possible
         try:
@@ -199,323 +204,266 @@ class BaseARPESDataLoader(
         ]
 
     # Methods to parse manipulator reference values (normal emissions etc.)
-    # Define all the sets of axes/coordinates that go together here
-    # Do as separate functions to overwriting individual components in subclasses easier
     @classmethod
-    def _manipulator_reference_polar_group(cls, da):
-        if not da.metadata.analyser.angles.azi:  # Slit angle 0, along the polar axis
-            return {"polar", "deflector_perp"}
-        else:  # Assume slit angle 90, perpendicular to the polar axis
-            return {"polar", "deflector_parallel", "theta_par"}
-
-    @classmethod
-    def _manipulator_reference_tilt_group(cls, da):
-        if not da.metadata.analyser.angles.azi:
-            return {"tilt", "deflector_parallel", "theta_par"}
+    def _get_sign_convention(cls, axis_key):
+        """
+        Retrieve the sign convention for a given axis.
+        """
+        if "deflector" in axis_key or "theta_par" in axis_key or "ana_" in axis_key:
+            return cls._analyser_sign_conventions.get(axis_key, 1)
         else:
-            return {"tilt", "deflector_perp"}
+            return cls._manipulator_sign_conventions.get(axis_key, 1)
 
     @classmethod
-    def _manipulator_reference_axis_groups(cls, da):
-        return {
-            axis: (
-                getattr(cls, f"_manipulator_reference_{axis}_group")(da)
-                if hasattr(cls, f"_manipulator_reference_{axis}_group")
-                else {axis}
-            )
-            for axis in cls._manipulator_axes
-        }
-
-    @classmethod
-    def _parse_manipulator_reference_default(
-        cls, da, set_axis_key, set_axis_value, secondary_axes
-    ):
-        # Take the given reference angle
-        reference_angles = []
-        reference_angle_signs = []
-        reference_angles.append(-set_axis_value)
-        # Check sign convention for the primary axis
-        reference_angle_signs.append(
-            cls._manipulator_sign_conventions.get(set_axis_key, 1)
-            * cls._analyser_sign_conventions.get(set_axis_key, 1)
-        )
-
-        # Iterate through the other axis and add values from metadata
-        for axis in secondary_axes:
-            if axis == "theta_par":
-                # Always varying as a secondary axis, so ignore
-                value = None
-            elif hasattr(da.metadata.manipulator, axis):  # Manipulator axis specified
-                value = getattr(da.metadata.manipulator, axis).value
-            elif "deflector" in axis:
-                value = getattr(
-                    da.metadata.analyser.deflector, axis.split("_")[1]
-                ).value
-
-            if value:
-                reference_angles.append(value)
-
-                # Get relative sign convention to set_axis
-                reference_angle_signs.append(
-                    cls._manipulator_sign_conventions.get(axis, 1)
-                    * cls._analyser_sign_conventions.get(axis, 1)
-                    * cls._manipulator_sign_conventions.get(set_axis_key, 1)
-                    * cls._analyser_sign_conventions.get(set_axis_key, 1)
-                )
-
-        # Handle units
-        units = []
-        for angle in reference_angles:
-            if isinstance(angle, pint.Quantity):
-                units.append(angle.units)
-            else:
-                units.append(None)
-
-        # Check list only contains the same units and/or no units
-        unit_set = set(units)
-        if len(unit_set) == 1:
-            # All the same units (or no units) so can just sum them
-            pass
-        elif len(unit_set - {None}) == 1:
-            unit = unit_set - {None}
-            reference_angles = [
-                angle if isinstance(angle, pint.Quantity) else angle * unit.pop()
-                for angle in reference_angles
-            ]
+    def _group_axes(cls, da):
+        """
+        Group axes based on the slit orientation.
+        """
+        if da.metadata.analyser.angles.azi == 0:
+            # Slit angle 0, along the polar axis
+            polar_group = {"polar", "deflector_perp", "ana_polar"}
+            tilt_group = {"tilt", "deflector_parallel", "theta_par", "ana_tilt"}
         else:
-            raise ValueError(
-                "Cannot determine relevant units to use. Please pass the set value with units and/or "
-                "ensure metadata has compatible units."
-            )
-
-        reference_angle = sum(
-            [
-                reference_angle * sign
-                for reference_angle, sign in zip(
-                    reference_angles, reference_angle_signs
-                )
-            ]
-        )
-
-        return reference_angle
+            # Slit angle 90, perpendicular to the polar axis
+            polar_group = {"polar", "deflector_parallel", "theta_par", "ana_polar"}
+            tilt_group = {"tilt", "deflector_perp", "ana_tilt"}
+        return {"polar": polar_group, "tilt": tilt_group, "azi": {"azi"}}
 
     @classmethod
-    def _set_units(cls, da, value, primary_axis):
-        if isinstance(value, pint.Quantity):
-            return value
-        # If not already a pint.Quantity, try and parse units to match the primary axis
-        primary_value = getattr(da.metadata.manipulator, primary_axis).value
-        if isinstance(primary_value, pint.Quantity):
-            units = primary_value.units
-            return value * units
-        return value  # Fall back to returning just the value if units can't otherwise be determined
-
-    @classmethod
-    def _parse_manipulator_reference_values(cls, da, specified_values={}):
-        """Parse the normal emission angles for the manipulator axes.
-
-        Parameters
-        ------------
-        da : xarray.DataArray
-            The data array to parse the manipulator reference values for.
-
-        specified_values : dict
-            A dictionary of values to use to set the manipulator reference values.
+    def _parse_reference_value(cls, da, axis_key, value, axis_group):
+        """
+        Parse the manipulator reference value for a given axis.
         """
 
-        # Separate the axes and other relevant variables into relevant groups
-        axis_groups = cls._manipulator_reference_axis_groups(da)
+        if axis_key in ["polar", "tilt", "azi"] and axis_key not in da.dims:
+            # The axis is a core manipulator axis and is not a scannable, so this should be the actual normal emission
+            return value
 
-        # Check that only a single setting entry is specified for each axis
-        set_item_by_axis_group = {}
-        other_axes_in_axis_group = {}
-        for axis, group in axis_groups.items():
-            specified_angle = [i for i in specified_values if i in group]
-            if len(specified_angle) > 1:
-                raise ValueError(f"Only one of {group} can be specified.")
-            elif len(specified_angle) == 1:
-                set_item_by_axis_group[axis] = specified_angle[0]
-                other_axes_in_axis_group[axis] = group - set(specified_angle)
+        reference_angles = []
+        reference_signs = []
 
-        # If the axes have been passed directly, set that as the normal emission
+        # Primary axis value (user-specified)
+        reference_angles.append(
+            value if axis_key in ["polar", "tilt", "azi"] else -value
+        )  # If one of the primary manipulator dims, no sign change is needed
+        reference_signs.append(cls._get_sign_convention(axis_key))
+
+        # Secondary axes (from metadata)
+        for axis in axis_group:
+            if axis == axis_key:
+                continue  # Skip the primary axis
+            angle_value = cls._get_axis_value(da, axis)
+            if angle_value is not None:
+                reference_angles.append(angle_value)
+                reference_signs.append(cls._get_sign_convention(axis))
+
+        # Convert angles to consistent units and sum
+        total_reference_angle = cls._sum_angles(reference_angles, reference_signs)
+        return total_reference_angle
+
+    @classmethod
+    def _get_axis_value(cls, da, axis):
+        """
+        Retrieve the value of an axis from the data array or metadata.
+        """
+        if hasattr(da, axis):
+            data = getattr(da, axis).pint.to("deg")
+            return (
+                data.data
+                if isinstance(data.data, pint.Quantity)
+                else data.data * ureg("deg")
+            )
+
+        else:
+            # Attempt to get from metadata
+            if "deflector" in axis:
+                return getattr(da.metadata.analyser.deflector, axis.split("_")[1]).value
+            elif "ana_" in axis:
+                return getattr(da.metadata.analyser.angles, axis.split("_")[1])
+            elif hasattr(da.metadata.manipulator, axis):
+                return getattr(da.metadata.manipulator, axis).value
+            else:
+                return None  # Axis value not found
+
+    @classmethod
+    def _sum_angles(cls, angles, signs):
+        """
+        Sum angles with appropriate sign conventions.
+        """
+        total_angle = 0.0 * ureg("deg")
+        for angle, sign in zip(angles, signs):
+            try:
+                angle_value = angle.to("deg")
+            except AttributeError:
+                angle_value = angle * ureg("deg")
+            total_angle += angle_value * sign
+        return total_angle
+
+    @classmethod
+    def _parse_manipulator_references(cls, da, specified_values):
+        """
+        Parse manipulator reference values based on specified parameters.
+        """
+        axis_groups = cls._group_axes(da)
         reference_values = {}
-        for axis, set_axis in set_item_by_axis_group.copy().items():
-            if axis == set_axis:
-                reference_values[axis] = cls._set_units(
-                    da, specified_values[set_axis], axis
-                )
-                set_item_by_axis_group.pop(axis)
-                other_axes_in_axis_group.pop(axis)
 
-        # Now iterate over remaining axes and parse the normal emission from the passed parameters
-        for axis, set_axis in set_item_by_axis_group.items():
-            # Check if a custom parsing method is defined for the axis and if so use it
-            if hasattr(cls, f"_parse_manipulator_reference_{axis}"):
-                reference_values[axis] = cls._set_units(
-                    da,
-                    getattr(cls, f"_parse_manipulator_reference_{axis}")(
-                        da,
-                        set_axis,
-                        specified_values[set_axis],
-                        other_axes_in_axis_group[axis],
-                    ),
-                    axis,
-                )
-            else:  # Use the default
-                reference_values[axis] = cls._set_units(
-                    da,
-                    cls._parse_manipulator_reference_default(
-                        da,
-                        set_axis,
-                        specified_values[set_axis],
-                        other_axes_in_axis_group[axis],
-                    ),
-                    axis,
+        for axis, group in axis_groups.items():
+            # Check if any axis in the group is specified
+            specified_axis = None
+            for ax in group:
+                if ax in specified_values:
+                    specified_axis = ax
+                    break
+            if specified_axis:
+                value = specified_values[specified_axis]
+                # Parse the reference value
+                total_reference = cls._parse_reference_value(
+                    da, specified_axis, value, group
                 )
 
+                # Apply final sign convention
+                final_value = total_reference * cls._get_sign_convention(axis)
+                try:
+                    reference_values[axis] = final_value.to("deg")
+                except AttributeError:
+                    reference_values[axis] = final_value * ureg("deg")
         return reference_values
 
     @classmethod
     def _get_angles_Ishida_Shin(cls, da, quiet=False):
-        """Convert the angles from friendly manipulator names into the conventions from Y. Ishida and S. Shin,
-        Functions to map photoelectron distributions in a variety of setups in angle-resolved photoemission spectroscopy,
-        Rev. Sci. Instrum. 89, 043903 (2018), taking care of the sign conventions.
-
-        Parameters
-        ----------
-        da : xarray.DataArray
-            Data for converting to k-space.
-        quiet : bool, optional
-            Whether to suppress warnings. Defaults to False.
-
-        Returns
-        -------
-        dict
-            Angles of converted angles.
+        """
+        Convert angles to the conventions of Ishida and Shin.
         """
 
-        _manipulator_axes = ["polar", "tilt", "azi"]
-        _deflector_axes = ["parallel", "perp"]
-        _analyser_axes = ["polar", "tilt", "azi"]
+        missing_values = []
+        missing_references = []
 
-        def _get_nested_attr(obj, attr_path, default=None):
-            """Get a nested attribute from an object, with a default value if any attribute in the path
-            does not exist."""
-            try:
-                for attr in attr_path.split("."):
-                    obj = getattr(obj, attr)
-                return obj
-            except AttributeError:
+        # Helper functions
+        def get_angle(da, axis, default=0.0 * ureg("rad")):
+            """Get the angle value for a given axis.
+
+            If the value is missing, return the default value
+
+            Parameters
+            ----------
+            da : xarray.DataArray
+                The data array.
+            axis : str
+                The axis name.
+            default : pint.Quantity, optional
+                The default value to return if the axis value is missing.
+
+            Returns
+            -------
+            pint.Quantity
+                The angle value.
+            """
+            value = cls._get_axis_value(da, axis)
+            if value is None:
+                if not quiet:
+                    print(
+                        f"Warning: Missing value for axis '{axis}'. Using default {default}."
+                    )
+                missing_values.append(axis)
                 return default
-
-        def _get_angle_in_rad(da, base_metadata_attr, axis):
-            """Get the angle from the core data if exists or else metadata if it exists (return in radians)."""
-            if hasattr(da, axis):
-                data = getattr(da, axis).data.pint.to("rad").magnitude
             else:
-                data = _get_nested_attr(da.metadata, f"{base_metadata_attr}.{axis}")
-                if data:
-                    data = data.to("rad").magnitude
+                return value.to("rad") * cls._get_sign_convention(axis)
 
-            return data
+        def get_reference_angle(da, axis, default=0.0 * ureg("rad")):
+            """Get the reference angle value for a given axis.
 
-        # Manipulator axes
-        manipulator_angles = {}
-        reference_angles = {}
-        missing_values_to_warn = []
+            If the value is missing, return the default value.
 
-        # Iterate over manipulator axes
-        for axis in _manipulator_axes:
-            sign_convention = cls._manipulator_sign_conventions.get(axis, 1)
+            Parameters
+            ----------
+            da : xarray.DataArray
+                The data array.
+            axis : str
+                The axis name.
+            default : pint.Quantity, optional
+                The default value to return if the axis value is missing.
 
-            # Get the angle from the data or metadata
-            angle = (
-                _get_angle_in_rad(da, "manipulator", f"{axis}.value") * sign_convention
-            )
-            if angle is None:
-                missing_values_to_warn.append(f"{axis}")
-                angle = 0.0
-            manipulator_angles[axis] = angle
+            Returns
+            -------
+            pint.Quantity
+                The angle value.
 
-            # Get reference values for the manipulator axes
-            reference_angle = (
-                _get_angle_in_rad(da, "manipulator", f"{axis}.reference_value")
-                * sign_convention
-            )
-            if reference_angle is None:
-                missing_values_to_warn.append(f"{axis} <<reference value>>")
-                reference_angles[f"{axis}_reference"] = (
-                    0.0 if axis != "azi" else -manipulator_angles["azi"]
-                )
+            """
+            value = getattr(da.metadata.manipulator, axis).reference_value
+            if value is None:
+                if not quiet:
+                    print(
+                        f"Warning: Missing reference value for axis '{axis}'. Using default {default}."
+                    )
+                missing_references.append(axis)
+                return default
+            else:
+                return value.to("rad") * cls._get_sign_convention(axis)
 
-        # Warn if any values are missing for the manipulator
-        if not quiet and missing_values_to_warn:
-            analysis_warning(
-                f"Warning: Missing angle specifications for the manipulator axes: {set(missing_values_to_warn)}. "
-                f"Values ignored for these axes. Ensure to set them in the metadata.",
-                "warning",
-                "Missing metadata",
-            )
+        # Retrieve manipulator angles
+        manipulator_angles = {
+            axis: get_angle(da, axis) for axis in ["polar", "tilt", "azi"]
+        }
 
-        # Deflector axes
-        deflector_angles = {}
-        for axis in _deflector_axes:
-            sign_convention = cls._analyser_sign_conventions.get(f"deflector_{axis}", 1)
-            deflector_angles[axis] = (
-                _get_angle_in_rad(da, "analyser.deflector", f"{axis}.value")
-                * sign_convention
-            ) or 0.0
+        # Retrieve analyser angles
+        analyser_angles = {
+            axis: get_angle(da, f"ana_{axis}") for axis in ["polar", "tilt", "azi"]
+        }
 
-        # Analyser angles
-        analyser_angles = {}
-        for axis in _analyser_axes:
-            sign_convention = cls._analyser_sign_conventions.get(axis, 1)
-            analyser_angles[axis] = (
-                _get_angle_in_rad(da, "analyser.angles", axis) * sign_convention or 0.0
-            )
+        # Retrieve deflector angles
+        deflector_angles = {
+            axis: get_angle(da, f"deflector_{axis}") for axis in ["parallel", "perp"]
+        }
 
-        # Convert to Ishida and Shin conventions
-        theta_par = _get_angle_in_rad(da, "", "theta_par") or 0.0
-        if analyser_angles["azi"] == 0:  # Type I
-            if np.any(deflector_angles["parallel"]) or np.any(deflector_angles["perp"]):
-                type = "Ip"
-                alpha = theta_par + deflector_angles["parallel"]
+        # Determine the type based on analyser azi angle
+        analyser_azi = analyser_angles.get("azi", 0)
+        if analyser_azi == 0:
+            if any(deflector_angles.values()):
+                type_ = "Ip"
+                alpha = get_angle(da, "theta_par") + deflector_angles["parallel"]
                 beta = deflector_angles["perp"]
                 chi = manipulator_angles["polar"] + analyser_angles["polar"]
-                chi_0 = reference_angles["polar_reference"]
                 xi = manipulator_angles["tilt"] + analyser_angles["tilt"]
-                xi_0 = reference_angles["tilt_reference"]
+                beta_0 = None
+                chi_0 = get_reference_angle(da, "polar")
+                xi_0 = get_reference_angle(da, "tilt")
             else:
-                type = "I"
-                alpha = theta_par
+                type_ = "I"
+                alpha = get_angle(da, "theta_par")
                 beta = manipulator_angles["polar"] + analyser_angles["polar"]
-                beta_0 = reference_angles["polar_reference"]
+                chi = None
                 xi = manipulator_angles["tilt"] + analyser_angles["tilt"]
-                xi_0 = reference_angles["tilt_reference"]
-        else:  # Type II
-            if np.any(deflector_angles["parallel"]) or np.any(deflector_angles["perp"]):
-                type = "IIp"
-                alpha = theta_par + deflector_angles["parallel"]
+                beta_0 = get_reference_angle(da, "polar")
+                chi_0 = None
+                xi_0 = get_reference_angle(da, "tilt")
+        else:
+            if any(deflector_angles.values()):
+                type_ = "IIp"
+                alpha = get_angle(da, "theta_par") + deflector_angles["parallel"]
                 beta = deflector_angles["perp"]
                 chi = manipulator_angles["polar"] + analyser_angles["polar"]
-                chi_0 = reference_angles["polar_reference"]
                 xi = manipulator_angles["tilt"] + analyser_angles["tilt"]
-                xi_0 = reference_angles["tilt_reference"]
+                beta_0 = None
+                chi_0 = get_reference_angle(da, "polar")
+                xi_0 = get_reference_angle(da, "tilt")
             else:
-                type = "II"
-                alpha = theta_par
+                type_ = "II"
+                alpha = get_angle(da, "theta_par")
                 beta = manipulator_angles["tilt"] + analyser_angles["tilt"]
-                beta_0 = reference_angles["tilt_reference"]
+                chi = None
                 xi = manipulator_angles["polar"] + analyser_angles["polar"]
-                xi_0 = reference_angles["polar_reference"]
+                beta_0 = get_reference_angle(da, "tilt")
+                chi_0 = None
+                xi_0 = get_reference_angle(da, "polar")
 
-        delta = analyser_angles["azi"]
-        delta_0 = reference_angles["azi_reference"]
+        delta = manipulator_angles["azi"]
+        delta_0 = get_reference_angle(da, "azi", default=delta)
 
-        return {
-            "type": type,
+        angle_dict = {
+            "type": type_,
             "alpha": alpha,
             "beta": beta,
+            "beta_0": beta_0,
             "chi": chi,
             "chi_0": chi_0,
             "xi": xi,
@@ -523,3 +471,5 @@ class BaseARPESDataLoader(
             "delta": delta,
             "delta_0": delta_0,
         }
+
+        return angle_dict

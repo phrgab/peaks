@@ -51,7 +51,7 @@ class IdentifyLoc:
             # Extract identifiable data from the file to determine if the location is CLF Artemis
             file_list_Neq = [item for item in file_list if "N=" in item]
             if len(file_list_Neq) > 0:  # Must be CLF Artemis
-                return "CLF Artemis"
+                return "CLF_Artemis"
         # If we are unable to determine the location, fallback to the default handler
         IdentifyLoc._default_handler(fname)
 
