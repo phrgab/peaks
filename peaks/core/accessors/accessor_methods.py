@@ -64,7 +64,11 @@ class PeaksDirectCallAccessor:
         self._func = getattr(module, self.func_name)
         # Update the __doc__ attribute
         self.__doc__ = (
-            f"Note: This is an accessor to the function `{self.module_name}.{self.func_name}`.\n\n"
+            ":::{note} "
+            f"This is an accessor to the function `{module_name}.{func_name}` acting "
+            f"directly on the DataArray. (Note, the :class:`xarray.DataArray` does not now need "
+            f"to be passed to the function)."
+            f":::\n\n"
             f"{self._func.__doc__ or ''}"
         )
 
@@ -129,6 +133,28 @@ class PeaksDataTreeIteratorAccessor(PeaksDirectCallAccessor):
     def __getattr__(self, name):
         """Forward attribute access to the loaded function if available."""
         return getattr(self.func, name)
+
+
+def _pass_function_to_xarray_class_accessor(func_name, module_name):
+    # Import the module and get the function once
+    module = importlib.import_module(module_name)
+    func = getattr(module, func_name)
+
+    @wraps(func)
+    def method(self, *args, **kwargs):
+        # Call the original function with self._obj
+        return func(self._obj, *args, **kwargs)
+
+    # Modify the docstring to include the custom note
+    note = (
+        ":::{note} "
+        f"This is an accessor to the function `{module_name}.{func_name}` acting "
+        f"directly on the DataArray. (Note, the :class:`xarray.DataArray` does not now need "
+        f"to be passed to the function)."
+        f":::\n\n"
+    )
+    method.__doc__ = note + (func.__doc__ or "")
+    return method
 
 
 def register_lazy_accessor(

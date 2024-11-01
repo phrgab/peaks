@@ -95,7 +95,7 @@ class BaseDataLoader:
 
     # Public methods
     @classmethod
-    def load(cls, fpath, lazy=None, loc=None, metadata=True, quiet=False):
+    def load(cls, fpath, lazy=None, loc=None, metadata=True, quiet=False, **kwargs):
         """Top-level method to load data and return a DataArray.
 
         Parameters
@@ -117,6 +117,9 @@ class BaseDataLoader:
 
         quiet : bool, optional
             Whether to suppress analysis warnings when loading data. Defaults to False.
+
+        kwargs : dict
+            Additional keyword arguments to pass to the individual loaders.
 
         Returns
         ------------
@@ -149,7 +152,7 @@ class BaseDataLoader:
         cls._check_valid_loc(loc)  # Check a valid loc
         # Trigger the loader for the correct loc
         loader_class = cls.get_loader(loc)
-        return loader_class._load(fpath, lazy, metadata, quiet)
+        return loader_class._load(fpath, lazy, metadata, quiet, **kwargs)
 
     @classmethod
     def load_metadata(cls, fpath, loc=None, return_as_dict=False, quiet=True):
@@ -310,9 +313,10 @@ class BaseDataLoader:
             )
 
     @classmethod
-    def _load(cls, fpath, lazy, metadata, quiet):
+    def _load(cls, fpath, lazy, metadata, quiet, **kwargs):
         """Generic method for loading the data."""
-        data = cls._load_data(fpath, lazy)  # Load the actual data from the file
+        # Load the actual data from the file
+        data = cls._load_data(fpath, lazy, **kwargs)
         da = cls._make_dataarray(data)  # Convert to DataArray
         # Add a name to the DataArray
         da.name = fpath.split("/")[-1].split(".")[0]
@@ -329,7 +333,7 @@ class BaseDataLoader:
         return da
 
     @classmethod
-    def _load_data(cls, fpath, lazy):
+    def _load_data(cls, fpath, lazy, **kwargs):
         """Load the data. To be implemented by subclasses.
 
         Parameters
@@ -339,6 +343,9 @@ class BaseDataLoader:
 
         lazy : bool or str
             Whether to load data in a lazily evaluated dask format. Set explicitly using True/False Boolean.
+
+        kwargs : dict
+            Additional keyword arguments to pass to the individual loaders.
 
         Notes
         -----

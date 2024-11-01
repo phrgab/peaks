@@ -238,6 +238,7 @@ def fit_gold(data, EF_correction_type="poly4", **kwargs):
         fit_result = data.fit(gold_model, params, independent_var="eV")
 
         # Fit the Fermi level correction
+        print(EF_correction_type)
         if EF_correction_type == "poly4":
             _order = 4
         elif EF_correction_type == "poly3":
@@ -334,7 +335,7 @@ def _estimate_EF(y, x):
     return EF
 
 
-def estimate_EF(data):
+def estimate_EF(da):
     """Make an approximate guess for the Fermi level from the corresponding peak in the derivative of the data
     :::{warning}
     This is only a very approximate method for use in making estiamtes to feed into fit functions and GUIs etc.
@@ -352,20 +353,20 @@ def estimate_EF(data):
         The estimated Fermi level.
     """
 
-    if "eV" not in data.dims:
+    if "eV" not in da.dims:
         raise ValueError(
             "Data must have an 'eV' dimension to estimate the Fermi level."
         )
 
     # Check for an hv scan
-    if "hv" in data.dims and data.attrs.get("eV_type") == "kinetic":
+    if "hv" in da.dims and "kinetic" in da.metadata.analyser.scan.eV_type.lower():
         # Iterate through the photon energies and estimate at each
         EF_values = []
-        for hv in data.hv.data:
-            data_hv = data.disp_from_hv(hv=hv)
+        for hv in da.hv.data:
+            data_hv = da.disp_from_hv(hv=hv)
             EF = _estimate_EF(data_hv.DOS().fillna(0).data, data_hv.eV.data)
             EF_values.append(EF)
-        EF_data = xr.DataArray(EF_values, dims=["hv"], coords={"hv": data.hv.data})
+        EF_data = xr.DataArray(EF_values, dims=["hv"], coords={"hv": da.hv.data})
         # Fit the result to a 2nd order polynomial
         fit_order = 3
         fit_result = EF_data.quick_fit.poly(fit_order)
@@ -384,7 +385,7 @@ def estimate_EF(data):
         EF_values_out = fit_model.eval(x=EF_data.hv.data)
         return EF_values_out
     else:
-        return _estimate_EF(data.DOS().fillna(0).data, data.eV.data)
+        return _estimate_EF(da.DOS().fillna(0).data, da.eV.data)
 
 
 def save_fit(fit_result, filename):

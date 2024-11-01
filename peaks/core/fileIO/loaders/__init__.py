@@ -2,4 +2,11 @@
 
 """
 
-from peaks.core.fileIO.loaders import bloch, diamond, netcdf, zarr, standrews_phoibos
+from peaks.core.fileIO.loaders import (
+    bloch,
+    diamond,
+    netcdf,
+    zarr,
+    standrews_phoibos,
+    clf,
+)
