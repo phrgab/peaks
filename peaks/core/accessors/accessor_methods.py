@@ -4,8 +4,6 @@ from functools import wraps
 from peaks.core.utils.misc import analysis_warning
 import sys
 
-from datatree import DataTree  # Ensure datatree is installed
-
 
 class LazyAccessorDescriptor:
     """Descriptor for lazy-loading accessors, providing documentation and lazy execution."""
@@ -65,9 +63,9 @@ class PeaksDirectCallAccessor:
         # Update the __doc__ attribute
         self.__doc__ = (
             ":::{note} "
-            f"This is an accessor to the function `{module_name}.{func_name}` acting "
-            f"directly on the DataArray. (Note, the :class:`xarray.DataArray` does not now need "
-            f"to be passed to the function)."
+            f"This is an accessor to the function `{self.module_name}.{self.func_name}` acting "
+            f"directly on the xarray object. (Note, the :class:`xarray.DataArray`, :class:`xarray.Dataset` "
+            f"or :class:`xarray.DataTree` does not now need to be explicitly passed to the function)."
             f":::\n\n"
             f"{self._func.__doc__ or ''}"
         )
@@ -117,14 +115,17 @@ class PeaksDataTreeIteratorAccessor(PeaksDirectCallAccessor):
             elif hasattr(node, "data") and len(node) == 1:
                 # Map over the Dataset which contains only a single DataArray
                 return node.map(lambda da: func(da, *args, **kwargs))
+            elif len(node) == 0:
+                pass
             else:
                 raise ValueError(
-                    "DataTree node must be a Dataset with a single DataArray or must be the primary data container, "
-                    "hosting metadata."
+                    "For use of this `peaks` accessor, leaf nodes of the xr.DataTree must be a xr.Dataset with "
+                    "a single xr.DataArray with key `data`, or the Dataset itself must be the primary data container, "
+                    f"itself holding metadata. The current node does not meet these requirements: {node}."
                 )
 
-        # Use DataTree's map_over_subtree method to apply the function
-        return self.data_tree.map_over_subtree(apply_func)
+        # Use DataTree's map_over_datasets method to apply the function
+        return self.data_tree.map_over_datasets(apply_func)
 
     def __dir__(self):
         """Provide autocompletion for the original function's attributes."""
@@ -149,8 +150,8 @@ def _pass_function_to_xarray_class_accessor(func_name, module_name):
     note = (
         ":::{note} "
         f"This is an accessor to the function `{module_name}.{func_name}` acting "
-        f"directly on the DataArray. (Note, the :class:`xarray.DataArray` does not now need "
-        f"to be passed to the function)."
+        f"directly on the DataArray. (Note, the :class:`xarray.DataArray`, :class:`xarray.Dataset` "
+        f"or :class:`xarray.DataTree` does not now need to be explicitly passed to the function)."
         f":::\n\n"
     )
     method.__doc__ = note + (func.__doc__ or "")

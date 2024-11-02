@@ -29,7 +29,8 @@ class BaseDataLoader:
     via a more robust method in the implemented `_load_metadata` method, returning a timestamp in the metadata
     dictionary with key `timestamp`. In genreal, subclasses should also define specific metadata parsers to map the
     metadata dictionary returned from `_load_metatdata` to the relevant Pydantic models and to apply these to the
-    DataArray. Any subclass should define the _metadata_parsers class variable as a list of these methods to be called.
+    DataArray. Any subclass should define the `_metadata_parsers` class variable as a list of these methods to be
+    called.
 
     See Also
     --------
@@ -113,7 +114,7 @@ class BaseDataLoader:
             to be automatically determined.
 
         metadata : bool, optional
-            Whether to attempt to load metadata into the attributes of the :class:`xarray.DataArray`. Defaults to True.
+            Whether to attempt to load metadata from the file. Defaults to True.
 
         quiet : bool, optional
             Whether to suppress analysis warnings when loading data. Defaults to False.
@@ -128,14 +129,12 @@ class BaseDataLoader:
 
         Examples
         ------------
-        Example usage is as follows::
+        Normally used via the `pks.load` core function. If needed to be accessed directly, example usage is as follows::
 
             from peaks.core.fileIO.base_data_classes import BaseDataLoader
 
-            fpath = 'C:/User/Documents/Research/disp1.xy'
-
-            # Load the data
-            da = BaseDataLoader.load(fpath)
+            fpath = 'C:/User/Documents/Research/disp1.xy'  # Path to the file to be loaded
+            da = BaseDataLoader.load(fpath)  # Load the data
 
         Notes
         -----
@@ -155,7 +154,14 @@ class BaseDataLoader:
         return loader_class._load(fpath, lazy, metadata, quiet, **kwargs)
 
     @classmethod
-    def load_metadata(cls, fpath, loc=None, return_as_dict=False, quiet=True):
+    def load_metadata(
+        cls,
+        fpath,
+        loc=None,
+        return_as_dict=False,
+        quiet=True,
+        load_metadata_from_file=True,
+    ):
         """Top-level method to load metadata and return it in a dictionary.
 
         Parameters
@@ -174,6 +180,11 @@ class BaseDataLoader:
         quiet : bool, optional
             Whether to suppress missing metadata warnings when loading data. Defaults to True.
 
+        load_metadata_from_file : bool, optional
+            Whether to load the actual metadata from the file. Defaults to True. If False, only the basic file
+            metadata will be added, along with the empty metadata structure
+
+
         Returns
         ------------
         metadata_dict : dict
@@ -186,9 +197,7 @@ class BaseDataLoader:
             from peaks.core.fileIO.base_data_classes import BaseDataLoader
 
             fpath = 'C:/User/Documents/Research/disp1.xy'
-
-            # Determine the location at which the data was obtained
-            loc = BaseDataLoader.load_metadata(fpath)
+            metadata = BaseDataLoader.load_metadata(fpath)  # Load the metadata
 
         Notes
         -----
@@ -215,14 +224,15 @@ class BaseDataLoader:
         )
         metadata_dict = {"timestamp": readable_timestamp, "fpath": fpath}
 
-        # Method to extract any specific metadata, which should be updated in subclasses
-        metadata_dict.update(
-            {
-                k: v
-                for k, v in cls.get_loader(loc)._load_metadata(fpath).items()
-                if v is not None
-            }
-        )
+        if load_metadata_from_file:
+            # Method to extract any specific metadata, which should be updated in subclasses
+            metadata_dict.update(
+                {
+                    k: v
+                    for k, v in cls.get_loader(loc)._load_metadata(fpath).items()
+                    if v is not None
+                }
+            )
         if return_as_dict:
             return metadata_dict
         parsed_metadata = {}
@@ -320,12 +330,14 @@ class BaseDataLoader:
         da = cls._make_dataarray(data)  # Convert to DataArray
         # Add a name to the DataArray
         da.name = fpath.split("/")[-1].split(".")[0]
-        if metadata:  # Load metadata if requested
-            parsed_metadata = cls.load_metadata(fpath, loc=cls._loc_name, quiet=quiet)
-            da.attrs.update(parsed_metadata)
-            cls._metadata_cache.pop(
-                fpath, None
-            )  # Clear any metadata cache for this file
+        parsed_metadata = cls.load_metadata(
+            fpath,
+            loc=cls._loc_name,
+            quiet=quiet or not metadata,
+            load_metadata_from_file=metadata,
+        )
+        da.attrs.update(parsed_metadata)
+        cls._metadata_cache.pop(fpath, None)  # Clear any metadata cache for this file
         # Apply any specific conventions and add a history of the load
         da = cls._apply_conventions(da)
         cls._add_load_history(da, fpath)

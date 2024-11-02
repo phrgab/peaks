@@ -12,6 +12,7 @@ functions_to_register_for_direct_accessor = {
     "GUI.disp_panels.disp": ["disp"],
     "utils.datatree_utils": ["view", "add_scan_group", "add", "get_DataArray"],
     "display.plotting": ["plot_grid", "plot_DCs"],
+    "process.tools": ["sum_data", "subtract_data", "merge_data"],
 }
 
 

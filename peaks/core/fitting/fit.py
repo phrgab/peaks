@@ -66,6 +66,9 @@ def fit(
         )
         return np.concatenate([best_values, uncertainties, [result]])
 
+    # Dequantify the data array
+    data_array = data_array.pint.dequantify()
+
     # Check independent_var is a valid dimension if supplied and set if None
     if independent_var is not None:
         if independent_var not in data_array.dims:
@@ -117,6 +120,7 @@ def fit(
                 output_core_dims=[["fit_params"]],
                 vectorize=True,
                 output_dtypes=[object],
+                keep_attrs=False,
             )
             fit_results.append(results_subset)
 
@@ -140,6 +144,7 @@ def fit(
                 "output_sizes": {"fit_params": len(params) * 2 + 1},
                 "allow_rechunk": True,
             },
+            keep_attrs=False,
         )
 
     # Create parameter names, adding "_stderr" for uncertainties, and "model_result" for the serialized data

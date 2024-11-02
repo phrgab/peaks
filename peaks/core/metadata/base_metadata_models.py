@@ -128,23 +128,6 @@ class AxisMetadataModelWithReference(NamedAxisMetadataModel):
 
     reference_value: Optional[Quantity] = None
 
-    def set_reference(self, value):
-        """Set the reference value of the axis.
-
-        Parameters
-        ----------
-        value : float, int, str, pint.Unit
-            The value to set the reference axis value to.
-            If passed without units, will assume units are the same as the axis value if possible.
-        """
-        if isinstance(value, pint.Quantity):
-            self.reference_value = value
-        else:
-            if self.value and isinstance(self.value, pint.Quantity):
-                self.reference_value = value * self.value.units
-            else:
-                self.reference_value = value
-
 
 # Define the temperature metadata models
 class TemperatureMetadataModel(BaseMetadataModel):

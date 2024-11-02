@@ -17,10 +17,6 @@ To load data, use the load function::
 
 # Set some default xarray options
 import xarray as xr
-from datatree import DataTree
-
-# Temporarily define xr.DataTree method until it is moved properly into the xarray codebase
-xr.DataTree = DataTree
 
 # Set default xarray options
 xr.set_options(
@@ -52,8 +48,10 @@ from peaks.core.fileIO.loaders import *
 
 # Import the core functions that should be accessible from the main peaks namespace
 from peaks.core.fileIO.data_loading import load
+from peaks.core.fitting.fit import load_fit
 from peaks.core.options import opts
-from peaks.core.display.plotting import plot_grid, plot_DCs
+from peaks.core.display.plotting import plot_grid, plot_DCs, plot_ROI, plot_nanofocus
+from peaks.core.process.tools import sum_data, subtract_data, merge_data
 
 # Register the relevant accessor functions
 from peaks.core.accessors import *

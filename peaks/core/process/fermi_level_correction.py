@@ -6,7 +6,6 @@ import numpy as np
 import xarray as xr
 import numexpr as ne
 import copy
-from datatree import register_datatree_accessor
 
 from peaks.core.utils.misc import analysis_warning
 from peaks.core.metadata.base_metadata_models import EFCorrectionModel
@@ -104,7 +103,7 @@ class EFCorrection:
             return None
 
 
-@register_datatree_accessor("EF_correction")
+@xr.register_datatree_accessor("EF_correction")
 class EFCorrectionDt:
     def __init__(self, xarray_obj):
         self._obj = xarray_obj

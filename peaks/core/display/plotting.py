@@ -422,6 +422,8 @@ def plot_fit_test(data, model, params, show_components=True, **kwargs):
         Additional standard matplotlib calls arguments to pass to the plot.
     """
 
+    data = data.pint.dequantify()
+
     if len(data.dims) != 1:
         raise ValueError(
             "Data must be 1D with the dimension corresponding to the indpependent variable."
