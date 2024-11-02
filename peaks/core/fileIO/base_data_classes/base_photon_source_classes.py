@@ -74,7 +74,7 @@ class BasePumpProbeClass(BasePhotonSourceDataLoader):
             polarisation=metadata_dict.get("pump_polarisation"),
             power=metadata_dict.get("pump_power"),
             delay=metadata_dict.get("pump_delay"),
-            t0_position=metadata_dict.get("pump_t0"),
+            t0_position=metadata_dict.get("pump_t0_position"),
         )
 
         metadata_to_warn_if_missing = (
@@ -83,4 +83,4 @@ class BasePumpProbeClass(BasePhotonSourceDataLoader):
             if attribute not in cls._pump_photon_exclude_from_metadata_warn
         )
 
-        return {"_pump_photon": pump_photon_metadata}, metadata_to_warn_if_missing
+        return {"_pump": pump_photon_metadata}, metadata_to_warn_if_missing

@@ -1,4 +1,4 @@
-from datatree import open_datatree
+from xarray import open_datatree
 from peaks.core.fileIO.loc_registry import register_loader
 from peaks.core.fileIO.loaders.netcdf import NetCDFLoader
 from peaks.core.utils.misc import analysis_warning
@@ -41,14 +41,14 @@ class ZarrLoader(NetCDFLoader):
 
         # Parse the metadata if requested
         if metadata:
-            data = data.map_over_subtree(ZarrLoader._parse_ds_metadata)
+            data = data.map_over_datasets(ZarrLoader._parse_ds_metadata)
 
         # Quantify the data
-        data = data.map_over_subtree(ZarrLoader._quantify_da_in_dt)
+        data = data.map_over_datasets(ZarrLoader._quantify_da_in_dt)
 
         # Actually load the data
         if lazy == False:
-            data = data.map_over_subtree(ZarrLoader._load_all)
+            data = data.map_over_datasets(ZarrLoader._load_all)
         elif not quiet:
             analysis_warning(
                 "The data is lazily loaded by default for loading from a Zarr store. "

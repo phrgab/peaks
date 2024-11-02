@@ -2,8 +2,8 @@
 Helper functions and xarray accessors for providing the user interface to metadata
 """
 
-from datatree import register_datatree_accessor
 from pydantic import BaseModel
+import numpy as np
 import xarray as xr
 import pint
 import pint_xarray
@@ -66,6 +66,92 @@ def display_metadata(da_or_model, mode="ANSI"):
         return "\n".join(display_colored_dict(metadata))
     elif mode.upper() == "HTML":
         return "<br>".join(display_colored_dict_html(metadata))
+
+
+def compare_metadata(da_or_model1, da_or_model2):
+    # Function to extract metadata dictionary
+    def get_metadata(da_or_model):
+        try:
+            metadata = {
+                key.lstrip("_"): value.dict()
+                for key, value in da_or_model.attrs.items()
+                if key.startswith("_") and key not in ["_analysis_history"]
+            }
+        except AttributeError:
+            metadata = da_or_model.dict()
+        return metadata
+
+    metadata1 = get_metadata(da_or_model1)
+    metadata2 = get_metadata(da_or_model2)
+
+    # Helper function to unwrap 'value' keys in dictionaries
+    def unwrap_value(val):
+        while isinstance(val, dict) and "value" in val and len(val) == 1:
+            val = val["value"]
+        return val
+
+    # Helper function to compare values considering their types
+    def values_equal(val1, val2):
+        val1 = unwrap_value(val1)
+        val2 = unwrap_value(val2)
+        # Handle NoneType
+        if val1 is None and val2 is None:
+            return True
+        if val1 is None or val2 is None:
+            return False
+
+        # Handle Pint quantities
+        if isinstance(val1, pint.Quantity) and isinstance(val2, pint.Quantity):
+            try:
+                # Compare magnitudes after converting to common units
+                return np.array_equal(
+                    val1.to_base_units().magnitude,
+                    val2.to_base_units().magnitude,
+                )
+            except pint.DimensionalityError:
+                return False
+
+        # Handle NumPy arrays
+        if isinstance(val1, np.ndarray) and isinstance(val2, np.ndarray):
+            return np.array_equal(val1, val2)
+
+        # Handle lists or tuples
+        if isinstance(val1, (list, tuple)) and isinstance(val2, (list, tuple)):
+            if len(val1) != len(val2):
+                return False
+            return all(values_equal(v1, v2) for v1, v2 in zip(val1, val2))
+
+        # Handle dictionaries
+        if isinstance(val1, dict) and isinstance(val2, dict):
+            return compare_dicts(val1, val2) == {}
+
+        # Default comparison
+        return val1 == val2
+
+    # Recursive function to compare two dictionaries
+    def compare_dicts(d1, d2):
+        differences = {}
+        keys = set(d1.keys()).union(d2.keys())
+        for key in keys:
+            in_d1 = key in d1
+            in_d2 = key in d2
+            if in_d1 and in_d2:
+                val1 = unwrap_value(d1[key])
+                val2 = unwrap_value(d2[key])
+                if isinstance(val1, dict) and isinstance(val2, dict):
+                    sub_diff = compare_dicts(val1, val2)
+                    if sub_diff:  # Only include if there is a difference
+                        differences[key] = sub_diff
+                else:
+                    if not values_equal(val1, val2):
+                        differences[key] = {"value1": val1, "value2": val2}
+            elif in_d1:
+                differences[key] = {"value1": d1[key], "value2": None}
+            else:
+                differences[key] = {"value1": None, "value2": d2[key]}
+        return differences
+
+    return compare_dicts(metadata1, metadata2)
 
 
 @xr.register_dataset_accessor("metadata")
@@ -286,7 +372,7 @@ class Metadata:
         return current_reference_data
 
 
-@register_datatree_accessor("metadata")
+@xr.register_datatree_accessor("metadata")
 class MetadataDT:
     """Accessor for metadata on xarray DataTrees."""
 
@@ -309,7 +395,7 @@ class MetadataDT:
             return ds
 
         for key, value in metadata_dict.items():
-            self._obj.map_over_subtree(apply_metadata_to_ds)
+            self._obj.map_over_datasets(apply_metadata_to_ds)
 
         return self
 
@@ -334,7 +420,7 @@ class MetadataDT:
                 )
             return ds
 
-        self._obj.map_over_subtree(apply_normal_to_ds)
+        self._obj.map_over_datasets(apply_normal_to_ds)
 
 
 class MetadataItem:

@@ -4,6 +4,7 @@ import numpy as np
 import xarray as xr
 import pint_xarray
 from scipy import constants
+from tqdm.notebook import tqdm
 from peaks.core.fileIO.base_data_classes.base_photon_source_classes import (
     BasePumpProbeClass,
 )
@@ -61,7 +62,6 @@ class ArtemisPhoibos(BaseARPESDataLoader, BasePumpProbeClass):
     ]
     _manipulator_exclude_from_metadata_warn = ["x1", "x2", "x3", "polar", "tilt", "azi"]
     _temperature_exclude_from_metadata_warn = [
-        "sample",
         "cryostat",
         "setpoint",
         "shield",
@@ -97,7 +97,9 @@ class ArtemisPhoibos(BaseARPESDataLoader, BasePumpProbeClass):
         num_scans = kwargs.pop("num_scans", None)
         calib2d_fpath = kwargs.pop(
             "calib2d_fpath",
-            os.path.join(os.path.dirname(__file__), "Artemis_phoibos100.calib2d"),
+            os.path.join(
+                os.path.dirname(__file__), "calib_files", "Artemis_phoibos100.calib2d"
+            ),
         )
         if kwargs:
             raise ValueError(
@@ -444,7 +446,9 @@ class ArtemisPhoibos(BaseARPESDataLoader, BasePumpProbeClass):
         data = np.empty((nx_pixel, ny_pixel, num_delays))
 
         # Load data
-        for i, scan_name in enumerate(scan_names):
+        for i, scan_name in tqdm(
+            enumerate(scan_names), total=len(scan_names), desc="Loading scans"
+        ):
             delay_pos[i] = float(scan_name.split(".tsv")[0])
             data[:, :, i] = np.loadtxt(os.path.join(scan_folder, scan_name))
 
@@ -482,7 +486,7 @@ class ArtemisPhoibos(BaseARPESDataLoader, BasePumpProbeClass):
                 "eV": "eV",
                 "theta_par": "deg",
                 "t": "fs",
-                "delay_pos": "m",
+                "delay_pos": "mm",
                 "spectrum": "counts",
             },
         }
@@ -507,11 +511,24 @@ class ArtemisPhoibos(BaseARPESDataLoader, BasePumpProbeClass):
                 except ValueError:
                     pass
 
+            # Load stats file for parsing e.g. sample temperature
+            metadata_dict_artemis_keys.update(cls._load_stats(fpath))
+
         if return_dict_with_raw_keys:
             return metadata_dict_artemis_keys
 
         # Otherwise parse to peaks format
         return cls._parse_metadata(metadata_dict_artemis_keys, fpath)
+
+    @staticmethod
+    def _load_stats(fpath):
+        # Load and parse stats file
+        stat_log = np.loadtxt(os.path.join(fpath, "Stat Log.tsv"))
+        return {
+            "measurement_time": stat_log[:, 0],
+            "measurement_stats": stat_log[:, 1],
+            "sample_temp": stat_log[:, 2],
+        }
 
     @classmethod
     def _get_max_num_scans(cls, meta, fpath):
@@ -537,7 +554,25 @@ class ArtemisPhoibos(BaseARPESDataLoader, BasePumpProbeClass):
                     range(start, stop + step, step)
                 )  # +step to include the endpoint if it's on the step
 
-            return np.asarray(delays) * ureg("fs")
+            delays = np.asarray(delays)
+            return np.array([delays[0], delays[-1]]) * ureg("fs")
+
+        def _parse_tempterature(input_array):
+            if input_array is None:
+                return None
+            input_array = input_array * ureg("K")
+            # Check if temperature varies significantly over the run
+            temp_diff = abs(np.ptp(input_array))
+            if temp_diff > 5 * ureg("K"):
+                analysis_warning(
+                    f"Significant temperature variation of {temp_diff:.2f} over the run, from "
+                    f"{min(input_array):.2f} to {max(input_array):.2f}. Average value of {np.mean(input_array):.2f} "
+                    f"used in metadata. To view the full data, load the stats file: "
+                    f"`from peaks.core.fileIO.loaders.clf import ArtemisPhoibos; ArtemisPhoibos.load_stats(fpath)`",
+                    "warning",
+                    "Temperature variation warning",
+                )
+            return np.mean(input_array)
 
         # Define metadata
         return {
@@ -578,5 +613,56 @@ class ArtemisPhoibos(BaseARPESDataLoader, BasePumpProbeClass):
             "pump_delay": _parse_delays(metadata_dict_artemis_keys.get("Delay List")),
             "pump_polarisation": None,
             "pump_t0_position": float(metadata_dict_artemis_keys.get("Time Zero"))
-            * ureg("m"),
+            * ureg("mm"),
+            "temperature_sample": _parse_tempterature(
+                metadata_dict_artemis_keys.get("sample_temp")
+            ),
         }
+
+    @classmethod
+    def load_stats(cls, fpath, metadata=True, quiet=False):
+        """Return the signal and temperature stats vs. time from an Artemis measurement run
+
+        Parameters
+        ----------
+        fpath : str
+            Path to the folder containing the Artemis data
+
+        metadata : bool
+            Whether to include additional metadata in the returned dataset
+
+        quiet : bool
+            Whether to suppress warnings, defaults to False
+
+        Returns
+        -------
+        xarray.Dataset
+            Dataset containing the temperature and signal stats vs. measurement time
+        """
+
+        stats = cls._load_stats(fpath)
+        stats_da = xr.DataArray(
+            data=stats["measurement_stats"],
+            dims="measurement_time",
+            coords={"measurement_time": stats["measurement_time"]},
+            name="stats",
+        ).pint.quantify({"stats": "counts", "measurement_time": "min"})
+        temp_da = xr.DataArray(
+            data=stats["sample_temp"],
+            dims="measurement_time",
+            coords={"measurement_time": stats["measurement_time"]},
+            name="temperature",
+        ).pint.quantify({"temperature": "K", "measurement_time": "min"})
+        ds = xr.Dataset({"stats": stats_da, "temperature": temp_da})
+
+        # Load the metadata for adding to the ds if desired
+        metadata_dict = cls.load_metadata(
+            fpath=fpath,
+            loc=cls._loc_name,
+            quiet=quiet,
+            load_metadata_from_file=metadata,
+        )
+
+        ds.attrs.update(metadata_dict)
+
+        return ds

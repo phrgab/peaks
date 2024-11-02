@@ -4,6 +4,8 @@
 
 import copy
 import numpy as np
+import pint
+import pint_xarray
 import xarray as xr
 import matplotlib.pyplot as plt
 from numpy.fft import fft2, ifft2, fftshift
@@ -11,7 +13,11 @@ from scipy.ndimage import gaussian_filter
 from skimage.registration import phase_cross_correlation
 from IPython.display import clear_output
 from peaks.core.fitting.models import _shirley_bg
-from peaks.core.utils.misc import analysis_warning
+from peaks.core.utils.misc import analysis_warning, dequantify_quantify_wrapper
+from peaks.core.metadata.meatdata_methods import compare_metadata
+from peaks.core.utils.datatree_utils import get_list_of_DataArrays_from_DataTree
+
+ureg = pint_xarray.unit_registry
 
 
 def norm(data, dim=None, **kwargs):
@@ -132,10 +138,11 @@ def bgs(
     data : xarray.DataArray
         The data from which a background will be subtracted.
 
-    subtraction : int, float, str
+    subtraction : pint.Quantity, int, float, str
         The type of background to subtract:
 
-            Set to a int/float to subtract that number, e.g. subtraction=3.4.
+            Set to a int/float to subtract that number, in the same units as the data e.g. subtraction=3.4. Pass a
+            pint.Quantity to subtract a value with units, e.g. subtraction=3.4*pks.ureg('kcount/s').
 
             Set to 'all' to subtract the mean of the data.
 
@@ -213,7 +220,11 @@ def bgs(
     bgs_data = data.copy(deep=True)
 
     # If subtraction is an int or float, perform a constant background subtraction by a user-defined amount
-    if isinstance(subtraction, int) or isinstance(subtraction, float):
+    if isinstance(subtraction, (int, float, pint.Quantity)):
+        if not isinstance(subtraction, pint.Quantity):
+            # Parse the units from the data
+            subtraction = subtraction * data.data.units
+
         # Subtract a constant background from the data
         bgs_data -= subtraction
 
@@ -234,8 +245,9 @@ def bgs(
                 )
 
             # Calculate the Shirley background using the function _Shirley
+            units = bgs_data.data.units
             Shirley_bkg = _shirley_bg(
-                bgs_data.DOS(),  # Mean over all non-energy dimensions
+                bgs_data.DOS().pint.dequantify(),  # Mean over all non-energy dimensions
                 num_avg=num_avg,
                 offset_start=offset_start,
                 offset_end=offset_end,
@@ -243,7 +255,7 @@ def bgs(
             )
             Shirley_bkg = xr.DataArray(
                 Shirley_bkg, dims="eV", coords={"eV": bgs_data.coords["eV"]}
-            )
+            ).pint.quantify(units)
             # Subtract the Shirley background from the data
             bgs_data -= Shirley_bkg
 
@@ -296,8 +308,9 @@ def bgs(
     # Invalid data type for subtraction. Raise an error
     else:
         raise Exception(
-            "Invalid data type for subtraction. Please pass an int, float, 'all', 'Shirley', or a valid dimension of "
-            "the inputted DataArray to the `subtraction` argument, or supply valid slices as keyword arguemnts."
+            "Invalid data type for subtraction. Please pass a pint.Quantity, int, float, 'all', 'Shirley', or a "
+            "valid dimension of the inputted DataArray to the `subtraction` argument, or supply valid slices as "
+            "keyword arguemnts."
         )
 
     return bgs_data
@@ -449,9 +462,10 @@ def smooth(data, **smoothing_kwargs):
     data : xarray.DataArray
         The data to smooth.
 
-    **smoothing_kwargs : float
+    **smoothing_kwargs : pint.Quantity, float
         Axes to smooth over in the format axis=FWHM, where FWHM is the relevant FWHM of the Gaussian for convolution
-        in this direction, e.g. eV=0.1.
+        in this direction, e.g. eV=0.1*pks.ureg('eV'). If a float with no unit is passed, the FWHM is assumed to be in
+        the same units as the axis.
 
     Returns
     ------------
@@ -483,6 +497,25 @@ def smooth(data, **smoothing_kwargs):
     # Copy the input data to prevent overwriting issues
     smoothed_data = data.copy(deep=True)
 
+    # Ensure units, getting from data axis if not passed and transforming to axis units if passed as a pint Quantity
+    smoothing_kwargs_with_units = {}
+    axis_units = {}
+    for key, dim in smoothing_kwargs.items():
+        axis_unit = data[key].units
+        if isinstance(axis_unit, str):
+            axis_units[key] = ureg(axis_unit)
+        elif not isinstance(axis_unit, (pint.Unit, type(None))):
+            raise TypeError(
+                "Axis units must be a pint.Unit, str or None, not {type}".format(
+                    type=type(axis_unit)
+                )
+            )
+        axis_units[key] = axis_unit
+        if isinstance(dim, pint.Quantity):
+            smoothing_kwargs_with_units[key] = dim.to(axis_unit)
+        else:
+            smoothing_kwargs_with_units[key] = dim * axis_unit
+
     # Define the start of the analysis history update string
     hist = "Data smoothed with the following FWHMs along given axes: "
 
@@ -490,27 +523,31 @@ def smooth(data, **smoothing_kwargs):
     sigma = np.zeros(len(data.dims))
 
     # Iterate through coordinates and determine the standard deviations in pixels from the DataArray axis scaling
-    for count, value in enumerate(data.dims):
-        if value not in smoothing_kwargs:  # No broadening for this dimension
+    for count, dim in enumerate(data.dims):
+        if dim not in smoothing_kwargs:  # No broadening for this dimension
             sigma[count] = 0
         else:  # Determine broadening in pixels from axis scaling
-            delta = abs(
-                data[value].data[1] - data[value].data[0]
+            delta = (
+                abs(data[dim].data[1] - data[dim].data[0]) * axis_units[dim]
             )  # Pixel size in relevant units for axis
             # Must convert smoothing factor from FWHM to standard deviation (in pixels)
             sigma_px = (
-                np.round(smoothing_kwargs[value] / delta) / 2.35482005
+                np.round(smoothing_kwargs_with_units[dim] / delta) / 2.35482005
             )  # Coordinate sigma in pixels
-            sigma[count] = sigma_px  # Update standard deviations array
+            if not sigma_px.dimensionless:
+                raise Exception(
+                    "Units conversion error. Check passed arguments are compatible with the axis units."
+                )
+            sigma[count] = sigma_px.magnitude  # Update standard deviations array
             hist += (
-                str(value) + ": " + str(smoothing_kwargs[value]) + ", "
+                str(dim) + ": " + str(smoothing_kwargs_with_units[dim]) + ", "
             )  # Update analysis history string
             smoothing_kwargs.pop(
-                value
+                dim
             )  # Remove this axis from smoothing_kwargs for consistency check later
 
     # Extract the raw DataArray data
-    array = smoothed_data.data
+    array = smoothed_data.data.magnitude
 
     # Apply gaussian convolution to raw DataArray data
     array_sm = gaussian_filter(array, sigma)
@@ -732,8 +769,9 @@ def sym(data, flipped=False, fillna=True, **sym_kwarg):
         flipped data contributes). Defaults to True.
 
     **sym_kwarg : float, optional
-        Axis to symmetrise about in the format axis=coord, where coord is coordinate around which the symmetrisation is
-        performed, e.g. theta_par=1.4. Defaults to eV=0.
+        Axis to symmetrise about in the format axis=value, where value is coordinate value around which the
+        symmetrisation is performed, passed as a float of pint.Quantity e.g. theta_par=1.4, eV=16.8*pks.ureg('eV').
+        Defaults to eV=0.
 
     Returns
     ------------
@@ -776,6 +814,9 @@ def sym(data, flipped=False, fillna=True, **sym_kwarg):
         raise Exception(
             "Provided symmetrisation axis is not a valid dimension of inputted DataArray."
         )
+    if isinstance(sym_coord, pint.Quantity):
+        # If a pint.Quantity is passed, convert to the units of the axis
+        sym_coord = sym_coord.to(sym_data[sym_axis].units).magnitude
 
     # Check if the symmetrisation coordinate is within the range of the inputted DataArray, if not raise an error
     if sym_coord < min(sym_data[sym_axis].data) or sym_coord > max(
@@ -792,8 +833,10 @@ def sym(data, flipped=False, fillna=True, **sym_kwarg):
         flipped_axis_values, dims=[sym_axis], coords={sym_axis: sym_data[sym_axis].data}
     )
 
-    # Flip the inputted DataArray by interpolating it onto the flipped axis (and replace NaNs with 0)
+    # Flip the inputted DataArray by interpolating it onto the flipped axis
     flipped_data = sym_data.interp({sym_axis: flipped_axis_xarray})
+    if hasattr(sym_data.data, "units"):
+        flipped_data = flipped_data.pint.quantify(sym_data.data.units)
 
     # Fill NaNs with 0s if requested
     if fillna:
@@ -940,11 +983,11 @@ def sym_nfold(data, nfold, expand=True, fillna=True, **centre_kwargs):
         interp_rotated_data.append(current_rotated_data)
 
     # Sum the rotated data to get the symmetrised data
-    sym_data = sum_data(interp_rotated_data)
+    sym_data = _sum_or_subtract_data(interp_rotated_data)
 
     # Remove sum_data analysis_history entry, and clear warning (given during sum_data since analysis_history attrs will
     # differ
-    sym_data.attrs["_analysis_history"] = sym_data.attrs["_analysis_history"][0:-1]
+    del sym_data._analysis_history.records[-1]
     clear_output()
 
     # Rescale the data according to the NaN_counter so regions are of consistent intensity
@@ -963,6 +1006,7 @@ def sym_nfold(data, nfold, expand=True, fillna=True, **centre_kwargs):
     return sym_data
 
 
+@dequantify_quantify_wrapper
 def degrid(data, width=0.1, height=0.1, cutoff=4):
     """Function which removes a mesh grid from 2D data by filtering its fast Fourier transform (FFT).
 
@@ -1157,44 +1201,42 @@ def degrid(data, width=0.1, height=0.1, cutoff=4):
     return degrid_data
 
 
-def sum_data(data):
-    """Function to sum two or more DataArrays together, maintaining the metadata. If the metadata of the DataArrays
-    differ, that of the first inputted DataArray will be used. If the coordinate grids of the DataArrays differ, all
-    DataArrays will be interpolated onto the coordinate grid of the first inputted DataArray.
+def _sum_or_subtract_data(data, _sum=True, quiet=False):
+    """Function to sum or subtract two or more DataArrays together, maintaining the metadata.
+    If the metadata of the DataArrays differ, that of the first inputted DataArray will be used.
+    If the coordinate grids of the DataArrays differ, all DataArrays will be interpolated onto the
+    coordinate grid of the first inputted DataArray.
+    If in subtract mode, only two DataArrays can be inputted.
 
     Parameters
     ------------
-    data : list
-        Any number of :class:`xarray.DataArray` items to sum together.
+    data : list or xarray.DataTree
+        Any number of :class:`xarray.DataArray` items to sum together, either passed as a list or
+        as a tree containing the relevant dataarrays.
+
+    _sum : bool, optional
+        Whether to sum or subtract the inputted DataArrays. Defaults to True (sum).
+
+    quiet : bool, optional
+        Whether to suppress warnings. Defaults to False.
 
     Returns
     ------------
     summed_data : xarray.DataArray
         The single summed :class:`xarray.DataArray`.
 
-    Examples
-    ------------
-    Example usage is as follows::
-
-        from peaks import *
-
-        disp1 = load('disp1.ibw')
-        disp2 = load('disp2.ibw')
-
-        # Extract the sum of the dispersions disp1 and disp2
-        disp_sum = sum_data([disp1, disp2])
-
-        disp1_proc = disp1.proc(EF_correction=55.67, norm_polar = 1.56)
-        disp2_proc = disp2.proc(EF_correction=55.65, norm_polar = 1.43)
-
-        # Extract the sum of the processed dispersions disp1_proc and disp2_proc, with different Fermi level corrections
-        # and normal emissions
-        disp_proc_sum = sum_data([disp1_proc, disp2_proc])
-
     """
+    # If data is a DataTree, convert to a list
+    if isinstance(data, xr.DataTree):
+        data = get_list_of_DataArrays_from_DataTree(data)
 
     # Get the number of inputted DataArrays
     num_data = len(data)
+
+    if not _sum and num_data != 2:
+        raise Exception(
+            "Data subtraction only accepts two DataArrays or a DataTree with two leaves."
+        )
 
     # Copy the first DataArray
     data_0_data = data[0].copy(deep=True)
@@ -1202,12 +1244,8 @@ def sum_data(data):
     # Copy the attributes of the first DataArray
     data_0_attrs = data_0_data.attrs.copy()
 
-    # Ensure scan name is an attribute
-    if "scan_name" not in data_0_attrs:
-        data_0_attrs["scan_name"] = "Unknown"
-
     # Remove scan_name from the attributes, and assign scan name to data_0_name
-    data_0_name = data_0_attrs.pop("scan_name")
+    data_0_name = data_0_data.metadata.scan.name
 
     # Remove history from the attributes
     data_history = []
@@ -1227,15 +1265,11 @@ def sum_data(data):
     # Iterate through the rest of the inputted DataArrays and sum together
     for i in range(1, num_data):
         # Get current DataArray information
-        current_data = data[i]
-        # Extract attributes of current DataArray
-        current_attrs = current_data.attrs.copy()
-        # Ensure scan name is an attribute
-        if "scan_name" not in current_attrs:
-            current_attrs["scan_name"] = "Unknown"
-        # Remove scan_name & history from the current DataArray attributes
-        current_name = current_attrs.pop("scan_name")
-        data_history.append(current_attrs.pop("_analysis_history", "NONE"))
+        current_data = data[i].copy(deep=True)
+        current_name = current_data.metadata.scan.name
+
+        # Remove history from the current DataArray attributes
+        data_history.append(current_data.attrs.pop("_analysis_history", "NONE"))
 
         # Ensure that the dimensions of the current DataArray match those of the first DataArray, raise an error if not
         if current_data.dims != data_0_data.dims:
@@ -1255,72 +1289,89 @@ def sum_data(data):
                     "Interpolated scan {current_name} onto the {dim} coordinate grid of scan {"
                     "data_0_name}."
                 ).format(dim=dim, current_name=current_name, data_0_name=data_0_name)
-                analysis_warning(warning_str, title="Analysis info", warn_type="danger")
-
-        # Determine any attributes (except scan name) of the current DataArray that do not match the first DataArray
-        mismatched_attrs = []  # Used to store mismatched attributes
-        # Check if the current scan has the same attribute options (i.e. polar, temp_sample etc.) as the first DataArray
-        if list(current_attrs) == list(data_0_attrs):
-            # Loop through attributes (except scan name) of the current DataArray and extract any that do not match
-            # the first DataArray
-            for attr in current_attrs:
-                if current_attrs[attr] != data_0_attrs[attr]:
-                    mismatched_attrs.append(attr)
-
-            # If any attributes (except scan name) of the current DataArray do not match the first DataArray, display
-            # a warning telling the user that the attributes of the first DataArray will be saved
-            if len(mismatched_attrs) > 0:
-                attrs_warn_flag = True  # Update warning flag
-                warning_str = (
-                    "The following attributes of scan {current_name} do not match those of scan {"
-                    "data_0_name}: {mismatched_attrs}. "
-                    "Attributes of scan {data_0_name} kept."
-                ).format(
-                    current_name=current_name,
-                    data_0_name=data_0_name,
-                    mismatched_attrs=mismatched_attrs,
+                analysis_warning(
+                    warning_str, title="Analysis info", warn_type="danger", quiet=quiet
                 )
-                analysis_warning(warning_str, title="Analysis info", warn_type="danger")
 
-        # If the current scan does not have the same attribute options (i.e. polar, x0, temp_sample etc.) as the
-        # first DataArray, display a warning telling the user that the attributes of the first DataArray will be saved
-        else:
-            attrs_warn_flag = True
+        # Determine any attributes (including nested attributes) of the current DataArray that do not match the first DataArray
+        mismatched_attrs = compare_metadata(data_0_data, current_data)
+        mismatched_attrs.pop("scan", None)  # Remove individual scan attributes
+
+        def dict_to_html_table(d):
+            html = """
+                <style>
+                    table { border-collapse: collapse; }
+                    td, th { padding: 2px 5px; margin: 0; border: 1px solid black; }
+                </style>
+                <table>
+                """
+            for key, value in d.items():
+                if isinstance(value, dict):
+                    if (
+                        len(value) == 2
+                        and "value1" in value.keys()
+                        and "value2" in value.keys()
+                    ):
+                        nested_items = list(value.items())
+                        nested_str = f"{nested_items[0][1]}&nbsp;&nbsp; || &nbsp;&nbsp;{nested_items[1][1]}"
+                        html += f"<tr><td><strong>{key}</strong></td><td>{nested_str}</td></tr>"
+                    else:
+                        value = dict_to_html_table(value)
+                        html += (
+                            f"<tr><td><strong>{key}</strong></td><td>{value}</td></tr>"
+                        )
+                elif isinstance(value, pint.Quantity):
+                    value = str(value)
+                    html += f"<tr><td><strong>{key}</strong></td><td>{value}</td></tr>"
+                else:
+                    html += f"<tr><td><strong>{key}</strong></td><td>{value}</td></tr>"
+            html += "</table>"
+            return html
+
+        formated_mismatched_str = dict_to_html_table(mismatched_attrs)
+
+        # If any attributes (except scan name) of the current DataArray do not match the first DataArray, display
+        # a warning telling the user that the attributes of the first DataArray will be saved
+        if len(mismatched_attrs) > 0:
+            attrs_warn_flag = True  # Update warning flag
             warning_str = (
-                "The attribute options of scan {current_name} do not match those of scan {data_0_name}. "
-                "Attributes of scan {data_0_name} kept."
-            ).format(
-                current_name=current_name,
-                data_0_name=data_0_name,
-                mismatched_attrs=mismatched_attrs,
+                f"The following attributes of scan {data_0_name} do not match those of scan {current_name}: "
+                f"{formated_mismatched_str} Attributes of scan {data_0_name} kept."
             )
-            analysis_warning(warning_str, title="Analysis info", warn_type="danger")
+            analysis_warning(
+                warning_str, title="Analysis info", warn_type="danger", quiet=quiet
+            )
 
         # Add the current DataArray to the running summed total
-        summed_data += current_data.data
-
-        # Append the current DataArray scan name to the summed scan name
-        summed_name += " + {current_name}".format(current_name=current_name)
+        if _sum:
+            summed_data += current_data.data
+            summed_name += " + {current_name}".format(current_name=current_name)
+        else:
+            summed_data -= current_data.data
+            summed_name += " - {current_name}".format(current_name=current_name)
 
     # Update summed data scan name
-    summed_data.attrs["scan_name"] = summed_name
+    summed_data.metadata.scan.set("name", summed_name, add_history=False)
     summed_data.name = summed_name
 
     # Update the analysis history
-    hist_str = "{num_data} scans summed together.".format(num_data=num_data)
+    if _sum:
+        hist_str = "{num_data} scans summed together.".format(num_data=num_data)
+    else:
+        hist_str = "Scans subtracted."
     if (
         attrs_warn_flag
     ):  # If the there is an attributes mismatch, append information to analysis history
-        hist_str += " CAUTION: mismatch of some attributes - those of scan {data_0_name} kept".format(
-            data_0_name=data_0_name
+        hist_str += (
+            f" CAUTION: mismatch of some attributes - those of scan {data_0_name} kept"
         )
     if (
         coords_warn_flag
     ):  # If the there is a coordinates mismatch, append information to analysis history
         hist_str += (
-            " CAUTION: mismatch of some coordinates - interpolated data onto scan {data_0_name} coordinate "
-            "grid"
-        ).format(data_0_name=data_0_name)
+            f" CAUTION: mismatch of some coordinates - interpolated data onto "
+            f"scan {data_0_name} coordinate grid"
+        )
     total_hist = {"record": hist_str}
     for i in range(len(data_history)):
         total_hist[f"original scan {i} analysis history"] = data_history[i]
@@ -1329,13 +1380,92 @@ def sum_data(data):
     return summed_data
 
 
+def sum_data(data, quiet=False):
+    """Function to sum two or more DataArrays together, maintaining the metadata.
+    If the metadata of the DataArrays differ, that of the first inputted DataArray will be used.
+    If the coordinate grids of the DataArrays differ, all DataArrays will be interpolated onto the
+    coordinate grid of the first inputted DataArray.
+
+    Parameters
+    ------------
+    data : list or xarray.DataTree
+        Any number of :class:`xarray.DataArray` items to sum together, either passed as a list or
+        as a tree containing the relevant dataarrays.
+
+    quiet : bool, optional
+        Whether to suppress warnings. Defaults to False.
+
+    Returns
+    ------------
+    summed_data : xarray.DataArray
+        The single summed :class:`xarray.DataArray`.
+
+    Examples
+    ------------
+    Example usage is as follows::
+
+        import peaks as pks
+
+        # From individual dataarrays
+        disp1 = load('disp1.ibw')
+        disp2 = load('disp2.ibw')
+        disp_sum = pks.sum_data([disp1, disp2])  # Sum the dispersions
+
+        # From a DataTree, suppressing warnings of mismatched metadata
+        dt = pks.load(['disp1.ibw', 'disp2.ibw'])
+        disp_sum = pks.sum_data(dt, quiet=True)  # Sum the dispersions
+    """
+
+    return _sum_or_subtract_data(data, _sum=True, quiet=quiet)
+
+
+def subtract_data(data, quiet=False):
+    """Function to subtract two DataArrays together, maintaining the metadata.
+    If the metadata of the DataArrays differ, that of the first inputted DataArray will be used.
+    If the coordinate grids of the DataArrays differ, all DataArrays will be interpolated onto the
+    coordinate grid of the first inputted DataArray.
+
+    Parameters
+    ------------
+    data : list or xarray.DataTree
+        Any number of :class:`xarray.DataArray` items to sum together, either passed as a list or
+        as a tree containing the relevant dataarrays.
+
+    quiet : bool, optional
+        Whether to suppress warnings. Defaults to False.
+
+    Returns
+    ------------
+    summed_data : xarray.DataArray
+        The single summed :class:`xarray.DataArray`.
+
+    Examples
+    ------------
+    Example usage is as follows::
+
+        import peaks as pks
+
+        # From individual dataarrays
+        disp1 = load('disp1.ibw')
+        disp2 = load('disp2.ibw')
+        disp_diff = pks.subtract_data([disp1, disp2])  # Calculate the difference
+
+        # From a DataTree, suppressing warnings of mismatched metadata
+        dt = pks.load(['disp1.ibw', 'disp2.ibw'])
+        disp_diff = pks.subtract_data(dt, quiet=True)  # Calculate the difference
+    """
+
+    return _sum_or_subtract_data(data, _sum=False, quiet=quiet)
+
+
 def merge_data(data, dim="theta_par", sel=slice(None, None), offsets=None):
     """Function to merge two or more DataArrays together along a given dimension.
 
     Parameters
     ------------
-    data : list
-        Any number of N-dimensional DataArrays to merge together.
+    data : list or xarray.DataTree
+        Any number of N-dimensional DataArrays to merge together, or a :class:`xarray.DataTree` contining the
+        data to merge.
 
     dim : str, optional
         The dimension to merge along. Defaults to 'theta_par'.
@@ -1386,6 +1516,10 @@ def merge_data(data, dim="theta_par", sel=slice(None, None), offsets=None):
         merged_XPS = pks.merge_data([XPS_1, XPS_2], coord='eV')
 
     """
+
+    # If data is a DataTree, convert to a list
+    if isinstance(data, xr.DataTree):
+        data = get_list_of_DataArrays_from_DataTree(data)
 
     # Ensure dim is a valid dimension
     if dim not in data[0].dims:
@@ -1444,13 +1578,15 @@ def merge_data(data, dim="theta_par", sel=slice(None, None), offsets=None):
 
     # Initially define merged_data as the first entry of data_to_merge, and extract the scan name
     merged_data = data_to_merge[0]
-    scan_name = merged_data.attrs["scan_name"]
+    scan_name = merged_data.metadata.scan.name
 
     # Loop through the remaining entries of data_to_merge, merge the data with merged_data (using the function
     # _merge_two_DataArrays), and update the scan name
     for current_data in data_to_merge[1:]:
-        merged_data = _merge_two_DataArrays(merged_data, current_data, dim)
-        scan_name += " & " + current_data.attrs["scan_name"]
+        merged_data = _merge_two_DataArrays(
+            merged_data.pint.dequantify(), current_data.pint.dequantify(), dim
+        ).pint.quantify()
+        scan_name += " & " + current_data.metadata.scan.name
 
     # Update analysis history
     history_str = f"Merged {scan_name} along {dim} "
@@ -1587,12 +1723,10 @@ def _merge_two_DataArrays(DataArray1, DataArray2, dim):
     DataArray2 *= DataArray2_scaling
 
     # Sum DataArray1 and DataArray2
-    merged_data = sum_data([DataArray1, DataArray2])
+    merged_data = _sum_or_subtract_data([DataArray1, DataArray2])
 
     # Remove sum_data analysis_history entry
-    merged_data.attrs["_analysis_history"] = copy.deepcopy(
-        merged_data.attrs["_analysis_history"][0:-1]
-    )
+    del merged_data._analysis_history.records[-1]
 
     return merged_data
 

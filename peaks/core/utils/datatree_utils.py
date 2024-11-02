@@ -174,8 +174,9 @@ def add_scan_group(dt, name=None):
 
     if not name:
         name = _make_name_unique("scan_group", dt)
-
-    xr.DataTree(name=_make_name_callable(name), parent=dt)
+    new_name = _make_name_callable(name)
+    new_dt = xr.DataTree(name=new_name)
+    dt[new_name] = new_dt
 
 
 @_ensure_empty_node
@@ -227,7 +228,7 @@ def add(dt, data_source, name=None, add_at_root=False, **kwargs):
         if add_at_root:
             # Add children of the DataTree to the root of the original DataTree
             for child in data_source.children.values():
-                child.parent = dt
+                dt[child.name] = child
             return
 
         # Otherwise, add them as a new group with the given name or a default name
@@ -235,14 +236,14 @@ def add(dt, data_source, name=None, add_at_root=False, **kwargs):
             _make_name_callable(name) if name else _make_name_unique("scan_group", dt)
         )
         data_source.name = name
-        data_source.parent = dt
+        dt[name] = data_source
         return
 
     if isinstance(data_source, xr.DataArray):
         # Single da passed - parse it to DataTree format and add to the tree
         data = _dataarrays_to_datatree([data_source], names=[name] if name else None)
         data = data[list(data)[0]]
-        data.parent = dt
+        dt[data.name] = data
         return
 
     if isinstance(data_source, xr.Dataset):
@@ -252,7 +253,7 @@ def add(dt, data_source, name=None, add_at_root=False, **kwargs):
                 "A name must be provided when adding a Dataset to the DataTree."
             )
         data = xr.DataTree(name=_make_name_callable(name), dataset=data_source)
-        data.parent = dt
+        dt[data.name] = data
         return
 
     if isinstance(data_source, (str, int, list)):
@@ -284,6 +285,27 @@ def get_DataArray(dt):
         return da
 
 
+def get_list_of_DataArrays_from_DataTree(dt):
+    """Get a list of :class:`xarray.DataArray` stored as the only entry of a :class:`xarray.DataSet` with
+     data variable `data` which are the leaf nodes of a :class:`xarray.DataTree`.
+
+    Parameters
+    ----------
+    dt : DataTree
+        The DataTree to return the :class:`xarray.DataArray` from.
+
+    Returns
+    -------
+    list of xarray.DataArray
+        The :class:`xarray.DataArray`s stored in the leaf nodes.
+    """
+    data_list = []
+    for node in dt.subtree:
+        if not node.is_empty:
+            data_list.append(get_DataArray(node))
+    return data_list
+
+
 def _map_over_dt_containing_single_das(data_tree, func, *args, **kwargs):
     """Applies a function to each leaf node in a DataTree assuming that any leaf with data contains a single
     :class:`xarray.Dataset` with a single data variable `data` containing the :class:`xarray.DataArray`.
@@ -309,4 +331,4 @@ def _map_over_dt_containing_single_das(data_tree, func, *args, **kwargs):
         else:
             return node
 
-    return data_tree.map_over_subtree(map_over_ds)
+    return data_tree.map_over_datasets(map_over_ds)

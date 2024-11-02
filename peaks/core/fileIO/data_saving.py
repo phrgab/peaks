@@ -165,7 +165,7 @@ def _save_dt(data, fpath):
             original_attrs.append({})
 
     # Map over the DataTree to serialise the attributes and dequantify the DataArrays
-    data = data.map_over_subtree(_parse_nodes_in_dt)
+    data = data.map_over_datasets(_parse_nodes_in_dt)
 
     # Save data as a zarr file
     data.to_zarr(fpath)
@@ -175,7 +175,7 @@ def _save_dt(data, fpath):
         node.attrs = attrs
 
     # Re-quanitfy the data
-    data = data.map_over_subtree(_quantify_da_in_dt)
+    data = data.map_over_datasets(_quantify_da_in_dt)
 
 
 def save(data, fpath):
