@@ -8,6 +8,7 @@ from peaks.core.accessors.accessor_methods import (
 ureg = pint_xarray.unit_registry
 
 
+@xr.register_datatree_accessor("tr")
 @xr.register_dataarray_accessor("tr")
 class TRAccessors:
     """Helper functions for time-resolved data, accessed via the `.tr` accessor."""
