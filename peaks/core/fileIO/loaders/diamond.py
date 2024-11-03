@@ -1,4 +1,5 @@
 import numpy as np
+import pint
 import xarray as xr
 import pint_xarray
 import h5py
@@ -8,6 +9,7 @@ from typing import Optional, Union
 from peaks.core.utils.misc import analysis_warning
 from peaks.core.options import opts
 from peaks.core.fileIO.loc_registry import register_loader
+from peaks.core.accessors.accessor_methods import register_accessor
 from peaks.core.fileIO.base_data_classes.base_hdf5_class import BaseHDF5DataLoader
 from peaks.core.metadata.base_metadata_models import BaseMetadataModel, Quantity
 from peaks.core.fileIO.base_arpes_data_classes.base_arpes_data_class import (
@@ -252,7 +254,7 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
     _core_data_key_resolution_order = ["analyser"]
 
     @classmethod
-    def _load_data(cls, fpath, lazy):
+    def _load_data(cls, fpath, lazy, **kwargs):
         """Load the data from a Diamond I05 ARPES NeXus file. Try to automatically determine the core scan structure."""
 
         with h5py.File(fpath, "r") as f:
@@ -354,18 +356,19 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
             }
 
         # Load the core data in a way that supports lazy loading
-        da = xr.open_dataset(
+        ds = xr.open_dataset(
             fpath,
             group=data_group_addr,
             engine="h5netcdf",
             phony_dims="sort",
             chunks="auto",
-        )[core_data_key]
-
-        da.attrs = {}
-
+        )
         # Map local dimension names keeping I05 convention for now
-        da = da.rename({orig: new for orig, new in zip(da.dims, dims)})
+        ds = ds.rename({orig: new for orig, new in zip(ds[core_data_key].dims, dims)})
+
+        # Get the core data
+        da = ds[core_data_key]
+        da.attrs = {}
 
         # Apply the coordinates
         coords_to_apply = {dim: coords.get(dim) for dim in dims if dim != "dummy"}
@@ -392,6 +395,25 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
                     )
         da = da.assign_coords(coords_to_apply)
 
+        # Normalise data by I0 if required
+        if kwargs.get("norm_by_I0", False):
+            if "current" in dim_name_to_axis_mapping:
+                beam_current = ds["current"]
+                beam_current_coords_to_apply = {
+                    k: v for k, v in coords_to_apply.items() if k in beam_current.dims
+                }
+                beam_current = beam_current.assign_coords(beam_current_coords_to_apply)
+                bc_units = beam_current.attrs.get("units", "mA")
+                beam_current.attrs = {}
+                da = da / beam_current
+                units["spectrum"] = units["spectrum"] + f"/{bc_units}"
+            else:
+                analysis_warning(
+                    "Could not determine the beam current to normalise data by",
+                    "warning",
+                    "Missing I0 data",
+                )
+
         # Rename to peaks conventions using _manipulator_name_conventions and _analyser_name_conventions
         dim_names_to_update = {}
         names_to_check = cls._manipulator_name_conventions.copy()
@@ -416,7 +438,6 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
         # Add units where available
         da.name = "spectrum"
         da = da.pint.quantify(units)
-
         return da.squeeze()
 
 
@@ -478,6 +499,8 @@ class I05NanoARPESLoader(I05ARPESLoader):
         "analyser_eV": [
             "entry1/instrument/analyser/energies",
             "entry1/instrument/analyser_total/energies",
+            "entry1/instrument/analyser/kinetic_energy_center",
+            "entry1/instrument/analyser_total/kinetic_energy_center",
         ],
         "analyser_step_size": [
             lambda f: (
@@ -492,6 +515,8 @@ class I05NanoARPESLoader(I05ARPESLoader):
                 if "entry1/instrument/analyser_total/energies" in f
                 else None
             ),
+            "entry1/instrument/analyser/kinetic_energy_step",
+            "entry1/instrument/analyser_total/kinetic_energy_step",
         ],
         "analyser_PE": [
             "entry1/instrument/analyser/pass_energy",
@@ -560,13 +585,20 @@ class I05NanoARPESLoader(I05ARPESLoader):
     ]  # List of metadata parsers to apply
 
     @classmethod
-    def _load(cls, fpath, lazy, metadata, quiet):
+    def _load(cls, fpath, lazy, metadata, quiet, **kwargs):
         """Load the data from Diamond I05 Nano ARPES."""
         if fpath.split(".")[-1] == "zip":
             # Load the data using the SES loader for .zip files
             return cls.load(fpath, loc="SES", lazy=lazy, metadata=metadata)
-        # Todo consider adding slant correct in here...
-        return super()._load(fpath, lazy, metadata, quiet)
+
+        # Load the data
+        data = super()._load(fpath, lazy, metadata, quiet, **kwargs)
+
+        # Perform post processing on load if required
+        if kwargs.pop("slant_correct", False):  # Perform the slant correction
+            data = cls.slant_correct(data, kwargs.get("slant_factor", None))
+
+        return data
 
     @classmethod
     def _parse_optics_metadata(cls, metadata_dict):
@@ -581,3 +613,66 @@ class I05NanoARPESLoader(I05ARPESLoader):
             ZPz=metadata_dict.get("focussing_ZPz"),
         )
         return {"focussing": optics_metadata}, None
+
+    @register_accessor(xr.DataArray)
+    @staticmethod
+    def slant_correct(data, slant_factor=None):
+        """Function to remove a slant that was present in data obtained using the Scienta DA30 (9ES210) analyser at the nano
+        branch of the I05 beamline at Diamond Light Source in 2021/22.
+
+        Parameters
+        ------------
+        data : xarray.DataArray
+            The data to be corrected.
+
+        slant_factor : float, optional
+            The slant factor correction (degrees/eV) to use. Defaults to 8/PE (where PE is the pass energy used).
+
+        Returns
+        ------------
+        corrected_data : xarray.DataArray
+            The corrected data.
+
+        Examples
+        ------------
+        Example usage is as follows::
+
+            from peaks import pks
+
+            # Load the data, incorporating slant correction with a custom factor
+            disp = pks.load('i05-1-13579.ibw', slant_correct=True, slant_factor=7.9)
+
+            # Load data and apply slant correction afterwards
+            disp = pks.load('i05-1-13579.ibw')
+            disp_sc = disp.slant_correct()
+        """
+
+        # Set the slant factor to the default correction if it has not been supplied
+        if slant_factor is None:
+            slant_factor = 8 * ureg.deg / data.metadata.analyser.scan.PE.to("eV")
+        elif not isinstance(slant_factor, pint.Quantity):
+            slant_factor = slant_factor * ureg.deg / ureg.eV
+        else:
+            slant_factor = slant_factor.to("deg/eV")
+
+        # Define the new angle mapping
+        theta_par_values = data.theta_par.pint.to("deg") - (
+            slant_factor.magnitude
+            * (data.eV.pint.to("eV") - data.eV.pint.to("eV").median())
+        )
+
+        # Perform the interpolation onto the corrected grid
+        corrected_data = (
+            data.pint.dequantify()
+            .interp({"theta_par": theta_par_values, "eV": data.eV})
+            .pint.quantify()
+        )
+
+        # Update the analysis history
+        corrected_data.history.add(
+            "Slant correction for Diamond nano-ARPES data applied: {factor}".format(
+                factor=slant_factor
+            )
+        )
+
+        return corrected_data
