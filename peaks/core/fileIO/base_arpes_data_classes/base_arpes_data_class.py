@@ -143,7 +143,7 @@ class BaseARPESDataLoader(
 
         # Try to parse to counts/s if possible
         try:
-            if da.data.units == "count":
+            if "count" in str(da.pint.units):
                 t = (
                     da.metadata.analyser.scan.dwell.to("s")
                     * da.metadata.analyser.scan.sweeps
