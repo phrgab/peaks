@@ -692,7 +692,10 @@ def plot_nanofocus(data, focus="defocus"):
     FFT_data = data.copy(deep="True")
     if focus != data.dims[0]:  # Ensure data shape is as expected
         FFT_data = FFT_data.T
-    FFT_data.data = abs(fft(data.data))  # Perform FFT
+        FFT_data.data = abs(fft(data.pint.dequantify().T.data))  # Perform FFT
+    else:
+        FFT_data.data = abs(fft(data.pint.dequantify().data))  # Perform FFT
+    FFT_data = FFT_data.pint.quantify(data.pint.units)
     FFT_data_out = FFT_data.isel({spatial: FFT_data.argmax(spatial).data[0] + 1})
 
     # Plot the FFT analysis results
