@@ -390,7 +390,10 @@ def estimate_EF(da):
         EF_values_out = fit_model.eval(x=EF_data.hv.data)
         return EF_values_out
     else:
-        return _estimate_EF(da.DOS().fillna(0).data, da.eV.data)
+        try:
+            return _estimate_EF(da.DOS().fillna(0).data, da.eV.data)
+        except:
+            return None
 
 
 def save_fit(fit_result, filename):
