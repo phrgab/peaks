@@ -44,6 +44,9 @@ from peaks.core.fileIO.loc_registry import LOC_REGISTRY
 from peaks.core.fileIO.loc_registry import locs
 from peaks.core.fileIO.base_data_classes.base_ibw_class import BaseIBWDataLoader
 from peaks.core.fileIO.base_arpes_data_classes.base_ses_class import SESDataLoader
+from peaks.core.fileIO.base_arpes_data_classes.base_fesuma_class import (
+    BaseFeSuMaDataLoader,
+)
 from peaks.core.fileIO.loaders import *
 
 # Import the core functions that should be accessible from the main peaks namespace

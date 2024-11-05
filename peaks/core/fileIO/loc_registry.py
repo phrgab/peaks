@@ -207,6 +207,11 @@ class IdentifyLoc:
             return "ALBA LOREA"
 
     @staticmethod
+    def _handler_h5(fname):
+        # Use base FeSuMa loader for now
+        return "FeSuMa"
+
+    @staticmethod
     def _handler_nc(fname):
         # If the file is .nc format, the location should be NetCDF
         return "NetCDF"
