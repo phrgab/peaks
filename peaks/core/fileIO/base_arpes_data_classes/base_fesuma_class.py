@@ -42,20 +42,30 @@ class BaseFeSuMaDataLoader(BaseARPESDataLoader):
                     self.detector_x = np.arange(
                         start, start + delta * image0.shape[0], delta
                     )
-                    self.detector_x_unit = image0.attrs.get("ScaleUnitsX").decode()
+                    self.detector_x_unit = image0.attrs.get("ScaleUnitsX")
+                    if isinstance(self.detector_x_unit, bytes):
+                        self.detector_x_unit = self.detector_x_unit.decode()
                     start = image0.attrs.get("DimOffsetY")
                     delta = image0.attrs.get("DimDeltaY")
                     self.detector_y = np.arange(
                         start, start + delta * image0.shape[1], delta
                     )
-                    self.detector_y_unit = image0.attrs.get("ScaleUnitsY").decode()
+                    self.detector_y_unit = image0.attrs.get("ScaleUnitsY")
+                    if isinstance(self.detector_y_unit, bytes):
+                        self.detector_y_unit = self.detector_y_unit.decode()
 
                     # Get the KE scaling
-                    self.eV = np.arange(
-                        float(f["AcquisitionEkinStart"][()][0]),
-                        float(f["AcquisitionEkinStop"][()][0]),
-                        float(f["AcquisitionEkinStep"][()][0]),
-                    )
+                    self.eV = None
+                    try:
+                        self.eV = np.arange(
+                            float(f["AcquisitionEkinStart"][()][0]),
+                            float(f["AcquisitionEkinStop"][()][0]),
+                            float(f["AcquisitionEkinStep"][()][0]),
+                        )
+                    except KeyError:
+                        analysis_warning(
+                            "Could not find KE scaling in the FeSuMa file. "
+                        )
 
                     # Parse Acquisition metadata as integers
                     self.steps = np.array(
@@ -124,8 +134,9 @@ class BaseFeSuMaDataLoader(BaseARPESDataLoader):
             data_array = data_array.compute()
 
         data_array = data_array.groupby("steps").mean()
-        data_array = data_array.assign_coords({"eV": ("steps", lazy_cube.eV)})
-        data_array = data_array.swap_dims({"steps": "eV"}).drop_vars("steps")
+        if lazy_cube.eV is not None:
+            data_array = data_array.assign_coords({"eV": ("steps", lazy_cube.eV)})
+            data_array = data_array.swap_dims({"steps": "eV"}).drop_vars("steps")
 
         return {
             "spectrum": data_array.data,
@@ -145,11 +156,14 @@ class BaseFeSuMaDataLoader(BaseARPESDataLoader):
             image0 = f[
                 f"{next(key for key in f.keys() if key.startswith('0'))}/analysisImage"
             ]
+            dwell_unit = image0.attrs.get("ExposureTime_UNIT")
+            if isinstance(dwell_unit, bytes):
+                dwell_unit = dwell_unit.decode()
             metadata = {
                 "analyser_sweeps": int(f["AcquisitionNumberOfSweeps"][0]),
                 "analyser_dwell": image0.attrs.get("ExposureTime")[()]
                 * image0.attrs.get("AccumulationCount")[()]
-                * ureg(image0.attrs.get("ExposureTime_UNIT").decode()),
+                * ureg(dwell_unit),
             }
 
         return metadata
