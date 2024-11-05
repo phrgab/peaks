@@ -843,7 +843,7 @@ def k_convert(
                     Ek_new[start_index:end_index, :],
                     alpha[start_index:end_index, :],
                     data_hv.eV.data,
-                    theta_par_rad,
+                    angles["alpha"],
                     data_hv,
                     input_core_dims=[
                         ["eV", k_along_slit_label],
@@ -877,7 +877,7 @@ def k_convert(
                 Ek_new,
                 alpha,
                 da.eV.data,
-                theta_par_rad,
+                angles["alpha"],
                 da,
                 input_core_dims=[
                     ["eV", k_along_slit_label],
@@ -909,22 +909,6 @@ def k_convert(
         # Other angular dimension - assume the only remaining dimension
         other_dim = list(set(da.dims) - set(["eV", "theta_par"]))[0]
 
-        # Deal with stacked polar angles
-        if other_dim == "polar":
-            ana_polar_offset = (
-                da.metadata.analyser.angles.polar.to("rad").magnitude
-                if da.metadata.analyser.angles.polar is not None
-                else 0
-            )
-            beta -= ana_polar_offset
-        elif other_dim == "ana_polar":
-            polar_offset = (
-                da.metadata.manipulator.polar.value.to("rad").magnitude
-                if da.metadata.manipulator.polar is not None
-                else 0
-            )
-            beta -= polar_offset
-
         # Check linearity of remaining dimension
         is_rectilinear = is_rectilinear and _is_linearly_spaced(
             da[other_dim].data,
@@ -938,6 +922,9 @@ def k_convert(
 
         theta_par_rad = da.theta_par.pint.to("rad").data
         other_dim_rad = da[other_dim].pint.to("rad").data
+        print(f"{Ek_new.min()=}, {Ek_new.max()=}")
+        print(f"{da.eV.data.min()=}, {da.eV.data.max()=}")
+        print(other_dim)
         with numba_progress.ProgressBar(
             total=Ek_new.size,
             dynamic_ncols=True,
@@ -951,8 +938,8 @@ def k_convert(
                 alpha,
                 beta,
                 da.eV.data,
-                theta_par_rad,
-                other_dim_rad,
+                angles["alpha"],
+                angles["beta"],
                 da,
                 nb_pbar,
                 input_core_dims=[
@@ -975,6 +962,7 @@ def k_convert(
                 "eV",
                 _get_k_along_slit("kx", "ky", angles["type"]),
             )
+            print(f"{interpolated_data.min()=}")
         interpolated_data.coords.update(
             {
                 "kx": kx_values.squeeze(),

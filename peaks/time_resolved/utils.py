@@ -47,10 +47,12 @@ def _set_t0(da, t0, delay_line_no_trips=2, assign=True):
 
     # Get current t0 in stage position
     t0_old_position = da.metadata.pump.t0_position
-
-    # Work out different in stage position for new t0
-    t0_delta = (t0 / (delay_line_no_trips / ureg.c)).to(original_stage_units)
-    t0_new_position = t0_old_position + t0_delta
+    if t0.check("[length]"):  # If provided as a length, set that directly
+        t0_new_position = t0
+    else:  # Otherwise convert the given t0 time into a stage position
+        # Work out different in stage position for new t0
+        t0_delta = (t0 / (delay_line_no_trips / ureg.c)).to(original_stage_units)
+        t0_new_position = t0_old_position + t0_delta
     # Convert to time in original units
     delay_time = (
         (delay_position - t0_new_position) * delay_line_no_trips / ureg.c
@@ -105,6 +107,23 @@ def set_t0(da, t0, delay_line_roundtrips=2):
     _set_t0(da, t0, delay_line_roundtrips, assign=False)
 
 
+def set_t0_like(da, da_ref):
+    """Set t0 of a time-resolved data set to match another data set. Assumes the default delay line round trips of 2.
+
+    Parameters
+    -----------
+    da : xarray.DataArray
+        time-resolved data, with a time axis with dimension "t", and a metadata attribute pump.t0_position defining
+        the delay line position corresponding to t0.
+
+    da_ref : xarray.DataArray
+        Reference time-resolved data set, with the t0 already calibtrated
+    """
+
+    t0 = da_ref.metadata.pump.t0_position
+    set_t0(da, t0)
+
+
 def assign_t0(da, t0, delay_line_roundtrips=2):
     """Set a new t0 in a TR-ARPES data set
 
@@ -128,3 +147,24 @@ def assign_t0(da, t0, delay_line_roundtrips=2):
     """
 
     return _set_t0(da, t0, delay_line_roundtrips, assign=True)
+
+
+def assign_t0_like(da, da_ref):
+    """Set t0 of a time-resolved data set to match another data set. Assumes the default delay line round trips of 2.
+
+    Parameters
+    -----------
+    da : xarray.DataArray
+        time-resolved data, with a time axis with dimension "t", and a metadata attribute pump.t0_position defining
+        the delay line position corresponding to t0.
+
+    da_ref : xarray.DataArray
+        Reference time-resolved data set, with the t0 already calibtrated
+
+    Returns
+    -------
+    xarray.DataArray
+        The updated xarray.DataArray
+    """
+
+    return assign_t0(da, da_ref.metadata.pump.t0_position)
