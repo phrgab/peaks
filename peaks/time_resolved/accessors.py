@@ -28,6 +28,12 @@ class TRAccessors:
     set_t0 = _pass_function_to_xarray_class_accessor(
         "set_t0", "peaks.time_resolved.utils"
     )
+    set_t0_like = _pass_function_to_xarray_class_accessor(
+        "set_t0_like", "peaks.time_resolved.utils"
+    )
     assign_t0 = _pass_function_to_xarray_class_accessor(
         "assign_t0", "peaks.time_resolved.utils"
+    )
+    assign_t0_like = _pass_function_to_xarray_class_accessor(
+        "assign_t0_like", "peaks.time_resolved.utils"
     )
