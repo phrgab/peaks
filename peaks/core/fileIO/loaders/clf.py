@@ -90,6 +90,35 @@ class ArtemisPhoibos(BaseARPESDataLoader, BasePumpProbeClass):
 
         """
 
+        if os.path.splitext(fpath)[1] == ".h5":
+            # If the file is an HDF5 file, should be a FeSuMa scan; use the BaseFeSuMaDataLoader
+            from peaks.core.fileIO.base_arpes_data_classes.base_fesuma_class import (
+                BaseFeSuMaDataLoader,
+            )
+
+            data_dict = BaseFeSuMaDataLoader._load_data(fpath, lazy, **kwargs)
+            if "delay_pos" in data_dict.get("dims") and "t" not in data_dict.get(
+                "dims"
+            ):
+                coords = data_dict.get("coords")
+                units = data_dict.get("units")
+                delay_pos_m = (
+                    coords.get("delay_pos") * ureg(units.get("delay_pos"))
+                ).to("m")
+                t = ((delay_pos_m - delay_pos_m[0]) * 2 / ureg.c).to("fs").magnitude
+                coords["t"] = t
+                coords["delay_pos"] = ("t", coords.pop("delay_pos"))
+                new_dims = []
+                for dim in data_dict.get("dims"):
+                    if dim == "delay_pos":
+                        new_dims.append("t")
+                    else:
+                        new_dims.append(dim)
+                data_dict["dims"] = new_dims
+                data_dict.get("units")["t"] = "fs"
+
+            return data_dict
+
         # Parse keyword arguments
         Ang_Offset_px = kwargs.pop("Ang_Offset_px", 0)
         Edge_pos = kwargs.pop("Edge_pos", 10)
@@ -493,6 +522,14 @@ class ArtemisPhoibos(BaseARPESDataLoader, BasePumpProbeClass):
 
     @classmethod
     def _load_metadata(cls, fpath, return_dict_with_raw_keys=False):
+        if os.path.splitext(fpath)[1] == ".h5":
+            # If the file is an HDF5 file, should be a FeSuMa scan; use the BaseFeSuMaDataLoader
+            from peaks.core.fileIO.base_arpes_data_classes.base_fesuma_class import (
+                BaseFeSuMaDataLoader,
+            )
+
+            return BaseFeSuMaDataLoader._load_metadata(fpath)
+
         # Check if there is a cached version (only cache in this loader with keys in artemis format)
         metadata_dict_artemis_keys = cls._metadata_cache.get(fpath)
 

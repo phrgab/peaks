@@ -54,19 +54,6 @@ class BaseFeSuMaDataLoader(BaseARPESDataLoader):
                     if isinstance(self.detector_y_unit, bytes):
                         self.detector_y_unit = self.detector_y_unit.decode()
 
-                    # Get the KE scaling
-                    self.eV = None
-                    try:
-                        self.eV = np.arange(
-                            float(f["AcquisitionEkinStart"][()][0]),
-                            float(f["AcquisitionEkinStop"][()][0]),
-                            float(f["AcquisitionEkinStep"][()][0]),
-                        )
-                    except KeyError:
-                        analysis_warning(
-                            "Could not find KE scaling in the FeSuMa file. "
-                        )
-
                     # Parse Acquisition metadata as integers
                     self.steps = np.array(
                         [
@@ -80,6 +67,39 @@ class BaseFeSuMaDataLoader(BaseARPESDataLoader):
                             for scan in self.scans_list
                         ]
                     )
+
+                    # Get acquisition co-ordinate
+                    self.acquisition_coord = f["AcquisitionCoordinateNice"][0]
+                    if isinstance(self.acquisition_coord, bytes):
+                        self.acquisition_coord = self.acquisition_coord.decode()
+
+                    # Get the KE scaling
+                    try:
+                        # If a KE scan, should list the relevant KE values in the common metadata
+                        # Don't trust AcquisitionEkinStop - this sometimes includes an extra step
+                        self.eV = np.linspace(
+                            float(f["AcquisitionEkinStart"][0]),
+                            float(f["AcquisitionEkinStart"][0])
+                            + (
+                                f["AcquisitionEkinStep"][0] * (len(set(self.steps)) - 1)
+                            ),
+                            len(set(self.steps)),
+                        )
+                    except KeyError:
+                        # Get this from the first scan analyser voltages
+                        self.eV = -f[f"{self.scans_list[0]}/AnalyzerUserSetVoltages"][3]
+
+                    # Get delay positions if required
+                    if self.acquisition_coord == "Delay Stage":
+                        self.delay_pos = np.linspace(
+                            float(f["AcquisitionDelayStart"][0]),
+                            float(f["AcquisitionDelayStart"][0])
+                            + (
+                                f["AcquisitionDelayStep"][0]
+                                * (len(set(self.steps)) - 1)
+                            ),
+                            len(set(self.steps)),
+                        )
 
             def __getitem__(self, idx):
                 # Lazily load the slice when accessed
@@ -134,16 +154,26 @@ class BaseFeSuMaDataLoader(BaseARPESDataLoader):
             data_array = data_array.compute()
 
         data_array = data_array.groupby("steps").mean()
-        if lazy_cube.eV is not None:
+
+        if lazy_cube.acquisition_coord == "Kinetic Energy":
             data_array = data_array.assign_coords({"eV": ("steps", lazy_cube.eV)})
             data_array = data_array.swap_dims({"steps": "eV"}).drop_vars("steps")
+            scan_dim = "eV"
+            scan_units = "eV"
+        elif lazy_cube.acquisition_coord == "Delay Stage":
+            data_array = data_array.assign_coords(
+                {"delay_pos": ("steps", lazy_cube.delay_pos)}
+            )
+            data_array = data_array.swap_dims({"steps": "delay_pos"}).drop_vars("steps")
+            scan_dim = "delay_pos"
+            scan_units = "mm"
 
         return {
             "spectrum": data_array.data,
             "dims": data_array.dims,
-            "coords": data_array.coords,
+            "coords": {dim: coord.data for dim, coord in data_array.coords.items()},
             "units": {
-                "eV": "eV",
+                scan_dim: scan_units,
                 "detector_x": lazy_cube.detector_x_unit,
                 "detector_y": lazy_cube.detector_y_unit,
                 "spectrum": "counts",
@@ -164,6 +194,7 @@ class BaseFeSuMaDataLoader(BaseARPESDataLoader):
                 "analyser_dwell": image0.attrs.get("ExposureTime")[()]
                 * image0.attrs.get("AccumulationCount")[()]
                 * ureg(dwell_unit),
+                "timestamp": f["AcquisitionStartTimeNice"][0].decode(),
             }
 
         return metadata

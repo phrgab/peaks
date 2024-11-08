@@ -148,7 +148,7 @@ class BaseARPESDataLoader(
                     da.metadata.analyser.scan.dwell.to("s")
                     * da.metadata.analyser.scan.sweeps
                 )
-                da = da / t
+                da /= t
         except (ValueError, AttributeError, TypeError):
             pass
 

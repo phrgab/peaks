@@ -341,7 +341,6 @@ class BaseDataLoader:
         # Apply any specific conventions and add a history of the load
         da = cls._apply_conventions(da)
         cls._add_load_history(da, fpath)
-
         return da
 
     @classmethod

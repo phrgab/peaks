@@ -208,8 +208,8 @@ class IdentifyLoc:
 
     @staticmethod
     def _handler_h5(fname):
-        # Use base FeSuMa loader for now
-        return "FeSuMa"
+        # Use CLF_Artemis loader which will in turn call the FeSuMa loader for the key things
+        return "CLF_Artemis"
 
     @staticmethod
     def _handler_nc(fname):
