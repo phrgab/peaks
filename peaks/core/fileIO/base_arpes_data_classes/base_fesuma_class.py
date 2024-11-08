@@ -4,6 +4,7 @@ import h5py
 import dask.array as da
 import dask
 import xarray as xr
+from datetime import datetime
 
 from peaks.core.fileIO.base_arpes_data_classes.base_arpes_data_class import (
     BaseARPESDataLoader,
@@ -194,7 +195,9 @@ class BaseFeSuMaDataLoader(BaseARPESDataLoader):
                 "analyser_dwell": image0.attrs.get("ExposureTime")[()]
                 * image0.attrs.get("AccumulationCount")[()]
                 * ureg(dwell_unit),
-                "timestamp": f["AcquisitionStartTimeNice"][0].decode(),
+                "timestamp": datetime.strptime(
+                    f["AcquisitionStartTimeNice"][0].decode(), "%Y-%m-%dT%H:%M:%S.%fZ"
+                ).strftime("%Y-%m-%d %H:%M:%S"),
             }
 
         return metadata
