@@ -188,6 +188,24 @@ class BaseFeSuMaDataLoader(BaseARPESDataLoader):
                 f"{next(key for key in f.keys() if key.startswith('0'))}/analysisImage"
             ]
             dwell_unit = image0.attrs.get("ExposureTime_UNIT")
+
+            # Parse KE
+            # Get the KE scaling
+            try:
+                # If a KE scan, should list the relevant KE values in the common metadata
+                # Don't trust AcquisitionEkinStop - this sometimes includes an extra step
+                eV = [
+                    float(f["AcquisitionEkinStart"][0]),
+                    float(f["AcquisitionEkinStop"][0]),
+                ] * ureg("eV")
+                eV_step = f["AcquisitionEkinStep"][0] * ureg("eV")
+            except KeyError:
+                # Get this from the first scan analyser voltages
+                eV = -f[
+                    f"{next(key for key in f.keys() if key.startswith('0'))}/AnalyzerUserSetVoltages"
+                ][3] * ureg("eV")
+                eV_step = None
+
             if isinstance(dwell_unit, bytes):
                 dwell_unit = dwell_unit.decode()
             metadata = {
@@ -195,6 +213,9 @@ class BaseFeSuMaDataLoader(BaseARPESDataLoader):
                 "analyser_dwell": image0.attrs.get("ExposureTime")[()]
                 * image0.attrs.get("AccumulationCount")[()]
                 * ureg(dwell_unit),
+                "analyser_eV": eV,
+                "analyser_step_size": eV_step,
+                "analyser_eV_type": "kinetic energy cutoff",
                 "timestamp": datetime.strptime(
                     f["AcquisitionStartTimeNice"][0].decode(), "%Y-%m-%dT%H:%M:%S.%fZ"
                 ).strftime("%Y-%m-%d %H:%M:%S"),
