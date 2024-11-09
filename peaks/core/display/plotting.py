@@ -175,14 +175,12 @@ def plot_grid(
         for count, node in enumerate(data.subtree):
             if not node.is_empty:
                 titles.append(node.name)
-                vmin_value = vmin[count - offset] if isinstance(vmin, list) else vmin
-                vmax_value = vmax[count - offset] if isinstance(vmax, list) else vmax
                 _plot_single(
                     node.data,
                     count - offset,
-                    _get_value_from_list(vmin, count),
-                    _get_value_from_list(vmax, count),
-                    _get_value_from_list(cmap, count),
+                    _get_value_from_list(vmin, count - offset),
+                    _get_value_from_list(vmax, count - offset),
+                    _get_value_from_list(cmap, count - offset),
                 )
             else:
                 offset += 1
