@@ -3,7 +3,6 @@ from peaks.core.metadata.history import History
 from peaks.core.metadata.meatdata_methods import Metadata
 from peaks.core.GUI.iplot.hvplot import HVPlotAccessor
 from peaks.core.fitting.quick_fit import QuickFit
-from peaks.core.process.fermi_level_correction import EFCorrection, EFCorrectionDt
 
 # Import direct accessor methods
 from peaks.core.accessors.dataarray_accessors import *
