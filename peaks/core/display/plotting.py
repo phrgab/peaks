@@ -22,6 +22,8 @@ def plot_grid(
     sharex=False,
     sharey=False,
     figsize=None,
+    vmin=None,
+    vmax=None,
     **plotting_kwargs,
 ):
     """Plots an array of 2D DataArrays on a grid.
@@ -51,6 +53,14 @@ def plot_grid(
     figsize : tuple, optional
         Size of figure to be plotted. Defaults to None.
 
+    vmin : float or int or list, optional
+        Minimum value for the colorbar. Use a list to specify separate values for each plot. If a list is passed, the
+        length must match the number of plots. Defaults to None.
+
+    vmax : float or int or list, optional
+        Maximum value for the colorbar. Use a list to specify separate values for each plot. If a list is passed, the
+        length must match the number of plots. Defaults to None.
+
     **plotting_kwargs
         Additional standard matplotlib calls arguments to pass to the plot.
 
@@ -79,6 +89,20 @@ def plot_grid(
 
     # Number of plots
     nplots = len(data)
+
+    if isinstance(vmin, list):
+        if len(vmin) != nplots:
+            raise ValueError(
+                f"Length of vmin list does not match number of plots. Either specify a list of length "
+                f"{nplots} or pass a single value."
+            )
+
+    if isinstance(vmax, list):
+        if len(vmax) != nplots:
+            raise ValueError(
+                "Length of vmax list does not match number of plots. Either specify a list of length "
+                f"{nplots} or pass a single value."
+            )
 
     # Check default columns is sensible
     if nplots < ncols:
@@ -120,19 +144,21 @@ def plot_grid(
             )
 
     # Make the plots
-    def _plot_single(da, count):
+    def _plot_single(da, count, vmin, vmax):
         if nrows < 2 or ncols == 1:  # 1D grid
             ax = axes[count]
         else:  # 2D grid
             j0, j1 = divmod(count, ncols)
             ax = axes[j0][j1]
-        da.plot(ax=ax, **plotting_kwargs)  # Plot data
+        da.plot(ax=ax, vmin=vmin, vmax=vmax, **plotting_kwargs)  # Plot data
         if plot_titles:  # If plot titles to be displayed, update them here
             ax.set_title(titles[count])
 
     if isinstance(data, list):
         for count, value in enumerate(data):
-            _plot_single(value, count)
+            vmin_value = vmin[count] if isinstance(vmin, list) else vmin
+            vmax_value = vmax[count] if isinstance(vmax, list) else vmax
+            _plot_single(value, count, vmin_value, vmax_value)
     elif isinstance(data, xr.DataTree):
         # If titles not passed as a specific list, we will populate them from node names
         if not plot_titles:
@@ -142,7 +168,9 @@ def plot_grid(
         for count, node in enumerate(data.subtree):
             if not node.is_empty:
                 titles.append(node.name)
-                _plot_single(node.data, count - offset)
+                vmin_value = vmin[count - offset] if isinstance(vmin, list) else vmin
+                vmax_value = vmax[count - offset] if isinstance(vmax, list) else vmax
+                _plot_single(node.data, count - offset, vmin_value, vmax_value)
             else:
                 offset += 1
 
