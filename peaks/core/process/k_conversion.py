@@ -4,11 +4,13 @@
 
 import numpy as np
 import numexpr as ne
+import pint
 import xarray as xr
 from numba import NonexistentTargetError
 from scipy.constants import m_e, hbar, electron_volt, angstrom
 import numba_progress
 from tqdm.notebook import tqdm
+import pint_xarray
 
 from peaks.core.process.fermi_level_correction import (
     _get_wf,
@@ -23,6 +25,9 @@ from peaks.core.utils.interpolation import (
     _fast_bilinear_interpolate_rectilinear,
     _fast_trilinear_interpolate_rectilinear,
 )
+from peaks.core.utils.misc import analysis_warning
+
+ureg = pint_xarray.unit_registry
 
 # Calculate kvac_const
 KVAC_CONST = (2 * m_e / (hbar**2)) ** 0.5 * (electron_volt**0.5) * angstrom
@@ -34,6 +39,33 @@ PI = np.pi
 # following conventions and nomenclature of Ishida and Shin #
 # Rev. Sci. Instrum. 89 (2018) 043903.                      #
 # --------------------------------------------------------- #
+
+
+def ensure_radians(func):
+    def wrapper(*args, **kwargs):
+        processed_args = []
+        for arg in args:
+            if isinstance(arg, pint.Quantity):
+                if arg.dimensionality != ureg.radian.dimensionality:
+                    raise ValueError("All angles must be in radians.")
+                else:
+                    processed_args.append(arg.magnitude)
+            else:
+                processed_args.append(arg)
+
+        processed_kwargs = {}
+        for key, arg in kwargs.items():
+            if isinstance(arg, pint.Quantity):
+                if arg.dimensionality != ureg.radian.dimensionality:
+                    raise ValueError("All angles must be in radians.")
+                else:
+                    processed_kwargs[key] = arg.magnitude
+            else:
+                processed_kwargs[key] = arg
+
+        return func(*processed_args, **processed_kwargs)
+
+    return wrapper
 
 
 def _f_dispatcher(
@@ -52,6 +84,7 @@ def _f_dispatcher(
 def _f_inv_dispatcher(
     ana_type, Ek, kx, ky, beta_0, chi, chi_0, delta, delta_0, xi, xi_0
 ):
+
     if ana_type == "I":
         return _fI_inv(kx, ky, delta - delta_0, xi - xi_0, Ek, beta_0)
     elif ana_type == "II":
@@ -317,7 +350,6 @@ def _fII_inv(kx, ky, delta_, xi, Ek, beta_0):  # Type I, no deflector
     beta : float or np.ndarray
         tilt angle (rad)
     """
-
     # k_vacuum from KE
     kvac_str = "(KVAC_CONST * sqrt(Ek))"
 
@@ -641,6 +673,13 @@ def k_convert(
     # Parse basic data properties
     loader = BaseDataLoader.get_loader(da.metadata.scan.loc)
     angles = loader._get_angles_Ishida_Shin(da, quiet=quiet)  # Get angles for k-conv
+    # Ensure all angles are in radians, da energies are in eV and then dequantify
+    unit_stripped_angles = {
+        axis: (angle.to("rad").magnitude if isinstance(angle, pint.Quantity) else angle)
+        for axis, angle in angles.items()
+    }
+    angles = unit_stripped_angles
+    da = da.pint.to({"hv": "eV", "eV": "eV"}).pint.dequantify()
 
     # Make a progressbar
     pb_steps = 3
@@ -655,7 +694,7 @@ def k_convert(
     # Get relevant energy scale information
     wf = _get_wf(da)  # Work fn, array if hv scan else single value
     if "hv" in da.dims:
-        hv = da.hv.pint.to("eV").data
+        hv = da.hv.data
     else:
         hv = da.metadata.photon.hv.to("eV").magnitude
 
@@ -683,9 +722,9 @@ def k_convert(
         EK_range = [hv + BE_scale[0] - wf, hv + BE_scale[1] - wf]
     alpha_range = np.asarray(
         [
-            np.min(angles["alpha"].magnitude),
-            angles["xi_0"].magnitude,
-            np.max(angles["alpha"].magnitude),
+            np.min(angles["alpha"]),
+            angles["xi_0"],
+            np.max(angles["alpha"]),
         ]
     )
 
@@ -830,7 +869,6 @@ def k_convert(
 
         # Deal with any sign changes required for theta_par scale conventions and any stacked axes
         loader._get_sign_convention("theta_par")
-        theta_par_rad = da.theta_par.copy().pint.to("rad").data
 
         if "hv" in da.dims:
             interpolated_data = []
@@ -870,6 +908,9 @@ def k_convert(
                     "hv": da.hv.data,
                 }
             )
+            interpolated_data = interpolated_data.pint.quantify(
+                {k_along_slit_label: "1/angstrom", "eV": "eV", "hv": "eV"}
+            )
 
         else:
             interpolated_data = xr.apply_ufunc(
@@ -901,6 +942,9 @@ def k_convert(
                     "eV": np.arange(*BE_scale),
                 }
             )
+            interpolated_data = interpolated_data.pint.quantify(
+                {k_along_slit_label: "1/angstrom", "eV": "eV"}
+            )
         # Add the perpendicular momentum to the data attributes
         interpolated_data.attrs[_get_k_perpto_slit("kx", "ky", angles["type"])] = (
             _get_k_perpto_slit(kx_values, ky_values, angles["type"]).squeeze()
@@ -920,11 +964,6 @@ def k_convert(
         else:
             interpolation_fn = _fast_trilinear_interpolate
 
-        theta_par_rad = da.theta_par.pint.to("rad").data
-        other_dim_rad = da[other_dim].pint.to("rad").data
-        print(f"{Ek_new.min()=}, {Ek_new.max()=}")
-        print(f"{da.eV.data.min()=}, {da.eV.data.max()=}")
-        print(other_dim)
         with numba_progress.ProgressBar(
             total=Ek_new.size,
             dynamic_ncols=True,
@@ -962,13 +1001,15 @@ def k_convert(
                 "eV",
                 _get_k_along_slit("kx", "ky", angles["type"]),
             )
-            print(f"{interpolated_data.min()=}")
         interpolated_data.coords.update(
             {
                 "kx": kx_values.squeeze(),
                 "eV": np.arange(*BE_scale),
                 "ky": ky_values.squeeze(),
             }
+        )
+        interpolated_data = interpolated_data.pint.quantify(
+            {"kx": "1/angstrom", "eV": "eV", "ky": "1/angstrom"}
         )
 
     if "hv" in da.dims and not return_kz_scan_in_hv:
@@ -994,7 +1035,7 @@ def k_convert(
     }
     hist_str += f"Reference angles: {reference_angles}, "
     if "hv" in da.dims:
-        hist_str += f"Inner potential: {da.attrs.get('V0', 12)} eV, "
+        hist_str += f"Inner potential: {da.metadata.calibration.V0 or 12*ureg('eV')}, "
     hist_str += f"Time taken: {pbar.format_dict['elapsed']:.2f}s."
     interpolated_data.history.add(hist_str)
 
@@ -1011,16 +1052,24 @@ def k_convert(
         pbar.leave = False
     pbar.close()
 
-    return interpolated_data
+    return interpolated_data.pint.quantify()
 
 
-def _convert_to_kz(data, kz, wf, Ek_range):
+def _convert_to_kz(da, kz, wf, Ek_range):
     # Get relevant parameters
-    k_along_slit_str = list(set(data.dims) - {"hv", "eV"})[0]
+    k_along_slit_str = list(set(da.dims) - {"hv", "eV"})[0]
     k_perp_slit_str = "ky" if k_along_slit_str == "kx" else "kx"
-    k_perp_slit = data.attrs.get(k_perp_slit_str, 0)
-    k_along_slit = data[k_along_slit_str].data
-    V0 = data.attrs.get("V0", 12)  # Default 12 eV
+    k_perp_slit = da.attrs.get(k_perp_slit_str, 0)
+    k_along_slit = da[k_along_slit_str].data
+    V0 = da.metadata.calibration.V0
+    if V0 is None:
+        V0 = 12 * ureg("eV")
+        analysis_warning(
+            f"No inner potential provided, defaulting to V0={V0}.",
+            "warning",
+            "Missing inner potential",
+        )
+    V0 = V0.to("eV").magnitude
 
     # Get kz values corresponding to the extremes of the range
     kz_ = _f_kz(
@@ -1029,10 +1078,9 @@ def _convert_to_kz(data, kz, wf, Ek_range):
         k_perp_slit,
         V0,
     )
-
     # Determine the kz values to interpolate onto, including manual range if specified
     default_k_step = (np.max(kz_) - np.min(kz_)) / (
-        2 * len(data.hv)
+        2 * len(da.hv)
     )  # Default is based on 0.5 step from the number of hv points
     kz_range = (np.min(kz_), np.max(kz_), default_k_step)
     # Restrict to manual kz range if specified
@@ -1051,20 +1099,19 @@ def _convert_to_kz(data, kz, wf, Ek_range):
         k_along_slit.reshape(1, 1, -1),
         k_perp_slit,
         V0,
-        data.eV.data.reshape(1, -1, 1),
+        da.eV.data.reshape(1, -1, 1),
         wf[0],
     )
 
     # Get true hv values accounting for the change which was previously encoded in an effective wf change
     wf_diff = wf - wf[0]
-    true_hv = data.hv.data + wf_diff
+    true_hv = da.hv.data + wf_diff
 
     # Do the interpolation, data originally [hv, eV, k_||]
     k_along_slit_vectorised = np.broadcast_to(
         k_along_slit.reshape(1, 1, -1), hv_values.shape
     )
-    BE_vectorised = np.broadcast_to(data.eV.data.reshape(1, -1, 1), hv_values.shape)
-
+    BE_vectorised = np.broadcast_to(da.eV.data.reshape(1, -1, 1), hv_values.shape)
     with numba_progress.ProgressBar(
         total=hv_values.size,
         dynamic_ncols=True,
@@ -1078,9 +1125,9 @@ def _convert_to_kz(data, kz, wf, Ek_range):
             BE_vectorised,
             k_along_slit_vectorised,
             true_hv,
-            data.eV.data,
+            da.eV.data,
             k_along_slit,
-            data,
+            da.pint.dequantify(),
             nb_pbar,
             input_core_dims=[
                 ["kz", "eV", k_along_slit_str],
@@ -1106,4 +1153,4 @@ def _convert_to_kz(data, kz, wf, Ek_range):
             }
         )
 
-    return interpolated_data
+    return interpolated_data.pint.quantify({"kz": "1/angstrom"})

@@ -243,7 +243,6 @@ def fit_gold(data, EF_correction_type="poly4", **kwargs):
         fit_result = data.fit(gold_model, params, independent_var="eV")
 
         # Fit the Fermi level correction
-        print(EF_correction_type)
         if EF_correction_type == "poly4":
             _order = 4
         elif EF_correction_type == "poly3":
@@ -336,7 +335,6 @@ def _estimate_EF(y, x):
     # Find all the peaks with prominence >= 2.5 * noise level and with width at least 3 points
     peaks_index, _ = find_peaks(y_filtered, prominence=noise * 2.5, width=3)
     EF = np.round(x[peaks_index].max(), 3)  # Estimated EF
-
     return EF
 
 
@@ -391,7 +389,7 @@ def estimate_EF(da):
         return EF_values_out
     else:
         try:
-            return _estimate_EF(da.DOS().fillna(0).data, da.eV.data)
+            return _estimate_EF(da.DOS().fillna(0).pint.dequantify().data, da.eV.data)
         except:
             return None
 

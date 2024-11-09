@@ -181,7 +181,7 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
         "x3": "saz",
     }
 
-    _manipulator_sign_conventions = {"polar": -1, "tilt": -1}
+    _manipulator_sign_conventions = {"polar": 1, "tilt": 1}
 
     _analyser_name_conventions = {
         "deflector_perp": "deflector_x",

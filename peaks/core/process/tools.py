@@ -834,7 +834,7 @@ def sym(data, flipped=False, fillna=True, **sym_kwarg):
     )
 
     # Flip the inputted DataArray by interpolating it onto the flipped axis
-    flipped_data = sym_data.interp({sym_axis: flipped_axis_xarray})
+    flipped_data = sym_data.pint.dequantify().interp({sym_axis: flipped_axis_xarray})
     if hasattr(sym_data.data, "units"):
         flipped_data = flipped_data.pint.quantify(sym_data.data.units)
 
@@ -859,6 +859,7 @@ def sym(data, flipped=False, fillna=True, **sym_kwarg):
     return sym_data
 
 
+@dequantify_quantify_wrapper
 def sym_nfold(data, nfold, expand=True, fillna=True, **centre_kwargs):
     """Function to perform an n-fold symmetrisation of data around a centre coordinate.
 
