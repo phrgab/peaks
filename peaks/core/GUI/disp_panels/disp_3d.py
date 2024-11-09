@@ -861,8 +861,14 @@ class _Disp3D(QtWidgets.QMainWindow):
         positions = {
             self.dims[i]: self.cursor_positions_selection[i].value() for i in range(3)
         }
-        positions["azi"] = self.rotation_selection.value()
-        norm_emission = self.data.metadata.get_normal_emission_from_values(positions)
+        positions["azi_offset"] = -self.rotation_selection.value()
+        try:
+            norm_emission = self.data.metadata.get_normal_emission_from_values(
+                positions
+            )
+        except AttributeError:
+            norm_emission = {}
+
         return norm_emission
 
     def _copy_norm_values(self):

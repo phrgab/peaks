@@ -444,32 +444,35 @@ class _Disp2D(QtWidgets.QMainWindow):
 
                 # Add a mirror DC if dim in mirror group
                 if dim in self.centering_dims:
-                    mirror_DC = sym(
-                        DC, flipped=True, **{dim: self.xhs[i].get_pos()[dim_no]}
-                    )
-                    if dim_no == 0:
-                        a, b = (
-                            mirror_DC.data,
-                            mirror_DC.coords[self.dims[dim_no]].values,
+                    try:
+                        mirror_DC = sym(
+                            DC, flipped=True, **{dim: self.xhs[i].get_pos()[dim_no]}
                         )
-                    else:
-                        a, b = (
-                            mirror_DC.coords[self.dims[dim_no]].values,
-                            mirror_DC.data,
+                        if dim_no == 0:
+                            a, b = (
+                                mirror_DC.data,
+                                mirror_DC.coords[self.dims[dim_no]].values,
+                            )
+                        else:
+                            a, b = (
+                                mirror_DC.coords[self.dims[dim_no]].values,
+                                mirror_DC.data,
+                            )
+                        self.DC_plot_items[f"{dim_no}_m"].append(
+                            self.DC_plots[dim_no].plot(
+                                a,
+                                b,
+                                pen=pg.mkPen(
+                                    color=self.DC_pens[i % len(self.DC_pens)],
+                                    style=QtCore.Qt.PenStyle.DashLine,
+                                ),
+                            )
+                        )  # Mirrored DC
+                        self.DC_plot_items[f"{dim_no}_m"][i].setVisible(
+                            self.show_mirror_checkbox.isChecked()
                         )
-                    self.DC_plot_items[f"{dim_no}_m"].append(
-                        self.DC_plots[dim_no].plot(
-                            a,
-                            b,
-                            pen=pg.mkPen(
-                                color=self.DC_pens[i % len(self.DC_pens)],
-                                style=QtCore.Qt.PenStyle.DashLine,
-                            ),
-                        )
-                    )  # Mirrored DC
-                    self.DC_plot_items[f"{dim_no}_m"][i].setVisible(
-                        self.show_mirror_checkbox.isChecked()
-                    )
+                    except Exception:
+                        pass
 
             # Add spans for crosshairs
             for i in range(self.num_xhs):
@@ -838,12 +841,16 @@ class _Disp2D(QtWidgets.QMainWindow):
             for i, xh in enumerate(self.xhs)
         ]
 
-        return self.current_data.metadata.get_normal_emission_from_values(
-            {
-                self.dims[0]: float(cursor_pos[0][0]),
-                self.dims[1]: float(cursor_pos[0][1]),
-            },
-        )
+        try:
+            norm_values = self.current_data.metadata.get_normal_emission_from_values(
+                {
+                    self.dims[0]: float(cursor_pos[0][0]),
+                    self.dims[1]: float(cursor_pos[0][1]),
+                },
+            )
+        except AttributeError:
+            norm_values = {}
+        return norm_values
 
     def _copy_norm_values(self):
         """Copy the normal emission values to the clipboard."""
