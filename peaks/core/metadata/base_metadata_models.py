@@ -211,7 +211,7 @@ class ARPESMetadataModel(BaseMetadataModel):
     deflector: ARPESDeflectorMetadataModel = ARPESDeflectorMetadataModel()
 
 
-class EFCorrectionModel(BaseMetadataModel):
+class ARPESCalibrationModel(BaseMetadataModel):
 
     EF_correction: Optional[
         Union[
@@ -220,3 +220,4 @@ class EFCorrectionModel(BaseMetadataModel):
             int,
         ]
     ] = None
+    V0: Optional[Union[str, Quantity]] = None
