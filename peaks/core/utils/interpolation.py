@@ -49,6 +49,11 @@ def _fast_linear_interpolate(desired_pos, orig_coords, orig_values):
     np.ndarray
         The interpolated values at the desired positions.
     """
+    # Check if the original coordinates are decreasing and reverse them if necessary
+    if orig_coords[0] > orig_coords[-1]:
+        orig_coords = orig_coords[::-1]
+        orig_values = orig_values[::-1]
+
     # Flatten the desired positions
     desired_pos = desired_pos.flatten()
     n_points = desired_pos.size
@@ -99,6 +104,11 @@ def _fast_linear_interpolate_rectilinear(desired_pos, orig_coords, orig_values):
     np.ndarray
         The interpolated values at the desired positions.
     """
+    # Check if the original coordinates are decreasing and reverse them if necessary
+    if orig_coords[0] > orig_coords[-1]:
+        orig_coords = orig_coords[::-1]
+        orig_values = orig_values[::-1]
+
     # Flatten the desired positions
     desired_pos = desired_pos.flatten()
     n_points = desired_pos.size
@@ -165,7 +175,13 @@ def _fast_bilinear_interpolate(
     np.ndarray
         The interpolated values at the desired positions.
     """
-    # Function implementation
+    # Check if the original coordinates are decreasing and reverse them if necessary
+    if orig_coords_dim0[0] > orig_coords_dim0[-1]:
+        orig_coords_dim0 = orig_coords_dim0[::-1]
+        orig_values = orig_values[::-1, :]
+    if orig_coords_dim1[0] > orig_coords_dim1[-1]:
+        orig_coords_dim1 = orig_coords_dim1[::-1]
+        orig_values = orig_values[:, ::-1]
 
     # Flatten the desired positions
     desired_shape = desired_pos_dim0.shape  # Store for later
@@ -250,6 +266,14 @@ def _fast_bilinear_interpolate_rectilinear(
     np.ndarray
         The interpolated values at the desired positions.
     """
+    # Check if the original coordinates are decreasing and reverse them if necessary
+    if orig_coords_dim0[0] > orig_coords_dim0[-1]:
+        orig_coords_dim0 = orig_coords_dim0[::-1]
+        orig_values = orig_values[::-1, :]
+    if orig_coords_dim1[0] > orig_coords_dim1[-1]:
+        orig_coords_dim1 = orig_coords_dim1[::-1]
+        orig_values = orig_values[:, ::-1]
+
     # Flatten the desired positions
     desired_shape = desired_pos_dim0.shape  # Store for later
     desired_pos_dim0 = desired_pos_dim0.flatten()
@@ -352,6 +376,16 @@ def _fast_trilinear_interpolate(
     np.ndarray
       The interpolated values at the desired positions.
     """
+    # Check if the original coordinates are decreasing and reverse them if necessary
+    if orig_coords_dim0[0] > orig_coords_dim0[-1]:
+        orig_coords_dim0 = orig_coords_dim0[::-1]
+        orig_values = orig_values[::-1, :, :]
+    if orig_coords_dim1[0] > orig_coords_dim1[-1]:
+        orig_coords_dim1 = orig_coords_dim1[::-1]
+        orig_values = orig_values[:, ::-1, :]
+    if orig_coords_dim2[0] > orig_coords_dim2[-1]:
+        orig_coords_dim2 = orig_coords_dim2[::-1]
+        orig_values = orig_values[:, :, ::-1]
 
     # Flatten the desired positions
     desired_shape = desired_pos_dim0.shape  # Store for later
@@ -466,6 +500,16 @@ def _fast_trilinear_interpolate_rectilinear(
     np.ndarray
         The interpolated values at the desired positions.
     """
+    # Check if the original coordinates are decreasing and reverse them if necessary
+    if orig_coords_dim0[0] > orig_coords_dim0[-1]:
+        orig_coords_dim0 = orig_coords_dim0[::-1]
+        orig_values = orig_values[::-1, :, :]
+    if orig_coords_dim1[0] > orig_coords_dim1[-1]:
+        orig_coords_dim1 = orig_coords_dim1[::-1]
+        orig_values = orig_values[:, ::-1, :]
+    if orig_coords_dim2[0] > orig_coords_dim2[-1]:
+        orig_coords_dim2 = orig_coords_dim2[::-1]
+        orig_values = orig_values[:, :, ::-1]
 
     # Flatten the desired positions
     desired_shape = desired_pos_dim0.shape  # Store for later

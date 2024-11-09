@@ -9,8 +9,10 @@ import pint
 import pint_xarray
 from termcolor import colored
 import pprint
+import copy
 
 from peaks.core.fileIO.base_data_classes.base_data_class import BaseDataLoader
+from peaks.core.utils.datatree_utils import _map_over_dt_containing_single_das
 
 ureg = pint_xarray.unit_registry
 
@@ -61,7 +63,7 @@ def display_metadata(da_or_model, mode="ANSI"):
             if key.startswith("_") and key not in ["_analysis_history"]
         }
     except AttributeError as e:
-        metadata = da_or_model.dict()
+        metadata = da_or_model if isinstance(da_or_model, dict) else da_or_model.dict()
     if mode.upper() == "ANSI":
         return "\n".join(display_colored_dict(metadata))
     elif mode.upper() == "HTML":
@@ -185,6 +187,7 @@ class Metadata:
             if k.startswith("_") and k != "_analysis_history"
         }.keys()
 
+    # -------------- Special set methods --------------
     def set_normal_emission(self, norm_values=None, **kwargs):
         """Set the normal emission angles for the scan from a dictionary of key: value pairs to specify
         the requires angles. Like `get_normal_emission_for`, but sets the values rather than returning them.
@@ -371,6 +374,92 @@ class Metadata:
         current_reference_data["scan_name"] = da.name
         return current_reference_data
 
+    def set_EF_correction(self, EF_correction):
+        """Sets the Fermi level correction for a :class:`xarray.DataArray`.
+
+        Parameters
+        ----------
+        EF_correction : float, int, dict or xarray.Dataset
+            Fermi level correction to apply. This should be:
+
+            - a dictionary of the form {'c0': 16.82, 'c1': -0.001, ...} specifying the coefficients of a
+            polynomial fit to the Fermi edge.
+            - a float or int, this will be taken as a constant shift in energy.
+            - an xarray.Dataset containing the fit_result as returned by the `peaks` `.fit_gold` method
+
+          Returns
+         -------
+         None
+             Adds the Fermi level correction to the data attributes.
+        """
+
+        # Do some checks on the EF_correction format
+        if isinstance(EF_correction, xr.Dataset):
+            EF_correction = copy.deepcopy(EF_correction.attrs.get("EF_correction"))
+            correction_type = "gold fit result"
+        else:
+            correction_type = type(EF_correction)
+        if not isinstance(EF_correction, (float, int, dict)):
+            raise ValueError(
+                "EF_correction must be a float, int, dict of fit coefficients or xarray.Dataset containing the fit_result "
+                "of the `.fit_gold` function."
+            )
+        if isinstance(EF_correction, dict):
+            expected_keys = [f"c{i}" for i in range(len(EF_correction))]
+            if not all(key in EF_correction for key in expected_keys):
+                raise ValueError(
+                    f"EF_correction dictionary must contain keys {expected_keys} for the polynomial fit."
+                )
+            for value in EF_correction.values():
+                if not isinstance(value, (float, int)):
+                    raise ValueError(
+                        "EF_correction dictionary must contain only floats or ints as values in the form "
+                        "{'c0': 16.82, 'c1': -0.001, ...} specifying the coefficients of a polynomial fit to the Fermi edge."
+                    )
+
+        self._obj.metadata.calibration.set(
+            "EF_correction", copy.deepcopy(EF_correction), add_history=False
+        )
+        self._obj.history.add(
+            f"EF_correction set to {EF_correction} from a passed {correction_type}."
+        )
+
+    def set_EF_correction_like(self, da_to_set_like):
+        """Sets the Fermi level correction for a :class:`xarray.DataArray` to be the same as another DataArray.
+
+        Parameters
+        ----------
+        da_to_set_like : xarray.DataArray
+            DataArray to copy the Fermi level correction from.
+
+        Returns
+        -------
+        None
+            Adds the Fermi level correction to the data attributes.
+        """
+        EF_correction = copy.deepcopy(da_to_set_like.metadata.get_EF_correction())
+        self._obj.metadata.calibration.set(
+            "EF_correction",
+            EF_correction,
+            add_history=False,
+        )
+        self._obj.history.add(
+            f"EF_correction set to {EF_correction} to match scan `{da_to_set_like.name}`."
+        )
+
+    def get_EF_correction(self):
+        """Get the Fermi level correction for a :class:`xarray.DataArray`.
+
+        Returns
+        -------
+        dict or float or int
+            Fermi level correction dictionary.
+        """
+        EF_correction = self._obj.metadata.calibration.EF_correction
+        if isinstance(EF_correction, MetadataItem):
+            return EF_correction.__dict__["_data"]
+        return EF_correction
+
 
 @xr.register_datatree_accessor("metadata")
 class MetadataDT:
@@ -421,6 +510,19 @@ class MetadataDT:
             return ds
 
         self._obj.map_over_datasets(apply_normal_to_ds)
+
+    def set_EF_correction(self, EF_correction):
+        _map_over_dt_containing_single_das(
+            self._obj, lambda da: da.metadata.set_EF_correction(EF_correction)
+        )
+
+    def set_EF_correction_like(self, da_to_set_like):
+        _map_over_dt_containing_single_das(
+            self._obj, lambda da: da.metadata.set_EF_correction_like(da_to_set_like)
+        )
+
+    set_EF_correction.__doc__ = Metadata.set_EF_correction.__doc__
+    set_EF_correction_like.__doc__ = Metadata.set_EF_correction_like.__doc__
 
 
 class MetadataItem:

@@ -145,12 +145,17 @@ def plot_grid(
 
     # Make the plots
     def _plot_single(da, count, vmin, vmax, cmap):
+        additional_plotting_kwargs = {
+            k: v
+            for k, v in {"vmin": vmin, "vmax": vmax, "cmap": cmap}.items()
+            if v is not None
+        }
         if nrows < 2 or ncols == 1:  # 1D grid
             ax = axes[count]
         else:  # 2D grid
             j0, j1 = divmod(count, ncols)
             ax = axes[j0][j1]
-        da.plot(ax=ax, vmin=vmin, vmax=vmax, cmap=cmap, **plotting_kwargs)  # Plot data
+        da.plot(ax=ax, **plotting_kwargs, **additional_plotting_kwargs)  # Plot data
         if plot_titles:  # If plot titles to be displayed, update them here
             ax.set_title(titles[count])
 

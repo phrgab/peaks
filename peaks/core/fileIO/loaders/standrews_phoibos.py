@@ -35,7 +35,7 @@ class StAndrewsSpecs(SpecsDataLoader):
         axis for axis in _manipulator_name_conventions.keys()
     ]
 
-    _manipulator_sign_conventions = {"polar": -1, "tilt": 1}
+    _manipulator_sign_conventions = {"polar": -1, "tilt": -1}
     _analyser_sign_conventions = {
         "theta_par": 1,
     }

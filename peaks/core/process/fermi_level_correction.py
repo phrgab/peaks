@@ -3,129 +3,9 @@
 """
 
 import numpy as np
-import xarray as xr
 import numexpr as ne
-import copy
 
 from peaks.core.utils.misc import analysis_warning
-from peaks.core.metadata.base_metadata_models import EFCorrectionModel
-from peaks.core.utils.datatree_utils import _map_over_dt_containing_single_das
-
-
-@xr.register_dataarray_accessor("EF_correction")
-class EFCorrection:
-    def __init__(self, xarray_obj):
-        self._obj = xarray_obj
-
-    def __repr__(self):
-        return self._obj.metadata.EF_correction.__repr__()
-
-    def set(self, EF_correction):
-        """Sets the Fermi level correction for a :class:`xarray.DataArray`.
-
-        Parameters
-        ----------
-        EF_correction : float, int, dict or xarray.Dataset
-            Fermi level correction to apply. This should be:
-
-            - a dictionary of the form {'c0': 16.82, 'c1': -0.001, ...} specifying the coefficients of a
-            polynomial fit to the Fermi edge.
-            - a float or int, this will be taken as a constant shift in energy.
-            - an xarray.Dataset containing the fit_result as returned by the `peaks` `.fit_gold` method
-
-          Returns
-         -------
-         None
-             Adds the Fermi level correction to the data attributes.
-        """
-
-        # Do some checks on the EF_correction format
-        if isinstance(EF_correction, xr.Dataset):
-            EF_correction = copy.deepcopy(EF_correction.attrs.get("EF_correction"))
-            correction_type = "gold fit result"
-        else:
-            correction_type = type(EF_correction)
-        if not isinstance(EF_correction, (float, int, dict)):
-            raise ValueError(
-                "EF_correction must be a float, int, dict of fit coefficients or xarray.Dataset containing the fit_result "
-                "of the `.fit_gold` function."
-            )
-        if isinstance(EF_correction, dict):
-            expected_keys = [f"c{i}" for i in range(len(EF_correction))]
-            if not all(key in EF_correction for key in expected_keys):
-                raise ValueError(
-                    f"EF_correction dictionary must contain keys {expected_keys} for the polynomial fit."
-                )
-            for value in EF_correction.values():
-                if not isinstance(value, (float, int)):
-                    raise ValueError(
-                        "EF_correction dictionary must contain only floats or ints as values in the form "
-                        "{'c0': 16.82, 'c1': -0.001, ...} specifying the coefficients of a polynomial fit to the Fermi edge."
-                    )
-
-        self._obj.attrs["_EF_correction"] = EFCorrectionModel(
-            EF_correction=copy.deepcopy(EF_correction)
-        )
-        self._obj.history.add(
-            f"EF_correction set to {EF_correction} from a passed {correction_type}."
-        )
-
-    def set_like(self, da):
-        """Sets the Fermi level correction for a :class:`xarray.DataArray` to be the same as another DataArray.
-
-        Parameters
-        ----------
-        da : xarray.DataArray
-            DataArray to copy the Fermi level correction from.
-
-        Returns
-        -------
-        None
-            Adds the Fermi level correction to the data attributes.
-        """
-
-        self.set(da.EF_correction.get())
-        # Patch the analysis history
-        current_history = self._obj._analysis_history.records[-1].record
-        new_history = (
-            current_history
-            + f" [set from existing EF_correction attributes of scan `{da.name}`]."
-        )
-        self._obj._analysis_history.records[-1].record = new_history
-
-    def get(self):
-        """Gets the Fermi level correction from a :class:`xarray.DataArray`."""
-
-        EF_correction_model = self._obj.attrs.get("_EF_correction")
-        try:
-            return EF_correction_model.EF_correction
-        except AttributeError:
-            return None
-
-
-@xr.register_datatree_accessor("EF_correction")
-class EFCorrectionDt:
-    def __init__(self, xarray_obj):
-        self._obj = xarray_obj
-
-    def __repr__(self):
-        if not self._obj.is_empty and hasattr(self._obj, "data"):
-            return self._obj.data.metadata.EF_correction.__repr__()
-        else:
-            return "Tree node is empty - no EF correction."
-
-    def set(self, EF_correction):
-        _map_over_dt_containing_single_das(
-            self._obj, lambda da: da.EF_correction.set(EF_correction)
-        )
-
-    def set_like(self, da_to_set_like):
-        _map_over_dt_containing_single_das(
-            self._obj, lambda da: da.EF_correction.set_like(da_to_set_like)
-        )
-
-    set.__doc__ = EFCorrection.set.__doc__
-    set_like.__doc__ = EFCorrection.set_like.__doc__
 
 
 def _get_EF_at_theta_par0(da):
@@ -145,9 +25,9 @@ def _get_EF_at_theta_par0(da):
 
     # Get EF_correction, estimating if not present
     if "hv" not in da.dims:
-        if not da.EF_correction.get():
+        if da.metadata.calibration.EF_correction is None:
             _add_estimated_EF(da)
-        EF_fn = da.EF_correction.get()
+        EF_fn = da.metadata.get_EF_correction()
         if isinstance(EF_fn, dict):
             return EF_fn["c0"]
         else:
@@ -179,7 +59,7 @@ def _get_E_shift_at_theta_par(da, theta_par, Ek=None):
     """
 
     # Get EF_correction
-    EF_fn = da.EF_correction.get()
+    EF_fn = da.metadata.get_EF_correction()
     if isinstance(EF_fn, dict) and len(EF_fn) > 1:  # Theta-par-dep EF correction
         shift_str = ""
         for i in range(1, len(EF_fn)):
@@ -291,7 +171,7 @@ def _add_estimated_EF(da):
     """
 
     # Check no existing EF correction exists
-    if hasattr(da, "EF_correction") and da.EF_correction.get():
+    if da.metadata.calibration.EF_correction is not None:
         if "hv" in da.dims and "EF" not in da.coords:
             pass
         else:
@@ -300,8 +180,8 @@ def _add_estimated_EF(da):
     # Estimate EF and add to data attributes
     estimated_EF = da.estimate_EF()
     if "hv" not in da.dims:
-        da.EF_correction.set(estimated_EF)
-        estimated_EF_str = f"{estimated_EF} eV."
+        da.metadata.set_EF_correction(estimated_EF)
+        estimated_EF_str = f"{estimated_EF} eV"
     else:
         da.coords.update({"EF": ("hv", estimated_EF)})
         estimated_EF_str = (
@@ -339,10 +219,9 @@ def _add_estimated_hv(da):
         return
 
     # Check if EF correction is present and estimate if not
-    if not da.EF_correction.get():
+    if da.metadata.calibration.EF_correction is None:
         _add_estimated_EF(da)
-
-    EF = da.EF_correction.get()
+    EF = da.metadata.get_EF_correction()
     if isinstance(EF, dict):
         EF = EF["c0"]
 
