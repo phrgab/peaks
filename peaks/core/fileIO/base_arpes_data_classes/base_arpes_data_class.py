@@ -24,6 +24,7 @@ from peaks.core.metadata.base_metadata_models import (
     ARPESSlitMetadataModel,
     ARPESAnalyserAnglesMetadataModel,
     ARPESAnalyserMetadataModel,
+    ARPESCalibrationModel,
 )
 
 from peaks.core.utils.misc import analysis_warning
@@ -143,7 +144,7 @@ class BaseARPESDataLoader(
 
         # Try to parse to counts/s if possible
         try:
-            if "count" in str(da.pint.units):
+            if "count" in str(da.pint.units) and "/s" not in str(da.pint.units):
                 t = (
                     da.metadata.analyser.scan.dwell.to("s")
                     * da.metadata.analyser.scan.sweeps
@@ -199,9 +200,10 @@ class BaseARPESDataLoader(
         )
 
         # Return the model, and a list of any metadata that should be warned if missing
-        return {"_analyser": arpes_metadata}, [
-            f"analyser_{i}" for i in cls._analyser_include_in_metadata_warn
-        ]
+        return {
+            "_calibration": ARPESCalibrationModel(),
+            "_analyser": arpes_metadata,
+        }, [f"analyser_{i}" for i in cls._analyser_include_in_metadata_warn]
 
     # Methods to parse manipulator reference values (normal emissions etc.)
     @classmethod
@@ -223,11 +225,13 @@ class BaseARPESDataLoader(
             # Slit angle 0, along the polar axis
             polar_group = {"polar", "deflector_perp", "ana_polar"}
             tilt_group = {"tilt", "deflector_parallel", "theta_par", "ana_tilt"}
+            azi_group = {"azi", "azi_offset"}
         else:
             # Slit angle 90, perpendicular to the polar axis
             polar_group = {"polar", "deflector_parallel", "theta_par", "ana_polar"}
             tilt_group = {"tilt", "deflector_perp", "ana_tilt"}
-        return {"polar": polar_group, "tilt": tilt_group, "azi": {"azi"}}
+            azi_group = {"azi", "azi_offset"}
+        return {"polar": polar_group, "tilt": tilt_group, "azi": azi_group}
 
     @classmethod
     def _parse_reference_value(cls, da, axis_key, value, axis_group):
@@ -335,11 +339,11 @@ class BaseARPESDataLoader(
         Convert angles to the conventions of Ishida and Shin.
         """
 
-        missing_values = []
-        missing_references = []
+        missing_values = {}
+        missing_references = {}
 
         # Helper functions
-        def get_angle(da, axis, default=0.0 * ureg("rad")):
+        def get_angle(da, axis, default=0.0 * ureg("rad"), add_to_warning_list=True):
             """Get the angle value for a given axis.
 
             If the value is missing, return the default value
@@ -360,11 +364,8 @@ class BaseARPESDataLoader(
             """
             value = cls._get_axis_value(da, axis)
             if value is None:
-                if not quiet:
-                    print(
-                        f"Warning: Missing value for axis '{axis}'. Using default {default}."
-                    )
-                missing_values.append(axis)
+                if add_to_warning_list:
+                    missing_values[axis] = str(default)
                 return default
             else:
                 return value.to("rad") * cls._get_sign_convention(axis)
@@ -391,11 +392,7 @@ class BaseARPESDataLoader(
             """
             value = getattr(da.metadata.manipulator, axis).reference_value
             if value is None:
-                if not quiet:
-                    print(
-                        f"Warning: Missing reference value for axis '{axis}'. Using default {default}."
-                    )
-                missing_references.append(axis)
+                missing_references[axis] = str(default)
                 return default
             else:
                 return value.to("rad") * cls._get_sign_convention(axis)
@@ -407,12 +404,14 @@ class BaseARPESDataLoader(
 
         # Retrieve analyser angles
         analyser_angles = {
-            axis: get_angle(da, f"ana_{axis}") for axis in ["polar", "tilt", "azi"]
+            axis: get_angle(da, f"ana_{axis}", add_to_warning_list=False)
+            for axis in ["polar", "tilt", "azi"]
         }
 
         # Retrieve deflector angles
         deflector_angles = {
-            axis: get_angle(da, f"deflector_{axis}") for axis in ["parallel", "perp"]
+            axis: get_angle(da, f"deflector_{axis}", add_to_warning_list=False)
+            for axis in ["parallel", "perp"]
         }
 
         # Determine the type based on analyser azi angle
@@ -458,6 +457,20 @@ class BaseARPESDataLoader(
 
         delta = manipulator_angles["azi"]
         delta_0 = get_reference_angle(da, "azi", default=delta)
+
+        # Check and warn for missing values
+        if not quiet and missing_values:
+            analysis_warning(
+                missing_values,
+                "warning",
+                "Missing manipulator angle values. Using default values.",
+            )
+        if not quiet and missing_references:
+            analysis_warning(
+                missing_references,
+                "warning",
+                "Missing manipulator reference values. Using default values.",
+            )
 
         angle_dict = {
             "type": type_,
