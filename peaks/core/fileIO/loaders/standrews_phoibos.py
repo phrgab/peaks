@@ -42,3 +42,16 @@ class StAndrewsSpecs(SpecsDataLoader):
 
     _SPECS_metadata_key_mappings = {}
     _SPECS_metadata_units = {}
+
+    @classmethod
+    def _load_data(cls, fpath, lazy):
+        data_dict = super()._load_data(fpath, lazy)
+
+        if "azi" in data_dict["coords"] and "tilt" in data_dict["coords"]:
+            # The azi should be a secondary axis to the tilt, and should be removed
+            new_coords = {
+                dim: coord for dim, coord in data_dict["coords"].items() if dim != "azi"
+            }
+            data_dict["coords"] = new_coords
+
+        return data_dict
