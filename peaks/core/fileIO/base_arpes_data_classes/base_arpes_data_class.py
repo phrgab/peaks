@@ -248,7 +248,9 @@ class BaseARPESDataLoader(
 
         # Primary axis value (user-specified)
         reference_angles.append(
-            value if axis_key in ["polar", "tilt", "azi"] else -value
+            value
+            if axis_key in ["polar", "tilt", "azi", "ana_polar", "ana_tilt"]
+            else -value
         )  # If one of the primary manipulator dims, no sign change is needed
         reference_signs.append(cls._get_sign_convention(axis_key))
 
