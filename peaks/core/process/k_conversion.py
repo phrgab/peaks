@@ -6,7 +6,6 @@ import numpy as np
 import numexpr as ne
 import pint
 import xarray as xr
-from numba import NonexistentTargetError
 from scipy.constants import m_e, hbar, electron_volt, angstrom
 import numba_progress
 from tqdm.notebook import tqdm
