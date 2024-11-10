@@ -2,14 +2,16 @@ import re
 import zipfile
 
 import numpy as np
+import pint_xarray
 
 from peaks import BaseIBWDataLoader
 from peaks.core.fileIO.base_arpes_data_classes.base_arpes_data_class import (
     BaseARPESDataLoader,
-    ureg,
 )
 from peaks.core.fileIO.loc_registry import register_loader
 from peaks.core.utils.misc import analysis_warning
+
+ureg = pint_xarray.unit_registry
 
 
 @register_loader
