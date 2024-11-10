@@ -1,10 +1,6 @@
 import pint
 import pint_xarray
 import numpy as np
-import copy
-
-from h5py.h5r import get_region
-from sphinx.ext.intersphinx import missing_reference
 
 from peaks.core.fileIO.base_data_classes.base_manipulator_class import (
     BaseManipulatorDataLoader,
