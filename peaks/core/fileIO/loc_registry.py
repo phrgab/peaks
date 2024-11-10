@@ -86,7 +86,7 @@ class IdentifyLoc:
     @staticmethod
     def _handler_krx(fname):
         # If the file is .krx format, the location must be StA-MBS
-        return "StA-MBS"
+        return "StA_MBS"
 
     @staticmethod
     def _handler_txt(fname):
@@ -121,9 +121,10 @@ class IdentifyLoc:
                 or "soleil" in location_identifier.lower()
             ):
                 return "SOLEIL CASSIOPEE"
-            # If the file does not follow the SES format, it must be StA-MBS
-            else:
-                return "StA-MBS"
+
+        elif "Lines" in line0:
+            # This should be MBS format, default to StA loader
+            return "StA_MBS"
 
     @staticmethod
     def _handler_zip(fname):
