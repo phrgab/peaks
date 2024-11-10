@@ -302,7 +302,7 @@ class BaseDataLoader:
         # For ones with file extensions, generate the handlers from the methods in IdentifyLocation
         handlers.update(
             {
-                f".{method_name.split("_handler_")[1]}": method
+                f".{method_name.split('_handler_')[1]}": method
                 for method_name, method in inspect.getmembers(
                     IdentifyLoc, predicate=inspect.isfunction
                 )
