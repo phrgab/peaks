@@ -7,12 +7,10 @@ from scipy.signal import find_peaks
 from tqdm.notebook import tqdm
 import matplotlib.pyplot as plt
 
-from .models import LinearDosFermiModel
-from peaks.utils.accessors import register_accessor
-from peaks.utils import analysis_warning
+from peaks.core.fitting.models import LinearDosFermiModel
+from peaks.core.utils.misc import analysis_warning
 
 
-@register_accessor(xr.DataArray)
 def fit(
     data_array,
     model,
@@ -68,6 +66,9 @@ def fit(
         )
         return np.concatenate([best_values, uncertainties, [result]])
 
+    # Dequantify the data array
+    data_array = data_array.pint.dequantify()
+
     # Check independent_var is a valid dimension if supplied and set if None
     if independent_var is not None:
         if independent_var not in data_array.dims:
@@ -119,6 +120,7 @@ def fit(
                 output_core_dims=[["fit_params"]],
                 vectorize=True,
                 output_dtypes=[object],
+                keep_attrs=False,
             )
             fit_results.append(results_subset)
 
@@ -142,6 +144,7 @@ def fit(
                 "output_sizes": {"fit_params": len(params) * 2 + 1},
                 "allow_rechunk": True,
             },
+            keep_attrs=False,
         )
 
     # Create parameter names, adding "_stderr" for uncertainties, and "model_result" for the serialized data
@@ -168,7 +171,6 @@ def fit(
     return results_ds
 
 
-@register_accessor(xr.DataArray)
 def fit_gold(data, EF_correction_type="poly4", **kwargs):
     """
     Helper function for fitting a gold reference scan to a standard LinearDosFermiModel with parameters:
@@ -215,7 +217,7 @@ def fit_gold(data, EF_correction_type="poly4", **kwargs):
         gold_fit = pks.fit_gold(gold_data, bg_slope=0)
 
     """
-
+    data = data.pint.dequantify()
     if data.ndim > 2:
         raise ValueError("Expected 1D or 2D DataArray to be supplied.")
     if "eV" not in data.dims:
@@ -333,12 +335,10 @@ def _estimate_EF(y, x):
     # Find all the peaks with prominence >= 2.5 * noise level and with width at least 3 points
     peaks_index, _ = find_peaks(y_filtered, prominence=noise * 2.5, width=3)
     EF = np.round(x[peaks_index].max(), 3)  # Estimated EF
-
     return EF
 
 
-@register_accessor(xr.DataArray)
-def estimate_EF(data):
+def estimate_EF(da):
     """Make an approximate guess for the Fermi level from the corresponding peak in the derivative of the data
     :::{warning}
     This is only a very approximate method for use in making estiamtes to feed into fit functions and GUIs etc.
@@ -356,20 +356,20 @@ def estimate_EF(data):
         The estimated Fermi level.
     """
 
-    if "eV" not in data.dims:
+    if "eV" not in da.dims:
         raise ValueError(
             "Data must have an 'eV' dimension to estimate the Fermi level."
         )
 
     # Check for an hv scan
-    if "hv" in data.dims and data.attrs.get("eV_type") == "kinetic":
+    if "hv" in da.dims and "kinetic" in da.metadata.analyser.scan.eV_type.lower():
         # Iterate through the photon energies and estimate at each
         EF_values = []
-        for hv in data.hv.data:
-            data_hv = data.disp_from_hv(hv=hv)
+        for hv in da.hv.data:
+            data_hv = da.disp_from_hv(hv=hv)
             EF = _estimate_EF(data_hv.DOS().fillna(0).data, data_hv.eV.data)
             EF_values.append(EF)
-        EF_data = xr.DataArray(EF_values, dims=["hv"], coords={"hv": data.hv.data})
+        EF_data = xr.DataArray(EF_values, dims=["hv"], coords={"hv": da.hv.data})
         # Fit the result to a 2nd order polynomial
         fit_order = 3
         fit_result = EF_data.quick_fit.poly(fit_order)
@@ -388,145 +388,12 @@ def estimate_EF(data):
         EF_values_out = fit_model.eval(x=EF_data.hv.data)
         return EF_values_out
     else:
-        return _estimate_EF(data.DOS().fillna(0).data, data.eV.data)
+        try:
+            return _estimate_EF(da.DOS().fillna(0).pint.dequantify().data, da.eV.data)
+        except:
+            return None
 
 
-QUICK_FIT_COMMON_DOC = """
-
-Parameters
------------
-indepndent_var : str, optional
-    The dimension corresponding to the indpendent variable. Must be specified if data has >1 dimension.
-**kwargs : optional
-    Additional keyword arguments to initialise parameter values.
-
-Returns
----------
-xarray.DataSet
-    A DataSet containing the best-fit parameters, their uncertainties, and the :class:`lmfit.ModelResult` object.
-"""
-
-
-@xr.register_dataarray_accessor("quick_fit")
-class QuickFit:
-    def __init__(self, xarray_obj):
-        self._obj = xarray_obj
-
-    def _get_data_for_guess(self, model, independent_var, **kwargs):
-        if independent_var is None and self._obj.ndim > 1:
-            raise ValueError(
-                f"Supplied data is {self._obj.ndim}-dimensional. Please specify the independent variable "
-                f"with the argument `independent_var=_dim_`."
-            )
-        if self._obj.ndim > 1:
-            dependent_vars = set(self._obj.dims) - set([independent_var])
-
-            return (
-                self._obj.isel({dim: 0 for dim in dependent_vars}).squeeze().compute()
-            )
-        else:
-            return self._obj.compute()
-
-    def _get_percentile_data(self, data, percentile=10, region="start"):
-        """Get the data below or above a certain percentile of the dimension range
-
-        Parameters
-        -----------
-        data : xarray.DataArray
-            The data to extract the percentile from.
-        percentile : int, optional
-            The percentile to use for the cutoff. Defaults to 10.
-        region : str, optional
-            The region of the data to use for the fit. Options are 'start' or 'end'. Defaults to 'start'.
-
-        Returns
-        --------
-        xarray.DataArray
-            The data below or above the percentile cutoff.
-        """
-
-        dim = data.dims[0]
-        cutoff = np.percentile(data[dim].data, percentile)
-        if region == "start":
-            return data.sel({dim: slice(None, cutoff)})
-        elif region == "end":
-            return data.sel({dim: slice(cutoff, None)})
-        else:
-            raise ValueError("Region must be 'start' or 'end'")
-
-    def linear(self, independent_var=None, **kwargs):
-        """Quick fit to a linear model"""
-        from .models import LinearModel
-
-        data_for_guess = self._get_data_for_guess(
-            LinearModel(), independent_var, **kwargs
-        )
-        params = LinearModel().guess(data_for_guess, **kwargs)
-        return fit(self._obj, LinearModel(), params, independent_var)
-
-    linear.__doc__ = linear.__doc__ + QUICK_FIT_COMMON_DOC
-
-    def poly(self, degree=3, independent_var=None, **kwargs):
-        """Quick fit to a polynomial model
-
-        Parameters
-        -----------
-        independent_var : str, optional
-            The dimension corresponding to the independent variable. Must be specified if data has >1 dimension.
-        degree : int, optional
-            The degree of the polynomial model. Defaults to 3.
-        **kwargs : optional
-            Additional keyword arguments to initialise parameter values.
-
-        Returns
-        ---------
-        xarray.DataSet
-            A DataSet containing the best-fit parameters, their uncertainties, and the :class:`lmfit.ModelResult` object.
-        """
-        from .models import PolynomialModel
-
-        data_for_guess = self._get_data_for_guess(
-            PolynomialModel(degree=degree), independent_var
-        )
-        params = PolynomialModel(degree=degree).guess(data_for_guess, **kwargs)
-        return fit(self._obj, PolynomialModel(degree=degree), params, independent_var)
-
-    def _peak_model(self, peak, independent_var, **kwargs):
-        """Quick fit to a Gaussian model"""
-        from .models import LinearModel
-
-        if peak == "gaussian":
-            from .models import GaussianModel
-
-            peak_model = GaussianModel()
-        elif peak == "lorentzian":
-            from .models import LorentzianModel
-
-            peak_model = LorentzianModel()
-
-        model = peak_model + LinearModel()
-        data_for_guess = self._get_data_for_guess(model, independent_var, **kwargs)
-        params = model.make_params(**kwargs)
-        params.update(peak_model.guess(data_for_guess, **kwargs))
-        params.update(
-            LinearModel().guess(self._get_percentile_data(data_for_guess), **kwargs)
-        )
-        return fit(self._obj, model, params, independent_var)
-
-    def gaussian(self, independent_var=None, **kwargs):
-        """Quick fit to a Gaussian model"""
-        return self._peak_model("gaussian", independent_var, **kwargs)
-
-    gaussian.__doc__ = gaussian.__doc__ + QUICK_FIT_COMMON_DOC
-
-    def lorentzian(self, independent_var=None, **kwargs):
-        """Quick fit to a Lorentzian model"""
-        return self._peak_model("lorentzian", independent_var, **kwargs)
-
-    lorentzian.__doc__ = lorentzian.__doc__ + QUICK_FIT_COMMON_DOC
-
-
-@register_accessor(xr.Dataset)
 def save_fit(fit_result, filename):
     """
     Save the results of a fit.

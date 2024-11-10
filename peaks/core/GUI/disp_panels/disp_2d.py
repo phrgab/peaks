@@ -15,15 +15,16 @@ from PyQt6.QtWidgets import (
 import pyqtgraph as pg
 import numpy as np
 import pyperclip
-
+import pint
 
 from peaks.core.GUI.GUI_utils import (
     Crosshair,
     CircularListWidget,
     KeyPressGraphicsLayoutWidget,
 )
-from peaks.core.fileIO.fileIO_opts import LocOpts
 from peaks.core.process.tools import sym, estimate_sym_point
+from peaks.core.metadata.meatdata_methods import display_metadata
+from peaks.core.GUI.GUI_utils.cursor_stats import _parse_norm_emission_cursor_stats
 
 
 def _disp_2d(data, primary_dim, exclude_from_centering):
@@ -58,7 +59,7 @@ class _Disp2D(QtWidgets.QMainWindow):
         # Parse data
         if primary_dim:  # Set correct primary axis
             data = [array.transpose(primary_dim, ...) for array in data]
-        self.data_arrays = [array.compute() for array in data]
+        self.data_arrays = [array.compute().pint.dequantify() for array in data]
 
         # Initialize some parameters
         self.init = False
@@ -178,6 +179,11 @@ class _Disp2D(QtWidgets.QMainWindow):
         bottom_panel_layout_left = QVBoxLayout()
         bottom_panel_layout_left.setSpacing(5)
         bottom_panel_layout.addLayout(bottom_panel_layout_left)
+
+        # Create a scroll area for cursor_stats
+        scroll_area = QtWidgets.QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setFixedHeight(150)
         self.cursor_stats = QLabel()
         self.cursor_stats.setStyleSheet(
             "QLabel { background-color : black; color : white; }"
@@ -187,8 +193,8 @@ class _Disp2D(QtWidgets.QMainWindow):
         )
         self.cursor_stats.setWordWrap(True)
         self.cursor_stats.setMaximumWidth(450)
-        self.cursor_stats.setMinimumHeight(100)
-        bottom_panel_layout_left.addWidget(self.cursor_stats)
+        scroll_area.setWidget(self.cursor_stats)
+        bottom_panel_layout_left.addWidget(scroll_area)
 
         # Cursor integration controls
         cursor_integrations = QHBoxLayout()
@@ -341,42 +347,10 @@ class _Disp2D(QtWidgets.QMainWindow):
             dim for dim in self.dims if dim not in self.exclude_from_centering
         ]
 
-        # Attempt to read some metadata
+        # Read scan metadata
         self.metadata_text = "<span style='color:white'>"
-        if "beamline" in self.current_data.attrs:
-            attrs = self.current_data.attrs
-            loc = attrs.get("beamline")
-            self.current_data_loc_angle_conventions = LocOpts.get_conventions(loc)
-
-            attr_names = [
-                "x1",
-                "x2",
-                "x3",
-                "ana_polar",
-                "polar",
-                "tilt",
-                "azi",
-                "defl_par",
-                "defl_perp",
-                "temp_sample",
-                "hv",
-            ]
-            for attr in attr_names:
-                meta = attrs.get(attr, None)
-                meta_name = self.current_data_loc_angle_conventions.get(f"{attr}_name")
-                if meta and meta_name:
-                    self.metadata_text += f"{attr} [{meta_name}]={meta} | "
-                elif meta:
-                    self.metadata_text += f"{attr}={meta} | "
+        self.metadata_text += display_metadata(self.current_data, "html")
         self.metadata_text += "</span><br>"
-
-        # Check if this is an ARPES analyser for automated normal emission parsing
-        if "ana_slit_angle" in self.current_data.attrs:
-            self.analyser_type = self.current_data_loc_angle_conventions.get(
-                "ana_type", None
-            )
-        else:
-            self.analyser_type = None
 
     def _set_main_plot(self, cmap, c_range, xh_pos):
         # Set main image
@@ -470,32 +444,35 @@ class _Disp2D(QtWidgets.QMainWindow):
 
                 # Add a mirror DC if dim in mirror group
                 if dim in self.centering_dims:
-                    mirror_DC = sym(
-                        DC, flipped=True, **{dim: self.xhs[i].get_pos()[dim_no]}
-                    )
-                    if dim_no == 0:
-                        a, b = (
-                            mirror_DC.data,
-                            mirror_DC.coords[self.dims[dim_no]].values,
+                    try:
+                        mirror_DC = sym(
+                            DC, flipped=True, **{dim: self.xhs[i].get_pos()[dim_no]}
                         )
-                    else:
-                        a, b = (
-                            mirror_DC.coords[self.dims[dim_no]].values,
-                            mirror_DC.data,
+                        if dim_no == 0:
+                            a, b = (
+                                mirror_DC.data,
+                                mirror_DC.coords[self.dims[dim_no]].values,
+                            )
+                        else:
+                            a, b = (
+                                mirror_DC.coords[self.dims[dim_no]].values,
+                                mirror_DC.data,
+                            )
+                        self.DC_plot_items[f"{dim_no}_m"].append(
+                            self.DC_plots[dim_no].plot(
+                                a,
+                                b,
+                                pen=pg.mkPen(
+                                    color=self.DC_pens[i % len(self.DC_pens)],
+                                    style=QtCore.Qt.PenStyle.DashLine,
+                                ),
+                            )
+                        )  # Mirrored DC
+                        self.DC_plot_items[f"{dim_no}_m"][i].setVisible(
+                            self.show_mirror_checkbox.isChecked()
                         )
-                    self.DC_plot_items[f"{dim_no}_m"].append(
-                        self.DC_plots[dim_no].plot(
-                            a,
-                            b,
-                            pen=pg.mkPen(
-                                color=self.DC_pens[i % len(self.DC_pens)],
-                                style=QtCore.Qt.PenStyle.DashLine,
-                            ),
-                        )
-                    )  # Mirrored DC
-                    self.DC_plot_items[f"{dim_no}_m"][i].setVisible(
-                        self.show_mirror_checkbox.isChecked()
-                    )
+                    except Exception:
+                        pass
 
             # Add spans for crosshairs
             for i in range(self.num_xhs):
@@ -844,32 +821,46 @@ class _Disp2D(QtWidgets.QMainWindow):
             )
         else:
             cursor_text += "<br>"
-        cursor_text += "<hr>"
-
-        # Add metadata
-        cursor_text += self.metadata_text
-        cursor_text += "<br>"
 
         # Add normal emission
-        if (
-            self.analyser_type
-            and "theta_par" in self.dims
-            and cursor_pos[0] is not None
-        ):
-            cursor_text += self._get_norm_values(
-                cursor_pos[0][self.dims.index("theta_par")]
-            )
-
+        if cursor_pos[0] is not None:
+            norm_emission = self._get_norm_values()
+            if norm_emission:
+                cursor_text += "<br>"
+                cursor_text += _parse_norm_emission_cursor_stats(
+                    self.current_data, norm_emission
+                )
+        # Add metadata
+        cursor_text += self.metadata_text
+        # Set text
         self.cursor_stats.setText(cursor_text)
 
-    def _copy_norm_value(self):
-        """Copy the normal emission value to the clipboard."""
-        cursor_text = self.cursor_stats.text()
-        norm_value = float(cursor_text.split("=")[-1].split("<")[0].strip())
-        if self.analyser_type == "I" or self.analyser_type == "Ip":  # Type I
-            pyperclip.copy(f".attrs['norm_tilt'] = {norm_value}")
-        elif self.analyser_type == "II" or self.analyser_type == "IIp":
-            pyperclip.copy(f".attrs['norm_polar'] = {norm_value}")
+    def _get_norm_values(self):
+        cursor_pos = [
+            xh.get_pos() if self.show_DCs_checkboxes[i].isChecked() else None
+            for i, xh in enumerate(self.xhs)
+        ]
+
+        try:
+            norm_values = self.current_data.metadata.get_normal_emission_from_values(
+                {
+                    self.dims[0]: float(cursor_pos[0][0]),
+                    self.dims[1]: float(cursor_pos[0][1]),
+                },
+            )
+        except AttributeError:
+            norm_values = {}
+        return norm_values
+
+    def _copy_norm_values(self):
+        """Copy the normal emission values to the clipboard."""
+        # Current norm values
+        norm_values = self._get_norm_values()
+        norm_values_to_return = {
+            k: str(v) if isinstance(v, pint.Quantity) else v
+            for k, v in norm_values.items()
+        }
+        pyperclip.copy(f".metadata.set_normal_emission({norm_values_to_return})")
 
     # ##############################
     # Signal connections
@@ -911,7 +902,7 @@ class _Disp2D(QtWidgets.QMainWindow):
         self.align_button.clicked.connect(self._align_data)
         self.connected_plot_signals.append(self.align_button.clicked)
         # Connect copy button
-        self.copy_button.clicked.connect(self._copy_norm_value)
+        self.copy_button.clicked.connect(self._copy_norm_values)
 
     def _connect_key_press_signals(self):
         signals = [self.graphics_layout.keyPressed, self.graphics_layout.keyReleased]
@@ -1002,51 +993,3 @@ class _Disp2D(QtWidgets.QMainWindow):
         return (min(self.ranges[0]) <= pos[0] <= max(self.ranges[0])) and (
             (min(self.ranges[1]) <= pos[1] <= max(self.ranges[1]))
         )
-
-    def _get_norm_values(self, theta_par):
-        """Attempt to extract normal emission based on analyser configuration
-        and metadata.
-
-        Parameters
-        ----------
-        theta_par : float
-            theta_par value for passing to the normal emission calculation.
-        """
-
-        r, g, b = self.DC_pens[0]
-        cursor_text = f"<span style='color:#{r:02x}{g:02x}{b:02x}'>"
-        if self.analyser_type == "I" or self.analyser_type == "Ip":  # Type I
-            # Norm tilt
-            tilt = self.current_data.attrs.get("tilt", 0) or 0
-            defl_par = self.current_data.attrs.get("defl_par", 0) or 0
-            norm_tilt = (
-                (self.current_data_loc_angle_conventions.get("tilt", 1) * tilt)
-                + (
-                    self.current_data_loc_angle_conventions.get("defl_par", 1)
-                    * defl_par
-                )
-                - (
-                    self.current_data_loc_angle_conventions.get("theta_par", 1)
-                    * theta_par
-                )
-            )
-            cursor_text += f"Cursor 0: Normal emission [{self.current_data_loc_angle_conventions.get('tilt_name')}] = {norm_tilt:.3f}</span><br>"
-
-        else:  # Type II
-            # Norm polar
-            polar = self.current_data.attrs.get("polar", 0) or 0
-            defl_par = self.current_data.attrs.get("defl_par", 0) or 0
-            norm_polar = (
-                (self.current_data_loc_angle_conventions.get("polar", 1) * polar)
-                + (
-                    self.current_data_loc_angle_conventions.get("defl_par", 1)
-                    * defl_par
-                )
-                - (
-                    self.current_data_loc_angle_conventions.get("theta_par", 1)
-                    * theta_par
-                )
-            )
-            cursor_text += f"Cursor 0: Normal emission [{self.current_data_loc_angle_conventions.get('polar_name')}] = {norm_polar:.3f}</span><br>"
-
-        return cursor_text

@@ -11,7 +11,8 @@ dependencies = [
         "ipywidgets (>=8.1,<9)",
         "numpy (>=2.0,<3)",
         "matplotlib (>=3.9,<4)",
-        "xarray (>=2024.6.0)",
+        "xarray (>=2024.10.0)",
+        "pint-xarray (>=0.4,<1)",
         "dask[diagnostics] (>=2024.6.0)",
         "h5py (>=3.11,<4)",
         "tqdm (>=4.66,<5)",
@@ -29,6 +30,10 @@ dependencies = [
         "jupyterlab",
         "pyperclip (>=1.9,<2)",
         "lmfit (>=1.3,<2)",
+        "pydantic (>=2.9,<3)",
+        "termcolor (>=2.5,<3)",
+        "h5netcdf (>=1.4,<2)",
+        "zarr (>=2.18,<3)",
         ]
 dynamic = ["version"]
 

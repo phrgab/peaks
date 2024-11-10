@@ -4,7 +4,7 @@
 
 import sys
 from functools import partial
-from PyQt6 import QtCore, QtWidgets, QtGui
+from PyQt6 import QtCore, QtWidgets
 from PyQt6.QtWidgets import (
     QApplication,
     QLabel,
@@ -22,8 +22,6 @@ from ..GUI_utils import (
     KeyPressGraphicsLayoutWidget,
 )
 from .disp_2d import _Disp2D
-from peaks.core.fileIO.fileIO_opts import LocOpts
-import time
 
 
 def _disp_4d(data, primary_dim):
@@ -115,8 +113,8 @@ class _Disp4D(QtWidgets.QMainWindow):
         left_column_container.setMaximumWidth(500)
         left_column_layout = QVBoxLayout(left_column_container)
 
-        _, _, self.primary_dims_xh, _ = self._build_primary_dims_explorer_plot(
-            left_column_layout
+        _, _, self.primary_dims_xh, _, self.primary_dims_explorer_layout = (
+            self._build_primary_dims_explorer_plot(left_column_layout)
         )
         self._build_primary_dims_explorer_controls(left_column_layout)
 
@@ -134,6 +132,7 @@ class _Disp4D(QtWidgets.QMainWindow):
             self.primary_dims_roi_plot_image_item,
             xh,
             self.primary_dims_roi_plot_colorbar,
+            _,
         ) = self._build_primary_dims_explorer_plot(left_column_layout)
         xh.set_visible(False)
         # Add a ROI
@@ -241,6 +240,7 @@ class _Disp4D(QtWidgets.QMainWindow):
             primary_dims_explorer_plot_image_item,
             primary_dims_xh,
             colorbar,
+            primary_dims_explorer_layout,
         )
 
     def _build_primary_dims_explorer_controls(self, left_column_layout):
@@ -377,6 +377,9 @@ class _Disp4D(QtWidgets.QMainWindow):
             signal = self.dim01_sliders[i].sliderMoved
             signal.connect(self._update_primary_dim_xhs_from_sliders)
 
+        # Set key press signals
+        self.primary_dims_explorer_layout.keyPressed.connect(self._key_press_event)
+
         # Connect signals for ROI tab
         self.resetplots_button.clicked.connect(self._reset_roi_plots)
         self.setROI_button.clicked.connect(self._set_ROI_from_plot)
@@ -408,11 +411,15 @@ class _Disp4D(QtWidgets.QMainWindow):
 
         # Check the real axis name if possible
         self.dim_labels = []
-        angle_conventions = LocOpts.get_conventions(self.data.attrs.get("beamline"))
-        for i in range(2):
-            real_axis_name = angle_conventions.get(f"{self.dims[i]}_name")
+        for dim in self.dims:
+            real_axis_name = None
+            if hasattr(self.data.metadata, "manipulator"):
+                if hasattr(self.data.metadata.manipulator, dim):
+                    real_axis_name = getattr(
+                        self.data.metadata.manipulator, dim
+                    ).local_name
             self.dim_labels.append(
-                f"{self.dims[i]} [{real_axis_name}]" if real_axis_name else self.dims[i]
+                f"{dim} [{real_axis_name}]" if real_axis_name else dim
             )
 
         # Make a ROI store
@@ -500,6 +507,29 @@ class _Disp4D(QtWidgets.QMainWindow):
 
         # Reconnect signal
         signal.connect(self._update_dim01_slider_position)
+
+    def _key_press_event(self, event):
+        """Handle key press events."""
+        if event.key() in [
+            QtCore.Qt.Key.Key_Up,
+            QtCore.Qt.Key.Key_Down,
+            QtCore.Qt.Key.Key_Left,
+            QtCore.Qt.Key.Key_Right,
+        ]:
+            if event.key() == QtCore.Qt.Key.Key_Up:
+                self.dim01_sliders[0].setValue(self.dim01_sliders[0].value() + 1)
+            elif event.key() == QtCore.Qt.Key.Key_Down:
+                self.dim01_sliders[0].setValue(self.dim01_sliders[0].value() - 1)
+            elif event.key() == QtCore.Qt.Key.Key_Left:
+                self.dim01_sliders[1].setValue(self.dim01_sliders[1].value() - 1)
+            elif event.key() == QtCore.Qt.Key.Key_Right:
+                self.dim01_sliders[1].setValue(self.dim01_sliders[1].value() + 1)
+            pos = []
+            for i in range(2):
+                index = self.dim01_sliders[i].value()
+                pos.append(self.coarsened_coords[i][index])
+            self.primary_dims_xh.set_pos((pos[0], pos[1]))
+            self._update_primary_dim_cursor_stats()
 
     def _reset_roi_plots(self):
         """Reset the ROI plots to the default."""

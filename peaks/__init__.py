@@ -15,23 +15,47 @@ To load data, use the load function::
 
 """
 
-# Import peaks modules to namespace
-from peaks.core import *
-from peaks.ML import *
-
 # Set some default xarray options
-from xarray import set_options
+import xarray as xr
 
-set_options(cmap_sequential="binary", use_numbagg=True)
-
-# Import hvplot to enable the hvplot accessor and set some default options
-from holoviews import opts as hv_opts
-import hvplot.xarray
-
-# Set default options
-hv_opts.defaults(hv_opts.Image(invert_axes=True))
+# Set default xarray options
+xr.set_options(
+    cmap_sequential="binary",
+    use_numbagg=True,
+    display_expand_attrs=False,
+    display_expand_data=False,
+)
 
 # Register a dask progressbar with a minimum 1 second time
 from dask.diagnostics import ProgressBar as dask_prog_bar
 
 dask_prog_bar(minimum=1).register()
+
+# Enable pint accessor and sete default options
+import pint_xarray
+
+ureg = pint_xarray.unit_registry
+ureg.formatter.default_format = (
+    "~P"  # Set formatting option to short form (with symbols)
+)
+
+# Register the relevant data loaders and load method (do this first to get the loc_registry populated)
+from peaks.core.fileIO.loc_registry import LOC_REGISTRY
+from peaks.core.fileIO.loc_registry import locs
+from peaks.core.fileIO.base_data_classes.base_ibw_class import BaseIBWDataLoader
+from peaks.core.fileIO.base_arpes_data_classes.base_ses_class import SESDataLoader
+from peaks.core.fileIO.base_arpes_data_classes.base_fesuma_class import (
+    BaseFeSuMaDataLoader,
+)
+from peaks.core.fileIO.base_arpes_data_classes.base_mbs_class import MBSDataLoader
+from peaks.core.fileIO.loaders import *
+
+# Import the core functions that should be accessible from the main peaks namespace
+from peaks.core.fileIO.data_loading import load
+from peaks.core.fitting.fit import load_fit
+from peaks.core.options import opts
+from peaks.core.display.plotting import plot_grid, plot_DCs, plot_ROI, plot_nanofocus
+from peaks.core.process.tools import sum_data, subtract_data, merge_data
+
+# Register the relevant accessor functions
+from peaks.core.accessors import *

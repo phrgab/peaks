@@ -2,20 +2,16 @@
 
 """
 
-# Phil King 03/05/2021
-# Brendan Edwards 26/02/2024
-
 import numpy as np
 import xarray as xr
-import dask.array as da
 import matplotlib.pyplot as plt
 import panel as pn
+import pint_xarray  # noqa: F401
 from numpy.fft import fft
 from matplotlib import colors, cm
 from cycler import cycler
 from IPython.display import display
-from peaks.utils import analysis_warning
-from peaks.utils.accessors import register_accessor
+from peaks.core.utils.misc import analysis_warning
 
 
 def plot_grid(
@@ -26,14 +22,19 @@ def plot_grid(
     sharex=False,
     sharey=False,
     figsize=None,
+    vmin=None,
+    vmax=None,
+    cmap=None,
     **plotting_kwargs,
 ):
     """Plots an array of 2D DataArrays on a grid.
 
     Parameters
     ------------
-    data : list
-         The 2D items (in :class:`xarray.DataArray` format) to be plotted.
+    data : list or xarray.DataTree
+         A list or :class:`xarray.DataTree` containing 2D scans (in :class:`xarray.DataArray` format) to be plotted.
+         If a datatree, the tree should be hollow, and the leaves should be :class:`xarray.Dataset`'s with a single
+         data variable, `data`
 
     ncols : int, optional
         Number of columns. Ignored if nrows is specified. Defaults to 3 (or lower if <3 plots).
@@ -52,6 +53,18 @@ def plot_grid(
 
     figsize : tuple, optional
         Size of figure to be plotted. Defaults to None.
+
+    vmin : float or int or list, optional
+        Minimum value for the colorbar. Use a list to specify separate values for each plot. If a list is passed, the
+        length must match the number of plots. Defaults to None.
+
+    vmax : float or int or list, optional
+        Maximum value for the colorbar. Use a list to specify separate values for each plot. If a list is passed, the
+        length must match the number of plots. Defaults to None.
+
+    cmap : str or list, optional
+        Matplotlib colormap to use for the plots. Use a list to specify separate colormaps for each plot. If a list is
+        passed, the length must match the number of plots.
 
     **plotting_kwargs
         Additional standard matplotlib calls arguments to pass to the plot.
@@ -81,6 +94,15 @@ def plot_grid(
 
     # Number of plots
     nplots = len(data)
+
+    # Check list-like inputs are the correct length
+    for item in [vmin, vmax, cmap]:
+        if isinstance(item, (list, np.ndarray)):
+            if len(item) != nplots:
+                raise ValueError(
+                    f"Length of supplied {item} list does not match number of plots. Either specify a list of length "
+                    f"{nplots} or pass a single value."
+                )
 
     # Check default columns is sensible
     if nplots < ncols:
@@ -122,20 +144,51 @@ def plot_grid(
             )
 
     # Make the plots
-    if nrows < 2 or ncols == 1:  # Figure out whether this is a 1D or 2D grid
+    def _plot_single(da, count, vmin, vmax, cmap):
+        additional_plotting_kwargs = {
+            k: v
+            for k, v in {"vmin": vmin, "vmax": vmax, "cmap": cmap}.items()
+            if v is not None
+        }
+        if nrows < 2 or ncols == 1:  # 1D grid
+            ax = axes[count]
+        else:  # 2D grid
+            j0, j1 = divmod(count, ncols)
+            ax = axes[j0][j1]
+        da.plot(ax=ax, **plotting_kwargs, **additional_plotting_kwargs)  # Plot data
+        if plot_titles:  # If plot titles to be displayed, update them here
+            ax.set_title(titles[count])
+
+    def _get_value_from_list(value, count):
+        return value[count] if isinstance(value, list) else value
+
+    if isinstance(data, list):
         for count, value in enumerate(data):
-            value.plot(ax=axes[count], **plotting_kwargs)  # Plot data
-            if plot_titles:  # If plot titles to be displayed, update them here
-                axes[count].set_title(titles[count])
-    else:  # 2D grid to display on
-        j0 = 0
-        j1 = 0  # Some counters
-        for count, value in enumerate(data):
-            j0 = int(np.floor(count / ncols))  # Work out grid positions
-            j1 = int(count - ncols * j0)
-            value.plot(ax=axes[j0][j1], **plotting_kwargs)  # Plot data
-            if plot_titles:  # If plot titles to be displayed, update them here
-                axes[j0][j1].set_title(titles[count])
+            _plot_single(
+                value,
+                count,
+                _get_value_from_list(vmin, count),
+                _get_value_from_list(vmax, count),
+                _get_value_from_list(cmap, count),
+            )
+    elif isinstance(data, xr.DataTree):
+        # If titles not passed as a specific list, we will populate them from node names
+        if not plot_titles:
+            titles = []
+            plot_titles = True
+        offset = 0
+        for count, node in enumerate(data.subtree):
+            if not node.is_empty:
+                titles.append(node.name)
+                _plot_single(
+                    node.data,
+                    count - offset,
+                    _get_value_from_list(vmin, count - offset),
+                    _get_value_from_list(vmax, count - offset),
+                    _get_value_from_list(cmap, count - offset),
+                )
+            else:
+                offset += 1
 
     # Tidy up the layout
     plt.tight_layout()
@@ -196,14 +249,14 @@ def plot_DCs(
     ------------
     Example usage is as follows::
 
-        from peaks import *
+        import peaks as pks
 
-        disp1 = load('disp1.ibw')
+        disp1 = pks.load('disp1.ibw')
 
         EDCs_to_plot = disp.EDC(k=[0, 0.1, 0.2, 0.3, 0.4, 0.5], dk=0.01)
 
         # Plot EDCs
-        plot_DCs(to_plot)
+        EDCs_to_plot.plot_DCs()
 
         MDC_1 = disp.MDC(E=95.61, dE=0.01)
         MDC_2 = disp.MDC(E=95.62, dE=0.01)
@@ -219,8 +272,8 @@ def plot_DCs(
         DC_array = xr.concat(DCs, dim="DC_no")
         stack_dim = "DC_no"
 
-    # If a DataArray is instead supplied, finding the stacking dimension if not defined
-    else:
+    elif isinstance(DCs, xr.DataArray):
+        # If a DataArray is instead supplied, finding the stacking dimension if not defined
         DC_array = DCs.copy(deep=True)  # Make a copy so we can safely modify
         if stack_dim == "auto":
             # Assume the stacking dimension is the smallest dimension size
@@ -228,6 +281,18 @@ def plot_DCs(
                 stack_dim = DC_array.dims[0]
             else:
                 stack_dim = DC_array.dims[1]
+
+    elif isinstance(DCs, xr.DataTree):
+        DC_list = [DC.data.copy(deep=True) for DC in DCs.subtree if not DC.is_empty]
+        DC_array = xr.concat(DC_list, dim="DC_no")
+        stack_dim = "DC_no"
+    else:
+        raise ValueError(
+            "DCs must be a list of xarray.DataArray's, a single xarray.DataArray containing the DCs to "
+            "plot, or a xarray.DataTree of DCs to plot."
+        )
+
+    DC_array = DC_array.pint.dequantify()
 
     # Check correct dimension supplied
     if len(DC_array.shape) != 2:
@@ -317,7 +382,6 @@ def plot_DCs(
     plt.tight_layout()
 
 
-@register_accessor(xr.Dataset)
 def plot_fit(fit_results_ds, show_components=True, figsize=None, **kwargs):
     def _plot_single_fit(fit_results, show_components, figsize, **kwargs):
         fig = plt.figure(figsize=figsize)
@@ -385,7 +449,6 @@ def plot_fit(fit_results_ds, show_components=True, figsize=None, **kwargs):
         return dashboard
 
 
-@register_accessor(xr.DataArray)
 def plot_fit_test(data, model, params, show_components=True, **kwargs):
     """Compare a fit model evaluated for some fit parameters to a 1D data array.
 
@@ -402,6 +465,8 @@ def plot_fit_test(data, model, params, show_components=True, **kwargs):
     **kwargs : optional
         Additional standard matplotlib calls arguments to pass to the plot.
     """
+
+    data = data.pint.dequantify()
 
     if len(data.dims) != 1:
         raise ValueError(
@@ -544,7 +609,6 @@ def plot_ROI(
     plt.tight_layout()
 
 
-@register_accessor(xr.DataArray)
 def plot_nanofocus(data, focus="defocus"):
     """Function to determine the focus of a scan obtained at the nano branch of the I05 beamline at Diamond Light
     Source, and plot the results. The function works by determining the focal position at which at scanned feature
@@ -672,7 +736,10 @@ def plot_nanofocus(data, focus="defocus"):
     FFT_data = data.copy(deep="True")
     if focus != data.dims[0]:  # Ensure data shape is as expected
         FFT_data = FFT_data.T
-    FFT_data.data = abs(fft(data.data))  # Perform FFT
+        FFT_data.data = abs(fft(data.pint.dequantify().T.data))  # Perform FFT
+    else:
+        FFT_data.data = abs(fft(data.pint.dequantify().data))  # Perform FFT
+    FFT_data = FFT_data.pint.quantify(data.pint.units)
     FFT_data_out = FFT_data.isel({spatial: FFT_data.argmax(spatial).data[0] + 1})
 
     # Plot the FFT analysis results

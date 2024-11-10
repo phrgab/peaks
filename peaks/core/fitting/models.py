@@ -38,7 +38,9 @@ def create_xarray_compatible_lmfit_model(model):
                     "Supplied xr.DataArray should be one dimensional, with the included dimension representing the "
                     "independent variable for the fit."
                 )
-            return super().guess(data=data.data, x=data[data.dims[0]].data, **kws)
+            return super().guess(
+                data=data.pint.dequantify().data, x=data[data.dims[0]].data, **kws
+            )
 
         # Modify the docstring
         _original_guess_docstring = model.guess.__doc__

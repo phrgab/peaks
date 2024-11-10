@@ -2,51 +2,44 @@
 
 """
 
-# Brendan Edwards 28/06/2021
-# Phil King 14/05/2022
-# Brendan Edwards 14/02/2024
-
 import os
-import natsort
-import h5py
-import xarray as xr
+import pint
 import dask
 import dask.array as da
-from tqdm import tqdm
-from os.path import isfile, join
-from peaks.utils import analysis_warning
-from peaks.core.fileIO.fileIO_opts import File, LocOpts, _Coords
-from peaks.core.fileIO.loaders.SES import _load_SES_metalines, _SES_find
+from tqdm.notebook import tqdm
+from peaks.core.options import opts
+from peaks.core.fileIO.base_data_classes.base_data_class import BaseDataLoader
+from peaks.core.utils.misc import analysis_warning
+from peaks.core.utils.datatree_utils import _dataarrays_to_datatree
 
 
-def load(fname, lazy="auto", loc="auto", metadata=True, parallel=False):
-    """Shortcut function to load_data where much of the file path can be set by the file global options:
-
-        file.path : str, list
-            Path (or list of paths) to folder(s) where data is stored, e.g. file.path = 'C:/User/Documents/i05-1-123'.
-
-        file.ext : str, list
-            Extension (or list of extensions) of data, e.g. file.ext = ['ibw', 'zip'].
-
-        file.loc : str
-            Location (typically a beamline) where data was acquired, e.g. file.loc = 'MAX IV Bloch' (call class
-            LocOpts() to see currently supported locations). Note: setting this prevents any automatic location
-            detection.
+def load(
+    fpath,
+    lazy=None,
+    loc=None,
+    metadata=True,
+    parallel=False,
+    names=None,
+    quiet=False,
+    **kwargs,
+):
+    """Core function to load data.
 
     Parameters
     ------------
-    fname : str, list
-        Either the full file name(s), or the remainder of the file name(s) not already specified in the file global
-        options.
+    fpath : str, list
+        Either the full file path(s), or the remainder of the file name(s) not already specified in the file global
+        options (see Notes).
 
     lazy : str, bool, optional
         Whether to load data in a lazily evaluated dask format. Set explicitly using True/False Boolean. Defaults
-        to 'auto' where a file is only loaded in the dask format if its spectrum is above 500 MB.
+        to `None` where a file is only loaded in the dask format if its spectrum is above threshold set in
+        `opts.FileIO.lazy_size` or is a Zarr store, where it is lazily loaded by default.
 
     loc : str, optional
-        The name of the location (typically a beamline). Defaults to 'auto', where the location will be attempted to be
-        automatically determined, unless a value is defined for file.loc. If loc is not the default 'auto' value, the
-        parameter loc will take priority over the value in file.loc.
+        Location identifier for where data was acquired. Defaults to `None`, where the location will be attempted to be
+        automatically determined, unless a value is defined in `opts.FileIO.loc`. If `loc` is specified in the function
+        call, this takes priority over the value in `opts.FileIO.loc`.
 
     metadata : bool, optional
         Whether to attempt to load metadata into the attributes of the :class:`xarray.DataArray`. Defaults to True.
@@ -56,42 +49,71 @@ def load(fname, lazy="auto", loc="auto", metadata=True, parallel=False):
         such as those based on the h5py format, e.g. nxs files. Takes priority over lazy, enforcing that all data is
         computed and loaded into memory. Defaults to False.
 
+    names : list, optional
+        List of names to assign to the branches of the :class:xarray.DataTree when mutliple scans loaded
+        simultaneously. If provided, should be a list of unique strings of the same length as the number of scans
+        being loaded. If not, or if not provided, the names will be the file names. Defaults to None.
+
+    quiet : bool, optional
+        Whether to suppress analysis warnings when loading data. Defaults to False.
+
+    kwargs : dict
+        Additional keyword arguments to pass to the data loader.
+
     Returns
     ------------
-    loaded_data : xarray.DataArray, xarray.DataSet, list
+    loaded_data : xarray.DataArray, xarray.DataSet, xarray.DataTree
         The loaded data.
+
+    Notes
+    ------------
+    Much of the file path can be set by the :class:`peaks.core.options.FileIO` global options:
+
+        opts.FileIO.path : str, list
+            Path (or list of paths) to folder(s) where data is stored,
+            e.g. `opts.FileIO.path = 'C:/User/Documents/i05-1-123'`.
+
+        opts.FileIO.ext : str, list
+            Extension (or list of extensions) of data, e.g. `opts.FileIO.ext = ['ibw', 'zip']`.
+
+        opts.FileIO.loc : str
+            Location identifier for where data was acquired, e.g. `opts.FileIO.loc = 'MAX IV Bloch'`.
+            Current supported options can be Note: setting this prevents any automatic location
+            detection.
+
+        opts.FileIO.lazy_size : int
+            Size in bytes above which data is loaded in a lazily evaluated dask format. Defaults to 1 GB.
 
     Examples
     ------------
     Example usage is as follows::
 
-        from peaks import *
+        import peaks as pks
 
         # Load data using a complete data path
-        disp1 = load('C:/User/Documents/disp1.ibw')
-        FM1 = load('C:/User/Documents/FM1.ibw')
+        disp1 = pks.load('C:/User/Documents/disp1.ibw')
+        FM1 = pks.load('C:/User/Documents/FM1.ibw')
 
-        # Define global options in the class file to aid loading
-        file.path = 'C:/User/Documents/Data/'
-        file.ext = ['ibw', 'zip']
+        # Define global options to define file loading
+        pks.opts.FileIO.set(path = 'C:/User/Documents/Data/',
+                            ext = ['ibw', 'zip'])
 
-        # Load data without needing to define data path or extension (determined from global options defined in file)
-        disp2 = load('disp2')
-        FM2 = load('FM2')
+        # Load data without needing to define data path or extension
+        disp2 = pks.load('disp2')
+        FM2 = pks.load('FM2')
 
-        # Define global options in the class file to aid loading, and include a partial part of the scan name
-        file.path = 'C:/User/Documents/Data/i05-1-123'
-        file.ext = 'nxs'
+        # Define global options to define file structure, including a partial part of the scan name
+        pks.opts.FileIO.path = 'C:/User/Documents/Data/i05-1-123'
+        pks.opts.FileIO.ext = 'nxs'
 
-        # Load data without needing to define data path or extension, nor the repeated part of the scan name (determined
-        # from global options defined in file)
+        # Load data without needing to define data path or extension, nor the repeated part of the scan name
         disp3 = load(456)
         disp4 = load(457)
 
         # Load multiple files at once
         disps = load([456, 457, 458])
 
-        # Still can load data using a complete data path, and global options defined in file will be ignored
+        # Still can load data using a complete data path; global options defined in `pks.opts.FileIO` will be ignored
         disp1 = load('C:/User/Documents/Data/disp1.ibw')
 
         # Load data in a lazily evaluated dask format
@@ -100,55 +122,75 @@ def load(fname, lazy="auto", loc="auto", metadata=True, parallel=False):
         # Load data without metadata
         disp1 = load('C:/User/Documents/Data/disp1.ibw', metadata=False)
 
-        # Load data file a pre-defined location (use if automatic location identification fails)
+        # Load data file for a defined location (use if automatic location identification fails)
         disp1 = load('C:/User/Documents/Data/disp1.ibw', loc='MAX IV Bloch')
 
         # Alternatively could define location using global options. Here loc will be defined as 'MAX IV Bloch'
-        file.loc = 'MAX IV Bloch'
+        pks.opts.FileIO.loc = 'MAXIV_Bloch_A'
         disp1 = load('C:/User/Documents/Data/disp1.ibw')
 
+        # Set the data size to trigger lazy loading by default to 500 MB
+        pks.opts.FileIO.lazy_size = 500000000
+        FM3 = pks.load('C:/User/Documents/FM3.ibw')
+
+        # Can also use with a context manager to temporarily set the global options
+        with pks.opts as opts:
+            opts.FileIO.path = 'C:/User/Documents/Data/'
+            opts.FileIO.ext = ['ibw', 'zip']
+            opts.FileIO.loc = 'MAXIV_Bloch_A'
+            opts.FileIO.lazy_size = 500000000
+
+            # Load data without needing to define data path or extension
+            disp2 = pks.load('disp2')
+            FM2 = pks.load('FM2')
     """
 
+    load_opts = {
+        "lazy": lazy,
+        "loc": loc,
+        "metadata": metadata,
+        "parallel": parallel,
+        "names": names,
+        "quiet": quiet,
+    }
+    # If a full file path provided, always load only this
+    if isinstance(fpath, str) and os.path.exists(fpath) and "." in fpath:
+        return _load_data(fpath, **load_opts)
+
     # Set placeholder file path and extension
-    path = [None]
+    base_path = [None]
     ext = [""]
 
-    # If file.path is defined, make a list of the inputted path(s)
-    if File.path:
-        if not isinstance(File.path, list):
-            path = [str(File.path)]
-        else:
-            path = [str(item) for item in File.path]
+    # If FileIO.path is defined, make a list of the inputted path(s)
+    if opts.FileIO.path:
+        base_path = (
+            [str(path) for path in opts.FileIO.path]
+            if isinstance(opts.FileIO.path, list)
+            else [str(opts.FileIO.path)]
+        )
 
     # If file.ext is defined, make a list of the inputted extension(s)
-    if File.ext:
-        if not isinstance(File.ext, list):
-            ext = [str(File.ext)]
-        else:
-            ext = [str(item) for item in File.ext]
+    if opts.FileIO.ext:
+        ext = [opts.FileIO.ext] if isinstance(opts.FileIO.ext, str) else opts.FileIO.ext
 
-    # If the parameter loc is 'auto' and file.loc is defined (for a valid location defined in LocOpts.locs), update loc
-    if loc == "auto":
-        if File.loc in LocOpts.locs:
-            loc = File.loc
+    # If the parameter loc is not defined and opts.FileIO.loc is defined, update loc
+    if loc is None:
+        load_opts["loc"] = opts.FileIO.loc
 
-    # Ensure that fname is a list of strings
-    if not isinstance(fname, list):
-        fname = [str(fname)]
-    else:
-        fname = [str(item) for item in fname]
+    # Ensure that fpath is a list of strings
+    fpath = [str(path) for path in fpath] if isinstance(fpath, list) else [str(fpath)]
 
     # Obtain all possible file addresses
     possible_file_addresses = []
     # Loop through file names
-    for file_name in fname:
+    for file_name in fpath:
         # Remove any extensions from fname, adding them to ext
         file_name, fname_ext = os.path.splitext(file_name)
         if fname_ext != "" and fname_ext[1:] not in ext:
             ext.append(fname_ext[1:])
 
         # Loop through file paths
-        for file_path in path:
+        for file_path in base_path:
             # If file path is not None, add address file_path/file_name to possible_file_addresses
             if file_path:
                 possible_file_addresses.append(file_path + file_name)
@@ -158,7 +200,7 @@ def load(fname, lazy="auto", loc="auto", metadata=True, parallel=False):
     # Obtain all valid file addresses
     file_list = []
     # Loop through the non-duplicated addresses in possible_file_addresses
-    for address in set(possible_file_addresses):
+    for address in possible_file_addresses:
         for extension in ext:
             # For standard data files
             if extension:
@@ -172,71 +214,31 @@ def load(fname, lazy="auto", loc="auto", metadata=True, parallel=False):
 
     # Load data by calling load_data if a valid file has been found. If not raise an error
     if len(file_list) > 0:
-        loaded_data = load_data(
-            file_list, lazy=lazy, loc=loc, metadata=metadata, parallel=parallel
-        )
-    else:
-        raise Exception("No valid file paths could be found.")
+        return _load_data(file_list, **load_opts, **kwargs)
 
-    return loaded_data
+    raise Exception("No valid file paths could be found.")
 
 
-def load_data(fname, lazy="auto", loc="auto", metadata=True, parallel=False):
-    """Function to load data files into the xarray DataArray format.
-
-    Parameters
-    ------------
-    fname : str, list
-        Path(s) to the file(s) to be loaded.
-
-    lazy : str, bool, optional
-        Whether to load data in a lazily evaluated dask format. Set explicitly using True/False Boolean. Defaults
-        to 'auto' where a file is only loaded in the dask format if its spectrum is above 500 MB.
-
-    loc : str, optional
-        The name of the location (typically a beamline). Defaults to 'auto', where the location will be attempted to be
-        automatically determined.
-
-    metadata : bool, optional
-        Whether to attempt to load metadata into the attributes of the :class:`xarray.DataArray`. Defaults to True.
-
-    parallel : bool, optional
-        Whether to load data in parallel when multiple files are being loaded. Only compatible with certain file types
-        such as those based on the h5py format, e.g. nxs files. Takes priority over lazy, enforcing that all data is
-        computed and loaded into memory. Defaults to False.
+def _load_data(fpath, lazy, loc, metadata, parallel, names, quiet, **kwargs):
+    """Function to handle loading of single or multiple data files into the xarray DataArray format.
 
     Returns
     ------------
     loaded_data : xarray.DataArray, xarray.DataSet, list
         The loaded data.
 
-    Examples
+    See Also
     ------------
-    Example usage is as follows::
-
-        from peaks import *
-
-        # Load data
-        disp1 = load_data('disp1.ibw')
-        FM1 = load_data('C:/User/Documents/FM1.ibw')
-
-        # Load multiple data files at once
-        disps = load(['disp1.ibw', 'disp2.ibw', 'disp3.ibw'])
-
-        # Load data in a lazily evaluated dask format
-        FM1 = load('FM1.ibw', lazy=True)
-
-        # Load data without metadata
-        FM1 = load('FM1.ibw', metadata=False)
-
-        # Load data file a pre-defined location (use if automatic location identification fails)
-        FM1 = load('FM1.ibw', loc='MAX IV Bloch')
+    load : Public function to load data, which sets much of the fpath and defines the options to pass to `_load_data`.
 
     """
 
+    load_opts = {"lazy": lazy, "loc": loc, "metadata": metadata, "quiet": quiet}
+    load_opts.update(kwargs)
+
     # Ensure fname is of type list
-    if not isinstance(fname, list):
-        fname = [fname]
+    if not isinstance(fpath, list):
+        fpath = [fpath]
 
     # Define an empty list to store loaded data
     loaded_data = []
@@ -244,13 +246,9 @@ def load_data(fname, lazy="auto", loc="auto", metadata=True, parallel=False):
     # If the files have been requested to be loaded in parallel
     if parallel:
         # Loop through and set up the dask delayed function which will facilitate data loading in parallel
-        for single_fname in fname:
+        for single_fpath in fpath:
             loaded_data.append(
-                dask.delayed(
-                    _load_single_data(
-                        fname=single_fname, lazy=lazy, loc=loc, metadata=metadata
-                    )
-                )
+                dask.delayed(BaseDataLoader.load(fpath=single_fpath, **load_opts))
             )
 
         # Perform the data loading in parallel
@@ -269,1060 +267,36 @@ def load_data(fname, lazy="auto", loc="auto", metadata=True, parallel=False):
 
     # If not, load files sequentially
     else:
-        for single_fname in tqdm(
-            fname, desc="Loading data", disable=len(fname) == 1, colour="CYAN"
+        for single_fpath in tqdm(
+            fpath,
+            desc="Loading data",
+            disable=len(fpath) == 1,
         ):
-            loaded_data.append(
-                _load_single_data(
-                    fname=single_fname, lazy=lazy, loc=loc, metadata=metadata
-                )
-            )
+            loaded_data.append(BaseDataLoader.load(fpath=single_fpath, **load_opts))
 
     # Check if any of the loaded data have been lazily evaluated. If so, inform the user
     for data in loaded_data:
-        if isinstance(data.data, dask.array.core.Array):
-            analysis_warning(
-                "DataArray has been lazily evaluated in the dask format (set lazy=False to load as DataArray in xarray "
-                "format). Use the .compute() method to load DataArray into RAM in the xarray format, or the .persist() "
-                "method to instead load DataArray into RAM in the dask format. Note: these operations load all of the "
-                "data into memory, so large files may require an initial reduction in size through either a slicing or "
-                "binning operation.",
-                title="Loading info",
-                warn_type="info",
-            )
-            break
+        try:
+            if isinstance(data.data, dask.array.core.Array) or (
+                isinstance(data.data, pint.Quantity)
+                and isinstance(data.data.magnitude, dask.array.core.Array)
+            ):
+                analysis_warning(
+                    "DataArray has been lazily evaluated in the dask format (set lazy=False to load as DataArray in xarray "
+                    "format). Use the .compute() method to load DataArray into RAM in the xarray format, or the .persist() "
+                    "method to instead load DataArray into RAM in the dask format. Note: these operations load all of the "
+                    "data into memory, so large files may require an initial reduction in size through either a slicing or "
+                    "binning operation.",
+                    title="Loading info",
+                    warn_type="info",
+                )
+                break
+        except AttributeError:
+            pass
 
     # If there is only one loaded item in loaded_data, return the xr.DataArray (xr.DataSet) entry instead of a list
     if len(loaded_data) == 1:
-        loaded_data = loaded_data[0]
+        return loaded_data[0]
 
-    return loaded_data
-
-
-def _load_single_data(fname, lazy="auto", loc="auto", metadata=True):
-    """Function to load a single data file as an xarray DataArray.
-
-    Parameters
-    ------------
-    fname : str
-        Path to the file to be loaded.
-
-    lazy : str, bool, optional
-        Whether to load data in a lazily evaluated dask format. Set explicitly using True/False Boolean. Defaults
-        to 'auto' where a file is only loaded in the dask format if its spectrum is above 500 MB.
-
-    loc : str, optional
-        The name of the location (typically a beamline). Defaults to 'auto', where the location will be attempted to be
-        automatically determined.
-
-    metadata : bool, optional
-        Whether to attempt to load metadata into the attributes of the :class:`xarray.DataArray`. Defaults to True.
-
-    Returns
-    ------------
-    DataArray : xarray.DataArray
-        The loaded data.
-
-    Examples
-    ------------
-    Example usage is as follows::
-
-        from peaks.core.fileIO.data_loading import _load_single_data
-
-        # Load single data file
-        FM1 = _load_single_data('C:/User/Documents/Data/FM1.ibw')
-
-        # Load single data file in a lazily evaluated dask format
-        FM1 = _load_single_data('C:/User/Documents/Data/FM1.ibw', lazy=True)
-
-        # Load single data file without metadata
-        FM1 = _load_single_data('C:/User/Documents/Data/FM1.ibw', metadata=False)
-
-        # Load single data file with a pre-defined location (use if automatic location identification fails)
-        FM1 = _load_single_data('C:/User/Documents/Data/FM1.ibw', loc='MAX IV Bloch')
-
-    """
-
-    # Identify which location (beamline) the scan was obtained at if it has not already been specified
-    if loc == "auto":
-        loc = _get_loc(fname)
-
-    # Load the data in the format of a dictionary containing the file scan type, spectrum, and coordinates (except for
-    # NetCDF files where the data will be already loaded into xr.DataArray format)
-    loader = LocOpts.get_conventions(loc).loader
-    data = loader(fname)
-
-    # If location is NetCDF, data is already loaded in xr.DataArray format
-    if loc == "NetCDF":
-        # Convert the data to dask format if the user has requested to load data in a lazily evaluated dask format, or
-        # if the data spectrum is above 500 MB (and lazy='auto')
-        if lazy is True or (lazy == "auto" and data.nbytes > 500000000):
-            data.data = da.from_array(data.data, chunks="auto")
-        DataArray = data
-
-    # If location is not NetCDF, we must convert the data to xr.DataArray format and add metadata (if requested)
-    else:
-        # Generate an xr.DataArray from the loaded data (converting to dask format if required)
-        DataArray = _make_DataArray(data, lazy=lazy)
-
-        # Add metadata to the loaded DataArray if requested
-        if metadata:
-            _add_metadata(DataArray, fname, loc, scan_type=data["scan_type"])
-
-    # Ensure that all the DataArray coordinates are ordered low to high
-    for dim in DataArray.dims:
-        if (
-            len(DataArray[dim]) > 1
-        ):  # If there are multiple coordinates along the given dimension
-            if (
-                DataArray[dim].data[1] - DataArray[dim].data[0] < 0
-            ):  # If the DataArray currently has decreasing order
-                # Flip the order of the coordinates along the given dimension
-                DataArray = DataArray.reindex({dim: data[dim][::-1]})
-
-    # Ensure that:
-    #  - the dimensions of the DataArray are arranged in the standard order
-    #  - the data is float32 (always enough for the ARPES intensity)
-    #  - the underlying array is C-contiguous
-
-    # For loaded data, may already be k-converted and we need to check the right ana_type to figure out the ordering
-    if loc == "NetCDF":
-        ana_type = LocOpts.get_conventions(data.attrs.get("loc"))
-    else:
-        ana_type = LocOpts.get_conventions(loc)
-    if ana_type == "I" or ana_type == "Ip":
-        k_along_slit = "kx"
-        k_perp_slit = "ky"
-    else:
-        k_along_slit = "ky"
-        k_perp_slit = "kx"
-
-    DataArray = DataArray.transpose(
-        "scan_no",
-        "t",
-        "hv",
-        "temp_sample",
-        "temp_cryo",
-        "defocus",
-        "focus",
-        "da30_z",
-        "x3",
-        "x2",
-        "x1",
-        "dim1",
-        "dim0",
-        "y_scale",
-        "two_theta",
-        "polar",
-        "ana_polar",
-        "tilt",
-        "phi",
-        "defl_perp",
-        k_perp_slit,
-        "azi",
-        "spin_rot_angle",
-        "eV",
-        "defl_par",
-        "theta_par",
-        k_along_slit,
-        ...,
-        missing_dims="ignore",
-    ).astype("float32", order="C")
-
-    # Add relevant info to the Analysis history
-
-    DataArray.history.add(
-        {
-            "record": "Data loaded",
-            "loc": loc,
-            "loader": loader.__name__,
-            "file_name": fname,
-        },
-        update_in_place=True,
-    )
-
-    return DataArray
-
-
-def _make_DataArray(data, lazy="auto"):
-    """This function makes an xarray DataArray from the inputted data.
-
-    Parameters
-    ------------
-    data : dict
-        Dictionary containing the file scan type, spectrum, and coordinates.
-
-    lazy : str, bool, optional
-        Whether to load data in a lazily evaluated dask format. Set explicitly using True/False Boolean. Defaults to
-        'auto' where a file is only loaded in the dask format if its spectrum is above 500 MB.
-
-    Returns
-    ------------
-    DataArray : xarray.DataArray
-        The inputted data in :class:`xarray.DataArray` format.
-
-    Examples
-    ------------
-    Example usage is as follows::
-
-        from peaks.core.fileIO.data_loading import _make_DataArray
-        from peaks.core.fileIO.loaders.I05 import _load_I05_data
-
-        fname = 'C:/User/Documents/Research/i05-12345.nxs'
-
-        # Extract data from file obtained at the I05 beamline
-        data = _load_I05_data(fname)
-
-        # Get data in xarray.DataArray format
-        DataArray = _make_DataArray(data)
-
-        # Get data in a lazily evaluated dask format
-        DataArray = _make_DataArray(data, lazy=True)
-
-    """
-
-    # Extract the keys of the data dictionary, providing information on the coordinates present
-    data_keys = list(data)
-
-    # Extract the scan type of the data
-    scan_type = data["scan_type"]
-
-    # Convert the data spectrum to dask format if the user has requested to load data in a lazily evaluated dask format,
-    # or if the data spectrum is above 500 MB (and lazy='auto')
-    if lazy is True or (lazy == "auto" and data["spectrum"].nbytes > 500000000):
-        data["spectrum"] = da.from_array(data["spectrum"], chunks="auto")
-
-    # If the scan type is a standard dispersion, there is only one possible set of coordinates
-    if scan_type == "dispersion":
-        DataArray = xr.DataArray(
-            data["spectrum"],
-            dims=("theta_par", "eV"),
-            coords={"theta_par": data["theta_par"], "eV": data["eV"]},
-        )
-
-    # If the scan type is a dispersion with multiple scans, there is only one possible set of coordinates
-    elif scan_type == "dispersion (multiple scans)":
-        DataArray = xr.DataArray(
-            data["spectrum"],
-            dims=("scan_no", "theta_par", "eV"),
-            coords={
-                "scan_no": data["scan_no"],
-                "theta_par": data["theta_par"],
-                "eV": data["eV"],
-            },
-        )
-
-    # If the scan type is a Fermi map, the mapping coordinate could be tilt, polar, ana_polar or defl_perp
-    elif scan_type == "FS map":
-        if "tilt" in data_keys:
-            DataArray = xr.DataArray(
-                data["spectrum"],
-                dims=("tilt", "theta_par", "eV"),
-                coords={
-                    "tilt": data["tilt"],
-                    "theta_par": data["theta_par"],
-                    "eV": data["eV"],
-                },
-            )
-        elif "polar" in data_keys:
-            DataArray = xr.DataArray(
-                data["spectrum"],
-                dims=("polar", "theta_par", "eV"),
-                coords={
-                    "polar": data["polar"],
-                    "theta_par": data["theta_par"],
-                    "eV": data["eV"],
-                },
-            )
-        elif "ana_polar" in data_keys:
-            DataArray = xr.DataArray(
-                data["spectrum"],
-                dims=("ana_polar", "theta_par", "eV"),
-                coords={
-                    "ana_polar": data["ana_polar"],
-                    "theta_par": data["theta_par"],
-                    "eV": data["eV"],
-                },
-            )
-        elif "defl_perp" in data_keys:
-            DataArray = xr.DataArray(
-                data["spectrum"],
-                dims=("defl_perp", "theta_par", "eV"),
-                coords={
-                    "defl_perp": data["defl_perp"],
-                    "theta_par": data["theta_par"],
-                    "eV": data["eV"],
-                },
-            )
-
-    # If the scan type is a spatial map, there is only one possible set of coordinates, but the spectrum shape will
-    # depend on the order of x1 and x2 (i.e. which is the fast/slow axis). Try to parse this from a flag.
-    elif scan_type == "spatial map":
-        coords = {"x1": data["x1"], "x2": data["x2"]}
-        if "theta_par" in data_keys:
-            coords["theta_par"] = data["theta_par"]
-            coords["eV"] = data["eV"]
-        if "fast_axis" in data_keys:
-            if "theta_par" in data_keys:
-                if data["fast_axis"] == "x1":
-                    dims = ("x2", "x1", "theta_par", "eV")
-                else:
-                    dims = ("x1", "x2", "theta_par", "eV")
-            else:
-                if data["fast_axis"] == "x1":
-                    dims = ("x2", "x1")
-                else:
-                    dims = ("x1", "x2")
-            DataArray = xr.DataArray(data["spectrum"], dims=dims, coords=coords)
-        else:
-            # If fast_axis flag missing, fall back to try in both orders (try x2 first as this is the assumed default
-            # in the loaders). theta_par and eV may or may not be present, depending on the analyser mode.
-
-            try:
-                if "theta_par" in data_keys:
-                    dims = ("x2", "x1", "theta_par", "eV")
-                else:
-                    dims = ("x2", "x1")
-                DataArray = xr.DataArray(data["spectrum"], dims=dims, coords=coords)
-            except ValueError:
-                if "theta_par" in data_keys:
-                    dims = ("x1", "x2", "theta_par", "eV")
-                else:
-                    dims = ("x1", "x2")
-                DataArray = xr.DataArray(data["spectrum"], dims=dims, coords=coords)
-
-    # If the scan type is a line scan, the mapping coordinate could be x1, x2 or x3. theta_par and eV may or may not be
-    # present, depending on the analyser mode
-    elif scan_type == "line scan":
-        if "x1" in data_keys and "theta_par" in data_keys:
-            DataArray = xr.DataArray(
-                data["spectrum"],
-                dims=("x1", "theta_par", "eV"),
-                coords={
-                    "x1": data["x1"],
-                    "theta_par": data["theta_par"],
-                    "eV": data["eV"],
-                },
-            )
-        if "x1" in data_keys:
-            DataArray = xr.DataArray(
-                data["spectrum"], dims="x1", coords={"x1": data["x1"]}
-            )
-
-        elif "x2" in data_keys and "theta_par" in data_keys:
-            DataArray = xr.DataArray(
-                data["spectrum"],
-                dims=("x2", "theta_par", "eV"),
-                coords={
-                    "x2": data["x2"],
-                    "theta_par": data["theta_par"],
-                    "eV": data["eV"],
-                },
-            )
-
-        elif "x2" in data_keys:
-            DataArray = xr.DataArray(
-                data["spectrum"], dims="x2", coords={"x2": data["x2"]}
-            )
-
-        elif "x3" in data_keys and "theta_par" in data_keys:
-            DataArray = xr.DataArray(
-                data["spectrum"],
-                dims=("x3", "theta_par", "eV"),
-                coords={
-                    "x3": data["x3"],
-                    "theta_par": data["theta_par"],
-                    "eV": data["eV"],
-                },
-            )
-
-        elif "x3" in data_keys:
-            DataArray = xr.DataArray(
-                data["spectrum"], dims="x3", coords={"x3": data["x3"]}
-            )
-
-    # If the scan type is a da30_z scan, there is only one possible set of coordinates
-    elif scan_type == "da30_z scan":
-        DataArray = xr.DataArray(
-            data["spectrum"],
-            dims=("da30_z", "location"),
-            coords={"da30_z": data["da30_z"], "location": data["location"]},
-        )
-
-    # If the scan type is a Focus scan, the mapping coordinate could be x1 or x2. theta_par and eV may or may not be
-    # present, depending on the analyser mode
-    elif scan_type == "Focus scan":
-        if "x1" in data_keys and "theta_par" in data_keys:
-            DataArray = xr.DataArray(
-                data["spectrum"],
-                dims=("defocus", "x1", "theta_par", "eV"),
-                coords={
-                    "defocus": data["defocus"],
-                    "x1": data["x1"],
-                    "theta_par": data["theta_par"],
-                    "eV": data["eV"],
-                },
-            )
-        elif "x1" in data_keys:
-            DataArray = xr.DataArray(
-                data["spectrum"],
-                dims=("defocus", "x1"),
-                coords={"defocus": data["defocus"], "x1": data["x1"]},
-            )
-        elif "x2" in data_keys and "theta_par" in data_keys:
-            DataArray = xr.DataArray(
-                data["spectrum"],
-                dims=("defocus", "x2", "theta_par", "eV"),
-                coords={
-                    "defocus": data["defocus"],
-                    "x2": data["x2"],
-                    "theta_par": data["theta_par"],
-                    "eV": data["eV"],
-                },
-            )
-        elif "x2" in data_keys:
-            DataArray = xr.DataArray(
-                data["spectrum"],
-                dims=("defocus", "x2"),
-                coords={"defocus": data["defocus"], "x2": data["x2"]},
-            )
-
-    # If the scan type is a 1D Focus scan, the focussing coordinate could be da30_z, defocus or focus. theta_par and eV
-    # may or may not be present, depending on the analyser mode
-    elif scan_type == "1D focus scan":
-        if "da30_z" in data_keys and "theta_par" in data_keys:
-            DataArray = xr.DataArray(
-                data["spectrum"],
-                dims=("da30_z", "theta_par", "eV"),
-                coords={
-                    "da30_z": data["da30_z"],
-                    "theta_par": data["theta_par"],
-                    "eV": data["eV"],
-                },
-            )
-        elif "da30_z" in data_keys:
-            DataArray = xr.DataArray(
-                data["spectrum"], dims="da30_z", coords={"da30_z": data["da30_z"]}
-            )
-        elif "defocus" in data_keys and "theta_par" in data_keys:
-            DataArray = xr.DataArray(
-                data["spectrum"],
-                dims=("defocus", "theta_par", "eV"),
-                coords={
-                    "defocus": data["defocus"],
-                    "theta_par": data["theta_par"],
-                    "eV": data["eV"],
-                },
-            )
-        elif "defocus" in data_keys:
-            DataArray = xr.DataArray(
-                data["spectrum"], dims="defocus", coords={"defocus": data["defocus"]}
-            )
-        elif "focus" in data_keys and "theta_par" in data_keys:
-            DataArray = xr.DataArray(
-                data["spectrum"],
-                dims=("focus", "theta_par", "eV"),
-                coords={
-                    "focus": data["focus"],
-                    "theta_par": data["theta_par"],
-                    "eV": data["eV"],
-                },
-            )
-        elif "focus" in data_keys:
-            DataArray = xr.DataArray(
-                data["spectrum"], dims="focus", coords={"focus": data["focus"]}
-            )
-
-    # If the scan type is an hv scan, there is only one possible set of coordinates
-    elif scan_type == "hv scan":
-        DataArray = xr.DataArray(
-            data["spectrum"],
-            dims=("hv", "theta_par", "eV"),
-            coords={"hv": data["hv"], "theta_par": data["theta_par"], "eV": data["eV"]},
-        )
-        # Add KE_delta coordinate
-        DataArray.coords["KE_delta"] = ("hv", data["KE_delta"])
-
-        # Display a warning explaining how kinetic energy values are saved
-        warn_str = (
-            "The kinetic energy coordinates saved are that of the first scan. The corresponding offsets "
-            "for successive scans are included in the KE_delta coordinate. Run DataArray.disp_from_hv(hv), "
-            "where DataArray is the loaded hv scan xarray.DataArray and hv is the relevant photon energy, "
-            "to extract a dispersion at using the proper kinetic energy scaling for that photon energy."
-        )
-        analysis_warning(warn_str, title="Loading info", warn_type="info")
-
-    # If the scan type is a temp-dependent scan, there is only one possible set of coordinates
-    elif scan_type == "temp-dependent scan":
-        DataArray = xr.DataArray(
-            data["spectrum"],
-            dims=("temp_sample", "theta_par", "eV"),
-            coords={
-                "temp_sample": data["temp_sample"],
-                "theta_par": data["theta_par"],
-                "eV": data["eV"],
-            },
-        )
-
-    # If the scan type is a spin scan, there is only one possible set of coordinates
-    elif scan_type == "spin scan":
-        DataArray = xr.DataArray(
-            data["spectrum"],
-            dims=("spin_rot_angle", "theta_par", "eV"),
-            coords={
-                "spin_rot_angle": data["spin_rot_angle"],
-                "theta_par": data["theta_par"],
-                "eV": data["eV"],
-            },
-        )
-
-    # If the scan type is a phi scan, there is only one possible set of coordinates
-    elif scan_type == "phi scan":
-        DataArray = xr.DataArray(
-            data["spectrum"], dims="phi", coords={"phi": data["phi"]}
-        )
-
-    # If the scan type is a 2Theta-Omega or reflectivity scan, there is only one possible set of coordinates
-    elif (scan_type == "2Theta-Omega scan") or (scan_type == "reflectivity scan"):
-        DataArray = xr.DataArray(
-            data["spectrum"], dims="two_theta", coords={"two_theta": data["two_theta"]}
-        )
-
-    # Loop through all the possible coordinates in saved in _coords.units. If the coordinate is present in the
-    # DataArray, add the relevant unit to the coordinate attributes
-    for coord in _Coords.units:
-        if coord in DataArray.dims:
-            DataArray.coords[coord].attrs = {"units": _Coords.units[coord]}
-
-    return DataArray
-
-
-def _add_metadata(DataArray, fname, loc, scan_type):
-    """This function adds metadata to an inputted xarray DataArray.
-
-    Parameters
-    ------------
-    DataArray : xarray.DataArray
-        The inputted :class:`xarray.DataArray`.
-
-    fname : str
-        Path to the file to be loaded.
-
-    loc : str
-        The name of the location (typically a beamline).
-
-    scan_type : str
-        The scan type of the data.
-
-    Examples
-    ------------
-    Example usage is as follows::
-
-        from peaks.core.fileIO.data_loading import _make_DataArray, _add_metadata, _get_loc
-        from peaks.core.fileIO.loaders.StA_Phoibos_metadata import _load_StA_Phoibos_data
-
-        fname = 'C:/User/Documents/Research/i05-12345.nxs'
-
-        # Determine location qat which data was obtained
-        loc = _get_loc(fname)
-
-        # Extract data from file obtained using the ARPES system (Phoibos analyser) at St Andrews
-        data = _load_StA_Phoibos_data(fname)
-
-        # Get data in xarray.DataArray format
-        DataArray = _make_DataArray(data)
-
-        # Add metadata to DataArray
-        add_metadata(DataArray, fname, loc, scan_type=data['scan_type'])
-
-    """
-
-    # Load the metadata in the format of a dictionary where each key is an attribute of the data, e.g. pass energy
-    if loc == "ALBA LOREA":
-        from .loaders.LOREA import _load_LOREA_metadata
-
-        metadata = _load_LOREA_metadata(fname, scan_type)
-
-    elif loc == "CLF Artemis":
-        from .loaders.Artemis import _load_Artemis_metadata
-
-        metadata = _load_Artemis_metadata(fname, scan_type)
-
-    elif loc == "Diamond I05-HR" or loc == "Diamond I05-nano":
-        from .loaders.I05 import _load_I05_metadata
-
-        metadata = _load_I05_metadata(fname, scan_type, loc)
-
-    elif loc == "Elettra APE":
-        from .loaders.APE import _load_APE_metadata
-
-        metadata = _load_APE_metadata(fname, scan_type)
-
-    elif loc == "MAX IV Bloch":
-        from .loaders.Bloch import _load_Bloch_metadata
-
-        metadata = _load_Bloch_metadata(fname, scan_type)
-
-    elif loc == "MAX IV Bloch-spin":
-        from .loaders.Bloch import _load_Bloch_spin_metadata
-
-        metadata = _load_Bloch_spin_metadata(fname, scan_type)
-
-    elif loc == "SOLEIL CASSIOPEE":
-        from .loaders.CASSIOPEE import _load_CASSIOPEE_metadata
-
-        metadata = _load_CASSIOPEE_metadata(fname, scan_type)
-
-    elif loc == "StA-MBS":
-        from .loaders.StA_MBS import _load_StA_MBS_metadata
-
-        metadata = _load_StA_MBS_metadata(fname, scan_type)
-
-    elif loc == "StA-Phoibos":
-        from peaks.core.fileIO.loaders.StA_Phoibos import _load_StA_Phoibos_metadata
-
-        metadata = _load_StA_Phoibos_metadata(fname, scan_type)
-
-    elif loc == "StA-Bruker":
-        from .loaders.StA_Bruker import _load_StA_Bruker_metadata
-
-        metadata = _load_StA_Bruker_metadata(fname, scan_type)
-
-    elif loc == "StA-LEED":
-        from .loaders.StA_LEED import _load_StA_LEED_metadata
-
-        metadata = _load_StA_LEED_metadata(fname, scan_type)
-
-    elif loc == "StA-RHEED":
-        from .loaders.StA_RHEED import _load_StA_RHEED_metadata
-
-        metadata = _load_StA_RHEED_metadata(fname, scan_type)
-
-    elif loc == "ibw":
-        from .loaders.ibw import _load_ibw_metadata
-
-        metadata = _load_ibw_metadata(fname)
-
-    # Assign the metadata information to attributes of the DataArray
-    DataArray.attrs = metadata
-
-    # Give the DataArray a name equal to the scan_name attribute
-    DataArray.name = metadata["scan_name"]
-
-
-def _get_loc(fname):
-    """This function determines the location at which the data was obtained.
-
-    Parameters
-    ------------
-    fname : str
-        Path to the file to be loaded.
-
-    Returns
-    ------------
-    loc : str
-        The name of the location (typically a beamline).
-
-    Examples
-    ------------
-    Example usage is as follows::
-
-        from peaks.core.fileIO.data_loading import _get_loc
-
-        fname = 'C:/User/Documents/Research/disp1.xy'
-
-        # Determine the location at which the data was obtained
-        loc = _get_loc(fname)
-
-    """
-
-    # Get file_extension to determine the file type
-    filename, file_extension = os.path.splitext(fname)
-
-    # Set loc to Default None value
-    loc = None
-
-    # If there is no extension, the data is in a folder. This is consistent with SOLEIL CASSIOPEE Fermi maps or
-    # CLF Artemis data
-    if file_extension == "":
-        # Extract identifiable data from the file to determine if the location is SOLEIL CASSIOPEE
-        file_list = natsort.natsorted(os.listdir(fname))
-        file_list_ROI = [
-            item for item in file_list if "ROI1_" in item and isfile(join(fname, item))
-        ]
-        if len(file_list_ROI) > 1:  # Must be SOLEIL CASSIOPEE
-            loc = "SOLEIL CASSIOPEE"
-        else:  # Likely CLF Artemis
-            # Extract identifiable data from the file to determine if the location is CLF Artemis
-            file_list_Neq = [item for item in file_list if "N=" in item]
-            if len(file_list_Neq) > 0:  # Must be CLF Artemis
-                loc = "CLF Artemis"
-
-    # If the file is .xy format, the location must be either MAX IV Bloch-spin, StA-Phoibos or StA-Bruker
-    elif file_extension == ".xy":
-        # Open the file and load the first line
-        with open(fname) as f:
-            line0 = f.readline()
-
-        # If measurement was performed using Specs analyser, location must be MAX IV Bloch-spin or StA-Phoibos
-        if "SpecsLab" in line0:
-            # By default, assume StA-Phoibos
-            loc = "StA-Phoibos"
-            # Open the file and load the first 30 lines to to check if this is instead MAX IV Bloch-spin
-            with open(fname) as f:
-                for i in range(30):
-                    # If the 'PhoibosSpin' identifier is present in any of the lines, location must be MAX IV Bloch-spin
-                    if "PhoibosSpin" in f.readline():
-                        loc = "MAX IV Bloch-spin"
-
-        # If not (and the identifier 'Anode' is present), then measurement was XRD using StA-Bruker
-        elif "Anode" in line0:
-            loc = "StA-Bruker"
-
-    # If the file is .sp2 format, the location must be MAX IV Bloch-spin
-    elif file_extension == ".sp2":
-        loc = "MAX IV Bloch-spin"
-
-    # If the file is .krx format, the location must be StA-MBS
-    elif file_extension == ".krx":
-        loc = "StA-MBS"
-
-    # If the file is .txt format, the location must be StA-MBS, MAX IV Bloch, Elettra APE or SOLEIL CASSIOPEE
-    elif file_extension == ".txt":
-        # Open the file and load the first line
-        with open(fname) as f:
-            line0 = f.readline()
-
-        # MAX IV Bloch, Elettra APE or SOLEIL CASSIOPEE .txt files follow the same SES data format, so we can identify
-        # the location from the location line in the file
-        if line0 == "[Info]\n":  # Identifier of the SES data format
-            # Extract metadata information from file using the _load_SES_metalines function
-            metadata_lines = _load_SES_metalines(fname)
-            # Extract and determine the location using the _SES_find function
-            location = _SES_find(metadata_lines, "Location=")
-            if "bloch" in location.lower() or "maxiv" in location.lower():
-                loc = "MAX IV Bloch"
-            elif "ape" in location.lower() or "elettra" in location.lower():
-                loc = "Elettra APE"
-            elif "cassiopee" in location.lower() or "soleil" in location.lower():
-                loc = "SOLEIL CASSIOPEE"
-
-        # If the file does not follow the SES format, it must be StA-MBS
-        else:
-            loc = "StA-MBS"
-
-    # If the file is .zip format, the file must be of SES format. Thus, the location must be MAX IV Bloch, Elettra APE,
-    # SOLEIL CASSIOPEE or Diamond I05-nano (defl map)
-    elif file_extension == ".zip":
-        # Extract metadata information from file using the _load_SES_metalines function
-        metadata_lines = _load_SES_metalines(fname)
-        # Extract and determine the location using the _SES_find function
-        location = _SES_find(metadata_lines, "Location=")
-        if "bloch" in location.lower() or "maxiv" in location.lower():
-            loc = "MAX IV Bloch"
-        elif "ape" in location.lower() or "elettra" in location.lower():
-            loc = "Elettra APE"
-        elif "cassiopee" in location.lower() or "soleil" in location.lower():
-            loc = "SOLEIL CASSIOPEE"
-        elif "i05" in location.lower() or "diamond" in location.lower():
-            loc = "Diamond I05-nano"
-
-    # If the file is .ibw format, the file is likely SES format. Thus location should be MAX IV Bloch, Elettra APE or
-    # SOLEIL CASSIOPEE
-    elif file_extension == ".ibw":
-        # Extract metadata information from file using the _load_SES_metalines function
-        metadata_lines = _load_SES_metalines(fname)
-        # Extract and determine the location using the _SES_find function
-        location = _SES_find(metadata_lines, "Location=")
-        if "bloch" in location.lower() or "maxiv" in location.lower():
-            loc = "MAX IV Bloch"
-        elif "ape" in location.lower() or "elettra" in location.lower():
-            loc = "Elettra APE"
-        elif "cassiopee" in location.lower() or "soleil" in location.lower():
-            loc = "SOLEIL CASSIOPEE"
-        # If we are unable to find a location, define location as a generic ibw file
-        else:
-            loc = "ibw"
-
-    # If the file is .nxs format, the location should be Diamond I05-nano, Diamond I05-HR or ALBA LOREA
-    elif file_extension == ".nxs":
-        # Open the file (read only)
-        f = h5py.File(fname, "r")
-        # .nxs files at Diamond and Alba contain approximately the same identifier format
-        identifier = _h5py_str(f, "entry1/instrument/name")
-        # From the identifier, determine the location
-        if "i05-1" in identifier:
-            loc = "Diamond I05-nano"
-        elif "i05" in identifier:
-            loc = "Diamond I05-HR"
-        elif "lorea" in identifier:
-            loc = "ALBA LOREA"
-
-    # If the file is .nc format, it is a NetCDF file. Set location to NetCDF, since the location information should be
-    # in the NetCDF attributes
-    elif file_extension == ".nc":
-        loc = "NetCDF"
-
-    # If the file is .cif format, it should be a structure file
-    elif file_extension == ".cif":
-        loc = "Structure"
-
-    # If the file is standard image format, it should be a LEED file
-    elif (
-        file_extension == ".bmp"
-        or file_extension == ".jpeg"
-        or file_extension == ".png"
-    ):
-        loc = "StA-LEED"
-
-    # If the file is .iso format, it should be a LEED file
-    elif file_extension == ".iso":
-        loc = "StA-RHEED"
-
-    return loc
-
-
-def _h5py_find_attr(h5py_file, file_handles, attr, attr_type):
-    """Helper function which checks possible h5py file handles, and returns an attribute for a valid file handle.
-
-    Parameters
-    ------------
-    h5py_file : h5py._hl.files.File
-        An open h5py format file.
-
-    file_handles : list
-        A list of strings describing the file handle of h5py file object.
-
-    attr : str
-        The name of the metadata attribute that is being extracted.
-
-    attr_type : type
-        The expected type of the attr, e.g. int or float.
-
-    Returns
-    ------------
-    extracted_attr : str, attr_type, NoneType
-        The extracted attribute.
-
-    Examples
-    ------------
-    Example usage is as follows::
-
-        from peaks.core.fileIO.loaders.I05 import _h5py_find_attr
-
-        fname = 'C:/User/Documents/Research/i05-12345.nxs'
-
-        # Open the file (read only)
-        f = h5py.File(fname, 'r')
-
-        # Extract the pass energy attribute from a h5py file
-        PE_handles = ['entry1/instrument/analyser/pass_energy', 'entry1/instrument/analyser_total/pass_energy']
-        PE = _h5py_find_attr(f, PE_handles, 'P.E', float)
-
-    """
-
-    # Set default value
-    extracted_attr = None
-
-    # Loop through file_handles to determine if any are valid
-    for handle in file_handles:
-        try:  # Attempt to extract value as type defined by attr_type
-            extracted_attr = attr_type(_h5py_str(h5py_file, handle))
-            break
-        except ValueError:  # Attempt to extract value as type str
-            extracted_attr = str(_h5py_str(h5py_file, handle))
-            break
-        except KeyError:  # Invalid file handle
-            pass
-
-    # Inform user if the metadata cannot be extracted
-    if extracted_attr is None:
-        analysis_warning(
-            f"Unable to extract {attr} metadata. If you expected this to be in the available metadata, update "
-            "the metadata loader in peaks.core.fileIO.loaders to account for new file format.",
-            title="Loading info",
-            warn_type="danger",
-        )
-
-    return extracted_attr
-
-
-def _h5py_find_coord(h5py_file, file_handles, coord, num_dp):
-    """Helper function which checks possible h5py file handles, and returns coordinate metadata for a valid file handle.
-
-    Parameters
-    ------------
-    h5py_file : h5py._hl.files.File
-        An open h5py format file.
-
-    file_handles : list
-        A list of strings describing the file handle of h5py file object.
-
-    coord : str
-        The name of the coordinate that is being extracted.
-
-    num_dp : int
-        The number of decimal places round to.
-
-    Returns
-    ------------
-    extracted_coord : float, str, NoneType
-        The extracted coordinate(s).
-
-    Examples
-    ------------
-    Example usage is as follows::
-
-        from peaks.core.fileIO.loaders.I05 import _h5py_find_coord
-
-        fname = 'C:/User/Documents/Research/i05-12345.nxs'
-
-        # Open the file (read only)
-        f = h5py.File(fname, 'r')
-
-        # Extract the x coordinate metadata from a h5py file
-        x_handles = ['entry1/instrument/manipulator/smx', 'entry1/instrument/manipulator/sax']
-        x = _h5py_find_coord(f, x_handles, 'x1', num_dp=2)
-
-    """
-
-    # Set default value
-    extracted_coord = None
-
-    # Loop through file_handles to determine if any are valid, and extract coordinate information
-    for handle in file_handles:
-        try:  # Attempt to extract coordinate information
-            # Extract coordinate values
-            coord_values = h5py_file[handle][()]
-            if (
-                len(coord_values) == 1
-            ):  # Simple case of a single coordinate value (rounding to num_dp decimal places)
-                extracted_coord = round(coord_values[0], num_dp)
-            elif (
-                len(coord_values) != 1 and len(coord_values.shape) == 1
-            ):  # 1D array of coordinate values (line scan)
-                # Extract coordinate metadata in 'min:max (step)' format (rounding to num_dp decimal places)
-                extracted_coord = _extract_mapping_metadata(coord_values, num_dp=num_dp)
-            elif (
-                len(coord_values.shape) == 2
-            ):  # 2D array of coordinate values (spatial map)
-                if coord_values[0][1] != coord_values[0][0]:
-                    coord_values = coord_values[0]
-                else:
-                    coord_values = [i[0] for i in coord_values]
-                # Extract coordinate metadata in 'min:max (step)' format (rounding to num_dp decimal places)
-                extracted_coord = _extract_mapping_metadata(coord_values, num_dp=num_dp)
-            else:  # Unable to identify coordinate
-                extracted_coord = None
-            break
-
-        except KeyError:  # Invalid file handle
-            pass
-
-    # Inform user if the coordinate metadata cannot be extracted
-    if extracted_coord is None:
-        analysis_warning(
-            f"Unable to extract {coord} metadata. If you expected this to be in the available metadata, update "
-            "the metadata loader in peaks.core.fileIO.loaders to account for new file format.",
-            title="Loading info",
-            warn_type="danger",
-        )
-
-    return extracted_coord
-
-
-def _h5py_str(h5py_file, file_handle):
-    """Parses string or binary strings into the correct format when reading from a h5py file
-
-    Parameters
-    ------------
-    h5py_file : h5py._hl.files.File
-        An open h5py format file.
-
-    file_handle : str, bin, list
-         File handle of h5py file object. Can either be str, bin or list of str/bin
-
-    Returns
-    ------------
-    contents : str
-        String of field contents
-
-    Examples
-    ------------
-    Example usage is as follows::
-
-        from peaks.core.fileIO.data_loading import _h5py_str
-
-        disp1 = load('disp1.ibw')
-
-        # Acts as a shortcut for accessing h5py file data. e.g. f['entry1/instrument/name'][()].decode()
-        location = _h5py_str(f, 'entry1/instrument/name')
-
-    """
-
-    # Attempt to obtain field contents
-    try:
-        if not isinstance(h5py_file[file_handle][()], str):
-            try:
-                contents = h5py_file[file_handle][0]
-            except ValueError:
-                contents = h5py_file[file_handle][()]
-        else:
-            contents = h5py_file[file_handle][()]
-
-    # Return None if unable to obtain field contents
-    except TypeError:
-        contents = None
-
-    # Decode contents if required
-    try:
-        contents = contents.decode()
-    except AttributeError:
-        pass
-
-    return contents
-
-
-def _extract_mapping_metadata(mapping_coordinates, num_dp):
-    """Utility function used for metadata loading which extracts a string to describe the inputted mapping coordinates
-    in the format: 'min:max (step)'.
-
-    Parameters
-    ------------
-    mapping_coordinates : list, numpy.ndarray
-         The coordinates of a mapping variable
-
-    num_dp : int
-        The number of decimal places round to.
-
-    Returns
-    ------------
-    mapping_metadata : str
-        String describing the mapping coordinates in the format: 'min:max (step)'.
-
-    Examples
-    ------------
-    Example usage is as follows::
-
-        from peaks.core.fileIO.data_loading import _extract_mapping_metadata
-
-        mapping_coordinates = [0, 0.5, 1, 1.5, 2, 2.5, 3]
-
-        # Extract the mapping coordinates in the format: 'min:max (step)'. For this example, we would get: '0:3 (0.5)'
-        mapping_metadata = _extract_mapping_metadata(mapping_coordinates)
-
-    """
-
-    # Extract the minimum and maximum of mapping_coordinates, and round to
-    min_value = round(min(mapping_coordinates), num_dp)
-    max_value = round(max(mapping_coordinates), num_dp)
-
-    # Extract the step size of mapping_coordinates
-    step_size = round((max_value - min_value) / (len(mapping_coordinates) - 1), num_dp)
-
-    # Describe the inputted mapping coordinates in the format: 'min:max (step)'.
-    mapping_metadata = (
-        str(min_value) + ":" + str(max_value) + " (" + str(step_size) + ")"
-    )
-
-    return mapping_metadata
+    # Otherwise, parse these into a DataTree
+    return _dataarrays_to_datatree(loaded_data, names)

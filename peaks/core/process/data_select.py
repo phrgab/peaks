@@ -6,16 +6,16 @@ import copy
 
 import numpy as np
 import xarray as xr
+import pint_xarray  # noqa: F401
 from matplotlib.path import Path
-from ...utils.accessors import register_accessor
-from ...utils.interpolation import (
+from peaks.core.utils.interpolation import (
     _fast_bilinear_interpolate,
     _fast_bilinear_interpolate_rectilinear,
     _is_linearly_spaced,
 )
+from peaks.core.utils.misc import dequantify_quantify_wrapper
 
 
-@register_accessor(xr.DataArray)
 def drop_nan_borders(data):
     """
     Trims the edges of an :class:`xarray.DataArray` or :class:`xarray.Dataset` that are all NaN values.
@@ -67,7 +67,6 @@ def _drop_nan_borders_2D(data):
     return data[rows_to_keep, :][:, cols_to_keep]
 
 
-@register_accessor(xr.DataArray)
 def drop_zero_borders(data):
     """
     Trims the edges of an :class:`xarray.DataArray` or :class:`xarray.Dataset` that are all zero values.
@@ -110,7 +109,7 @@ def drop_zero_borders(data):
     return data
 
 
-@register_accessor(xr.DataArray)
+@dequantify_quantify_wrapper
 def DC(data, coord="eV", val=0, dval=0, ana_hist=True):
     """General function to extract DCs from data along any coordinate.
 
@@ -194,12 +193,11 @@ def DC(data, coord="eV", val=0, dval=0, ana_hist=True):
     # Update the analysis history if ana_hist is True (will be False when DC is called from e.g. EDC, MDC, FS)
     if ana_hist:
         hist = "DC(s) extracted, integration window: " + str(dval)
-        dc = dc.history.add(hist, update_in_place=False)
+        dc = dc.history.assign(hist)
 
     return dc
 
 
-@register_accessor(xr.DataArray)
 def MDC(data, E=0, dE=0):
     """Extract MDCs (i.e. slices at constant energy) from data. Broadcasts to higher dimensions as necessary.
 
@@ -248,12 +246,11 @@ def MDC(data, E=0, dE=0):
 
     # Update the analysis history
     hist = "MDC(s) extracted, integration window: " + str(dE)
-    mdc = mdc.history.add(hist, update_in_place=False)
+    mdc = mdc.history.assign(hist)
 
     return mdc
 
 
-@register_accessor(xr.DataArray)
 def EDC(data, k=0, dk=0):
     """Extract EDCs from data.
 
@@ -308,12 +305,11 @@ def EDC(data, k=0, dk=0):
 
     # Update the analysis history
     hist = "EDC(s) extracted, integration window: " + str(dk)
-    edc = edc.history.add(hist, update_in_place=False)
+    edc = edc.history.assign(hist)
 
     return edc
 
 
-@register_accessor(xr.DataArray)
 def DOS(data):
     """Integrate over all but the energy axis to return the best approximation to the DOS possible from the data.
 
@@ -353,12 +349,11 @@ def DOS(data):
 
     # Update the analysis history
     hist = "Integrated along axes: " + str(int_dim)
-    dos = dos.history.add(hist, update_in_place=False)
+    dos = dos.history.assign(hist)
 
     return dos
 
 
-@register_accessor(xr.DataArray)
 def tot(data, spatial_int=False):
     """Integrate spatial map data over all non-spatial (energy and angle/k) or all spatial dimensions.
 
@@ -404,12 +399,12 @@ def tot(data, spatial_int=False):
         data_tot = data.mean(int_dim, keep_attrs=True)
 
     # Update the analysis history
-    data_tot = data_tot.history.add(hist, update_in_place=False)
+    data_tot = data_tot.history.assign(hist)
 
     return data_tot
 
 
-@register_accessor(xr.DataArray)
+@dequantify_quantify_wrapper
 def radial_cuts(data, num_azi=361, num_points=200, radius=2, **centre_kwargs):
     """Extract radial cuts of a Fermi surface slice or cube as a function of azimuthal angle, about some central point.
 
@@ -534,7 +529,7 @@ def radial_cuts(data, num_azi=361, num_points=200, radius=2, **centre_kwargs):
     return interpolated_data
 
 
-@register_accessor(xr.DataArray)
+@dequantify_quantify_wrapper
 def extract_cut(data, start_point, end_point, num_points=None):
     """Extract cut between two end-points, e.g. dispersion or MDC from a Fermi map data cube.
 
@@ -642,10 +637,11 @@ def extract_cut(data, start_point, end_point, num_points=None):
         f"Data returned vs. the projected distance."
     )
 
+    interpolated_data = interpolated_data.pint.quantify()
+
     return interpolated_data
 
 
-@register_accessor(xr.DataArray)
 def mask_data(data, ROI, return_integrated=True):
     """This function applies a polygon region of interest (ROI) as a mask to multidimensional data. By default, the
     function will then extract the mean over the two dimensions defined by the ROI. For a rectangular ROI, this is
@@ -755,19 +751,18 @@ def mask_data(data, ROI, return_integrated=True):
         )
 
     # Update analysis history
-    ROI_selected_data = ROI_selected_data.history.add(hist, update_in_place=False)
+    ROI_selected_data = ROI_selected_data.history.assign(hist)
 
     return ROI_selected_data
 
 
-@register_accessor(xr.DataArray)
-def disp_from_hv(data, hv):
+def disp_from_hv(da, hv):
     """Function to extract a dispersion at a given hv from an hv scan, correcting for the kinetic energy offsets
     (KE_delta) that arise from using the hv scan loading method.
 
     Parameters
     ------------
-    data : xarray.DataArray
+    da : xarray.DataArray
         The hv scan extract a single dispersion from.
 
     hv : float
@@ -792,21 +787,18 @@ def disp_from_hv(data, hv):
     """
 
     # Ensure the inputted data is an hv scan
-    if data.attrs["scan_type"] != "hv scan":
+    if "hv" not in da.dims:
         raise Exception(
             "The scan type of the inputted data is incompatible with disp_from_hv, which only extracts a "
             "single dispersion from an hv scan."
         )
 
-    # Ensure the inputted data has not already been converted to binding energy
-    if data.attrs["eV_type"] != "kinetic":
-        raise Exception(
-            "The energy axis of the inputted data is incompatible with disp_from_hv, which only works "
-            "when the energy axis is kinetic energy."
-        )
-
     # Extract the relevant hv slice
-    hv_scan = data.sel(hv=hv, method="nearest")
+    hv_scan = da.sel(hv=hv, method="nearest")
+
+    # If the inputted data is in binding energy, we are done
+    if "binding" in da.metadata.analyser.scan.eV_type.lower():
+        return hv_scan
 
     # Rescale eV axis to get the correct kinetic energy
     hv_scan["eV"] = hv_scan.eV.data + hv_scan.KE_delta.data
@@ -816,12 +808,11 @@ def disp_from_hv(data, hv):
     del hv_scan["KE_delta"]
 
     # Update the hv attribute
-    hv_scan.attrs["hv"] = float(hv)
+    hv_scan.metadata.photon.set("hv", float(hv), add_history=False)
 
     # Update analysis history
-    hv_scan = hv_scan.history.add(
-        "Dispersion extracted from hv scan at hv={hv} eV".format(hv=hv),
-        update_in_place=False,
+    hv_scan = hv_scan.history.assign(
+        "Dispersion extracted from hv scan at hv={hv} eV".format(hv=hv)
     )
 
     return hv_scan

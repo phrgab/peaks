@@ -5,6 +5,8 @@
 import sys
 from functools import partial
 import re
+
+import pint
 from PyQt6 import QtCore, QtWidgets, QtGui
 from PyQt6.QtWidgets import (
     QApplication,
@@ -16,13 +18,15 @@ from PyQt6.QtWidgets import (
 import pyqtgraph as pg
 import numpy as np
 import pyperclip
+from numba.cuda import local
 
 from peaks.core.GUI.GUI_utils import (
     Crosshair,
     KeyPressGraphicsLayoutWidget,
 )
-from peaks.core.fileIO.fileIO_opts import LocOpts
 from peaks.core.process.tools import sym, estimate_sym_point
+from peaks.core.metadata.meatdata_methods import display_metadata
+from peaks.core.GUI.GUI_utils.cursor_stats import _parse_norm_emission_cursor_stats
 
 
 def _disp_3d(data, primary_dim, exclude_from_centering):
@@ -63,6 +67,11 @@ class _Disp3D(QtWidgets.QMainWindow):
                 dims.insert(1, primary_dim)
                 data = data.transpose(*dims)
         self.data = data.compute()
+
+        # Read scan metadata
+        self.metadata_text = "<span style='color:white'>"
+        self.metadata_text += display_metadata(self.data, "html")
+        self.metadata_text += "</span><br>"
 
         # Crosshair options
         self.DC_pen = (255, 0, 0)
@@ -197,6 +206,9 @@ class _Disp3D(QtWidgets.QMainWindow):
         layout.addLayout(right_panel_layout)
 
         # Cursor stats etc.
+        scroll_area = QtWidgets.QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setFixedHeight(150)
         self.cursor_stats = QLabel()
         self.cursor_stats.setStyleSheet(
             "QLabel { background-color : black; color : white; }"
@@ -207,8 +219,8 @@ class _Disp3D(QtWidgets.QMainWindow):
         self.cursor_stats.setWordWrap(True)
         self.cursor_stats.setMaximumWidth(450)
         self.cursor_stats.setMinimumWidth(300)
-        self.cursor_stats.setMinimumHeight(100)
-        right_panel_layout.addWidget(self.cursor_stats)
+        scroll_area.setWidget(self.cursor_stats)
+        right_panel_layout.addWidget(scroll_area)
 
         # xh positions and widths
         xh_group = QtWidgets.QGroupBox("Data selection")
@@ -390,40 +402,8 @@ class _Disp3D(QtWidgets.QMainWindow):
 
         # Attempt to read some metadata
         self.metadata_text = "<span style='color:white'>"
-        if "beamline" in self.data.attrs:
-            attrs = self.data.attrs
-            loc = attrs.get("beamline")
-            self.current_data_loc_angle_conventions = LocOpts.get_conventions(loc)
-
-            attr_names = [
-                "x1",
-                "x2",
-                "x3",
-                "ana_polar",
-                "polar",
-                "tilt",
-                "azi",
-                "defl_par",
-                "defl_perp",
-                "temp_sample",
-                "hv",
-            ]
-            for attr in attr_names:
-                meta = attrs.get(attr, None)
-                meta_name = self.current_data_loc_angle_conventions.get(f"{attr}_name")
-                if meta and meta_name:
-                    self.metadata_text += f"{attr} [{meta_name}]={meta} | "
-                elif meta:
-                    self.metadata_text += f"{attr}={meta} | "
+        self.metadata_text += display_metadata(self.data, "html")
         self.metadata_text += "</span><br>"
-
-        # Check if this is an ARPES analyser for automated normal emission parsing
-        if "ana_slit_angle" in self.data.attrs:
-            self.analyser_type = self.current_data_loc_angle_conventions.get(
-                "ana_type", None
-            )
-        else:
-            self.analyser_type = None
 
     def _set_main_plots(self):
         # Make arrays for plotitems and crosshairs
@@ -867,23 +847,39 @@ class _Disp3D(QtWidgets.QMainWindow):
 
     def _update_cursor_stats_text(self):
         """Update the cursor stats."""
-        cursor_text = "Scan manipulator positions: "
+        cursor_text = ""
 
+        # Try and parse normal emission info
+        norm_emission = self._get_norm_values()
+        cursor_text += _parse_norm_emission_cursor_stats(self.data, norm_emission)
         # Add metadata
         cursor_text += self.metadata_text
-        cursor_text += "<hr>"
-
-        # Add normal emission
-        if self.analyser_type and "theta_par" in self.dims:
-            cursor_text += self._get_norm_values()
-
+        # Set text
         self.cursor_stats.setText(cursor_text)
+
+    def _get_norm_values(self):
+        positions = {
+            self.dims[i]: self.cursor_positions_selection[i].value() for i in range(3)
+        }
+        positions["azi_offset"] = -self.rotation_selection.value()
+        try:
+            norm_emission = self.data.metadata.get_normal_emission_from_values(
+                positions
+            )
+        except AttributeError:
+            norm_emission = {}
+
+        return norm_emission
 
     def _copy_norm_values(self):
         """Copy the normal emission values to the clipboard."""
         # Current norm values
-        norm_values = self._parse_norm_values()
-        pyperclip.copy(f".attrs.update({norm_values})")
+        norm_values = self._get_norm_values()
+        norm_values_to_return = {
+            k: str(v) if isinstance(v, pint.Quantity) else v
+            for k, v in norm_values.items()
+        }
+        pyperclip.copy(f".metadata.set_normal_emission({norm_values_to_return})")
 
     # ##############################
     # Signal connections
@@ -912,7 +908,7 @@ class _Disp3D(QtWidgets.QMainWindow):
             signal.connect(partial(self._update_slices, i))
             signal.connect(partial(self._update_DC, i))
             signal.connect(partial(self._update_xh_positions, i))
-        signal.connect(self._update_cursor_stats_text)
+            signal.connect(self._update_cursor_stats_text)
 
     def _connect_signals_xh_span_change(self):
         # Update when span ranges changed
@@ -1019,131 +1015,3 @@ class _Disp3D(QtWidgets.QMainWindow):
             path.arcTo(rect, 0, 360)
 
         return path
-
-    def _get_norm_values(self):
-        """Attempt to extract normal emission based on analyser configuration
-        and metadata.
-        """
-
-        r, g, b = self.DC_pen
-        cursor_text = f"<span style='color:#{r:02x}{g:02x}{b:02x}'>"
-        cursor_text += "Normal emission for crosshair position: <br>"
-
-        if self.analyser_type == "I" or self.analyser_type == "Ip":  # Type I
-            # Norm tilt
-            tilt = self.data.attrs.get("tilt", 0) or 0
-            defl_par = self.data.attrs.get("defl_par", 0) or 0
-            theta_par_index = self.dims.index("theta_par")
-            centre = self.cursor_positions_selection[theta_par_index].value()
-            norm_tilt = (
-                (self.current_data_loc_angle_conventions.get("tilt", 1) * tilt)
-                + (
-                    self.current_data_loc_angle_conventions.get("defl_par", 1)
-                    * defl_par
-                )
-                - (self.current_data_loc_angle_conventions.get("theta_par", 1) * centre)
-            )
-            cursor_text += (
-                f"&nbsp;&nbsp;&nbsp;&nbsp;norm_tilt "
-                f"[{self.current_data_loc_angle_conventions.get('tilt_name')}] = {norm_tilt:.3f}<br>"
-            )
-
-            # Norm polar
-            # Set defaults
-            defl_perp = self.data.attrs.get("defl_perp", 0) or 0
-            polar = self.data.attrs.get("polar", 0) or 0
-            ana_polar = self.data.attrs.get("ana_polar", 0) or 0
-            if "ana_polar" in self.data.dims:
-                ana_polar_dim_index = self.dims.index("ana_polar")
-                ana_polar = self.cursor_positions_selection[ana_polar_dim_index].value()
-            elif "polar" in self.data.dims:
-                polar_dim_index = self.dims.index("polar")
-                polar = self.cursor_positions_selection[polar_dim_index].value()
-            elif "defl_perp" in self.data.dims:
-                defl_perp_dim_index = self.dims.index("defl_perp")
-                defl_perp = self.cursor_positions_selection[defl_perp_dim_index].value()
-
-            norm_polar = (
-                (
-                    self.current_data_loc_angle_conventions.get("ana_polar", 1)
-                    * ana_polar
-                )
-                + (
-                    self.current_data_loc_angle_conventions.get("defl_perp", 1)
-                    * defl_perp
-                )
-                + (self.current_data_loc_angle_conventions.get("polar", 1) * polar)
-            )
-            cursor_text += (
-                f"&nbsp;&nbsp;&nbsp;&nbsp;norm_polar [{self.current_data_loc_angle_conventions.get('polar_name')}] "
-                f"= {norm_polar:.3f}<br>"
-            )
-
-        else:  # Type II
-            # Norm polar
-            polar = self.data.attrs.get("polar", 0) or 0
-            defl_par = self.data.attrs.get("defl_par", 0) or 0
-            theta_par_index = self.dims.index("theta_par")
-            centre = self.cursor_positions_selection[theta_par_index].value()
-            norm_polar = (
-                (self.current_data_loc_angle_conventions.get("polar", 1) * polar)
-                + (
-                    self.current_data_loc_angle_conventions.get("defl_par", 1)
-                    * defl_par
-                )
-                - (self.current_data_loc_angle_conventions.get("theta_par", 1) * centre)
-            )
-            cursor_text += (
-                f"&nbsp;&nbsp;&nbsp;&nbsp;norm_polar [{self.current_data_loc_angle_conventions.get('polar_name')}] = "
-                f"{norm_polar:.3f}<br>"
-            )
-
-            # Norm tilt
-            defl_perp = self.data.attrs.get("defl_perp", 0) or 0
-            tilt = self.data.attrs.get("tilt", 0) or 0
-            if "tilt" in self.data.dims:
-                tilt_dim_index = self.dims.index("tilt")
-                tilt = self.cursor_positions_selection[tilt_dim_index].value()
-            elif "defl_perp" in self.data.dims:
-                defl_perp_dim_index = self.dims.index("defl_perp")
-                defl_perp = self.cursor_positions_selection[defl_perp_dim_index].value()
-
-            norm_tilt = (
-                self.current_data_loc_angle_conventions.get("tilt", 1) * tilt
-            ) + (
-                self.current_data_loc_angle_conventions.get("defl_perp", 1) * defl_perp
-            )
-            cursor_text += (
-                f"&nbsp;&nbsp;&nbsp;&nbsp;norm_tilt "
-                f"[{self.current_data_loc_angle_conventions.get('tilt_name')}] = {norm_tilt:.3f}<br>"
-            )
-
-        # Norm azi
-        azi = self.data.attrs.get("azi", 0) or 0
-        rot = self.rotation_selection.value()
-        norm_azi = (self.current_data_loc_angle_conventions.get("azi", 1) * rot) + azi
-        cursor_text += (
-            f"&nbsp;&nbsp;&nbsp;&nbsp;norm_azi "
-            f"[{self.current_data_loc_angle_conventions.get('azi_name')}] = {norm_azi:.3f}"
-        )
-
-        cursor_text += "</span>"
-        return cursor_text
-
-    def _parse_norm_values(self):
-        """Parse normal emission values from the cursor stats text."""
-        norm_text = self._get_norm_values()
-        # Define regex patterns
-        patterns = {
-            "norm_polar": r"norm_polar \[.*?\] = ([\d\.-]+)",
-            "norm_tilt": r"norm_tilt \[.*?\] = ([\d\.-]+)",
-            "norm_azi": r"norm_azi \[.*?\] = ([\d\.-]+)",
-        }
-        # Search and extract values
-        norm_values = {}
-        for key, pattern in patterns.items():
-            match = re.search(pattern, norm_text)
-            if match:
-                norm_values[key] = float(match.group(1))
-
-        return norm_values
