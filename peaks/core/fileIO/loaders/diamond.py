@@ -338,7 +338,7 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
                         coords[dims[i]] = f[f"{data_group_addr}/{dims[i]}"][
                             tuple(indexer)
                         ]
-                else:
+                elif len(dims) > 0:
                     dim_mapping[axis] = dims[0]
                     coords[dims[0]] = f[f"{data_group_addr}/{dims[0]}"][()].squeeze()
             dims = [dim_mapping.get(str(i + 1), "dummy") for i in range(data_ndim)]
@@ -469,6 +469,25 @@ class I05NanoARPESLoader(I05ARPESLoader):
         "x3": "smz",
         "defocus": "smdefocus",
     }
+
+    _desired_dim_order = [
+        "scan_no",
+        "hv",
+        "temperature_sample",
+        "temperature_cryostat",
+        "x3",
+        "x2",
+        "x1",
+        "ana_polar",
+        "polar",
+        "tilt",
+        "azi",
+        "y_scale",
+        "deflector_perp",
+        "eV",
+        "deflector_parallel",
+        "theta_par",
+    ]
 
     _analyser_name_conventions = {
         "deflector_perp": "ThetaY",
