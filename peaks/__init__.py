@@ -47,6 +47,7 @@ from peaks.core.fileIO.base_arpes_data_classes.base_ses_class import SESDataLoad
 from peaks.core.fileIO.base_arpes_data_classes.base_fesuma_class import (
     BaseFeSuMaDataLoader,
 )
+from peaks.core.fileIO.base_arpes_data_classes.base_mbs_class import MBSDataLoader
 from peaks.core.fileIO.loaders import *
 
 # Import the core functions that should be accessible from the main peaks namespace

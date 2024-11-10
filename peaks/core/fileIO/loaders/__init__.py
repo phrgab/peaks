@@ -8,5 +8,6 @@ from peaks.core.fileIO.loaders import (
     netcdf,
     zarr,
     standrews_phoibos,
+    standrews_mbs,
     clf,
 )
