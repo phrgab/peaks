@@ -419,7 +419,12 @@ class BaseARPESDataLoader(
         # Determine the type based on analyser azi angle
         analyser_azi = analyser_angles.get("azi", 0)
         if analyser_azi == 0:
-            if any(deflector_angles.values()):
+            if any(
+                value is not None
+                and isinstance(value, pint.Quantity)
+                and np.any(value.magnitude != 0)
+                for value in deflector_angles.values()
+            ):
                 type_ = "Ip"
                 alpha = get_angle(da, "theta_par") + deflector_angles["parallel"]
                 beta = deflector_angles["perp"]
@@ -438,7 +443,12 @@ class BaseARPESDataLoader(
                 chi_0 = None
                 xi_0 = get_reference_angle(da, "tilt")
         else:
-            if any(deflector_angles.values()):
+            if any(
+                value is not None
+                and isinstance(value, pint.Quantity)
+                and np.any(value.magnitude != 0)
+                for value in deflector_angles.values()
+            ):
                 type_ = "IIp"
                 alpha = get_angle(da, "theta_par") + deflector_angles["parallel"]
                 beta = deflector_angles["perp"]
