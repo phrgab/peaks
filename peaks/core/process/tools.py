@@ -1421,7 +1421,7 @@ def sum_data(data, quiet=False):
     return _sum_or_subtract_data(data, _sum=True, quiet=quiet)
 
 
-def )(data, quiet=False):
+def subtract_data(data, quiet=False):
     """Function to subtract two DataArrays together, maintaining the metadata.
     If the metadata of the DataArrays differ, that of the first inputted DataArray will be used.
     If the coordinate grids of the DataArrays differ, all DataArrays will be interpolated onto the
