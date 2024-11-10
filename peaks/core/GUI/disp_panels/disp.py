@@ -3,13 +3,8 @@
 """
 
 import xarray as xr
-from peaks.utils.accessors import register_accessor
-from peaks.core.GUI.disp_panels.disp_2d import _disp_2d
-from peaks.core.GUI.disp_panels.disp_3d import _disp_3d
-from peaks.core.GUI.disp_panels.disp_4d import _disp_4d
 
 
-@register_accessor(xr.DataArray)
 def disp(data, primary_dim=None, exclude_from_centering="eV"):
     """GUI data viewer for 2D, 3D, or 4D data. Click on the Help menu of the GUI to see keyboard shortcuts.
     Default display mode is based on the conventional `peaks` data structure for ARPES data, but can be modified by
@@ -51,6 +46,28 @@ def disp(data, primary_dim=None, exclude_from_centering="eV"):
 
     """
 
+    # If a DataTree instance is passed, try to parse into a form `.disp` can handle
+    err_str = (
+        "DataTree does not meet the required format to call `.disp`. It should either be a single leaf or a tree "
+        "of multiple leaves each containing a Dataset with a single data variable of `data`. If a multi-leaf "
+        "tree, only the 2D DataArrays are parsed."
+    )
+    if isinstance(data, xr.DataTree):
+        if len(data.children) == 0:
+            try:
+                data = data.data
+            except AttributeError:
+                raise ValueError(err_str)
+        else:
+            try:
+                data = [
+                    node.get_DataArray()
+                    for node in data.subtree
+                    if not node.is_empty and len(node.data.dims) == 2
+                ]
+            except AttributeError:
+                raise ValueError(err_str)
+
     if isinstance(data, list):
         for array in data:
             if isinstance(array, xr.DataArray):
@@ -64,6 +81,9 @@ def disp(data, primary_dim=None, exclude_from_centering="eV"):
                     "Unexpected data type: only 2D xr.DataArrays are supported "
                     "for passing to `.disp` in a list."
                 )
+
+        from peaks.core.GUI.disp_panels.disp_2d import _disp_2d
+
         _disp_2d(
             data, primary_dim=primary_dim, exclude_from_centering=exclude_from_centering
         )
@@ -73,19 +93,25 @@ def disp(data, primary_dim=None, exclude_from_centering="eV"):
             data = data.squeeze()
         ndim = len(data.dims)
         if ndim == 2:
+            from peaks.core.GUI.disp_panels.disp_2d import _disp_2d
+
             _disp_2d(
                 [data],
                 primary_dim=primary_dim,
                 exclude_from_centering=exclude_from_centering,
             )
         elif ndim == 3:
+            from peaks.core.GUI.disp_panels.disp_3d import _disp_3d
+
             _disp_3d(
-                data,
+                data.pint.dequantify(),
                 primary_dim=primary_dim,
                 exclude_from_centering=exclude_from_centering,
             )
         elif ndim == 4:
-            _disp_4d(data, primary_dim=primary_dim)
+            from peaks.core.GUI.disp_panels.disp_4d import _disp_4d
+
+            _disp_4d(data.pint.dequantify(), primary_dim=primary_dim)
         else:
             raise ValueError(
                 "Number of dimensions not supported for interactive display. "

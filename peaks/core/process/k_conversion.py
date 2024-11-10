@@ -4,22 +4,29 @@
 
 import numpy as np
 import numexpr as ne
+import pint
 import xarray as xr
 from scipy.constants import m_e, hbar, electron_volt, angstrom
 import numba_progress
 from tqdm.notebook import tqdm
+import pint_xarray
 
-from .fermi_level_correction import _get_wf, _get_BE_scale, _get_E_shift_at_theta_par
-from ...utils.misc import analysis_warning
-from ...utils.accessors import register_accessor
-from ...utils.interpolation import (
+from peaks.core.process.fermi_level_correction import (
+    _get_wf,
+    _get_BE_scale,
+    _get_E_shift_at_theta_par,
+)
+from peaks.core.fileIO.base_data_classes.base_data_class import BaseDataLoader
+from peaks.core.utils.interpolation import (
     _is_linearly_spaced,
     _fast_bilinear_interpolate,
     _fast_trilinear_interpolate,
     _fast_bilinear_interpolate_rectilinear,
     _fast_trilinear_interpolate_rectilinear,
 )
-from ..fileIO.fileIO_opts import LocOpts
+from peaks.core.utils.misc import analysis_warning
+
+ureg = pint_xarray.unit_registry
 
 # Calculate kvac_const
 KVAC_CONST = (2 * m_e / (hbar**2)) ** 0.5 * (electron_volt**0.5) * angstrom
@@ -33,26 +40,58 @@ PI = np.pi
 # --------------------------------------------------------- #
 
 
-def _f_dispatcher(ana_type, Ek, alpha, beta, delta_, xi_, beta_0=None, chi_=None):
-    if ana_type == "I":
-        return _fI(alpha, beta - beta_0, delta_, xi_, Ek)
-    elif ana_type == "II":
-        return _fII(alpha, beta - beta_0, delta_, xi_, Ek)
-    elif ana_type == "Ip":
-        return _fIp(alpha, beta, delta_, xi_, chi_, Ek)
-    elif ana_type == "IIp":
-        return _fIIp(alpha, beta, delta_, xi_, chi_, Ek)
+def ensure_radians(func):
+    def wrapper(*args, **kwargs):
+        processed_args = []
+        for arg in args:
+            if isinstance(arg, pint.Quantity):
+                if arg.dimensionality != ureg.radian.dimensionality:
+                    raise ValueError("All angles must be in radians.")
+                else:
+                    processed_args.append(arg.magnitude)
+            else:
+                processed_args.append(arg)
+
+        processed_kwargs = {}
+        for key, arg in kwargs.items():
+            if isinstance(arg, pint.Quantity):
+                if arg.dimensionality != ureg.radian.dimensionality:
+                    raise ValueError("All angles must be in radians.")
+                else:
+                    processed_kwargs[key] = arg.magnitude
+            else:
+                processed_kwargs[key] = arg
+
+        return func(*processed_args, **processed_kwargs)
+
+    return wrapper
 
 
-def _f_inv_dispatcher(ana_type, Ek, kx, ky, delta_, xi, xi_0, beta_0=None, chi_=None):
+def _f_dispatcher(
+    ana_type, Ek, alpha, beta, beta_0, chi, chi_0, delta, delta_0, xi, xi_0
+):
     if ana_type == "I":
-        return _fI_inv(kx, ky, delta_, xi - xi_0, Ek, beta_0)
+        return _fI(alpha, beta - beta_0, delta - delta_0, xi - xi_0, Ek)
     elif ana_type == "II":
-        return _fII_inv(kx, ky, delta_, xi - xi_0, Ek, beta_0)
+        return _fII(alpha, beta - beta_0, delta - delta_0, xi - xi_0, Ek)
     elif ana_type == "Ip":
-        return _fIp_inv(kx, ky, delta_, xi - xi_0, chi_, Ek)
+        return _fIp(alpha, beta, delta - delta_0, xi - xi_0, chi - chi_0, Ek)
     elif ana_type == "IIp":
-        return _fIIp_inv(kx, ky, delta_, xi - xi_0, chi_, Ek)
+        return _fIIp(alpha, beta, delta - delta_0, xi - xi_0, chi - chi_0, Ek)
+
+
+def _f_inv_dispatcher(
+    ana_type, Ek, kx, ky, beta_0, chi, chi_0, delta, delta_0, xi, xi_0
+):
+
+    if ana_type == "I":
+        return _fI_inv(kx, ky, delta - delta_0, xi - xi_0, Ek, beta_0)
+    elif ana_type == "II":
+        return _fII_inv(kx, ky, delta - delta_0, xi - xi_0, Ek, beta_0)
+    elif ana_type == "Ip":
+        return _fIp_inv(kx, ky, delta - delta_0, xi - xi_0, chi - chi_0, Ek)
+    elif ana_type == "IIp":
+        return _fIIp_inv(kx, ky, delta - delta_0, xi - xi_0, chi - chi_0, Ek)
 
 
 def _fI(alpha, beta_, delta_, xi_, Ek):  # Type I, no deflector
@@ -62,13 +101,13 @@ def _fI(alpha, beta_, delta_, xi_, Ek):  # Type I, no deflector
     Parameters
     -----------
     alpha : float or np.ndarray
-        theta_par angle (analyser slit angle, deg)
+        theta_par angle (analyser slit angle, rad)
     beta_ : float or np.ndaarray
-        polar angle - reference angle (deg)
+        polar angle - reference angle (rad)
     delta_ : float
-        azi angle - reference angle (deg)
+        azi angle - reference angle (rad)
     xi_ : float or np.ndarray
-        tilt angle - reference angle (deg)
+        tilt angle - reference angle (rad)
     Ek : float or np.nadarray
         Kinetic energy (eV)
 
@@ -82,12 +121,6 @@ def _fI(alpha, beta_, delta_, xi_, Ek):  # Type I, no deflector
 
     # k_vacuum from KE
     kvac_str = "KVAC_CONST * sqrt(Ek)"
-
-    # Convert angles to radians
-    alpha = np.radians(alpha)
-    beta_ = np.radians(beta_)
-    delta_ = np.radians(delta_)
-    xi_ = np.radians(xi_)
 
     # Mapping functions
     kx = ne.evaluate(
@@ -109,13 +142,13 @@ def _fII(alpha, beta_, delta_, xi_, Ek):  # Type II, no deflector
        Parameters
        ----------
        alpha : float or np.ndarray
-           theta_par angle (analyser slit angle, deg)
+           theta_par angle (analyser slit angle, rad)
        beta_ : float or np.ndarray
-           tilt angle - reference angle (deg)
+           tilt angle - reference angle (rad)
        delta_ : float
-           azi angle - reference angle (deg)
+           azi angle - reference angle (rad)
        xi_ : float or np.ndarray
-           polar angle - reference angle (deg)
+           polar angle - reference angle (rad)
        Ek : float or np.ndarray
            Kinetic energy (eV)
 
@@ -128,12 +161,6 @@ def _fII(alpha, beta_, delta_, xi_, Ek):  # Type II, no deflector
     """
     # k_vacuum from KE
     kvac_str = "KVAC_CONST * sqrt(Ek)"
-
-    # Convert angles to radians
-    alpha = np.radians(alpha)
-    beta_ = np.radians(beta_)
-    delta_ = np.radians(delta_)
-    xi_ = np.radians(xi_)
 
     # Mapping functions
     kx = ne.evaluate(
@@ -155,15 +182,15 @@ def _fIp(alpha, beta, delta_, xi_, chi_, Ek):  # Type I with deflector
     Parameters
     ----------
     alpha : float or np.ndarray
-        theta_par angle (analyser slit angle) + defl_par (deflector angle along the slit) (deg)
+        theta_par angle (analyser slit angle) + defl_par (deflector angle along the slit) (rad)
     beta : float or np.ndarray
-        defl_perp (deflector angle perpendicular to the slit, deg)
+        defl_perp (deflector angle perpendicular to the slit, rad)
     delta_ : float
-        azi angle - reference angle (deg)
+        azi angle - reference angle (rad)
     xi_ : float or np.ndarray
-        tilt angle - reference angle (deg)
+        tilt angle - reference angle (rad)
     chi_ : float or np.ndarray
-        polar angle - reference angle (deg)
+        polar angle - reference angle (rad)
     Ek : float or np.ndarray
         Kinetic energy (eV)
 
@@ -177,13 +204,6 @@ def _fIp(alpha, beta, delta_, xi_, chi_, Ek):  # Type I with deflector
 
     # k_vacuum from KE
     kvac_str = "KVAC_CONST * sqrt(Ek)"
-
-    # Convert angles to radians
-    alpha = np.radians(alpha)
-    beta = np.radians(beta)
-    delta_ = np.radians(delta_)
-    xi_ = np.radians(xi_)
-    chi_ = np.radians(chi_)
 
     # Mapping functions
     sinc_a2b2_str = "sin(sqrt(alpha**2 + beta**2))/(sqrt(alpha**2 + beta**2))"
@@ -212,15 +232,15 @@ def _fIIp(alpha, beta, delta_, xi_, chi_, Ek):  # Type II with deflector
     Parameters
     ----------
     alpha : float or np.ndarray
-        theta_par angle (analyser slit angle) + defl_par (deflector angle along the slit) (deg)
+        theta_par angle (analyser slit angle) + defl_par (deflector angle along the slit) (rad)
     beta : float or np.ndarray
-        defl_perp (deflector angle perpendicular to the slit, deg)
+        defl_perp (deflector angle perpendicular to the slit, rad)
     delta_ : float
-        azi angle - reference angle (deg)
+        azi angle - reference angle (rad)
     xi_ : float or np.ndarray
-        tilt angle - reference angle (deg)
+        tilt angle - reference angle (rad)
     chi_ : float or np.ndarray
-        polar angle - reference angle (deg)
+        polar angle - reference angle (rad)
     Ek : float or np.ndarray
         Kinetic energy (eV)
 
@@ -234,13 +254,6 @@ def _fIIp(alpha, beta, delta_, xi_, chi_, Ek):  # Type II with deflector
 
     # k_vacuum from KE
     kvac_str = "KVAC_CONST * sqrt(Ek)"
-
-    # Convert angles to radians
-    alpha = np.radians(alpha)
-    beta = np.radians(beta)
-    delta_ = np.radians(delta_)
-    xi_ = np.radians(xi_)
-    chi_ = np.radians(chi_)
 
     # Mapping function
     sinc_a2b2_str = "sin(sqrt(alpha**2 + beta**2))/(sqrt(alpha**2 + beta**2))"
@@ -277,9 +290,9 @@ def _fI_inv(kx, ky, delta_, xi, Ek, beta_0):  # Type I, no deflector
     ky : float or np.ndarray
         k-vector perp to analyser slit (1/A)
     delta_ : float
-        azi angle - reference angle (deg)
+        azi angle - reference angle (rad)
     xi : float
-        tilt angle (deg)
+        tilt angle (rad)
     Ek : float
         Kinetic energy (eV)
     beta_0 : float, optional
@@ -288,28 +301,23 @@ def _fI_inv(kx, ky, delta_, xi, Ek, beta_0):  # Type I, no deflector
     Returns
     -------
     alpha : float or np.ndarray
-        theta_par angle (analyser slit angle, deg)
+        theta_par angle (analyser slit angle, rad)
     beta : float or np.ndarray
-        polar angle (deg)
+        polar angle (rad)
     """
     # k_vacuum from KE
     kvac_str = "(KVAC_CONST * sqrt(Ek))"
 
-    # Convert angles to radians
-    delta_ = np.radians(delta_)
-    xi = np.radians(xi)
-    beta_0 = np.radians(beta_0)
-
     # Mapping function (include convert to degrees directly for speed)
     alpha = ne.evaluate(
         f"arcsin((sin(xi) * sqrt({kvac_str}**2 - kx**2 - ky**2) - cos(xi) * (kx * cos(delta_) + ky * sin(delta_))) "
-        f"/ {kvac_str}) * 180 / PI"
+        f"/ {kvac_str})"
     )
 
     beta = ne.evaluate(
         "(beta_0 + (arctan((kx * sin(delta_) - ky * cos(delta_)) /"
         " (kx * sin(xi) * cos(delta_) + ky * sin(xi) * sin(delta_) "
-        f"+ cos(xi) * sqrt({kvac_str}**2 - kx**2 - ky**2))))) * 180 / PI"
+        f"+ cos(xi) * sqrt({kvac_str}**2 - kx**2 - ky**2)))))"
     )
 
     return alpha, beta
@@ -326,9 +334,9 @@ def _fII_inv(kx, ky, delta_, xi, Ek, beta_0):  # Type I, no deflector
     ky : float or np.ndarray
         k-vector along analyser slit (1/A)
     delta_ : float
-        azi angle - reference angle (deg)
+        azi angle - reference angle (rad)
     xi : float
-        polar angle (deg)
+        polar angle (rad)
     Ek : float or np.ndarray
         Kinetic energy (eV)
     beta_0 : float, optional
@@ -337,26 +345,20 @@ def _fII_inv(kx, ky, delta_, xi, Ek, beta_0):  # Type I, no deflector
     Returns
     -------
     alpha : float or np.ndarray
-        theta_par angle (analyser slit angle, deg)
+        theta_par angle (analyser slit angle, rad)
     beta : float or np.ndarray
-        tilt angle (deg)
+        tilt angle (rad)
     """
-
     # k_vacuum from KE
     kvac_str = "(KVAC_CONST * sqrt(Ek))"
-
-    # Convert angles to radians
-    delta_ = np.radians(delta_)
-    xi = np.radians(xi)
-    beta_0 = np.radians(beta_0)
 
     # Mapping function (include convert to degrees directly for speed)
     alpha = ne.evaluate(
         f"arcsin((sin(xi) * sqrt({kvac_str}**2 - ((kx * sin(delta_) - ky * cos(delta_))**2)) "
-        f"- cos(xi) * (kx * sin(delta_) - ky * cos(delta_))) / {kvac_str}) * 180 / PI"
+        f"- cos(xi) * (kx * sin(delta_) - ky * cos(delta_))) / {kvac_str})"
     )
     beta = ne.evaluate(
-        f"(beta_0 + arctan((kx * cos(delta_) + ky * sin(delta_)) / sqrt({kvac_str}**2 - kx**2 - ky**2))) * 180 / PI"
+        f"(beta_0 + arctan((kx * cos(delta_) + ky * sin(delta_)) / sqrt({kvac_str}**2 - kx**2 - ky**2)))"
     )
 
     return alpha, beta
@@ -404,30 +406,25 @@ def _fIp_inv(kx, ky, delta_, xi_, chi_, Ek):  # Type I, with deflector
     ky : float or np.ndarray
         k-vector perp to analyser slit (1/A)
     delta_ : float
-        azi angle (deg), relative to 'normal' emission
+        azi angle (rad), relative to 'normal' emission
     xi_ : float
-        tilt angle (deg), relative to normal emission
+        tilt angle (rad), relative to normal emission
     chi_ : float
-        polar angle (deg), relative to normal emission
+        polar angle (rad), relative to normal emission
     Ek : float
         Kinetic energy (eV)
 
     Returns
     -------
     alpha : float or np.ndarray
-        theta_par angle (analyser slit angle, deg)
+        theta_par angle (analyser slit angle, rad)
     beta : float or np.ndarray
-        polar angle (deg)
+        polar angle (rad)
     """
 
     # k_vacuum from KE
     kvac_str = "(KVAC_CONST * sqrt(Ek))"
     k2p_str = f"sqrt({kvac_str}**2 - kx**2 - ky**2)"
-
-    # Convert angles to radians
-    delta_ = np.radians(delta_)
-    xi_ = np.radians(xi_)
-    chi_ = np.radians(chi_)
 
     # Mapping functions
     arg1_str = f"({_tij(31)} * kx) + ({_tij(32)} * ky) + ({_tij(33)} * {k2p_str})"
@@ -435,10 +432,10 @@ def _fIp_inv(kx, ky, delta_, xi_, chi_, Ek):  # Type I, with deflector
     arg3_str = f"({_tij(21)} * kx) + ({_tij(22)} * ky) + ({_tij(23)} * {k2p_str})"
 
     alpha = ne.evaluate(
-        f"-arccos({arg1_str} / {kvac_str}) * {arg2_str} / sqrt({kvac_str}**2 - {arg1_str}**2) * 180 / PI"
+        f"-arccos({arg1_str} / {kvac_str}) * {arg2_str} / sqrt({kvac_str}**2 - {arg1_str}**2)"
     )
     beta = ne.evaluate(
-        f"-arccos({arg1_str} / {kvac_str}) * {arg3_str} / sqrt({kvac_str}**2 - {arg1_str}**2) * 180 / PI"
+        f"-arccos({arg1_str} / {kvac_str}) * {arg3_str} / sqrt({kvac_str}**2 - {arg1_str}**2)"
     )
 
     return alpha, beta
@@ -455,30 +452,25 @@ def _fIIp_inv(kx, ky, delta_, xi_, chi_, Ek):  # Type II, with deflector
     ky : float or np.ndarray
         k-vector along analyser slit (1/A)
     delta_ : float
-        azi angle (deg), relative to 'normal' emission
+        azi angle (rad), relative to 'normal' emission
     xi_ : float
-        tilt angle (deg), relative to normal emission
+        tilt angle (rad), relative to normal emission
     chi_ : float
-        polar angle (deg), relative to normal emission
+        polar angle (rad), relative to normal emission
     Ek : float
         Kinetic energy (eV)
 
     Returns
     -------
     alpha : float or np.ndarray
-        theta_par angle (analyser slit angle, deg)
+        theta_par angle (analyser slit angle, rad)
     beta : float or np.ndarray
-        mapping angle (deg)
+        mapping angle (rad)
     """
 
     # k_vacuum from KE
     kvac_str = "(KVAC_CONST * sqrt(Ek))"
     k2p_str = f"sqrt({kvac_str}**2 - kx**2 - ky**2)"
-
-    # Convert angles to radians
-    delta_ = np.radians(delta_)
-    xi_ = np.radians(xi_)
-    chi_ = np.radians(chi_)
 
     # Mapping functions
     arg1_str = f"({_tij(31)} * kx) + ({_tij(32)} * ky) + ({_tij(33)} * {k2p_str})"
@@ -486,151 +478,13 @@ def _fIIp_inv(kx, ky, delta_, xi_, chi_, Ek):  # Type II, with deflector
     arg3_str = f"({_tij(11)} * kx) + ({_tij(12)} * ky) + ({_tij(13)} * {k2p_str})"
 
     alpha = ne.evaluate(
-        f"-arccos({arg1_str} / {kvac_str}) * {arg2_str} / sqrt({kvac_str}**2 - {arg1_str}**2) * 180 / PI"
+        f"-arccos({arg1_str} / {kvac_str}) * {arg2_str} / sqrt({kvac_str}**2 - {arg1_str}**2) "
     )
     beta = ne.evaluate(
-        f"-arccos({arg1_str} / {kvac_str}) * {arg3_str} / sqrt({kvac_str}**2 - {arg1_str}**2) * 180 / PI"
+        f"-arccos({arg1_str} / {kvac_str}) * {arg3_str} / sqrt({kvac_str}**2 - {arg1_str}**2) "
     )
 
     return alpha, beta
-
-
-def _get_angles_for_k_conv(data, return_raw=False, quiet=False):
-    """
-    Get the angles for the k-space conversion.
-
-    Parameters
-    ----------
-    data : xarray.DataArray
-        Data to convert to k-space.
-    return_raw : bool, optional
-        Whether to return the raw angles (polar, norm_tilt etc.), or the angles in the convention for
-        k-conversion (alpha, beta etc.). Defaults to False.
-    quiet : bool, optional
-        Whether to suppress warnings. Defaults to False.
-
-    Returns
-    -------
-    dict
-        Angles for the k-space conversion (if return_raw=False) or raw angles (if return_raw=True).
-    """
-
-    # Determine if analyser should be treated as type I, II, I' or II'
-    # using nomenclature from Ishida and Shin, Rev. Sci. Instrum. 89 (2018) 043903
-    loc = data.attrs.get("beamline")
-    _conventions = LocOpts.get_conventions(loc)
-    ana_type = _conventions.get("ana_type")
-
-    angles_to_extract = [
-        "theta_par",
-        "polar",
-        "tilt",
-        "azi",
-        "ana_polar",
-        "defl_par",
-        "defl_perp",
-    ]
-
-    # Get the raw angles from the data
-    angles_to_warn = ["polar", "tilt", "azi"]
-    angles = {}
-    warn_str = ""
-    for i in angles_to_extract:
-        if i in data.coords:
-            angles[i] = data.coords[i].data
-        else:
-            angle = data.attrs.get(i)
-            if angle is not None:
-                angles[i] = angle
-            else:
-                angles[i] = 0
-                if i in angles_to_warn:
-                    warn_str += f"{i}: 0, "
-
-    # Extract normal emissions, trying to make some sensible guesses for parameters not specified
-    norm_angles_to_extract = [
-        "norm_polar",
-        "norm_tilt",
-        "norm_azi",
-    ]
-    for i in norm_angles_to_extract:
-        angle = data.attrs.get(i)
-        if angle is not None:
-            angles[i] = angle
-        elif i == "norm_azi":
-            norm_azi = angles["azi"]
-            angles[i] = norm_azi
-            warn_str += f"{i}: {norm_azi}, "
-        elif i == "norm_polar" and (ana_type == "I" or ana_type == "Ip"):
-            norm_polar = angles["polar"]
-            if isinstance(norm_polar, np.ndarray):
-                norm_polar = 0
-            angles[i] = norm_polar
-            warn_str += f"{i}: {norm_polar}, "
-        elif i == "norm_tilt" and "II" in ana_type:
-            norm_tilt = angles["tilt"]
-            if isinstance(norm_tilt, np.ndarray):
-                norm_tilt = 0
-            angles[i] = norm_tilt
-            warn_str += f"{i}: {norm_tilt}, "
-        else:
-            angles[i] = 0
-            if i in angles_to_warn:
-                warn_str += f"{i}:"
-
-    # Give a warning if parameters have been assumed
-    if warn_str:
-        warn_str = (
-            f"Some manipulator data and/or normal emission data was missing or could not be passed. "
-            f'Assuming default values of: {warn_str.rstrip(", ")}.'
-        )
-        analysis_warning(warn_str, "warning", "Analysis warning", quiet)
-
-    # Above analyser determination gives the analyser capabilities, but for deflector types we need to check if
-    # mapping was actually being performed without deflectors - if not, fall back to the non-deflector type
-    if ana_type == "Ip" or ana_type == "IIp":
-        if np.all(angles["defl_par"] == 0) and np.all(angles["defl_perp"] == 0):
-            ana_type = "I" if ana_type == "Ip" else "II"
-
-    # Put angles in correct notation cf. Ishida and Shin, Rev. Sci. Instrum. 89 (2018) 043903
-    angles_out = {}
-    angles_out["ana_type"] = ana_type
-    angles_out["delta_"] = (angles["azi"] - angles["norm_azi"]) * _conventions.get(
-        "azi"
-    )
-    if ana_type == "I":  # Type I
-        angles_out["alpha"] = angles["theta_par"] * _conventions.get("theta_par")
-        angles_out["beta"] = (angles["polar"] * _conventions.get("polar")) + (
-            angles["ana_polar"] * _conventions.get("ana_polar")
-        )
-        angles_out["beta_0"] = angles["norm_polar"] * _conventions.get("polar")
-        angles_out["xi"] = angles["tilt"] * _conventions.get("tilt")
-        angles_out["xi_0"] = angles["norm_tilt"] * _conventions.get("tilt")
-    elif ana_type == "II":  # Type II
-        angles_out["alpha"] = angles["theta_par"] * _conventions.get("theta_par")
-        angles_out["beta"] = angles["tilt"] * _conventions.get("tilt")
-        angles_out["beta_0"] = angles["norm_tilt"] * _conventions.get("tilt")
-        angles_out["xi"] = (angles["polar"] * _conventions.get("polar")) + (
-            angles["ana_polar"] * _conventions.get("ana_polar")
-        )
-        angles_out["xi_0"] = angles["norm_polar"] * _conventions.get("polar")
-    elif ana_type == "Ip" or ana_type == "IIp":  # Type I' or Type II'
-        angles_out["alpha"] = angles["theta_par"] * _conventions.get("theta_par") + (
-            angles["defl_par"] * _conventions.get("defl_par")
-        )
-        angles_out["beta"] = angles["defl_perp"] * _conventions.get("defl_perp")
-        angles_out["beta_0"] = None
-        angles_out["xi"] = (angles["tilt"]) * _conventions.get("tilt")
-        angles_out["xi_0"] = angles["norm_tilt"] * _conventions.get("tilt")
-        angles_out["chi"] = (angles["polar"] * _conventions.get("polar")) + (
-            angles["ana_polar"] * _conventions.get("ana_polar")
-        )
-        angles_out["chi_0"] = angles["norm_polar"] * _conventions.get("polar")
-
-    if return_raw:
-        return angles
-    else:
-        return angles_out
 
 
 def _f_kz(Ek, k_along_slit, k_perp_slit, V0):
@@ -768,9 +622,8 @@ def _get_k_perpto_slit(kx, ky, ana_type):
 # --------------------------------------------------------- #
 
 
-@register_accessor(xr.DataArray)
 def k_convert(
-    data,
+    da,
     eV=None,
     eV_slice=None,
     kx=None,
@@ -783,7 +636,7 @@ def k_convert(
 
     Parameters
     ----------
-    data : xarray.DataArray
+    da : xarray.DataArray
         Data to convert to k-space.
     eV : slice, optional
         Binding energy range to calculate over for the final converted data in the form slice(start, stop, step).
@@ -817,15 +670,20 @@ def k_convert(
     """
 
     # Parse basic data properties
-    scan_type = data.attrs.get("scan_type")
-    angles = _get_angles_for_k_conv(data, quiet=quiet)  # Get angles for k-conv
-    ana_type = angles["ana_type"]
+    loader = BaseDataLoader.get_loader(da.metadata.scan.loc)
+    angles = loader._get_angles_Ishida_Shin(da, quiet=quiet)  # Get angles for k-conv
+    # Ensure all angles are in radians, da energies are in eV and then dequantify
+    unit_stripped_angles = {
+        axis: (angle.to("rad").magnitude if isinstance(angle, pint.Quantity) else angle)
+        for axis, angle in angles.items()
+    }
+    angles = unit_stripped_angles
+    da = da.pint.to({"hv": "eV", "eV": "eV"}).pint.dequantify()
 
     # Make a progressbar
     pb_steps = 3
-    if scan_type == "hv scan" and not return_kz_scan_in_hv:
+    if "hv" in da.dims and not return_kz_scan_in_hv:
         pb_steps += 1
-
     pbar = tqdm(
         total=pb_steps,
         desc="Converting data to k-space - initialising",
@@ -833,12 +691,13 @@ def k_convert(
     )
 
     # Get relevant energy scale information
-    wf = _get_wf(data)  # Work fn, array if hv scan else single value
-    if scan_type == "hv scan":
-        hv = data.hv.data
+    wf = _get_wf(da)  # Work fn, array if hv scan else single value
+    if "hv" in da.dims:
+        hv = da.hv.data
     else:
-        hv = data.attrs.get("hv")
-    BE_scale = _get_BE_scale(data)  # Tuple of start, stop, step
+        hv = da.metadata.photon.hv.to("eV").magnitude
+
+    BE_scale = _get_BE_scale(da)  # Tuple of start, stop, step
     # Restrict to manual energy range if specified
     if eV is not None:
         BE_scale = (
@@ -854,22 +713,23 @@ def k_convert(
         )
 
     # Get bounds of data for k-conversion - use highest hv for hv scan
-    if scan_type == "hv scan" and hv[-1] > hv[0]:
+    if "hv" in da.dims and hv[-1] > hv[0]:
         EK_range = [hv[-1] + BE_scale[0] - wf[-1], hv[-1] + BE_scale[1] - wf[-1]]
-    elif scan_type == "hv scan" and hv[-1] < hv[0]:
+    elif "hv" in da.dims and hv[-1] < hv[0]:
         EK_range = [hv[0] + BE_scale[0] - wf[0], hv[0] + BE_scale[1] - wf[0]]
     else:
         EK_range = [hv + BE_scale[0] - wf, hv + BE_scale[1] - wf]
     alpha_range = np.asarray(
-        [np.min(angles["alpha"]), angles["xi_0"], np.max(angles["alpha"])]
+        [
+            np.min(angles["alpha"]),
+            angles["xi_0"],
+            np.max(angles["alpha"]),
+        ]
     )
 
     # Check if a 2D or 3D conversion is required & reshape arrays to make them broadcastable
-    if scan_type == "FS map":
-        beta_range = (
-            np.asarray([np.min(angles["beta"]), np.max(angles["beta"])])
-            + angles["beta_0"]
-        )
+    if np.min(angles["beta"]) != np.max(angles["beta"]):
+        beta_range = np.asarray([np.min(angles["beta"]), np.max(angles["beta"])])
         n_interpolation_dims = 3
         EK_range, alpha_range, beta_range = _reshape_for_3d(
             EK_range, alpha_range, beta_range
@@ -877,33 +737,39 @@ def k_convert(
     else:
         n_interpolation_dims = 2
         EK_range, alpha_range = _reshape_for_2d(EK_range, alpha_range)
-        beta_range = angles["beta"] + angles["beta_0"]
+        beta_range = angles["beta"]
 
     # Get k-space values corresponding to extremes of range
     kx_, ky_ = _f_dispatcher(
-        ana_type,
-        EK_range,
-        alpha_range,
-        beta_range,
-        angles["delta_"],
-        angles["xi"] - angles["xi_0"],
-        angles["beta_0"],
-        angles.get("chi", 0) - angles.get("chi_0", 0),
+        ana_type=angles["type"],
+        Ek=EK_range,
+        alpha=alpha_range,
+        beta=beta_range,
+        beta_0=angles["beta_0"],
+        chi=angles["chi"],
+        chi_0=angles["chi_0"],
+        delta=angles["delta"],
+        delta_0=angles["delta_0"],
+        xi=angles["xi"],
+        xi_0=angles["xi_0"],
     )
 
     # Determine ranges
-    k_along_slit = _get_k_along_slit(kx_, ky_, ana_type)
+    k_along_slit = _get_k_along_slit(kx_, ky_, angles["type"])
     default_k_step = np.ptp(k_along_slit) / (len(angles["alpha"]) - 1)
     kx_range = (np.min(kx_), np.max(kx_) + default_k_step, default_k_step)
     ky_range = (np.min(ky_), np.max(ky_) + default_k_step, default_k_step)
+
     # Restrict to manual k ranges if specified and if a relevant axis
-    if kx is not None and (n_interpolation_dims == 3 or ana_type in ["I", "Ip"]):
+    if kx is not None and (n_interpolation_dims == 3 or angles["type"] in ["I", "Ip"]):
         kx_range = (
             np.max([kx.start if kx.start is not None else float("-inf"), kx_range[0]]),
             np.min([kx.stop if kx.stop is not None else float("inf"), kx_range[1]]),
             kx.step if kx.step is not None else kx_range[2],
         )
-    if ky is not None and (n_interpolation_dims == 3 or ana_type in ["II", "IIp"]):
+    if ky is not None and (
+        n_interpolation_dims == 3 or angles["type"] in ["II", "IIp"]
+    ):
         ky_range = (
             np.max([ky.start if ky.start is not None else float("-inf"), ky_range[0]]),
             np.min([ky.stop if ky.stop is not None else float("inf"), ky_range[1]]),
@@ -914,7 +780,7 @@ def k_convert(
     kx_values = np.arange(*kx_range)
     ky_values = np.arange(*ky_range)
 
-    if scan_type != "hv scan":
+    if "hv" not in da.dims:
         KE_values_no_curv = np.arange(*BE_scale) + hv - wf
     else:
         # For an hv scan, need to extract different KE values for each hv value,
@@ -931,7 +797,7 @@ def k_convert(
             KE_values_no_curv, kx_values, ky_values
         )
     else:
-        if ana_type in ["II", "IIp"]:
+        if angles["type"] in ["II", "IIp"]:
             # Take the average k value of the perp to slit direction
             kx_values = np.mean(kx_values)
             KE_values_no_curv, ky_values = _reshape_for_2d(KE_values_no_curv, ky_values)
@@ -945,34 +811,36 @@ def k_convert(
     )
 
     alpha, beta = _f_inv_dispatcher(
-        ana_type,
-        KE_values_no_curv,
-        kx_values,
-        ky_values,
-        angles["delta_"],
-        angles["xi"],
-        angles["xi_0"],
-        angles["beta_0"],
-        angles.get("chi", 0) - angles.get("chi_0", 0),
+        ana_type=angles["type"],
+        Ek=KE_values_no_curv,
+        kx=kx_values,
+        ky=ky_values,
+        beta_0=angles["beta_0"],
+        chi=angles["chi"],
+        chi_0=angles["chi_0"],
+        delta=angles["delta"],
+        delta_0=angles["delta_0"],
+        xi=angles["xi"],
+        xi_0=angles["xi_0"],
     )
 
     # Determine the KE values including curvature correction
     if n_interpolation_dims == 2:
         Ek_new = _get_E_shift_at_theta_par(
-            data,
-            alpha,
+            da,
+            alpha * 180 / np.pi,
             np.broadcast_to(
                 KE_values_no_curv.reshape(-1, 1),
                 (
                     KE_values_no_curv.size,
-                    _get_k_along_slit(kx_values, ky_values, ana_type).size,
+                    _get_k_along_slit(kx_values, ky_values, angles["type"]).size,
                 ),
             ),
         )
     elif n_interpolation_dims == 3:
         Ek_new = _get_E_shift_at_theta_par(
-            data,
-            alpha,
+            da,
+            alpha * 180 / np.pi,
             np.broadcast_to(
                 KE_values_no_curv.reshape(-1, 1, 1),
                 (KE_values_no_curv.size, kx_values.size, ky_values.size),
@@ -986,7 +854,7 @@ def k_convert(
     is_rectilinear = True
     for i in ["eV", "theta_par"]:
         if not _is_linearly_spaced(
-            data[i].data, tol=(data[i].data[1] - data[i].data[0]) * 1e-3
+            da[i].data, tol=(da[i].data[1] - da[i].data[0]) * 1e-3
         ):
             is_rectilinear = False
 
@@ -996,12 +864,15 @@ def k_convert(
         else:
             interpolation_fn = _fast_bilinear_interpolate
 
-        k_along_slit_label = _get_k_along_slit("kx", "ky", ana_type)
+        k_along_slit_label = _get_k_along_slit("kx", "ky", angles["type"])
 
-        if scan_type == "hv scan":
+        # Deal with any sign changes required for theta_par scale conventions and any stacked axes
+        loader._get_sign_convention("theta_par")
+
+        if "hv" in da.dims:
             interpolated_data = []
-            for i, hv in enumerate(data.hv.data):
-                data_hv = data.disp_from_hv(hv)
+            for i, hv in enumerate(da.hv.data):
+                data_hv = da.disp_from_hv(hv)
                 start_index = i * KE_values_no_curv_shape[1]
                 end_index = start_index + KE_values_no_curv_shape[1]
                 interpolated_data_hv_slice = xr.apply_ufunc(
@@ -1009,7 +880,7 @@ def k_convert(
                     Ek_new[start_index:end_index, :],
                     alpha[start_index:end_index, :],
                     data_hv.eV.data,
-                    data_hv.theta_par.data,
+                    angles["alpha"],
                     data_hv,
                     input_core_dims=[
                         ["eV", k_along_slit_label],
@@ -1030,11 +901,14 @@ def k_convert(
             interpolated_data.coords.update(
                 {
                     k_along_slit_label: _get_k_along_slit(
-                        kx_values, ky_values, ana_type
+                        kx_values, ky_values, angles["type"]
                     ).squeeze(),
                     "eV": np.arange(*BE_scale),
-                    "hv": data.hv.data,
+                    "hv": da.hv.data,
                 }
+            )
+            interpolated_data = interpolated_data.pint.quantify(
+                {k_along_slit_label: "1/angstrom", "eV": "eV", "hv": "eV"}
             )
 
         else:
@@ -1042,9 +916,9 @@ def k_convert(
                 interpolation_fn,
                 Ek_new,
                 alpha,
-                data.eV.data,
-                data.theta_par.data,
-                data,
+                da.eV.data,
+                angles["alpha"],
+                da,
                 input_core_dims=[
                     ["eV", k_along_slit_label],
                     ["eV", k_along_slit_label],
@@ -1062,22 +936,26 @@ def k_convert(
             interpolated_data.coords.update(
                 {
                     k_along_slit_label: _get_k_along_slit(
-                        kx_values, ky_values, ana_type
+                        kx_values, ky_values, angles["type"]
                     ).squeeze(),
                     "eV": np.arange(*BE_scale),
                 }
             )
+            interpolated_data = interpolated_data.pint.quantify(
+                {k_along_slit_label: "1/angstrom", "eV": "eV"}
+            )
         # Add the perpendicular momentum to the data attributes
-        interpolated_data.attrs[_get_k_perpto_slit("kx", "ky", ana_type)] = (
-            _get_k_perpto_slit(kx_values, ky_values, ana_type).squeeze()
+        interpolated_data.attrs[_get_k_perpto_slit("kx", "ky", angles["type"])] = (
+            _get_k_perpto_slit(kx_values, ky_values, angles["type"]).squeeze()
         )
-    else:
+    else:  # Should be Fermi map
         # Other angular dimension - assume the only remaining dimension
-        other_dim = list(set(data.dims) - set(["eV", "theta_par"]))[0]
+        other_dim = list(set(da.dims) - set(["eV", "theta_par"]))[0]
+
         # Check linearity of remaining dimension
         is_rectilinear = is_rectilinear and _is_linearly_spaced(
-            data[other_dim].data,
-            tol=(data[other_dim].data[1] - data[other_dim].data[0]) * 1e-3,
+            da[other_dim].data,
+            tol=(da[other_dim].data[1] - da[other_dim].data[0]) * 1e-3,
         )
 
         if is_rectilinear:
@@ -1097,10 +975,10 @@ def k_convert(
                 Ek_new,
                 alpha,
                 beta,
-                data.eV.data,
-                data.theta_par.data,
-                data[other_dim].data,
-                data,
+                da.eV.data,
+                angles["alpha"],
+                angles["beta"],
+                da,
                 nb_pbar,
                 input_core_dims=[
                     ["eV", "kx", "ky"],
@@ -1118,9 +996,9 @@ def k_convert(
                 dask="parallelized",
                 keep_attrs=True,
             ).transpose(
-                _get_k_perpto_slit("kx", "ky", ana_type),
+                _get_k_perpto_slit("kx", "ky", angles["type"]),
                 "eV",
-                _get_k_along_slit("kx", "ky", ana_type),
+                _get_k_along_slit("kx", "ky", angles["type"]),
             )
         interpolated_data.coords.update(
             {
@@ -1129,8 +1007,11 @@ def k_convert(
                 "ky": ky_values.squeeze(),
             }
         )
+        interpolated_data = interpolated_data.pint.quantify(
+            {"kx": "1/angstrom", "eV": "eV", "ky": "1/angstrom"}
+        )
 
-    if scan_type == "hv scan" and not return_kz_scan_in_hv:
+    if "hv" in da.dims and not return_kz_scan_in_hv:
         # If hv scan and if required, do kz-interpolation step to return the data in the form (kz, eV, k_||)
         pbar.update(1)
         pbar.set_description_str("Converting data to k-space - converting to kz")
@@ -1140,22 +1021,20 @@ def k_convert(
         )
 
     # Do a hack to remove some noise at the boundary which can give negative values, screwing up the plots
-    if data.min() <= 0:
+    if da.min() <= 0:
         interpolated_data = interpolated_data.where(interpolated_data > 0, 0)
 
     # Update the energy type in data attributes
-    interpolated_data.attrs["eV_type"] = "binding"
+    interpolated_data.metadata.analyser.scan.eV_type = "Binding Energy"
 
     # Update the history
     hist_str = f"Converted to k-space using the following parameters: "
-    raw_angles_no_theta_par = {
-        k: v
-        for k, v in _get_angles_for_k_conv(data, return_raw=True, quiet=True).items()
-        if k != "theta_par"
+    reference_angles = {
+        k: v for k, v in angles.items() if ("_0" in k and v is not None)
     }
-    hist_str += f"Angles: {raw_angles_no_theta_par}, "
-    if scan_type == "hv scan":
-        hist_str += f"Inner potential: {data.attrs.get('V0', 12)} eV, "
+    hist_str += f"Reference angles: {reference_angles}, "
+    if "hv" in da.dims:
+        hist_str += f"Inner potential: {da.metadata.calibration.V0 or 12*ureg('eV')}, "
     hist_str += f"Time taken: {pbar.format_dict['elapsed']:.2f}s."
     interpolated_data.history.add(hist_str)
 
@@ -1172,16 +1051,24 @@ def k_convert(
         pbar.leave = False
     pbar.close()
 
-    return interpolated_data
+    return interpolated_data.pint.quantify()
 
 
-def _convert_to_kz(data, kz, wf, Ek_range):
+def _convert_to_kz(da, kz, wf, Ek_range):
     # Get relevant parameters
-    k_along_slit_str = list(set(data.dims) - {"hv", "eV"})[0]
+    k_along_slit_str = list(set(da.dims) - {"hv", "eV"})[0]
     k_perp_slit_str = "ky" if k_along_slit_str == "kx" else "kx"
-    k_perp_slit = data.attrs.get(k_perp_slit_str, 0)
-    k_along_slit = data[k_along_slit_str].data
-    V0 = data.attrs.get("V0", 12)  # Default 12 eV
+    k_perp_slit = da.attrs.get(k_perp_slit_str, 0)
+    k_along_slit = da[k_along_slit_str].data
+    V0 = da.metadata.calibration.V0
+    if V0 is None:
+        V0 = 12 * ureg("eV")
+        analysis_warning(
+            f"No inner potential provided, defaulting to V0={V0}.",
+            "warning",
+            "Missing inner potential",
+        )
+    V0 = V0.to("eV").magnitude
 
     # Get kz values corresponding to the extremes of the range
     kz_ = _f_kz(
@@ -1190,10 +1077,9 @@ def _convert_to_kz(data, kz, wf, Ek_range):
         k_perp_slit,
         V0,
     )
-
     # Determine the kz values to interpolate onto, including manual range if specified
     default_k_step = (np.max(kz_) - np.min(kz_)) / (
-        2 * len(data.hv)
+        2 * len(da.hv)
     )  # Default is based on 0.5 step from the number of hv points
     kz_range = (np.min(kz_), np.max(kz_), default_k_step)
     # Restrict to manual kz range if specified
@@ -1212,20 +1098,19 @@ def _convert_to_kz(data, kz, wf, Ek_range):
         k_along_slit.reshape(1, 1, -1),
         k_perp_slit,
         V0,
-        data.eV.data.reshape(1, -1, 1),
+        da.eV.data.reshape(1, -1, 1),
         wf[0],
     )
 
     # Get true hv values accounting for the change which was previously encoded in an effective wf change
     wf_diff = wf - wf[0]
-    true_hv = data.hv.data + wf_diff
+    true_hv = da.hv.data + wf_diff
 
     # Do the interpolation, data originally [hv, eV, k_||]
     k_along_slit_vectorised = np.broadcast_to(
         k_along_slit.reshape(1, 1, -1), hv_values.shape
     )
-    BE_vectorised = np.broadcast_to(data.eV.data.reshape(1, -1, 1), hv_values.shape)
-
+    BE_vectorised = np.broadcast_to(da.eV.data.reshape(1, -1, 1), hv_values.shape)
     with numba_progress.ProgressBar(
         total=hv_values.size,
         dynamic_ncols=True,
@@ -1239,9 +1124,9 @@ def _convert_to_kz(data, kz, wf, Ek_range):
             BE_vectorised,
             k_along_slit_vectorised,
             true_hv,
-            data.eV.data,
+            da.eV.data,
             k_along_slit,
-            data,
+            da.pint.dequantify(),
             nb_pbar,
             input_core_dims=[
                 ["kz", "eV", k_along_slit_str],
@@ -1267,4 +1152,4 @@ def _convert_to_kz(data, kz, wf, Ek_range):
             }
         )
 
-    return interpolated_data
+    return interpolated_data.pint.quantify({"kz": "1/angstrom"})

@@ -2,4 +2,12 @@
 
 """
 
-from . import APE, Artemis, Bloch, CASSIOPEE, I05, LOREA, StA_MBS, StA_Phoibos, NetCDF
+from peaks.core.fileIO.loaders import (
+    bloch,
+    diamond,
+    netcdf,
+    zarr,
+    standrews_phoibos,
+    standrews_mbs,
+    clf,
+)
