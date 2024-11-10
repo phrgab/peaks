@@ -3,8 +3,10 @@
 """
 
 import numpy as np
+import xarray as xr
 import numexpr as ne
 
+from peaks.core.utils.interpolation import _fast_bilinear_interpolate_rectilinear
 from peaks.core.utils.misc import analysis_warning
 
 
@@ -72,6 +74,80 @@ def _get_E_shift_at_theta_par(da, theta_par, Ek=None):
             return Ek
         else:
             return np.zeros_like(theta_par)
+
+
+def _flatten_EF(da):
+    """Removes curvature in the Fermi edge from a dispersion or other data.
+
+    Parameters
+    ----------
+    da : xarray.DataArray
+        Data to remove curvature from. Should have an EF_correction attribute set in the metadata.
+
+    Returns
+    -------
+    xarray.DataArray
+        Data with curvature removed.
+
+    """
+    # Get theta_par-dependent shift of EF
+    EF_shift = _get_E_shift_at_theta_par(
+        da,
+        da.theta_par.data,
+    )
+
+    # Get new energy scale (ensure ordered low to high)
+    EK_old = np.sort(da.eV.data)
+
+    # Work out new energy scale
+    dE = (EK_old[-1] - EK_old[0]) / (len(EK_old) - 1)
+    EF_shift_min, EF_shift_max = np.min(EF_shift), np.max(EF_shift)
+    if EF_shift_min < 0:
+        EK_new = np.arange(EK_old[0], EK_old[-1] - EF_shift_min, dE)
+    else:
+        EK_new = np.arange(EK_old[0] - EF_shift_max, EK_old[-1], dE)
+
+    # Calculate interpolation target
+    Ek_values = EK_new[:, np.newaxis] + EF_shift[np.newaxis, :]
+    theta_par_values = np.broadcast_to(
+        da.theta_par.data[np.newaxis, :], Ek_values.shape
+    )
+
+    # Interpolate onto new energy scale
+    interpolated_data = xr.apply_ufunc(
+        _fast_bilinear_interpolate_rectilinear,
+        Ek_values,
+        theta_par_values,
+        da.eV.data,
+        da.theta_par.data,
+        da.pint.dequantify(),
+        input_core_dims=[
+            ["eV", "theta_par"],
+            ["eV", "theta_par"],
+            ["eV"],
+            ["theta_par"],
+            ["eV", "theta_par"],
+        ],
+        output_core_dims=[["eV", "theta_par"]],
+        exclude_dims={"eV"},
+        vectorize=True,
+        dask="parallelized",
+        keep_attrs=True,
+    )
+    # Update co-ords for new EK values
+    interpolated_data.coords.update({"eV": EK_new.flatten()})
+
+    # Update metadata
+    old_EF_correction_attrs = da.metadata.get_EF_correction()
+    new_EF_correction_attrs = old_EF_correction_attrs["c0"]
+    interpolated_data.metadata.calibration.set(
+        "EF_correction", new_EF_correction_attrs, add_history=False
+    )
+    interpolated_data.history.add(
+        f"Data interpolated to remove curavature of the Fermi edge from correction {old_EF_correction_attrs}. "
+        f"New EF_correction set to {new_EF_correction_attrs}."
+    )
+    return interpolated_data.pint.quantify(eV=da.eV.units)
 
 
 def _get_wf(da):
