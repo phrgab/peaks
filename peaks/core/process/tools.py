@@ -16,6 +16,7 @@ from peaks.core.fitting.models import _shirley_bg
 from peaks.core.utils.misc import analysis_warning, dequantify_quantify_wrapper
 from peaks.core.metadata.meatdata_methods import compare_metadata
 from peaks.core.utils.datatree_utils import get_list_of_DataArrays_from_DataTree
+from peaks.core.process.fermi_level_correction import _flatten_EF
 
 ureg = pint_xarray.unit_registry
 
@@ -1420,7 +1421,7 @@ def sum_data(data, quiet=False):
     return _sum_or_subtract_data(data, _sum=True, quiet=quiet)
 
 
-def subtract_data(data, quiet=False):
+def )(data, quiet=False):
     """Function to subtract two DataArrays together, maintaining the metadata.
     If the metadata of the DataArrays differ, that of the first inputted DataArray will be used.
     If the coordinate grids of the DataArrays differ, all DataArrays will be interpolated onto the
@@ -1540,6 +1541,19 @@ def merge_data(data, dim="theta_par", sel=slice(None, None), offsets=None):
                 data_history.append("None")
         else:
             raise Exception("Data must be a list of xarray.DataArrays.")
+
+    # Remove any curvature of the Fermi level
+    flattened_EF = False
+    for i, current_data in enumerate(data_to_merge):
+        if isinstance(current_data.metadata.get_EF_correction(), dict):
+            data_to_merge[i] = _flatten_EF(current_data)
+            flattened_EF = True
+    if flattened_EF:
+        analysis_warning(
+            "The Fermi level curvature has been removed one or more of the supplied scans.",
+            "info",
+            title="$E_F$ curvature correction",
+        )
 
     # Apply offsets to inputted data if required
     if offsets:
