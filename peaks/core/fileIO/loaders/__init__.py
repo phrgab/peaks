@@ -3,7 +3,9 @@
 """
 
 from peaks.core.fileIO.loaders import (
+    ape,
     bloch,
+    casiopee,
     diamond,
     netcdf,
     zarr,

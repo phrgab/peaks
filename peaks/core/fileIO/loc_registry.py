@@ -46,7 +46,7 @@ class IdentifyLoc:
             item for item in file_list if "ROI1_" in item and isfile(join(fname, item))
         ]
         if len(file_list_ROI) > 1:  # Must be SOLEIL CASSIOPEE
-            return "SOLEIL CASSIOPEE"
+            return "Soleil_Casiopee_ARPES"
         else:  # Likely CLF Artemis
             # Extract identifiable data from the file to determine if the location is CLF Artemis
             file_list_Neq = [item for item in file_list if "N=" in item]
@@ -115,12 +115,12 @@ class IdentifyLoc:
                 "ape" in location_identifier.lower()
                 or "elettra" in location_identifier.lower()
             ):
-                return "Elettra APE"
+                return "Elettra_APE_LE"
             elif (
                 "cassiopee" in location_identifier.lower()
                 or "soleil" in location_identifier.lower()
             ):
-                return "SOLEIL CASSIOPEE"
+                return "Soleil_Casiopee_ARPES"
 
         elif "Lines" in line0:
             # This should be MBS format, default to StA loader
@@ -144,12 +144,12 @@ class IdentifyLoc:
             "ape" in location_identifier.lower()
             or "elettra" in location_identifier.lower()
         ):
-            return "Elettra APE"
+            return "Elettra_APE_LE"
         elif (
             "cassiopee" in location_identifier.lower()
             or "soleil" in location_identifier.lower()
         ):
-            return "SOLEIL CASSIOPEE"
+            return "Soleil_Casiopee_ARPES"
         elif (
             "i05" in location_identifier.lower()
             or "diamond" in location_identifier.lower()
@@ -176,9 +176,9 @@ class IdentifyLoc:
             if "bloch" in location.lower() or "maxiv" in location.lower():
                 return "MAXIV_Bloch_A"
             elif "ape" in location.lower() or "elettra" in location.lower():
-                return "Elettra APE"
+                return "Elettra_APE_LE"
             elif "cassiopee" in location.lower() or "soleil" in location.lower():
-                return "SOLEIL CASSIOPEE"
+                return "Soleil_Casiopee_ARPES"
             else:  # Return general SES loader
                 return "SES"
         # If we are unable to find a location, define location as a generic ibw file
