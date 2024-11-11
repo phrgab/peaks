@@ -510,7 +510,7 @@ class SESDataLoader(BaseARPESDataLoader):
             "analyser_slit_width": None,
             "analyser_slit_width_identifier": None,
             "analyser_eV": ["Low Energy", "High Energy"],
-            "analyser_eV_type": "Energy Unit",
+            "analyser_eV_type": ["Energy Unit", "Energy Scale"],
             "analyser_step_size": "Energy Step",
             "analyser_PE": "Pass Energy",
             "analyser_sweeps": "Number of Sweeps",
