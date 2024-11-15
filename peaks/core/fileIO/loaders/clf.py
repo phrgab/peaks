@@ -300,7 +300,6 @@ class ArtemisPhoibos(BaseARPESDataLoader, BasePumpProbeClass):
         calib2d["Da_value"] = eV_coords
         for Da in ["Da1", "Da3", "Da5", "Da7"]:
             calib2d[f"{Da}_coeff"] = np.polyfit(calib2d["Da_value"], calib2d[Da], 2)
-
         return calib2d
 
     @staticmethod
@@ -544,7 +543,8 @@ class ArtemisPhoibos(BaseARPESDataLoader, BasePumpProbeClass):
             }
             for key, value in metadata_dict_artemis_keys.copy().items():
                 try:
-                    metadata_dict_artemis_keys[key] = float(value)
+                    if key != "Delay List":
+                        metadata_dict_artemis_keys[key] = float(value)
                 except ValueError:
                     pass
 
@@ -582,7 +582,11 @@ class ArtemisPhoibos(BaseARPESDataLoader, BasePumpProbeClass):
         def _parse_delays(input_string):
             if input_string is None:
                 return None
-            ranges = input_string.split("#LF")
+            ranges = (
+                [input_string]
+                if "LF" not in input_string
+                else input_string.split("#LF")
+            )
             delays = []
 
             for r in ranges:

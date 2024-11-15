@@ -5,5 +5,5 @@
 # Phil King 20/06/2020
 
 
-class ptab():
-    pass
+class ptab:
+    raise NotImplementedError("This UI is not yet implemented.")

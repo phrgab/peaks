@@ -610,9 +610,15 @@ class _Disp3D(QtWidgets.QMainWindow):
                 EF = self.data.disp_from_hv(middle_hv).estimate_EF()
             else:
                 EF = self.data.estimate_EF()
-            if not EF:
-                EF = sum(self.ranges[eV_dim]) / 2
-            self.cursor_positions_selection[eV_dim].setValue(EF)
+            if isinstance(EF, (list, np.ndarray)):
+                if any(EF):
+                    EF = sum(self.ranges[eV_dim]) / 2
+            else:
+                EF = EF
+
+            self.cursor_positions_selection[eV_dim].setValue(
+                EF or sum(self.ranges[eV_dim]) / 2
+            )
 
         # Make primary data slice
         self._set_slice(1)

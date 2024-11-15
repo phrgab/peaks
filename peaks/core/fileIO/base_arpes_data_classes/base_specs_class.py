@@ -1,5 +1,6 @@
 import numpy as np
 import re
+import os
 import pint_xarray
 from itertools import takewhile
 
@@ -38,6 +39,20 @@ class SpecsDataLoader(BaseARPESDataLoader):
 
     @classmethod
     def _load_data(cls, fpath, lazy):
+        data_parsers = {
+            ".xy": cls._parse_data_from_xy_file,
+            ".sp2": cls._parse_data_from_sp2_file,
+        }
+        file_extension = os.path.splitext(fpath)[-1]
+        if file_extension in data_parsers:
+            return data_parsers[file_extension](fpath)
+        else:
+            raise ValueError(
+                f"File extension {file_extension} not supported for data parsing."
+            )
+
+    @classmethod
+    def _parse_data_from_xy_file(cls, fpath):
         # Open the file and load lines
         with open(fpath) as f:
             lines = f.readlines()
@@ -171,26 +186,139 @@ class SpecsDataLoader(BaseARPESDataLoader):
                 )
 
     @classmethod
-    def _load_metadata(cls, fpath, return_in_SES_format=False):
-        """Load metadata from an SES file."""
+    def _parse_data_from_sp2_file(cls, fpath):
+        metadata_dict_SPECS_keys = cls._load_metadata(
+            fpath, return_in_SPECS_format=True
+        )
+
+        # Open the file and load lines
+        rows = []
+        with open(fpath, "rb") as f:
+            for i, row in enumerate(f):
+                if i >= metadata_dict_SPECS_keys["data_start_line"]:
+                    rows.append(int(row.decode(errors="ignore").strip("\n")))
+
+        data = np.asarray(rows).reshape(
+            int(metadata_dict_SPECS_keys["SIZE_Y"].split("#")[0]),
+            int(metadata_dict_SPECS_keys["SIZE_X"].split("#")[0]),
+        )
+
+        # Extract the scale values
+        x0, x1, x_units = cls._extract_numbers_and_unit_from_range(
+            metadata_dict_SPECS_keys["X Range"]
+        )
+        y0, y1, y_units = cls._extract_numbers_and_unit_from_range(
+            metadata_dict_SPECS_keys["Y Range"]
+        )
+        return {
+            "spectrum": data,
+            "dims": [
+                "y",
+                "eV",
+            ],
+            "coords": {
+                "eV": np.linspace(x0, x1, data.shape[1]),
+                "y": np.linspace(y0, y1, data.shape[0]),
+            },
+            "units": {"eV": x_units, "y": y_units, "spectrum": "counts"},
+        }
+
+    @staticmethod
+    def _extract_calib2D_info(metadata_dict_SPECS_keys):
+        """Extract the calibration information from the metadata."""
+        # ToDo: Complete this method and implement transformation logic
+        # Extract the calib2d info from the metadata
+        calib2d = {}
+        calib2d["eRange"] = [
+            float(metadata_dict_SPECS_keys["ERange"].split(" ")[0]),
+            float(metadata_dict_SPECS_keys["ERange"].split(" ")[1]),
+        ]
+        calib2d["De1"] = float(metadata_dict_SPECS_keys["De1"].split(" ", 1)[0])
+        calib2d["eShift"] = (
+            metadata_dict_SPECS_keys.get("EShift").split("#")[0].strip().split(" ")
+        )
+        calib2d["eShift"] = [float(val) for val in calib2d["eShift"]]
+        calib2d["aRange"] = [
+            float(metadata_dict_SPECS_keys["ARange"].split(" ")[0]),
+            float(metadata_dict_SPECS_keys["ARange"].split(" ")[1]),
+        ]
+        calib2d["aInner"] = float(metadata_dict_SPECS_keys["aInner"].split(" ")[0])
+
+    @staticmethod
+    def _extract_numbers_and_unit_from_range(s):
+        pattern = r"\[([-+]?\d*\.\d+|\d+) \.\. ([-+]?\d*\.\d+|\d+)\] (\w+)"
+        match = re.search(pattern, s)
+        if match:
+            num1 = float(match.group(1))
+            num2 = float(match.group(2))
+            unit = match.group(3)
+            return num1, num2, unit
+        else:
+            raise ValueError("String format is incorrect")
+
+    @classmethod
+    def _load_metadata(cls, fpath, return_in_SPECS_format=False):
+        """Load metadata from an Prodigy file."""
         # Check if there is a cached version (cache with keys in SPECS format plus a
         # "scan_parameters" key with custom axis metadata)
         metadata_dict_SPECS_keys = cls._metadata_cache.get(fpath)
 
         # If no metadata in the cache, load it
         if not metadata_dict_SPECS_keys:
-            with open(fpath) as f:
-                lines = f.readlines()
-            metadata_dict_SPECS_keys = cls._parse_metalines(
-                [line for line in lines if line.startswith("#")]
-            )
-            # Get energy axis info to add to the file
-            energy_lines = list(takewhile(lambda line: line.startswith("#"), lines))
-            eV = [line.split(" ") for line in energy_lines if not line.startswith("#")]
-            metadata_dict_SPECS_keys["eV scale"] = eV[0][0]
+            metadata_parsers = {
+                ".xy": cls._parse_metadata_from_xy_file,
+                ".sp2": cls._parse_metadata_from_sp2_file,
+            }
+            file_extension = os.path.splitext(fpath)[-1]
+            if file_extension in metadata_parsers:
+                metadata_dict_SPECS_keys = metadata_parsers[file_extension](fpath)
+            else:
+                raise ValueError(
+                    f"File extension {file_extension} not supported for metadata parsing."
+                )
+
+        if return_in_SPECS_format:
+            return metadata_dict_SPECS_keys
 
         # Convert the metadata to the peaks convention and return
         return cls._SPECS_metadata_dict_keys_to_peaks_keys(metadata_dict_SPECS_keys)
+
+    @classmethod
+    def _parse_metadata_from_xy_file(cls, fpath):
+        with open(fpath) as f:
+            lines = f.readlines()
+        metadata_dict_SPECS_keys = cls._parse_metalines(
+            [line for line in lines if line.startswith("#")]
+        )
+        # Get energy axis info to add to the file
+        energy_lines = list(takewhile(lambda line: line.startswith("#"), lines))
+        eV = [line.split(" ") for line in energy_lines if not line.startswith("#")]
+        metadata_dict_SPECS_keys["eV scale"] = eV[0][0]
+
+        return metadata_dict_SPECS_keys
+
+    @classmethod
+    def _parse_metadata_from_sp2_file(cls, fpath):
+        meta_dict_SPECS_keys = {}
+        stop_on_next_line = False
+        with open(fpath, "rb") as f:
+            for i, row in enumerate(f):
+                row_ = row.decode(errors="ignore")
+                if isinstance(row_, str) and "=" in row_:
+                    meta = row_.split("=", 1)
+                    meta_dict_SPECS_keys[meta[0].split("#", 1)[1].strip()] = meta[
+                        1
+                    ].strip()
+                    if meta[0].strip() == "SIZE_X":
+                        x_pixels = int(meta[1].strip())
+                if (
+                    meta_dict_SPECS_keys.get("SIZE_X") is not None
+                    and meta_dict_SPECS_keys.get("SIZE_X").split("#")[0].strip()
+                    == row_.split(" ")[0].strip()
+                ):
+                    break
+            meta_dict_SPECS_keys["data_start_line"] = i + 1
+        return meta_dict_SPECS_keys
 
     @classmethod
     def _parse_metalines(self, meta_lines):
