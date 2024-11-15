@@ -6,4 +6,4 @@
 
 
 def degrid():
-    pass
+    raise NotImplementedError("This UI is not yet implemented.")
