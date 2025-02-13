@@ -1,13 +1,12 @@
-"""Functions used to extract selections of data.
-
-"""
+"""Functions used to extract selections of data."""
 
 import copy
 
 import numpy as np
-import xarray as xr
 import pint_xarray  # noqa: F401
+import xarray as xr
 from matplotlib.path import Path
+
 from peaks.core.utils.interpolation import (
     _fast_bilinear_interpolate,
     _fast_bilinear_interpolate_rectilinear,
@@ -801,7 +800,11 @@ def disp_from_hv(da, hv):
         return hv_scan
 
     # Rescale eV axis to get the correct kinetic energy
-    hv_scan["eV"] = hv_scan.eV.data + hv_scan.KE_delta.data
+    hv_scan["eV"] = (
+        hv_scan.eV.pint.to("eV").data
+        + hv_scan.KE_delta.pint.to("eV").pint.dequantify().data
+    )  # Handle unit conversion
+    hv_scan = hv_scan.pint.quantify(eV="eV")  # Add the units back
 
     # Delete the now redundant hv and KE_delta coordinates
     del hv_scan["hv"]
