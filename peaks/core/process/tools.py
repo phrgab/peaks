@@ -1281,7 +1281,8 @@ def _sum_or_subtract_data(data, _sum=True, quiet=False):
         # the current DataArray onto the coordinate grid of the first DataArray
         for dim in current_data.dims:  # Loop through dimensions
             # Check if the coordinates of the current dimension do not match that of the first DataArray
-            if not (current_data[dim].data == data_0_data[dim].data).all():
+            if ((len(current_data[dim]) != len(data_0_data[dim]))
+                    or not (current_data[dim].data == data_0_data[dim].data).all()):
                 # Interpolate the current DataArray onto the current dimension coordinate grid of the first DataArray
                 current_data = current_data.interp({dim: data_0_data[dim]})
                 coords_warn_flag = True  # Update warning flag
