@@ -14,6 +14,8 @@ from peaks.core.utils.interpolation import (
 )
 from peaks.core.utils.misc import dequantify_quantify_wrapper
 
+ureg = pint_xarray.unit_registry
+
 
 def drop_nan_borders(data):
     """
@@ -800,11 +802,15 @@ def disp_from_hv(da, hv):
         return hv_scan
 
     # Rescale eV axis to get the correct kinetic energy
-    hv_scan["eV"] = (
-        hv_scan.eV.pint.to("eV").data
-        + hv_scan.KE_delta.pint.to("eV").pint.dequantify().data
-    )  # Handle unit conversion
-    hv_scan = hv_scan.pint.quantify(eV="eV")  # Add the units back
+    orig_units = hv_scan.eV.units
+    if isinstance(hv_scan.KE_delta.data, np.ndarray):
+        hv_scan["eV"] = hv_scan.eV.data + hv_scan.KE_delta.data
+    else:
+        hv_scan["eV"] = (
+            hv_scan.eV.data
+            + hv_scan.KE_delta.pint.to(orig_units).pint.dequantify().data
+        )  # Handle unit conversion
+        hv_scan = hv_scan.pint.quantify(eV=orig_units)  # Add the units back
 
     # Delete the now redundant hv and KE_delta coordinates
     del hv_scan["hv"]
