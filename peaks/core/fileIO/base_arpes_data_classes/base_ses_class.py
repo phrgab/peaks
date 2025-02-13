@@ -281,10 +281,19 @@ class SESDataLoader(BaseARPESDataLoader):
                 units["eV"] = "eV"
             elif "binding" in dim.lower():
                 if metadata_dict_SES_keys.get("Energy Unit") == "Kinetic":
-                    data["coords"][dim] += (
-                        float(metadata_dict_SES_keys.get("Low Energy"))
-                        - data["coords"][dim][0]
-                    )
+                    if data["coords"][dim][0] > 0:  # Positive convention for BE
+                        data["coords"][dim] = np.linspace(
+                            float(metadata_dict_SES_keys.get("Low Energy")),
+                            float(metadata_dict_SES_keys.get("High Energy")),
+                            len(data["coords"][dim]),
+                        )
+
+                    else:
+                        data["coords"][dim] = np.linspace(
+                            float(metadata_dict_SES_keys.get("High Energy")),
+                            float(metadata_dict_SES_keys.get("Low Energy")),
+                            len(data["coords"][dim]),
+                        )
                     dim_new_name[i] = "eV"
                     units["eV"] = "eV"
                     cls._SES_metadata_key_mappings["analyser_eV_type"] = (
