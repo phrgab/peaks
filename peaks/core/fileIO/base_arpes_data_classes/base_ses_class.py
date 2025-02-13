@@ -456,9 +456,9 @@ class SESDataLoader(BaseARPESDataLoader):
         """
 
         return {
-            line.split("=" if "=" in line else ":")[0]
-            .strip(): line.split("=" if "=" in line else ":")[1]
-            .strip()
+            line.split("=" if "=" in line else ":")[0].strip(): line.split(
+                "=" if "=" in line else ":"
+            )[1].strip()
             for line in metadata_lines
             if ("=" in line or ":" in line)
         }
@@ -510,7 +510,7 @@ class SESDataLoader(BaseARPESDataLoader):
             "analyser_slit_width": None,
             "analyser_slit_width_identifier": None,
             "analyser_eV": ["Low Energy", "High Energy"],
-            "analyser_eV_type": ["Energy Unit", "Energy Scale"],
+            "analyser_eV_type": lambda x: x.get("Energy Unit") or x.get("Energy Scale"),
             "analyser_step_size": "Energy Step",
             "analyser_PE": "Pass Energy",
             "analyser_sweeps": "Number of Sweeps",
