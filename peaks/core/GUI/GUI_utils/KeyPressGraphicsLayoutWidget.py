@@ -1,5 +1,5 @@
-from PyQt6 import QtCore
 import pyqtgraph as pg
+from PyQt6 import QtCore
 
 
 class _KeyPressGraphicsLayoutWidget(pg.GraphicsLayoutWidget):
