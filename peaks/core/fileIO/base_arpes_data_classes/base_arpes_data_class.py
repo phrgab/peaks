@@ -1,28 +1,26 @@
+import numpy as np
 import pint
 import pint_xarray
-import numpy as np
 
 from peaks.core.fileIO.base_data_classes.base_manipulator_class import (
     BaseManipulatorDataLoader,
 )
-from peaks.core.fileIO.base_data_classes.base_temperature_class import (
-    BaseTemperatureDataLoader,
-)
 from peaks.core.fileIO.base_data_classes.base_photon_source_classes import (
     BasePhotonSourceDataLoader,
 )
-
+from peaks.core.fileIO.base_data_classes.base_temperature_class import (
+    BaseTemperatureDataLoader,
+)
 from peaks.core.metadata.base_metadata_models import (
-    NamedAxisMetadataModel,
-    ARPESMetadataModel,
-    ARPESScanMetadataModel,
-    ARPESDeflectorMetadataModel,
-    ARPESSlitMetadataModel,
     ARPESAnalyserAnglesMetadataModel,
     ARPESAnalyserMetadataModel,
     ARPESCalibrationModel,
+    ARPESDeflectorMetadataModel,
+    ARPESMetadataModel,
+    ARPESScanMetadataModel,
+    ARPESSlitMetadataModel,
+    NamedAxisMetadataModel,
 )
-
 from peaks.core.utils.misc import analysis_warning
 
 # Define the unit registry
