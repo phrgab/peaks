@@ -1,21 +1,21 @@
-import numpy as np
-import pint
-import xarray as xr
-import pint_xarray
-import h5py
 from datetime import datetime
 from typing import Optional, Union
 
-from peaks.core.utils.misc import analysis_warning
-from peaks.core.options import opts
-from peaks.core.fileIO.loc_registry import register_loader
+import h5py
+import numpy as np
+import pint
+import pint_xarray
+import xarray as xr
+
 from peaks.core.accessors.accessor_methods import register_accessor
-from peaks.core.fileIO.base_data_classes.base_hdf5_class import BaseHDF5DataLoader
-from peaks.core.metadata.base_metadata_models import BaseMetadataModel, Quantity
 from peaks.core.fileIO.base_arpes_data_classes.base_arpes_data_class import (
     BaseARPESDataLoader,
 )
-
+from peaks.core.fileIO.base_data_classes.base_hdf5_class import BaseHDF5DataLoader
+from peaks.core.fileIO.loc_registry import register_loader
+from peaks.core.metadata.base_metadata_models import BaseMetadataModel, Quantity
+from peaks.core.options import opts
+from peaks.core.utils.misc import analysis_warning
 
 ureg = pint_xarray.unit_registry
 
@@ -192,19 +192,19 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
     }
 
     _hdf5_metadata_key_mappings = {
-        "manipulator_polar": f"entry1/instrument/manipulator/sapolar",
-        "manipulator_tilt": f"entry1/instrument/manipulator/satilt",
-        "manipulator_azi": f"entry1/instrument/manipulator/saazimuth",
-        "manipulator_x1": f"entry1/instrument/manipulator/sax",
-        "manipulator_x2": f"entry1/instrument/manipulator/say",
-        "manipulator_x3": f"entry1/instrument/manipulator/saz",
-        "manipulator_salong": f"entry1/instrument/manipulator/salong",
+        "manipulator_polar": "entry1/instrument/manipulator/sapolar",
+        "manipulator_tilt": "entry1/instrument/manipulator/satilt",
+        "manipulator_azi": "entry1/instrument/manipulator/saazimuth",
+        "manipulator_x1": "entry1/instrument/manipulator/sax",
+        "manipulator_x2": "entry1/instrument/manipulator/say",
+        "manipulator_x3": "entry1/instrument/manipulator/saz",
+        "manipulator_salong": "entry1/instrument/manipulator/salong",
         "analyser_model": lambda f: (
             (
                 "FIXED_VALUE:MBS A1"
                 if datetime.strptime(
                     (
-                        (timestamp := f["entry1/start_time"][()]).decode()
+                        (f["entry1/start_time"][()]).decode()
                         if isinstance(f["entry1/start_time"][()], bytes)
                         else f["entry1/start_time"][()]
                     ),
@@ -376,9 +376,9 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
         for dim, coord in coords_to_apply.copy().items():
             if coord.ndim == 2:
                 # Should be a 2D array with shape (value, KE) where value is the changing hv dim
-                hv_coord_label = (
-                    {"value", "energy"}.intersection(set(coords_to_apply.keys())).pop()
-                )
+                hv_coord_label = {"value", "energy"}.intersection(
+                    set(coords_to_apply.keys())
+                ).pop()
 
                 if coords_to_apply.get(hv_coord_label).shape[0] == coord.shape[0]:
                     coords_to_apply["KE_delta"] = (
@@ -432,7 +432,7 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
         da = da.rename(dim_names_to_update)
 
         # Load array into memory if lazy loading not required
-        if not (lazy or (lazy == None and da.size > opts.FileIO.lazy_size)):
+        if not (lazy or (lazy is None and da.size > opts.FileIO.lazy_size)):
             da = da.compute()
 
         # Add units where available
@@ -499,13 +499,13 @@ class I05NanoARPESLoader(I05ARPESLoader):
     }
 
     _hdf5_metadata_key_mappings = {
-        "manipulator_polar": f"entry1/instrument/manipulator/smpolar",
-        "manipulator_tilt": f"entry1/instrument/manipulator/smtilt",
-        "manipulator_azi": f"entry1/instrument/manipulator/smazimuth",
-        "manipulator_x1": f"entry1/instrument/manipulator/smx",
-        "manipulator_x2": f"entry1/instrument/manipulator/smy",
-        "manipulator_x3": f"entry1/instrument/manipulator/smz",
-        "manipulator_defocus": f"entry1/instrument/manipulator/smdefocus",
+        "manipulator_polar": "entry1/instrument/manipulator/smpolar",
+        "manipulator_tilt": "entry1/instrument/manipulator/smtilt",
+        "manipulator_azi": "entry1/instrument/manipulator/smazimuth",
+        "manipulator_x1": "entry1/instrument/manipulator/smx",
+        "manipulator_x2": "entry1/instrument/manipulator/smy",
+        "manipulator_x3": "entry1/instrument/manipulator/smz",
+        "manipulator_defocus": "entry1/instrument/manipulator/smdefocus",
         "analyser_model": "FIXED_VALUE:Scienta DA30",
         "analyser_slit_width": [
             "entry1/instrument/analyser/entrance_slit_size",
