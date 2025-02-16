@@ -1,28 +1,26 @@
-"""Functions used to apply k-space conversions to data.
+"""Functions used to apply k-space conversions to data."""
 
-"""
-
-import numpy as np
-import numexpr as ne
-import pint
-import xarray as xr
-from scipy.constants import m_e, hbar, electron_volt, angstrom
 import numba_progress
-from tqdm.notebook import tqdm
+import numexpr as ne
+import numpy as np
+import pint
 import pint_xarray
+import xarray as xr
+from scipy.constants import angstrom, electron_volt, hbar, m_e
+from tqdm.notebook import tqdm
 
+from peaks.core.fileIO.base_data_classes.base_data_class import BaseDataLoader
 from peaks.core.process.fermi_level_correction import (
-    _get_wf,
     _get_BE_scale,
     _get_E_shift_at_theta_par,
+    _get_wf,
 )
-from peaks.core.fileIO.base_data_classes.base_data_class import BaseDataLoader
 from peaks.core.utils.interpolation import (
-    _is_linearly_spaced,
     _fast_bilinear_interpolate,
-    _fast_trilinear_interpolate,
     _fast_bilinear_interpolate_rectilinear,
+    _fast_trilinear_interpolate,
     _fast_trilinear_interpolate_rectilinear,
+    _is_linearly_spaced,
 )
 from peaks.core.utils.misc import analysis_warning
 
@@ -83,7 +81,6 @@ def _f_dispatcher(
 def _f_inv_dispatcher(
     ana_type, Ek, kx, ky, beta_0, chi, chi_0, delta, delta_0, xi, xi_0
 ):
-
     if ana_type == "I":
         return _fI_inv(kx, ky, delta - delta_0, xi - xi_0, Ek, beta_0)
     elif ana_type == "II":
@@ -1028,20 +1025,22 @@ def k_convert(
     interpolated_data.metadata.analyser.scan.eV_type = "Binding Energy"
 
     # Update the history
-    hist_str = f"Converted to k-space using the following parameters: "
+    hist_str = "Converted to k-space using the following parameters: "
     reference_angles = {
         k: v for k, v in angles.items() if ("_0" in k and v is not None)
     }
     hist_str += f"Reference angles: {reference_angles}, "
     if "hv" in da.dims:
-        hist_str += f"Inner potential: {da.metadata.calibration.V0 or 12*ureg('eV')}, "
+        hist_str += (
+            f"Inner potential: {da.metadata.calibration.V0 or 12 * ureg('eV')}, "
+        )
     hist_str += f"Time taken: {pbar.format_dict['elapsed']:.2f}s."
     interpolated_data.history.add(hist_str)
 
     if eV_slice is not None:
         interpolated_data = interpolated_data.mean("eV")
         interpolated_data.history.add(
-            f"Data integrated in energy about {eV_slice[0]} eV +/- {eV_slice[1]/2} eV."
+            f"Data integrated in energy about {eV_slice[0]} eV +/- {eV_slice[1] / 2} eV."
         )
 
     pbar.update(1)
@@ -1078,10 +1077,10 @@ def _convert_to_kz(da, kz, wf, Ek_range):
         V0,
     )
     # Determine the kz values to interpolate onto, including manual range if specified
-    default_k_step = (np.max(kz_) - np.min(kz_)) / (
+    default_k_step = (np.nanmax(kz_) - np.nanmin(kz_)) / (
         2 * len(da.hv)
     )  # Default is based on 0.5 step from the number of hv points
-    kz_range = (np.min(kz_), np.max(kz_), default_k_step)
+    kz_range = (np.nanmin(kz_), np.nanmax(kz_), default_k_step)
     # Restrict to manual kz range if specified
     if kz is not None:
         kz_range = (
