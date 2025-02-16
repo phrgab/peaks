@@ -1,30 +1,29 @@
-"""Functions for the 2D interactive display panel.
-
-"""
+"""Functions for the 2D interactive display panel."""
 
 import sys
 from functools import partial
-from PyQt6 import QtCore, QtWidgets, QtGui
+
+import numpy as np
+import pint
+import pyperclip
+import pyqtgraph as pg
+from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtWidgets import (
     QApplication,
-    QLabel,
-    QWidget,
-    QVBoxLayout,
     QHBoxLayout,
+    QLabel,
+    QVBoxLayout,
+    QWidget,
 )
-import pyqtgraph as pg
-import numpy as np
-import pyperclip
-import pint
 
 from peaks.core.GUI.GUI_utils import (
-    Crosshair,
     CircularListWidget,
+    Crosshair,
     KeyPressGraphicsLayoutWidget,
 )
-from peaks.core.process.tools import sym, estimate_sym_point
-from peaks.core.metadata.meatdata_methods import display_metadata
 from peaks.core.GUI.GUI_utils.cursor_stats import _parse_norm_emission_cursor_stats
+from peaks.core.metadata.meatdata_methods import display_metadata
+from peaks.core.process.tools import estimate_sym_point, sym
 
 
 def _disp_2d(data, primary_dim, exclude_from_centering):
@@ -287,15 +286,15 @@ class _Disp2D(QtWidgets.QMainWindow):
                   </tr>
                   <tr>
                     <td style='padding: 5px; font-weight: normal;'>Move c_rosshair 1</td>
-                    <td style='padding: 5px; font-weight: normal;'>{self.key_modifiers_characters['move_csr2']} + Arrow keys</td>
+                    <td style='padding: 5px; font-weight: normal;'>{self.key_modifiers_characters["move_csr2"]} + Arrow keys</td>
                   </tr>
                   <tr>
                     <td style='padding: 5px; font-weight: normal;'>Move all crosshairs</td>
-                    <td style='padding: 5px; font-weight: normal;'>{self.key_modifiers_characters['move_all']} + Arrow keys</td>
+                    <td style='padding: 5px; font-weight: normal;'>{self.key_modifiers_characters["move_all"]} + Arrow keys</td>
                   </tr>
                   <tr>
                     <td style='padding: 5px; font-weight: normal;'>Hide all crosshairs</td>
-                    <td style='padding: 5px; font-weight: normal;'>{self.key_modifiers_characters['hide_all']}</td>
+                    <td style='padding: 5px; font-weight: normal;'>{self.key_modifiers_characters["hide_all"]}</td>
                   </tr>
                 """
 
@@ -378,6 +377,7 @@ class _Disp2D(QtWidgets.QMainWindow):
             colorMap=cmap,
             colorMapMenu=True,
             limits=(self.c_min, self.c_max),
+            rounding=min(abs(self.c_max - self.c_min) / 2000, 1),
             interactive=True,
             orientation="h",
             values=c_range,
@@ -991,5 +991,5 @@ class _Disp2D(QtWidgets.QMainWindow):
     def _check_crosshair_in_range(self, pos):
         """Check if crosshair pos is within the coordinate range"""
         return (min(self.ranges[0]) <= pos[0] <= max(self.ranges[0])) and (
-            (min(self.ranges[1]) <= pos[1] <= max(self.ranges[1]))
+            min(self.ranges[1]) <= pos[1] <= max(self.ranges[1])
         )

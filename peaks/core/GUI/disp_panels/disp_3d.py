@@ -1,32 +1,28 @@
-"""Functions for the 3D interactive display panel.
-
-"""
+"""Functions for the 3D interactive display panel."""
 
 import sys
 from functools import partial
-import re
 
+import numpy as np
 import pint
-from PyQt6 import QtCore, QtWidgets, QtGui
+import pyperclip
+import pyqtgraph as pg
+from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtWidgets import (
     QApplication,
-    QLabel,
-    QWidget,
-    QVBoxLayout,
     QHBoxLayout,
+    QLabel,
+    QVBoxLayout,
+    QWidget,
 )
-import pyqtgraph as pg
-import numpy as np
-import pyperclip
-from numba.cuda import local
 
 from peaks.core.GUI.GUI_utils import (
     Crosshair,
     KeyPressGraphicsLayoutWidget,
 )
-from peaks.core.process.tools import sym, estimate_sym_point
-from peaks.core.metadata.meatdata_methods import display_metadata
 from peaks.core.GUI.GUI_utils.cursor_stats import _parse_norm_emission_cursor_stats
+from peaks.core.metadata.meatdata_methods import display_metadata
+from peaks.core.process.tools import estimate_sym_point, sym
 
 
 def _disp_3d(data, primary_dim, exclude_from_centering):
@@ -289,7 +285,7 @@ class _Disp3D(QtWidgets.QMainWindow):
         self.rotation_delta = [-45, -30, 30, 45]
         self.rotation_delta_buttons = []
         for ang in self.rotation_delta:
-            button_text = f"{'+' if ang>0 else '-'}{abs(ang)}°"
+            button_text = f"{'+' if ang > 0 else '-'}{abs(ang)}°"
             button = QtWidgets.QPushButton(button_text)
             button.setFixedWidth(40)
             self.rotation_delta_buttons.append(button)
@@ -357,12 +353,12 @@ class _Disp3D(QtWidgets.QMainWindow):
                   </tr>
                   <tr>
                     <td style='padding: 5px; font-weight: normal;'>Change primary slice</td>
-                    <td style='padding: 5px; font-weight: normal;'>{self.key_modifiers_characters['move_primary_dim']} 
+                    <td style='padding: 5px; font-weight: normal;'>{self.key_modifiers_characters["move_primary_dim"]} 
                     + Up/Down arrow keys</td>
                   </tr>
                   <tr>
                     <td style='padding: 5px; font-weight: normal;'>Hide all crosshairs</td>
-                    <td style='padding: 5px; font-weight: normal;'>{self.key_modifiers_characters['hide_all']}</td>
+                    <td style='padding: 5px; font-weight: normal;'>{self.key_modifiers_characters["hide_all"]}</td>
                   </tr>
                 """
 
@@ -487,6 +483,7 @@ class _Disp3D(QtWidgets.QMainWindow):
             colorMap=self.cmap,
             colorMapMenu=True,
             limits=(self.c_min, self.c_max),
+            rounding=min(abs(self.c_max - self.c_min) / 2000, 1),
             interactive=True,
             orientation="h",
             values=(self.c_min, self.c_max),
@@ -820,7 +817,6 @@ class _Disp3D(QtWidgets.QMainWindow):
         else:
             for i in range(2):
                 if len(self.DC_plot_items[f"{i}_m"]) == 0:
-                    plot_m = self.DC_plots[i]
                     self.DC_plot_items[f"{i}_m"].append(
                         self.DC_plots[i].plot(
                             [0],
