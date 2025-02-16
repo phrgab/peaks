@@ -1,6 +1,4 @@
-"""Functions to load data from the Bloch beamline at MAX IV Laboratory.
-
-"""
+"""Functions to load data from the Bloch beamline at MAX IV Laboratory."""
 
 import pint_xarray
 
@@ -24,6 +22,10 @@ class BlochArpesLoader(SESDataLoader):
         "x1": "X",
         "x2": "Y",
         "x3": "Z",
+    }
+    _manipulator_sign_conventions = {
+        "polar": -1,
+        "azi": -1,
     }
     _SES_metadata_units = {
         f"manipulator_{dim}": ("mm" if dim in ["x1", "x2", "x3"] else "deg")
