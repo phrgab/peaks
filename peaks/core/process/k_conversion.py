@@ -1077,10 +1077,10 @@ def _convert_to_kz(da, kz, wf, Ek_range):
         V0,
     )
     # Determine the kz values to interpolate onto, including manual range if specified
-    default_k_step = (np.max(kz_) - np.min(kz_)) / (
+    default_k_step = (np.nanmax(kz_) - np.nanmin(kz_)) / (
         2 * len(da.hv)
     )  # Default is based on 0.5 step from the number of hv points
-    kz_range = (np.min(kz_), np.max(kz_), default_k_step)
+    kz_range = (np.nanmin(kz_), np.nanmax(kz_), default_k_step)
     # Restrict to manual kz range if specified
     if kz is not None:
         kz_range = (
