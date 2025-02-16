@@ -99,6 +99,22 @@ class BaseARPESDataLoader(
         "deflector_parallel",
         "theta_par",
     ]
+    _default_dimensions = {
+        "hv": "eV",
+        "temperature_sample": "K",
+        "temperature_cryostat": "K",
+        "x3": "mm",
+        "x2": "mm",
+        "x1": "mm",
+        "polar": "deg",
+        "tilt": "deg",
+        "azi": "deg",
+        "y_scale": "mm",
+        "deflector_perp": "deg",
+        "eV": "eV",
+        "deflector_parallel": "deg",
+        "theta_par": "deg",
+    }
     _analyser_include_in_metadata_warn = [
         "eV",
         "step_size",
@@ -146,6 +162,11 @@ class BaseARPESDataLoader(
                 da /= t
         except (ValueError, AttributeError, TypeError):
             pass
+
+        # Set default on dimensions if not already set
+        for dim in da.dims:
+            if not hasattr(da[dim], "units") and dim in cls._default_dimensions:
+                da = da.pint.quantify({dim: cls._default_dimensions[dim]})
 
         return da
 

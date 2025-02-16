@@ -1,21 +1,20 @@
-"""Functions for the 4D interactive display panel.
-
-"""
+"""Functions for the 4D interactive display panel."""
 
 import sys
 from functools import partial
+
+import numpy as np
+import pyperclip
+import pyqtgraph as pg
 from PyQt6 import QtCore, QtWidgets
 from PyQt6.QtWidgets import (
     QApplication,
-    QLabel,
-    QWidget,
-    QVBoxLayout,
     QHBoxLayout,
+    QLabel,
     QTabWidget,
+    QVBoxLayout,
+    QWidget,
 )
-import pyqtgraph as pg
-import numpy as np
-import pyperclip
 
 from ..GUI_utils import (
     Crosshair,
@@ -224,6 +223,7 @@ class _Disp4D(QtWidgets.QMainWindow):
             colorMap=cmap,
             colorMapMenu=True,
             limits=crange,
+            rounding=min(abs(crange[1] - crange[0]) / 2000, 1),
             interactive=True,
             orientation="h",
             values=crange,
