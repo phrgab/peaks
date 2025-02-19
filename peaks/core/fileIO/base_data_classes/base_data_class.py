@@ -1,9 +1,9 @@
-from datetime import datetime
-import xarray as xr
-import pint_xarray  # noqa: F401
-import os
 import inspect
-import pint_xarray
+import os
+from datetime import datetime
+
+import pint_xarray  # noqa: F401
+import xarray as xr
 
 from peaks.core.fileIO.loc_registry import LOC_REGISTRY, IdentifyLoc
 from peaks.core.metadata.base_metadata_models import (
