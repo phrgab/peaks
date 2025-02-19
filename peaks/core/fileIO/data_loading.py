@@ -1,16 +1,15 @@
-"""Functions to load data into DataArray format.
-
-"""
+"""Functions to load data into DataArray format."""
 
 import os
-import pint
+
 import dask
-import dask.array as da
+import pint
 from tqdm.notebook import tqdm
-from peaks.core.options import opts
+
 from peaks.core.fileIO.base_data_classes.base_data_class import BaseDataLoader
-from peaks.core.utils.misc import analysis_warning
+from peaks.core.options import opts
 from peaks.core.utils.datatree_utils import _dataarrays_to_datatree
+from peaks.core.utils.misc import analysis_warning
 
 
 def load(
@@ -153,6 +152,8 @@ def load(
         "names": names,
         "quiet": quiet,
     }
+    load_opts.update(kwargs)
+
     # If a full file path provided, always load only this
     if isinstance(fpath, str) and os.path.exists(fpath) and "." in fpath:
         return _load_data(fpath, **load_opts)

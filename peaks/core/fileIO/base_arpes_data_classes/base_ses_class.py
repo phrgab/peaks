@@ -45,7 +45,7 @@ class SESDataLoader(BaseARPESDataLoader):
     }
 
     @classmethod
-    def _load_data(cls, fpath, lazy):
+    def _load_data(cls, fpath, lazy, **kwargs):
         """Load SES data from different file types."""
         handlers = {
             "txt": cls._load_from_txt,
@@ -59,7 +59,7 @@ class SESDataLoader(BaseARPESDataLoader):
             )
 
         # Load data
-        return handlers[ext](fpath)
+        return handlers[ext](fpath, scan_no=kwargs.get("scan_no", 0))
 
     @classmethod
     def _load_from_txt(cls, fpath):
@@ -105,8 +105,12 @@ class SESDataLoader(BaseARPESDataLoader):
         }
 
     @classmethod
-    def _load_from_zip(cls, fpath):
-        """Load data from standard SES .zip format. Adapted from the PESTO file loader by Craig Polley."""
+    def _load_from_zip(cls, fpath, scan_no=0):
+        """Load data from standard SES .zip format.
+        Adapted from the PESTO file loader by Craig Polley.
+
+        Pass a `scan_no` to load a specific scan from the .zip file if multiple regions
+        have been scanned together in SES."""
         # Open the file and load the data
         with zipfile.ZipFile(fpath) as z:
             files = z.namelist()
@@ -114,8 +118,9 @@ class SESDataLoader(BaseARPESDataLoader):
             file_ini = [
                 file for file in files if "Spectrum_" in file and ".ini" in file
             ]
-            filename = file_bin[0]
-            filename_ini = file_ini[0]
+
+            filename = file_bin[scan_no]
+            filename_ini = file_ini[scan_no]
 
             # Extract coordinate information
             with z.open(filename_ini) as f:
