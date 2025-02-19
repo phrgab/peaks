@@ -59,7 +59,11 @@ class SESDataLoader(BaseARPESDataLoader):
             )
 
         # Load data
-        return handlers[ext](fpath, scan_no=kwargs.get("scan_no", 0))
+        scan_no = kwargs.pop("scan_no", None)
+        if ext == "zip" and scan_no is not None:
+            return handlers[ext](fpath, scan_no=scan_no)
+        else:
+            return handlers[ext](fpath)
 
     @classmethod
     def _load_from_txt(cls, fpath):
