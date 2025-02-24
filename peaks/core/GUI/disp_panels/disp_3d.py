@@ -324,7 +324,7 @@ class _Disp3D(QtWidgets.QMainWindow):
         colorbar_group = QtWidgets.QGroupBox("Image contrast")
         colorbar_group.setMaximumWidth(450)
         right_panel_layout.addWidget(colorbar_group)
-        colorbar_container = QHBoxLayout()
+        colorbar_container = QVBoxLayout()
         colorbar_group.setLayout(colorbar_container)
         self.colorbar_widget_container = pg.GraphicsLayoutWidget()
         self.colorbar_widget_container.viewport().setAttribute(
@@ -333,6 +333,8 @@ class _Disp3D(QtWidgets.QMainWindow):
         self.colorbar_widget_container.setMaximumHeight(100)
         self.colorbar_widget_container.setMaximumWidth(400)
         colorbar_container.addWidget(self.colorbar_widget_container)
+        self.cscale_lock = QtWidgets.QCheckBox("cScale locked", checked=True)
+        colorbar_container.addWidget(self.cscale_lock)
 
         right_panel_layout.addStretch()
 
@@ -760,9 +762,12 @@ class _Disp3D(QtWidgets.QMainWindow):
 
     def _update_slices(self, dim_no):
         """Update the data slices when the crosshair is moved."""
+        c_levels = self.colorbar.levels()  # Get starting colorbar scale levels
         self._set_slice(dim_no)
         image_item = self.image_items[dim_no]
         image_item.setImage(self.images[dim_no].values)
+        if self.cscale_lock.isChecked():
+            self.colorbar.setLevels(c_levels)  # Set scale to original
 
     def _update_DC(self, dim_no):
         """Update the DC plots when the crosshair is moved."""
