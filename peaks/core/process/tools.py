@@ -1,22 +1,20 @@
-"""Functions that apply general operations on data.
+"""Functions that apply general operations on data."""
 
-"""
-
-import copy
+import matplotlib.pyplot as plt
 import numpy as np
 import pint
 import pint_xarray
 import xarray as xr
-import matplotlib.pyplot as plt
-from numpy.fft import fft2, ifft2, fftshift
+from IPython.display import clear_output
+from numpy.fft import fft2, fftshift, ifft2
 from scipy.ndimage import gaussian_filter
 from skimage.registration import phase_cross_correlation
-from IPython.display import clear_output
+
 from peaks.core.fitting.models import _shirley_bg
-from peaks.core.utils.misc import analysis_warning, dequantify_quantify_wrapper
 from peaks.core.metadata.meatdata_methods import compare_metadata
-from peaks.core.utils.datatree_utils import get_list_of_DataArrays_from_DataTree
 from peaks.core.process.fermi_level_correction import _flatten_EF
+from peaks.core.utils.datatree_utils import get_list_of_DataArrays_from_DataTree
+from peaks.core.utils.misc import analysis_warning, dequantify_quantify_wrapper
 
 ureg = pint_xarray.unit_registry
 
@@ -1281,8 +1279,9 @@ def _sum_or_subtract_data(data, _sum=True, quiet=False):
         # the current DataArray onto the coordinate grid of the first DataArray
         for dim in current_data.dims:  # Loop through dimensions
             # Check if the coordinates of the current dimension do not match that of the first DataArray
-            if ((len(current_data[dim]) != len(data_0_data[dim]))
-                    or not (current_data[dim].data == data_0_data[dim].data).all()):
+            if (len(current_data[dim]) != len(data_0_data[dim])) or not (
+                current_data[dim].data == data_0_data[dim].data
+            ).all():
                 # Interpolate the current DataArray onto the current dimension coordinate grid of the first DataArray
                 current_data = current_data.interp({dim: data_0_data[dim]})
                 coords_warn_flag = True  # Update warning flag
@@ -1461,7 +1460,9 @@ def subtract_data(data, quiet=False):
     return _sum_or_subtract_data(data, _sum=False, quiet=quiet)
 
 
-def merge_data(data, dim="theta_par", sel=slice(None, None), offsets=None):
+def merge_data(
+    data, dim="theta_par", sel=slice(None, None), offsets=None, hv_match_rounding=0
+):
     """Function to merge two or more DataArrays together along a given dimension.
 
     Parameters
@@ -1485,6 +1486,11 @@ def merge_data(data, dim="theta_par", sel=slice(None, None), offsets=None):
         generated with evenly spaced offsets starting at 0, e.g. if offsets=12, a list with length equal to len(data)
         will be created of the form [0, 12, 24, ...]. Defaults to None where no offsets are applied.
 
+    hv_match_rounding : int, optional
+        The number of decimal places to round the hv coordinate of the DataArrays to
+        when checking for duplicated photon energies if merging hv scans along the hv
+        axis. Defaults to 0.
+
     Returns
     ------------
     merged_data : xarray.DataArray
@@ -1504,6 +1510,9 @@ def merge_data(data, dim="theta_par", sel=slice(None, None), offsets=None):
         # Load some XPS scans into a list
         XPS_data = [pks.load(f'XPS_{i}.ibw') for i in range(1,3)]
 
+        # Load some partial hv scans into a list
+        hv_data = [pks.load(f'hv_{i}.ibw') for i in range(1,3)]
+
         # Merge the dispersions (measured at subsequent polar values with 10 degree intervals) along 'theta_par',
         # applying the offsets [0, 10, 20, 30] as a list
         merged_disp = pks.merge_data([disp1, disp2, disp3, disp4], offsets=[0, 10, 20, 30])
@@ -1516,7 +1525,10 @@ def merge_data(data, dim="theta_par", sel=slice(None, None), offsets=None):
         merged_disp = pks.merge_data([disp1, disp2, disp3, disp4], sel=slice(-9,9), offsets=10)
 
         # Merge the XPS scans (measured over different energy ranges)
-        merged_XPS = pks.merge_data([XPS_1, XPS_2], coord='eV')
+        merged_XPS = pks.merge_data([XPS_1, XPS_2], dim='eV')
+
+        # Merge the partial hv scans (measured over different photon energy ranges)
+        merged_hv = pks.merge_data([hv_1, hv_2], dim='hv')
 
     """
 
@@ -1543,18 +1555,19 @@ def merge_data(data, dim="theta_par", sel=slice(None, None), offsets=None):
         else:
             raise Exception("Data must be a list of xarray.DataArrays.")
 
-    # Remove any curvature of the Fermi level
-    flattened_EF = False
-    for i, current_data in enumerate(data_to_merge):
-        if isinstance(current_data.metadata.get_EF_correction(), dict):
-            data_to_merge[i] = _flatten_EF(current_data)
-            flattened_EF = True
-    if flattened_EF:
-        analysis_warning(
-            "The Fermi level curvature has been removed one or more of the supplied scans.",
-            "info",
-            title="$E_F$ curvature correction",
-        )
+    if dim == "theta_par":
+        # Remove any curvature of the Fermi level
+        flattened_EF = False
+        for i, current_data in enumerate(data_to_merge):
+            if isinstance(current_data.metadata.get_EF_correction(), dict):
+                data_to_merge[i] = _flatten_EF(current_data)
+                flattened_EF = True
+        if flattened_EF:
+            analysis_warning(
+                "The Fermi level curvature has been removed one or more of the supplied scans.",
+                "info",
+                title="$E_F$ curvature correction",
+            )
 
     # Apply offsets to inputted data if required
     if offsets:
@@ -1599,9 +1612,16 @@ def merge_data(data, dim="theta_par", sel=slice(None, None), offsets=None):
     # Loop through the remaining entries of data_to_merge, merge the data with merged_data (using the function
     # _merge_two_DataArrays), and update the scan name
     for current_data in data_to_merge[1:]:
-        merged_data = _merge_two_DataArrays(
-            merged_data.pint.dequantify(), current_data.pint.dequantify(), dim
-        ).pint.quantify()
+        if dim == "hv":
+            merged_data = _join_two_hv_scans(
+                merged_data.pint.dequantify(),
+                current_data.pint.dequantify(),
+                hv_match_rounding,
+            )
+        else:
+            merged_data = _merge_two_DataArrays(
+                merged_data.pint.dequantify(), current_data.pint.dequantify(), dim
+            ).pint.quantify()
         scan_name += " & " + current_data.metadata.scan.name
 
     # Update analysis history
@@ -1745,6 +1765,53 @@ def _merge_two_DataArrays(DataArray1, DataArray2, dim):
     del merged_data._analysis_history.records[-1]
 
     return merged_data
+
+
+def _join_two_hv_scans(scan1, scan2, hv_match_rounding=0):
+    """Join two hv scans into a single hv scan
+
+    Parameters
+    ----------
+    scan1 : xarray.DataArray
+        The first scan to join
+
+    scan2 : xarray.DataArray
+        The second scan to join
+
+    hv_match_rounding : int, optional
+        The number of decimal places to round the hv values to before checking for
+        duplicates, default is 0
+    """
+
+    # Check for duplicated hv values
+    duplicate_hv = set(np.round(scan1.hv.data, hv_match_rounding)).intersection(
+        set(np.round(scan2.hv.data, hv_match_rounding))
+    )
+    if len(duplicate_hv) > 0:
+        error_message = f"""Scans {scan1.name} and {scan2.name} appear to contain one \
+or more duplicate photon energies: {[float(hv) for hv in duplicate_hv]}
+            Pre-select before passing to join_hv_scans function or pass parameter \
+`hv_match_rounding` with precision set to the desired level.
+            """
+        raise ValueError(error_message)
+
+    # Check kinetic energy range of the scan is the same
+    if np.abs(np.ptp(scan1.eV.data) - np.ptp(scan2.eV.data)) > 0.01:
+        raise ValueError("Scans appear to have different kinetic energy ranges")
+
+    # Calculate the KE offsets of the first scans from each set
+    offset = scan2.eV[0] - scan1.eV[0]
+
+    # Shift the KE_delta values of the second scan and remap the KE axis to the first
+    shifted_scan2 = scan2.assign_coords(
+        {"eV": scan1.eV, "KE_delta": scan2.KE_delta + offset}
+    )
+
+    # Concatenate the two scans
+    joined_scan = xr.concat([scan1, shifted_scan2], dim="hv")
+    joined_scan = joined_scan.sortby("hv")
+
+    return joined_scan
 
 
 def estimate_sym_point(data, dims=None, upsample_factor=100):
