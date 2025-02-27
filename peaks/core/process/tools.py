@@ -14,6 +14,7 @@ from peaks.core.fitting.models import _shirley_bg
 from peaks.core.metadata.meatdata_methods import compare_metadata
 from peaks.core.process.fermi_level_correction import _flatten_EF
 from peaks.core.utils.datatree_utils import get_list_of_DataArrays_from_DataTree
+from peaks.core.utils.interpolation import _fast_bilinear_interpolate_rectilinear
 from peaks.core.utils.misc import analysis_warning, dequantify_quantify_wrapper
 
 ureg = pint_xarray.unit_registry
@@ -570,8 +571,9 @@ def smooth(data, **smoothing_kwargs):
     return smoothed_data
 
 
+@dequantify_quantify_wrapper
 def rotate(data, rotation, **centre_kwargs):
-    """Function to rotate 2D data around a given centre of rotation.
+    """Function to rotate 2D or 3D data around a given centre of rotation.
 
     Parameters
     ------------
@@ -582,8 +584,12 @@ def rotate(data, rotation, **centre_kwargs):
         The rotation angle in degrees.
 
     **centre_kwargs : float, optional
-        Used to define centre of rotation in the format dim=coord, e.g. theta_par=1.2 sets the theta_par centre as 1.2.
+        Used to define centre of rotation in the format dim=coord,
+        e.g. theta_par=1.2 sets the theta_par centre as 1.2.
         Default centre of rotation is (0, 0).
+        If data is 3D, assumes that the eV dimension is not to be rotated. To specify a
+        different behaviour or if there is no eV dimenison, must pass the centre_kwargs.
+
 
     Returns
     ------------
@@ -612,142 +618,134 @@ def rotate(data, rotation, **centre_kwargs):
     if rotation % 360 == 0:
         return data
 
-    # Check data is 2D
-    if len(data.dims) != 2:
-        raise Exception("Function only acts on 2D data.")
+    # Check data is 2D or 3D
+    if len(data.dims) not in [2, 3]:
+        raise Exception("Function only acts on 2D or 3D data.")
 
-    # Copy the input data to prevent overwrite issues
-    data_to_be_expanded = data.copy(deep=True)
-
-    # Get dimensions of inputted data
-    x_dim = data_to_be_expanded.dims[1]  # By default, dims[1] is plotted as x in xarray
-    y_dim = data_to_be_expanded.dims[0]  # By default, dims[0] is plotted as y in xarray
-
-    # Check for user-defined centre of rotations
-    for dim in list(centre_kwargs):
-        if dim not in list(data_to_be_expanded.dims):
+    # Check user-defined centre of rotations
+    for dim in centre_kwargs.keys():
+        if dim not in data.dims:
             raise Exception(
-                "{dim} is not a valid dimension of the inputted DataArray.".format(
-                    dim=dim
-                )
+                f"{dim} is not a valid dimension of the inputted DataArray."
             )
 
-    x_centre = centre_kwargs.get(x_dim)
-    if not x_centre:
-        x_centre = 0
-    y_centre = centre_kwargs.get(y_dim)
-    if not y_centre:
-        y_centre = 0
+    # Get the relevant dimensions and centre of rotation
+    if len(data.dims) == 2:
+        rot_dims = data.dims
+    elif "eV" in data.dims and "eV" not in centre_kwargs:
+        rot_dims = [dim for dim in data.dims if dim != "eV"]
+    else:
+        rot_dims = list(centre_kwargs.keys())
+    centres = [centre_kwargs.get(dim, 0) for dim in rot_dims]
 
-    # Must now prepare to interpolate data onto an expanded coordinate grid that is determined by the rotation
-    # (in order to not cut off data)
-    # Obtain the corners of the inputted data coordinate grid
-    x_min = float(data_to_be_expanded.coords[x_dim].min())
-    x_max = float(data_to_be_expanded.coords[x_dim].max())
-    y_min = float(data_to_be_expanded.coords[y_dim].min())
-    y_max = float(data_to_be_expanded.coords[y_dim].max())
-    corner_coords = [[x_min, y_max], [x_max, y_max], [x_min, y_min], [x_max, y_min]]
-
-    # Calculate the positions these corners will be rotated to
-    rotated_corner_coords = []
-    for coord in corner_coords:
-        rotated_x = (
-            x_centre
-            + (np.cos(np.radians(rotation)) * (coord[0] - x_centre))
-            - (np.sin(np.radians(rotation)) * (coord[1] - y_centre))
+    if len(rot_dims) != 2:
+        raise Exception(
+            "Cannot parse rotation dimensions. Please specify the rotation centres as \
+`dim0=value0, dim1=value1` where dim0 and dim1 are the names of the relevant dimension."
         )
-        rotated_y = (
-            y_centre
-            + (np.sin(np.radians(rotation)) * (coord[0] - x_centre))
-            + (np.cos(np.radians(rotation)) * (coord[1] - y_centre))
+
+    # Prepare to interpolate data onto expanded coordinate grid determined by rotation
+    def _rot_point(dim0, dim1, cen, angle):
+        """Rotate a point around a centre while preserving xarray's (dim0, dim1) notation
+
+        Parameters
+        ------------
+        dim0 : float or np.ndarray
+            The first coordinate (typically y-axis).
+
+        dim1 : float or np.ndarray
+            The second coordinate (typically x-axis).
+
+        cen : tuple
+            The centre of rotation as (dim0_centre, dim1_centre).
+
+        angle : float
+            The angle of rotation in degrees.
+
+        Returns
+        ------------
+        new_dim0, new_dim1 : tuple
+            The rotated coordinates (dim0, dim1).
+        """
+        angle_r = np.radians(angle)
+        c = np.cos(angle_r)
+        s = np.sin(angle_r)
+
+        new_dim1 = (
+            cen[1]  # Center along dim1 (x-axis)
+            - (s * (dim0 - cen[0]))  # Y transformation
+            + (c * (dim1 - cen[1]))  # X transformation
         )
-        rotated_corner_coords.append([rotated_x, rotated_y])
+        new_dim0 = (
+            cen[0]  # Center along dim0 (y-axis)
+            + (c * (dim0 - cen[0]))  # Y transformation
+            + (s * (dim1 - cen[1]))  # X transformation
+        )
 
-    # Determine rotated x and y limits
-    rotated_x_min = min([coord[0] for coord in rotated_corner_coords])
-    rotated_x_max = max([coord[0] for coord in rotated_corner_coords])
-    rotated_y_min = min([coord[1] for coord in rotated_corner_coords])
-    rotated_y_max = max([coord[1] for coord in rotated_corner_coords])
+        return new_dim0, new_dim1  # Keep (dim0, dim1) order
 
-    # Determine whether the original or rotated coordinate grid has the larger limits (to ensure no data is lost), and
-    # then define the limits of the expanded coordinate grid
-    new_x_min = min(x_min, rotated_x_min)
-    new_x_max = max(x_max, rotated_x_max)
-    new_y_min = min(y_min, rotated_y_min)
-    new_y_max = max(y_max, rotated_y_max)
-    new_limits = {x_dim: [new_x_min, new_x_max], y_dim: [new_y_min, new_y_max]}
+    # Calculate the new limits of the rotated data
+    dim0_range = np.array([data[rot_dims[0]].min(), data[rot_dims[0]].max()])
+    dim1_range = np.array([data[rot_dims[1]].min(), data[rot_dims[1]].max()])
+    corners = _rot_point(dim0_range[None, :], dim1_range[:, None], centres, rotation)
 
-    # Determine expanded coordinate grids for us to interpolate the inputted DataArray onto
-    x_step = (
-        data_to_be_expanded.coords[x_dim].data[1]
-        - data_to_be_expanded.coords[x_dim].data[0]
+    # Define new coordinates for rotated data
+    new_coord0 = np.arange(
+        np.min(corners[0]),
+        np.max(corners[0]),
+        data[rot_dims[0]].data[1] - data[rot_dims[0]].data[0],
     )
-    x_coord_grid = np.arange(new_limits[x_dim][0], new_limits[x_dim][1], x_step)
-    y_step = (
-        data_to_be_expanded.coords[y_dim].data[1]
-        - data_to_be_expanded.coords[y_dim].data[0]
+    new_coord1 = np.arange(
+        np.min(corners[1]),
+        np.max(corners[1]),
+        data[rot_dims[1]].data[1] - data[rot_dims[1]].data[0],
     )
-    y_coord_grid = np.arange(new_limits[y_dim][0], new_limits[y_dim][1], y_step)
+
+    # Inverse transform to get the old co-ordinate values for the rotated data
+    new_dim0_vals, new_dim1_vals = _rot_point(
+        new_coord0[:, None], new_coord1[None, :], centres, -rotation
+    )
 
     # Interpolate inputted data onto the expanded coordinate grids
-    data_to_be_rotated = data_to_be_expanded.interp(
-        {x_dim: x_coord_grid, y_dim: y_coord_grid}
+    interpolated_data = xr.apply_ufunc(
+        _fast_bilinear_interpolate_rectilinear,
+        new_dim0_vals,
+        new_dim1_vals,
+        data.coords[rot_dims[0]],
+        data.coords[rot_dims[1]],
+        data,
+        input_core_dims=[
+            [rot_dims[0], rot_dims[1]],
+            [rot_dims[0], rot_dims[1]],
+            [rot_dims[0]],
+            [rot_dims[1]],
+            rot_dims,
+        ],
+        output_core_dims=[rot_dims],
+        vectorize=True,
+        exclude_dims=set(rot_dims),
+        dask="parallelized",
+        keep_attrs=True,
+    ).assign_coords(
+        {
+            rot_dims[0]: new_coord0,
+            rot_dims[1]: new_coord1,
+        }
     )
+    # Ensure the name, units and attributes are retained
+    interpolated_data.attrs = data.attrs.copy()
 
-    # Determine mapping onto rotated coordinate grid (note: y_dim is treated as the conventional x dimension,
-    # owing to xarray convention)
-    new_x_coord_grid = np.zeros((len(y_coord_grid), len(x_coord_grid)))
-    new_y_coord_grid = np.zeros((len(y_coord_grid), len(x_coord_grid)))
-    for i, y in enumerate(y_coord_grid):
-        for j, x in enumerate(x_coord_grid):
-            new_x_coord_grid[i][j] = (
-                x_centre
-                + (np.sin(np.radians(rotation)) * (y - y_centre))
-                + (np.cos(np.radians(rotation)) * (x - x_centre))
-            )
-            new_y_coord_grid[i][j] = (
-                y_centre
-                + (np.cos(np.radians(rotation)) * (y - y_centre))
-                - (np.sin(np.radians(rotation)) * (x - x_centre))
-            )
-
-    # Define mapping along x as xarray
-    x_xarray = xr.DataArray(
-        new_x_coord_grid,
-        dims=[y_dim, x_dim],
-        coords={y_dim: y_coord_grid, x_dim: x_coord_grid},
-    )
-
-    # Define mapping along y as xarray
-    y_xarray = xr.DataArray(
-        new_y_coord_grid,
-        dims=[y_dim, x_dim],
-        coords={y_dim: y_coord_grid, x_dim: x_coord_grid},
-    )
-
-    # Perform interpolation, and cut off any coordinates outside the plotting range
-    rotated_data = (
-        data_to_be_rotated.interp({y_dim: y_xarray, x_dim: x_xarray})
-        .sel({y_dim: slice(rotated_y_min, rotated_y_max)})
-        .sel({x_dim: slice(rotated_x_min, rotated_x_max)})
-    )
-
-    # If there are coords units in the inputted data, add them back to the rotated data
-    try:
-        x_units = data_to_be_rotated.coords[x_dim].units
-        rotated_data.coords[x_dim].attrs = {"units": x_units}
-    except AttributeError:
-        pass
-    try:
-        y_units = data_to_be_rotated.coords[y_dim].units
-        rotated_data.coords[y_dim].attrs = {"units": y_units}
-    except AttributeError:
-        pass
+    interpolated_data.name = data.name
+    for dim in rot_dims:
+        if "units" in data.coords[dim].attrs:
+            interpolated_data.coords[dim].attrs["units"] = data.coords[dim].attrs[
+                "units"
+            ]
 
     # Update analysis history
-    rotated_data.history.add(f"Rotated data by {rotation} degrees")
+    interpolated_data.history.add(f"Rotated data by {rotation} degrees")
 
-    return rotated_data
+    return interpolated_data
 
 
 def sym(data, flipped=False, fillna=True, **sym_kwarg):
