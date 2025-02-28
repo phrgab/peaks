@@ -14,6 +14,7 @@ from peaks.core.fitting.models import _shirley_bg
 from peaks.core.metadata.meatdata_methods import compare_metadata
 from peaks.core.process.fermi_level_correction import _flatten_EF
 from peaks.core.utils.datatree_utils import get_list_of_DataArrays_from_DataTree
+from peaks.core.utils.interpolation import _fast_bilinear_interpolate_rectilinear
 from peaks.core.utils.misc import analysis_warning, dequantify_quantify_wrapper
 
 ureg = pint_xarray.unit_registry
@@ -570,8 +571,9 @@ def smooth(data, **smoothing_kwargs):
     return smoothed_data
 
 
+@dequantify_quantify_wrapper
 def rotate(data, rotation, **centre_kwargs):
-    """Function to rotate 2D data around a given centre of rotation.
+    """Function to rotate 2D or 3D data around a given centre of rotation.
 
     Parameters
     ------------
@@ -582,8 +584,12 @@ def rotate(data, rotation, **centre_kwargs):
         The rotation angle in degrees.
 
     **centre_kwargs : float, optional
-        Used to define centre of rotation in the format dim=coord, e.g. theta_par=1.2 sets the theta_par centre as 1.2.
+        Used to define centre of rotation in the format dim=coord,
+        e.g. theta_par=1.2 sets the theta_par centre as 1.2.
         Default centre of rotation is (0, 0).
+        If data is 3D, assumes that the eV dimension is not to be rotated. To specify a
+        different behaviour or if there is no eV dimenison, must pass the centre_kwargs.
+
 
     Returns
     ------------
@@ -612,147 +618,143 @@ def rotate(data, rotation, **centre_kwargs):
     if rotation % 360 == 0:
         return data
 
-    # Check data is 2D
-    if len(data.dims) != 2:
-        raise Exception("Function only acts on 2D data.")
+    # Check data is 2D or 3D
+    if len(data.dims) not in [2, 3]:
+        raise Exception("Function only acts on 2D or 3D data.")
 
-    # Copy the input data to prevent overwrite issues
-    data_to_be_expanded = data.copy(deep=True)
-
-    # Get dimensions of inputted data
-    x_dim = data_to_be_expanded.dims[1]  # By default, dims[1] is plotted as x in xarray
-    y_dim = data_to_be_expanded.dims[0]  # By default, dims[0] is plotted as y in xarray
-
-    # Check for user-defined centre of rotations
-    for dim in list(centre_kwargs):
-        if dim not in list(data_to_be_expanded.dims):
+    # Check user-defined centre of rotations
+    for dim in centre_kwargs.keys():
+        if dim not in data.dims:
             raise Exception(
-                "{dim} is not a valid dimension of the inputted DataArray.".format(
-                    dim=dim
-                )
+                f"{dim} is not a valid dimension of the inputted DataArray."
             )
 
-    x_centre = centre_kwargs.get(x_dim)
-    if not x_centre:
-        x_centre = 0
-    y_centre = centre_kwargs.get(y_dim)
-    if not y_centre:
-        y_centre = 0
+    # Get the relevant dimensions and centre of rotation
+    if len(data.dims) == 2:
+        rot_dims = data.dims
+    elif "eV" in data.dims and "eV" not in centre_kwargs:
+        rot_dims = [dim for dim in data.dims if dim != "eV"]
+    else:
+        rot_dims = list(centre_kwargs.keys())
+    centres = [centre_kwargs.get(dim, 0) for dim in rot_dims]
 
-    # Must now prepare to interpolate data onto an expanded coordinate grid that is determined by the rotation
-    # (in order to not cut off data)
-    # Obtain the corners of the inputted data coordinate grid
-    x_min = float(data_to_be_expanded.coords[x_dim].min())
-    x_max = float(data_to_be_expanded.coords[x_dim].max())
-    y_min = float(data_to_be_expanded.coords[y_dim].min())
-    y_max = float(data_to_be_expanded.coords[y_dim].max())
-    corner_coords = [[x_min, y_max], [x_max, y_max], [x_min, y_min], [x_max, y_min]]
-
-    # Calculate the positions these corners will be rotated to
-    rotated_corner_coords = []
-    for coord in corner_coords:
-        rotated_x = (
-            x_centre
-            + (np.cos(np.radians(rotation)) * (coord[0] - x_centre))
-            - (np.sin(np.radians(rotation)) * (coord[1] - y_centre))
+    if len(rot_dims) != 2:
+        raise Exception(
+            "Cannot parse rotation dimensions. Please specify the rotation centres as \
+`dim0=value0, dim1=value1` where dim0 and dim1 are the names of the relevant dimension."
         )
-        rotated_y = (
-            y_centre
-            + (np.sin(np.radians(rotation)) * (coord[0] - x_centre))
-            + (np.cos(np.radians(rotation)) * (coord[1] - y_centre))
+
+    # Prepare to interpolate data onto expanded coordinate grid determined by rotation
+    def _rot_point(dim0, dim1, cen, angle):
+        """Rotate a point around a centre while preserving xarray's (dim0, dim1) notation
+
+        Parameters
+        ------------
+        dim0 : float or np.ndarray
+            The first coordinate (typically y-axis).
+
+        dim1 : float or np.ndarray
+            The second coordinate (typically x-axis).
+
+        cen : tuple
+            The centre of rotation as (dim0_centre, dim1_centre).
+
+        angle : float
+            The angle of rotation in degrees.
+
+        Returns
+        ------------
+        new_dim0, new_dim1 : tuple
+            The rotated coordinates (dim0, dim1).
+        """
+        angle_r = np.radians(angle)
+        c = np.cos(angle_r)
+        s = np.sin(angle_r)
+
+        new_dim1 = (
+            cen[1]  # Center along dim1 (x-axis)
+            - (s * (dim0 - cen[0]))  # Y transformation
+            + (c * (dim1 - cen[1]))  # X transformation
         )
-        rotated_corner_coords.append([rotated_x, rotated_y])
+        new_dim0 = (
+            cen[0]  # Center along dim0 (y-axis)
+            + (c * (dim0 - cen[0]))  # Y transformation
+            + (s * (dim1 - cen[1]))  # X transformation
+        )
 
-    # Determine rotated x and y limits
-    rotated_x_min = min([coord[0] for coord in rotated_corner_coords])
-    rotated_x_max = max([coord[0] for coord in rotated_corner_coords])
-    rotated_y_min = min([coord[1] for coord in rotated_corner_coords])
-    rotated_y_max = max([coord[1] for coord in rotated_corner_coords])
+        return new_dim0, new_dim1  # Keep (dim0, dim1) order
 
-    # Determine whether the original or rotated coordinate grid has the larger limits (to ensure no data is lost), and
-    # then define the limits of the expanded coordinate grid
-    new_x_min = min(x_min, rotated_x_min)
-    new_x_max = max(x_max, rotated_x_max)
-    new_y_min = min(y_min, rotated_y_min)
-    new_y_max = max(y_max, rotated_y_max)
-    new_limits = {x_dim: [new_x_min, new_x_max], y_dim: [new_y_min, new_y_max]}
+    # Calculate the new limits of the rotated data
+    dim0_range = np.array([data[rot_dims[0]].min(), data[rot_dims[0]].max()])
+    dim1_range = np.array([data[rot_dims[1]].min(), data[rot_dims[1]].max()])
+    corners = _rot_point(dim0_range[None, :], dim1_range[:, None], centres, rotation)
 
-    # Determine expanded coordinate grids for us to interpolate the inputted DataArray onto
-    x_step = (
-        data_to_be_expanded.coords[x_dim].data[1]
-        - data_to_be_expanded.coords[x_dim].data[0]
+    # Define new coordinates for rotated data
+    new_coord0 = np.arange(
+        np.min(corners[0]),
+        np.max(corners[0]),
+        data[rot_dims[0]].data[1] - data[rot_dims[0]].data[0],
     )
-    x_coord_grid = np.arange(new_limits[x_dim][0], new_limits[x_dim][1], x_step)
-    y_step = (
-        data_to_be_expanded.coords[y_dim].data[1]
-        - data_to_be_expanded.coords[y_dim].data[0]
+    new_coord1 = np.arange(
+        np.min(corners[1]),
+        np.max(corners[1]),
+        data[rot_dims[1]].data[1] - data[rot_dims[1]].data[0],
     )
-    y_coord_grid = np.arange(new_limits[y_dim][0], new_limits[y_dim][1], y_step)
+
+    # Inverse transform to get the old co-ordinate values for the rotated data
+    new_dim0_vals, new_dim1_vals = _rot_point(
+        new_coord0[:, None], new_coord1[None, :], centres, -rotation
+    )
 
     # Interpolate inputted data onto the expanded coordinate grids
-    data_to_be_rotated = data_to_be_expanded.interp(
-        {x_dim: x_coord_grid, y_dim: y_coord_grid}
+    interpolated_data = (
+        xr.apply_ufunc(
+            _fast_bilinear_interpolate_rectilinear,
+            new_dim0_vals,
+            new_dim1_vals,
+            data.coords[rot_dims[0]],
+            data.coords[rot_dims[1]],
+            data,
+            input_core_dims=[
+                [rot_dims[0], rot_dims[1]],
+                [rot_dims[0], rot_dims[1]],
+                [rot_dims[0]],
+                [rot_dims[1]],
+                rot_dims,
+            ],
+            output_core_dims=[rot_dims],
+            vectorize=True,
+            exclude_dims=set(rot_dims),
+            dask="parallelized",
+            keep_attrs=True,
+        )
+        .assign_coords(
+            {
+                rot_dims[0]: new_coord0,
+                rot_dims[1]: new_coord1,
+            }
+        )
+        .transpose(*data.dims)
     )
+    # Ensure the name, units and attributes are retained
+    interpolated_data.attrs = data.attrs.copy()
 
-    # Determine mapping onto rotated coordinate grid (note: y_dim is treated as the conventional x dimension,
-    # owing to xarray convention)
-    new_x_coord_grid = np.zeros((len(y_coord_grid), len(x_coord_grid)))
-    new_y_coord_grid = np.zeros((len(y_coord_grid), len(x_coord_grid)))
-    for i, y in enumerate(y_coord_grid):
-        for j, x in enumerate(x_coord_grid):
-            new_x_coord_grid[i][j] = (
-                x_centre
-                + (np.sin(np.radians(rotation)) * (y - y_centre))
-                + (np.cos(np.radians(rotation)) * (x - x_centre))
-            )
-            new_y_coord_grid[i][j] = (
-                y_centre
-                + (np.cos(np.radians(rotation)) * (y - y_centre))
-                - (np.sin(np.radians(rotation)) * (x - x_centre))
-            )
-
-    # Define mapping along x as xarray
-    x_xarray = xr.DataArray(
-        new_x_coord_grid,
-        dims=[y_dim, x_dim],
-        coords={y_dim: y_coord_grid, x_dim: x_coord_grid},
-    )
-
-    # Define mapping along y as xarray
-    y_xarray = xr.DataArray(
-        new_y_coord_grid,
-        dims=[y_dim, x_dim],
-        coords={y_dim: y_coord_grid, x_dim: x_coord_grid},
-    )
-
-    # Perform interpolation, and cut off any coordinates outside the plotting range
-    rotated_data = (
-        data_to_be_rotated.interp({y_dim: y_xarray, x_dim: x_xarray})
-        .sel({y_dim: slice(rotated_y_min, rotated_y_max)})
-        .sel({x_dim: slice(rotated_x_min, rotated_x_max)})
-    )
-
-    # If there are coords units in the inputted data, add them back to the rotated data
-    try:
-        x_units = data_to_be_rotated.coords[x_dim].units
-        rotated_data.coords[x_dim].attrs = {"units": x_units}
-    except AttributeError:
-        pass
-    try:
-        y_units = data_to_be_rotated.coords[y_dim].units
-        rotated_data.coords[y_dim].attrs = {"units": y_units}
-    except AttributeError:
-        pass
+    interpolated_data.name = data.name
+    for dim in rot_dims:
+        if "units" in data.coords[dim].attrs:
+            interpolated_data.coords[dim].attrs["units"] = data.coords[dim].attrs[
+                "units"
+            ]
 
     # Update analysis history
-    rotated_data.history.add(f"Rotated data by {rotation} degrees")
+    interpolated_data.history.add(f"Rotated data by {rotation} degrees")
 
-    return rotated_data
+    return interpolated_data
 
 
 def sym(data, flipped=False, fillna=True, **sym_kwarg):
-    """Function which primarily applies a symmetrisation of data around a given axis. It can alternatively be used to
-    simply flip data around a given axis.
+    """Function which primarily applies a symmetrisation of data around a given axis.
+    It can alternatively be used to simply flip data around a given axis.
 
     Parameters
     ------------
@@ -760,16 +762,19 @@ def sym(data, flipped=False, fillna=True, **sym_kwarg):
         The data to be symmetrised.
 
     flipped : bool, optional
-        Whether to return the flipped data rather than the sum of the original and flipped data. Defaults to False.
+        Whether to return the flipped data rather than the sum of the original and
+        flipped data. Defaults to False.
 
     fillna : bool, optional
-        Whether to fill NaNs with 0s. NaNs occur for regions where the original and flipped data do not overlap. If
-        fillna=True, regions without overlap will appear with half intensity (since only one of the original or
-        flipped data contributes). Defaults to True.
+        Whether to fill NaNs with 0s. NaNs occur for regions where the original and
+        flipped data do not overlap. If fillna=True, regions without overlap will appear
+        with half intensity (since only one of the original or flipped data contributes).
+        Defaults to True.
 
     **sym_kwarg : float, optional
-        Axis to symmetrise about in the format axis=value, where value is coordinate value around which the
-        symmetrisation is performed, passed as a float of pint.Quantity e.g. theta_par=1.4, eV=16.8*pks.ureg('eV').
+        Axis to symmetrise about in the format axis=value, where value is coordinate
+        value around which the symmetrisation is performed, passed as a float of
+        pint.Quantity e.g. theta_par=1.4, eV=16.8*pks.ureg('eV').
         Defaults to eV=0.
 
     Returns
@@ -800,7 +805,8 @@ def sym(data, flipped=False, fillna=True, **sym_kwarg):
     if len(sym_kwarg) > 1:  # Check only called with single axis kwarg
         raise Exception("Function can only be called with single axis.")
 
-    # If no axis has been provided in sym_kwarg, set to the default symmetrisation axis and coordinate of eV=0
+    # If no axis has been provided in sym_kwarg, set to the default symmetrisation axis
+    # and coordinate of eV=0
     if len(sym_kwarg) == 0:
         sym_kwarg = {"eV": 0}
 
@@ -808,7 +814,8 @@ def sym(data, flipped=False, fillna=True, **sym_kwarg):
     sym_axis = next(iter(sym_kwarg))
     sym_coord = sym_kwarg[sym_axis]
 
-    # Check that provided axis is a valid dimension of inputted DataArray, if not raise an error
+    # Check that provided axis is a valid dimension of inputted DataArray,
+    # if not raise an error
     if sym_axis not in sym_data.dims:
         raise Exception(
             "Provided symmetrisation axis is not a valid dimension of inputted DataArray."
@@ -817,13 +824,14 @@ def sym(data, flipped=False, fillna=True, **sym_kwarg):
         # If a pint.Quantity is passed, convert to the units of the axis
         sym_coord = sym_coord.to(sym_data[sym_axis].units).magnitude
 
-    # Check if the symmetrisation coordinate is within the range of the inputted DataArray, if not raise an error
+    # Check if the symmetrisation coordinate is within the range of the inputted
+    # DataArray, if not raise an error
     if sym_coord < min(sym_data[sym_axis].data) or sym_coord > max(
         sym_data[sym_axis].data
     ):
         raise Exception(
-            "Provided symmetrisation coordinate ({sym_axis}={sym_coord}) is not within the coordinate range of the "
-            "inputted DataArray".format(sym_axis=sym_axis, sym_coord=sym_coord)
+            f"Provided symmetrisation coordinate ({sym_axis}={sym_coord}) is not within \
+the coordinate range of the inputted DataArray"
         )
 
     # Generate flipped axis DataArray which maps the original axis to the flipped axis
@@ -874,16 +882,21 @@ def sym_nfold(data, nfold, expand=True, fillna=True, **centre_kwargs):
         Whether to expand the coordinate grid to view all symmetrised data.
 
     fillna : bool, optional
-        Whether to fill NaNs with 0s. When the data is rotated, the coordinate grid is expanded. As such there will be
-        regions with NaNs on the new coordinate grid. Setting fillna=False means such regions remain NaNs, leading to a
-        loss of data when the different rotations are summed during the symmetrisation. Setting fillna=True sets the
-        NaNs to 0, but when the different rotations are summed during the symmetrisation, such regions are scaled to
-        allow for a consistent intensity of the symmetrised data. Some NaNs will remain for regions of the new
+        Whether to fill NaNs with 0s. When the data is rotated, the coordinate grid is
+        expanded. As such there will be regions with NaNs on the new coordinate grid.
+        Setting `fillna=False` means such regions remain NaNs, leading to a loss of data
+        when the different rotations are summed during the symmetrisation. Setting
+        `fillna=True` sets the NaNs to 0, but when the different rotations are summed
+        during the symmetrisation, such regions are scaled to allow for a consistent
+        intensity of the symmetrised data. Some NaNs will remain for regions of the new
         coordinate grid where there is no data. Defaults to True
 
     **centre_kwargs : float, optional
-        Used to define centre of rotation used for the symmetrisation in the format dim=coord, e.g. theta_par=1.2 sets
-        the theta_par centre as 1.2. Default centre of rotation is (0, 0).
+        Used to define centre of rotation used for the symmetrisation in the format
+        `dim=coord`, e.g. `theta_par=1.2` sets the theta_par centre as 1.2.
+        Default centre of rotation is (0, 0).
+        If data is 3D, assumes that the eV dimension is not to be rotated. To specify a
+        different behaviour or if there is no eV dimenison, must pass the centre_kwargs.
 
     Returns
     ------------
@@ -899,109 +912,158 @@ def sym_nfold(data, nfold, expand=True, fillna=True, **centre_kwargs):
         FM1 = load('FM1.zip')
         FS1 = FM1.MDC(E=75.62, dE=0.02)
 
-        # Perform a 3-fold symmetrisation of the Fermi surface around a (0,0) centre of rotation
+        # Perform a 3-fold symmetrisation of the Fermi surface around a (0,0) centre of
+        # rotation
         FS1_sym = FS1.sym_nfold(nfold=3)
 
-        # Perform a 3-fold symmetrisation of the Fermi surface around a (theta_par=3, ana_polar=5) centre of rotation,
-        # restricting the coordinate grid of the output to that of the input, and not replacing Nans.
+        # Perform a 3-fold symmetrisation of the Fermi surface around a
+        # (theta_par=3, ana_polar=5) centre of rotation, restricting the coordinate grid
+        # of the output to that of the input, and not replacing NaNs.
         FS1_sym = FS1.sym(theta_par=3, ana_polar=5, expand=False, fillna=False)
 
     """
 
-    # Copy the input data to prevent overwrite issues
-    data_to_be_symmetrised = data.copy(deep=True)
+    # Check data is 2D or 3D
+    if len(data.dims) not in [2, 3]:
+        raise Exception("Function only acts on 2D or 3D data.")
+
+    # Check user-defined centre of rotations
+    for dim in centre_kwargs.keys():
+        if dim not in data.dims:
+            raise Exception(
+                f"{dim} is not a valid dimension of the inputted DataArray."
+            )
+
+    # Get the relevant dimensions
+    if len(data.dims) == 2:
+        rot_dims = data.dims
+    elif "eV" in data.dims and "eV" not in centre_kwargs:
+        rot_dims = [dim for dim in data.dims if dim != "eV"]
+    else:
+        rot_dims = list(centre_kwargs.keys())
+
+    if len(rot_dims) != 2:
+        raise Exception(
+            "Cannot parse rotation dimensions. Please specify the rotation centres as \
+`dim0=value0, dim1=value1` where dim0 and dim1 are the names of the relevant dimension."
+        )
 
     # Get dimensions of inputted data
-    dim1 = data_to_be_symmetrised.dims[0]
-    dim2 = data_to_be_symmetrised.dims[1]
+    dim0 = rot_dims[0]
+    dim1 = rot_dims[1]
 
-    # Determine the rotations that will be applied and summed to produce the symmetrised data
+    # Determine the rotations that will be applied and summed to produce symmetrised data
     rotation_values = np.linspace(0, 360, nfold + 1)[0:-1]
 
     # Define lists to store rotated data, and coordinate limits
     rotated_data = []
-    dim1_limits = []
-    dim2_limits = []
 
-    # Perform the required rotations, and determine coordinate limits of each rotated data
+    # Copy the input data to prevent overwrite issues
+    data_to_be_symmetrised = data.copy(deep=True)
+
+    # Perform the required rotations, determine coordinate limits of each rotated data
     for rotation in rotation_values:
-        current_rotated_data = data_to_be_symmetrised.rotate(rotation, **centre_kwargs)
-        dim1_limits.append(
-            [
-                current_rotated_data[dim1].data.min(),
-                current_rotated_data[dim1].data.max(),
-            ]
+        rotated_data.append(data_to_be_symmetrised.rotate(rotation, **centre_kwargs))
+
+    # Determine the coordinate limits desired for the data
+    if expand:
+        dim0_min = np.min([np.min(data[dim0].data) for data in rotated_data])
+        dim0_max = np.max([np.max(data[dim0].data) for data in rotated_data])
+        dim1_min = np.min([np.min(data[dim1].data) for data in rotated_data])
+        dim1_max = np.max([np.max(data[dim1].data) for data in rotated_data])
+        dim0_values = np.arange(
+            dim0_min,
+            dim0_max,
+            data_to_be_symmetrised[dim0].data[1] - data_to_be_symmetrised[dim0].data[0],
         )
-        dim2_limits.append(
-            [
-                current_rotated_data[dim2].data.min(),
-                current_rotated_data[dim2].data.max(),
-            ]
+        dim1_values = np.arange(
+            dim1_min,
+            dim1_max,
+            data_to_be_symmetrised[dim1].data[1] - data_to_be_symmetrised[dim1].data[0],
         )
-        rotated_data.append(current_rotated_data)
-
-    # Determine the extremes of the coordinate limits in the rotated data
-    dim1_min = round(min([item[0] for item in dim1_limits]), 4)
-    dim1_max = round(max([item[1] for item in dim1_limits]), 4)
-    dim2_min = round(min([item[0] for item in dim2_limits]), 4)
-    dim2_max = round(max([item[1] for item in dim2_limits]), 4)
-
-    # Determine the coordinate step size of the inputted data
-    dim1_step = round(
-        float(data_to_be_symmetrised[dim1][1] - data_to_be_symmetrised[dim1][0]), 4
-    )
-    dim2_step = round(
-        float(data_to_be_symmetrised[dim2][1] - data_to_be_symmetrised[dim2][0]), 4
-    )
-
-    # Determine the number of coordinate points needed
-    num_dim1 = int((dim1_max - dim1_min) / dim1_step) + 1
-    num_dim2 = int((dim2_max - dim2_min) / dim2_step) + 1
-
-    # Determine the extremal coordinate grid
-    dim1_values = np.linspace(dim1_min, dim1_max, num_dim1)
-    dim2_values = np.linspace(dim2_min, dim2_max, num_dim2)
+    else:
+        dim0_values = data_to_be_symmetrised[dim0].data
+        dim1_values = data_to_be_symmetrised[dim1].data
 
     # Define list to store interpolate rotated data
     interp_rotated_data = []
 
-    # If fillna=True, keep track of where we encounter NaNs, so that we can rescale the data accordingly later
-    if fillna:
-        NaN_counter = np.zeros((num_dim1, num_dim2))
-
     # Interpolate rotated data onto extremal coordinate grid
-    for entry in rotated_data:
-        current_rotated_data = entry.interp({dim1: dim1_values, dim2: dim2_values})
-        # If fillna=True, fill NaNs with 0 and update NaN_counter accordingly
+    for i, entry in enumerate(rotated_data):
+        entry = entry.pint.dequantify()
+        if i == 0 and not expand:  # No interp needed for the first array in this case
+            current_rotated_data = entry.pint.dequantify()
+        else:
+            current_rotated_data = (
+                xr.apply_ufunc(
+                    _fast_bilinear_interpolate_rectilinear,
+                    dim0_values[:, None] * np.ones_like(dim1_values),
+                    dim1_values[None, :] * np.ones_like(dim0_values)[:, None],
+                    entry[dim0].data,
+                    entry[dim1].data,
+                    entry,
+                    input_core_dims=[
+                        [dim0, dim1],
+                        [dim0, dim1],
+                        [dim0],
+                        [dim1],
+                        [dim0, dim1],
+                    ],
+                    output_core_dims=[[dim0, dim1]],
+                    vectorize=True,
+                    exclude_dims=set([dim0, dim1]),
+                    dask="parallelized",
+                    keep_attrs=True,
+                )
+                .assign_coords(
+                    {
+                        rot_dims[0]: dim0_values,
+                        rot_dims[1]: dim1_values,
+                    }
+                )
+                .transpose(*data.dims)
+            )
+
+        # If fillna=True, fill NaNs with 0 and make/update a  NaN_counter so that we can
+        # rescale the data accordingly later
         if fillna:
             current_rotated_data = current_rotated_data.fillna(0)
-            # current_NaN_counter becomes 1 where a nan has been filled, as 0 elsewhere
             current_NaN_counter = (
-                current_rotated_data.where(current_rotated_data == 0, -1) + 1
-            )
-            NaN_counter += current_NaN_counter.data
+                current_rotated_data.pint.dequantify().where(
+                    current_rotated_data == 0, -1
+                )
+                + 1
+            )  # 1 where a nan has been filled, as 0 elsewhere
+            if i == 0:
+                NaN_counter = current_NaN_counter
+            else:
+                NaN_counter += current_NaN_counter
+
         interp_rotated_data.append(current_rotated_data)
 
     # Sum the rotated data to get the symmetrised data
     sym_data = _sum_or_subtract_data(interp_rotated_data)
 
-    # Remove sum_data analysis_history entry, and clear warning (given during sum_data since analysis_history attrs will
-    # differ
+    # Remove sum_data analysis_history entry, and clear warning
+    # (given during sum_data since analysis_history attrs will differ)
     del sym_data._analysis_history.records[-1]
     clear_output()
 
-    # Rescale the data according to the NaN_counter so regions are of consistent intensity
+    # Sort out naming and units
+    sym_data.name = f"{data.name}-sym-{nfold}-fold"
+    for dim in rot_dims:
+        if "units" in data.coords[dim].attrs:
+            sym_data.coords[dim].attrs["units"] = data.coords[dim].attrs["units"]
+
+    # Rescale data according to the NaN_counter so regions are of consistent intensity
     if fillna:
         sym_data.data = (sym_data / (NaN_counter.max() - NaN_counter).data).data
 
-    # If expand is False, perform an interpolation to keep the same coordinate grid as the inputted data
-    if not expand:
-        sym_data = sym_data.interp(
-            {dim1: data_to_be_symmetrised[dim1], dim2: data_to_be_symmetrised[dim2]}
-        ).fillna(0)
-
     # Update analysis history
-    sym_data.history.add(f"Symmetrised data using a {nfold}-fold rotation")
+    sym_data.history.add(
+        f"Symmetrised data using a {nfold}-fold rotation about centre \
+{dim0}={centre_kwargs.get(dim0, 0)}, {dim1}={centre_kwargs.get(dim1, 0)}"
+    )
 
     return sym_data
 
