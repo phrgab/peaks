@@ -1,7 +1,8 @@
-""" Registry for file loaders and locations. """
+"""Registry for file loaders and locations."""
 
 import os
 from os.path import isfile, join
+
 import h5py
 import natsort
 
@@ -72,10 +73,7 @@ class IdentifyLoc:
                         return "MAX IV Bloch-spin"
             # Otherwise by default, assume StA-Phoibos
             return "StA_Phoibos"
-
-        elif "Anode" in line0:
-            # If the identifier 'Anode' is present, then measurement was XRD using StA-Bruker
-            return "StA-Bruker"
+        
         IdentifyLoc._default_handler(fname)
 
     @staticmethod
@@ -186,7 +184,7 @@ class IdentifyLoc:
 
     @staticmethod
     def _handler_nxs(fname):
-        # If the file is .nxs format, the location should be Diamond I05-nano, Diamond I05-HR or ALBA LOREA
+        # If the file is .nxs format, the location should be Diamond I05-nano or Diamond I05-HR
 
         from peaks.core.fileIO.base_data_classes.base_hdf5_class import (
             BaseHDF5DataLoader,
@@ -194,7 +192,6 @@ class IdentifyLoc:
 
         # Open the file (read only)
         with h5py.File(fname, "r") as f:
-
             # .nxs files at Diamond and Alba contain approximately the same identifier format
             identifier = BaseHDF5DataLoader._extract_hdf5_value(
                 f, "entry1/instrument/name"
@@ -204,8 +201,6 @@ class IdentifyLoc:
             return "Diamond_I05_Nano-ARPES"
         elif "i05" in identifier:
             return "Diamond_I05_ARPES"
-        elif "lorea" in identifier:
-            return "ALBA LOREA"
 
     @staticmethod
     def _handler_h5(fname):
@@ -221,26 +216,3 @@ class IdentifyLoc:
     def _handler_zarr(fname):
         # If the file is .zarr format, the location should be Zarr
         return "Zarr"
-
-    @staticmethod
-    def _handler_cif(fname):
-        # If the file is .cif format, it should be a structure file
-        return "Structure"
-
-    # If the file is standard image format, it should be a LEED file
-    @staticmethod
-    def _handler_bmp(fname):
-        return "StA-LEED"
-
-    @staticmethod
-    def _handler_jpeg(fname):
-        return "StA-LEED"
-
-    @staticmethod
-    def _handler_png(fname):
-        return "StA-LEED"
-
-    # If the file is .iso format, it should be a RHEED file
-    @staticmethod
-    def _handler_iso(fname):
-        return "StA-RHEED"
