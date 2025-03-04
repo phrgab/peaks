@@ -1,15 +1,14 @@
-"""Beamline/file-specific data loaders.
-
-"""
+"""Beamline/file-specific data loaders."""
 
 from peaks.core.fileIO.loaders import (
     ape,
     bloch,
     casiopee,
+    cif,
+    clf,
     diamond,
     netcdf,
-    zarr,
-    standrews_phoibos,
     standrews_mbs,
-    clf,
+    standrews_phoibos,
+    zarr,
 )
