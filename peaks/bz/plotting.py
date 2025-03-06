@@ -8,7 +8,12 @@ except ImportError as e:
 import ase.dft.bz
 import matplotlib.pyplot as plt
 import numpy as np
+import trimesh
+from ase.dft.bz import bz_vertices
+from scipy.spatial import ConvexHull
 from scipy.spatial.transform import Rotation
+
+from peaks.bz.utils import _get_atoms_cell_lattice
 
 
 class LinearScalingTransform:
@@ -111,18 +116,7 @@ def plot_bz(
 
     """
 
-    if isinstance(structure_or_lattice, ase.Atoms):
-        lattice = structure_or_lattice.cell.get_bravais_lattice()
-        atoms = structure_or_lattice
-    elif isinstance(structure_or_lattice, ase.lattice.BravaisLattice):
-        lattice = structure_or_lattice
-        cell = lattice.tocell()
-        atoms = ase.Atoms(cell=cell, pbc=True)
-    else:
-        raise ValueError(
-            "Invalid input. Please provide an ase.Atoms or an ase.lattice.BravaisLattice\
- object."
-        )
+    atoms, cell, lattice = _get_atoms_cell_lattice(structure_or_lattice)
 
     if surface is not None:
         if not isinstance(surface, (tuple, list, np.ndarray)) and len(surface) != 3:
@@ -164,3 +158,95 @@ list, or np.ndarray of length 3."
     ax = ax or plt.gca()
     if show_axes is not None:
         ax.axis("on" if show_axes else "off")
+
+
+def plot_bz_section(
+    structure_or_lattice,
+    plane_origin=[0, 0, 0],
+    plane_normal=[0, 0, 1],
+    repeat=1,
+    ax=None,
+    show=False,
+    show_axes=None,
+    **kwargs,
+):
+    """Plot a cross section through the bulk Brillouin zone.
+
+    Parameters
+    ----------
+    structure_or_lattice : ase.Atoms | ase.lattice.BravaisLattice
+        The crystal structure or Bravais lattice representation of the material.
+    plane_origin : list | np.ndarray, optional
+        Origin of the plane. Default is [0, 0, 0].
+    plane_normal : list | np.ndarray, optional
+        Normal vector to the plane. Default is [0, 0, 1].
+    repeat : int, optional
+        Number of times to repeat the Brillouin zone in each direction.
+    ax : Axes, optional
+        Matplotlib Axes object.
+    show : bool, optional
+        If True, show the figure.
+    show_axes : bool, optional
+        If True, show the axes, if False, hide the axes, if None default to behaviour of
+        existing plot, or hide the axes if no plot exists.
+    **kwargs
+        Additional keyword arguments to pass to ax.plot
+    """
+
+    atoms, cell, lattice = _get_atoms_cell_lattice(structure_or_lattice)
+    reciprocal_cell = atoms.cell.reciprocal() * 2 * np.pi  # in inv. Angstrom
+
+    # Define the offsets
+    offsets = np.array(
+        [
+            [i, j, k]
+            for i in range(-repeat, repeat + 1)
+            for j in range(-repeat, repeat + 1)
+            for k in range(-repeat, repeat + 1)
+        ]
+    )
+    offset_vectors = np.dot(offsets, reciprocal_cell)
+
+    # Get the original BZ vertices
+    bz_faces = bz_vertices(reciprocal_cell)
+    vertices_original = np.vstack([face[0] for face in bz_faces])
+
+    # Set up plot
+    if not ax:
+        fig, ax = plt.subplots()
+
+    for offset in offset_vectors:
+        vertices = vertices_original + offset
+
+        # Compute convex hull for the 3D Brillouin zone
+        hull = ConvexHull(vertices)
+        mesh = trimesh.Trimesh(vertices=vertices, faces=hull.simplices)
+
+        # Compute intersection
+        slice_ = mesh.section(plane_origin=plane_origin, plane_normal=plane_normal)
+
+        if slice_ is not None:
+            # Extract absolute intersection vertices
+            slice_vertices = slice_.vertices
+
+            # Find two orthonormal basis vectors orthogonal to the plane normal
+            plane_normal = np.array(plane_normal)
+            u, _, vh = np.linalg.svd(plane_normal.reshape(1, 3))
+            basis = vh[1:3]  # Two orthonormal vectors perpendicular to plane_normal
+
+            # Project slice vertices onto the 2D basis
+            xy = slice_vertices @ basis.T
+
+            # Robust 2D Convex Hull calculation
+            hull_2D = ConvexHull(xy)
+            hull_xy = xy[np.append(hull_2D.vertices, hull_2D.vertices[0])]
+
+            # Plot the hull
+            color = kwargs.pop("color", "k")
+            ax.plot(hull_xy[:, 0], hull_xy[:, 1], color="k", **kwargs)
+
+    if show_axes is not None:
+        ax.axis("on" if show_axes else "off")
+
+    if show:
+        plt.show()
