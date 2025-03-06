@@ -155,6 +155,8 @@ list, or np.ndarray of length 3."
         show=show,
         **kwargs,
     )
+    if ax:
+        show_axes = show_axes if show_axes is not None else True
     ax = ax or plt.gca()
     if show_axes is not None:
         ax.axis("on" if show_axes else "off")
