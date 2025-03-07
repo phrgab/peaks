@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for xarray.DataTree structure
 - New methods for time-resolved spectra in `time_resolved` module, and new data loader for Artemis@CLF
 - Implemented use of `pint` and `pint_xarray` for unit handling; some methods now require this
+- Methods for plotting Brillouin zones
 
 ### Fixed
 - Significant changes to extraction of angles in data processing, including to fix various sign problems in angle conventions 

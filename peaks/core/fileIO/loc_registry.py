@@ -73,7 +73,7 @@ class IdentifyLoc:
                         return "MAX IV Bloch-spin"
             # Otherwise by default, assume StA-Phoibos
             return "StA_Phoibos"
-        
+
         IdentifyLoc._default_handler(fname)
 
     @staticmethod
@@ -216,3 +216,8 @@ class IdentifyLoc:
     def _handler_zarr(fname):
         # If the file is .zarr format, the location should be Zarr
         return "Zarr"
+
+    @staticmethod
+    def _handler_cif(fname):
+        # If the file is .cif format, the location should be cif
+        return "cif"
