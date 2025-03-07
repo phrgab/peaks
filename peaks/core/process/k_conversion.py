@@ -614,6 +614,93 @@ def _get_k_perpto_slit(kx, ky, ana_type):
         raise ValueError(f"Invalid analyser type: {ana_type}")
 
 
+def get_kpar_cut(
+    hv=21.2,
+    Eb=0,
+    theta_par_range=(-15, 15),
+    polar=0,
+    tilt=0,
+    defl_perp=0,
+    ana_type="I",
+):
+    """Extract the k_par cut along the analyser slit for a given set of angle parameters.
+
+    Parameters
+    ----------
+    hv : float, optional
+        Photon energy (eV) (default=21.2 eV).
+    Eb : float, optional
+        Binding energy (eV) (positive for below the Fermi level, default=0).
+    theta_par_range : tuple, optional
+        Range of theta_par values to calculate over in the form (start, stop);
+        default=(-15, 15)).
+    polar : float, optional
+        Polar angle (deg) (default=0).
+    tilt : float, optional
+        Tilt angle (deg) (default=0).
+    defl_perp : float, optional
+        Deflector angle perpendicular to the slit (deg) (default=0).
+    ana_type : str, optional
+        Analyser type, one of I, II, Ip, IIp (default='I').
+    """
+    # Force deflector type if non-zero deflector angle
+    if defl_perp and not ana_type.endswith("p"):
+        ana_type = ana_type + "p"
+
+    alpha = np.radians(np.linspace(*theta_par_range, 101))
+    if ana_type == "I":
+        beta, xi = np.radians(polar), np.radians(tilt)
+        chi = None
+    elif ana_type == "II":
+        beta, xi = np.radians(tilt), np.radians(polar)
+        chi = None
+    else:
+        beta, xi, chi = np.radians(defl_perp), np.radians(tilt), np.radians(polar)
+
+    # Calculate kpar
+    Ek = hv - 4.35 - Eb
+    kx, ky = _f_dispatcher(ana_type, Ek, alpha, beta, 0, chi, 0, 0, 0, xi, 0)
+
+    return kx, ky
+
+
+def get_kz_cut(
+    hv=21.2,
+    Eb=0,
+    polar_or_tilt=0,
+    theta_par_range=(-15, 15),
+    V0=12,
+):
+    """Extract the kz-dep of the cut along the analyser slit for given parameters.
+
+    Parameters
+    ----------
+    hv : float, optional
+        Photon energy (eV) (default=21.2 eV).
+    Eb : float, optional
+        Binding energy (eV) (positive for below the Fermi level, default=0).
+    theta_par_range : tuple, optional
+        Range of theta_par values to calculate over in the form (start, stop);
+        default=(-15, 15)).
+    polar_or_tilt : float, optional
+        Angle offset in direction along the slit (deg) (default=0).
+    V0 : float, optional
+        Inner potential (eV) (default=12).
+    """
+
+    # Calculate for a type I analyser
+    alpha = np.radians(np.linspace(*theta_par_range, 101))
+
+    # Calculate kpar
+    Ek = hv - 4.35 - Eb
+    kx, ky = _f_dispatcher(
+        "I", Ek, alpha, 0, 0, 0, 0, 0, 0, np.radians(polar_or_tilt), 0
+    )
+    kz = _f_kz(Ek, kx, ky, V0)
+
+    return kx, kz
+
+
 # --------------------------------------------------------- #
 #      Main k-space conversion functions                    #
 # --------------------------------------------------------- #

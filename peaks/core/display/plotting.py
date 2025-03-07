@@ -1,16 +1,15 @@
-"""Static in-line plotting functions.
+"""Static in-line plotting functions."""
 
-"""
-
-import numpy as np
-import xarray as xr
 import matplotlib.pyplot as plt
+import numpy as np
 import panel as pn
 import pint_xarray  # noqa: F401
-from numpy.fft import fft
-from matplotlib import colors, cm
+import xarray as xr
 from cycler import cycler
 from IPython.display import display
+from matplotlib import cm, colors
+from numpy.fft import fft
+
 from peaks.core.utils.misc import analysis_warning
 
 
@@ -607,6 +606,148 @@ def plot_ROI(
 
     # Tidy up the layout
     plt.tight_layout()
+
+
+def plot_kpar_cut(
+    hv=21.2,
+    Eb=0,
+    theta_par_range=(-15, 15),
+    polar=0,
+    tilt=0,
+    defl_perp=0,
+    ana_type="I",
+    ax=None,
+    label_cut=True,
+    flip=False,
+    **kwargs,
+):
+    """Plot the k_par cut along the analyser slit for a given set of angle parameters.
+
+    Parameters
+    ----------
+    hv : float, optional
+        Photon energy (eV) (default=21.2 eV).
+    Eb : float, optional
+        Binding energy (eV) (positive for below the Fermi level, default=0).
+    theta_par_range : tuple, optional
+        Range of theta_par values to calculate over in the form (start, stop);
+        default=(-15, 15)).
+    polar : float, optional
+        Polar angle (deg) (default=0).
+    tilt : float, optional
+        Tilt angle (deg) (default=0).
+    defl_perp : float, optional
+        Deflector angle perpendicular to the slit (deg) (default=0).
+    ana_type : str, optional
+        Analyser type, one of I, II, Ip, IIp (default='I').
+    ax : matplotlib.axes.Axes, optional
+        Matplotlib axes object to plot on (default=None).
+    label_cut : bool, optional
+        Whether to label the cut with the angles used (default=True).
+    flip : bool, optional
+        Whether to flip the kx and ky axes (default=False).
+    **kwargs
+        Additional keyword arguments to pass to the plot.
+    """
+
+    from peaks.core.process.k_conversion import get_kpar_cut
+
+    kx, ky = get_kpar_cut(
+        hv=hv,
+        Eb=Eb,
+        theta_par_range=theta_par_range,
+        polar=polar,
+        tilt=tilt,
+        defl_perp=defl_perp,
+        ana_type=ana_type,
+    )
+
+    if not ax:
+        fig, ax = plt.subplots()
+    if not flip:
+        ax.plot(kx, ky, **kwargs)
+    else:
+        ax.plot(ky, kx, **kwargs)
+
+    if label_cut:
+        # Add label to the line showing the tilt and polar angles
+        angle_label = f"Pol.: {polar}°, Tilt: {tilt}°"
+        label_pos = [kx[-1], ky[-1]] if not flip else [ky[-1], kx[-1]]
+        if defl_perp:
+            angle_label += f", Defl. perp.: {defl_perp}°"
+        ax.text(
+            label_pos[0],
+            label_pos[1],
+            angle_label,
+            fontsize=8,
+            ha="center",
+            va="bottom",
+            rotation=0,
+            color="black",
+        )
+
+
+def plot_kz_cut(
+    hv=21.2,
+    Eb=0,
+    polar_or_tilt=0,
+    theta_par_range=(-15, 15),
+    V0=12,
+    ax=None,
+    label_cut=True,
+    **kwargs,
+):
+    """Plot the kz-dep of the cut along the analyser slit for given parameters.
+
+    Parameters
+    ----------
+    hv : float, optional
+        Photon energy (eV) (default=21.2 eV).
+    Eb : float, optional
+        Binding energy (eV) (positive for below the Fermi level, default=0).
+    theta_par_range : tuple, optional
+        Range of theta_par values to calculate over in the form (start, stop);
+        default=(-15, 15)).
+    polar_or_tilt : float, optional
+        Angle offset in direction along the slit (deg) (default=0).
+    V0 : float, optional
+        Inner potential (eV) (default=12).
+    ax : matplotlib.axes.Axes, optional
+        Matplotlib axes object to plot on (default=None).
+    label_cut : bool, optional
+        Whether to label the cut with the photon energy used (default=True).
+    **kwargs
+        Additional keyword arguments to pass to the plot.
+    """
+
+    from peaks.core.process.k_conversion import get_kz_cut
+
+    kx, kz = get_kz_cut(
+        hv=hv,
+        Eb=Eb,
+        theta_par_range=theta_par_range,
+        polar_or_tilt=polar_or_tilt,
+        V0=V0,
+    )
+
+    if not ax:
+        fig, ax = plt.subplots()
+
+    ax.plot(kx, kz, **kwargs)
+
+    if label_cut:
+        # Add label to the line showing the photon energy
+        label = f"hv: {hv} eV  "
+        ax.text(
+            kx[0],
+            kz[0],
+            label,
+            fontsize=10,
+            ha="right",
+            va="bottom",
+            rotation=0,
+            color="black",
+        )
 
 
 def plot_nanofocus(data, focus="defocus"):

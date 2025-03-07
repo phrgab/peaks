@@ -1,3 +1,5 @@
+# ruff: noqa
+
 """peaks: (P)ython (E)lectron Spectroscopy and Diffraction (A)nalysis by (K)ing Group (S)t Andrews.
 
 peaks is a collection of analysis tools for the loading, processing and display of spectroscopic and diffraction data,
@@ -54,7 +56,14 @@ from peaks.core.fileIO.loaders import *
 from peaks.core.fileIO.data_loading import load
 from peaks.core.fitting.fit import load_fit
 from peaks.core.options import opts
-from peaks.core.display.plotting import plot_grid, plot_DCs, plot_ROI, plot_nanofocus
+from peaks.core.display.plotting import (
+    plot_grid,
+    plot_DCs,
+    plot_ROI,
+    plot_kpar_cut,
+    plot_kz_cut,
+    plot_nanofocus,
+)
 from peaks.core.process.tools import sum_data, subtract_data, merge_data
 
 # Register the relevant accessor functions
