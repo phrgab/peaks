@@ -16,23 +16,19 @@ getting_started
 
 ```{toctree}
 :maxdepth: 2
-:caption: User Guide
 :glob:
 
-_tutorials/*
+user_guide
 ```
 
 ```{toctree}
-:caption: API Reference
 :maxdepth: 1
 
-autoapi/peaks/index
+autoapi/index
 ```
 
 ```{toctree}
-:caption: Development
-:maxdepth: 1
+:maxdepth: 2
 
-contributing
-changelog
+development
 ```
