@@ -3,8 +3,8 @@
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
-import re
 import os
+import re
 from datetime import date
 
 __name__ = "peaks"
@@ -38,6 +38,16 @@ extensions = [
     "myst_nb",
 ]
 autoapi_dirs = ["../../peaks"]
+autoapi_options = [
+    "members",
+    "undoc-members",
+    "show-inheritance",
+    "show-module-summary",
+    "special-members",
+    "imported-members",
+    "private-members=False",
+    "autoapi_add_toctree_entry=False",
+]
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
@@ -75,7 +85,7 @@ nb_execution_mode = "off"
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
-html_theme = "furo"
+html_theme = "pydata_sphinx_theme"
 
 myst_enable_extensions = [
     "colon_fence",
@@ -99,13 +109,26 @@ html_css_files = [
     "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/brands.min.css",
 ]
 
+html_sidebars = {
+    "getting_started": [],
+}
+
 html_theme_options = {
-    "footer_icons": [
-        {
-            "name": "Gitlab",
-            "url": "https://gitlab.st-andrews.ac.uk/physics-and-astronomy/king-group/peaks",
-            "html": "",
-            "class": "fa-brands fa-solid fa-gitlab fa-2x",
-        },
+    "external_links": [
+        {"name": "Kinggroup@StA", "url": "https://www.quantummatter.co.uk/king"},
     ],
+    "icon_links": [
+        {
+            "name": "GitLab",
+            "url": "https://gitlab.st-andrews.ac.uk/physics-and-astronomy/king-group/peaks",
+            "icon": "fa-brands fa-solid fa-gitlab fa-2x",
+            "type": "fontawesome",
+        }
+    ],
+    "navbar_persistent": ["search-button", "version-switcher"],
+    "check_switcher": False,
+    "switcher": {
+        "json_url": "https://research.st-andrews.ac.uk/kinggroup/peaks/switcher.json",
+        "version_match": version,
+    },
 }
