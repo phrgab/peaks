@@ -20,7 +20,7 @@ pip install -e peaks\[dev\]
 ## Documentation
 The hosted documentation is automatically built by Gitlab CI/CD, and updated on each commit. To make a local build of the documentation, first install [`sphinx`](https://www.sphinx-doc.org/en/master/) and the required additional packages:
 ```bash
-pip install sphinx sphinx-autoapi sphinx-copybutton sphinx-togglebutton sphinx-inline-tabs myst-parser furo
+pip install sphinx sphinx-autoapi sphinx-copybutton sphinx-togglebutton sphinx-inline-tabs myst-parser pydata-sphinx-theme
 ```
 
 To build the documentation, navigate to the `docs` directory and run:
@@ -30,7 +30,7 @@ make html
 ```
 
 ```{note}
-We use sphinx and MyST-parser for the documentation. See the [MyST documentation](https://myst-parser.readthedocs.io/en/latest/) for more information on the MyST markdown format. We use the furo theme for the documentation. See the [Furo documentation](https://pradyunsg.me/furo/) for more information on the theme and helpful guides for the markdown formatting.
+We use sphinx and MyST-parser for the documentation. See the [MyST documentation](https://myst-parser.readthedocs.io/en/latest/) for more information on the MyST markdown format. We use the pydata-sphinx theme for the documentation. See the [documentation](https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html) for more information on the theme.
 ```
 
 ## Making changes
