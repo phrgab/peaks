@@ -7,8 +7,7 @@ pyproject_path = "../pyproject.toml"
 with open(pyproject_path, "r") as f:
     pyproject = toml.load(f)
 
-# Extract the dependencies and dev dependencies
-dependencies = pyproject["project"]["dependencies"]
+# Extract the dev dependencies for building the docs
 dev_dependencies = pyproject["project"]["optional-dependencies"]["dev"]
 
 
@@ -22,8 +21,6 @@ def format_dependencies(deps):
             name, version = dep.split(" ")
             # Remove the parentheses from the version
             version = version.strip("()")
-            # Replace the comma with nothing
-            version = version.replace(",", "")
             # Add the formatted dependency to the list
             formatted_deps.append(f"{name}{version}")
         except ValueError:
@@ -33,12 +30,10 @@ def format_dependencies(deps):
     return formatted_deps
 
 
-# Format the dependencies and dev dependencies
-dependencies = format_dependencies(dependencies)
+# Format the dev dependencies
 dev_dependencies = format_dependencies(dev_dependencies)
 
 # Write the dev dependencies to the requirements.txt file
-# (only these should now be needed for building the docs after switching to autoapi)
 with open("requirements.txt", "w") as f:
     for dep in dev_dependencies:
         f.write(f"{dep}\n")
