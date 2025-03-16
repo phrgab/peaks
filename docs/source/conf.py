@@ -131,4 +131,5 @@ html_theme_options = {
         "json_url": "https://research.st-andrews.ac.uk/kinggroup/peaks/switcher.json",
         "version_match": version,
     },
+    "show_version_warning_banner": True,
 }
