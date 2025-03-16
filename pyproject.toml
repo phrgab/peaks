@@ -16,7 +16,6 @@ dependencies = [
         "dask[diagnostics] (>=2024.6.0)",
         "h5py (>=3.11,<4)",
         "tqdm (>=4.66,<5)",
-        "scikit-learn (>=1.3,<2)",
         "natsort (>=8.4,<9)",
         "igor2 (>=0.5,<1)",
         "jupyterlab (>=4.2,<5)",
@@ -51,6 +50,11 @@ Issues = "https://gitlab.st-andrews.ac.uk/physics-and-astronomy/king-group/peaks
 Documentation = "https://research.st-andrews.ac.uk/kinggroup/peaks/"
 
 [project.optional-dependencies]
+structure = [
+        "ase (>3.24,<4)",
+        "trimesh (>4.6,<5)",
+]
+ML = ["scikit-learn (>=1.3,<2)"]
 dev = [
         "black (>=24.2,<25)",
         "cookiecutter (>=2.5,<3)",
@@ -63,3 +67,5 @@ dev = [
         "myst-nb (>=1.1,<2)",
         "pydata-sphinx-theme (>=0.16,<1)",
         ]
+
+all = ["peaks[structure,ML,dev]"]
