@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Methods for plotting Brillouin zones
 
 ### Fixed
-- Significant changes to extraction of angles in data processing, including to fix various sign problems in angle conventions 
+- Significant changes to extraction of angles in data processing, including to fix various sign problems in angle conventions (NB sign conventions not yet checked for all loaders)
 - Made GUIs a bit more robust against missing metadata
 
 ### Changed
@@ -24,11 +24,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed the structure of the `peaks` options, refactored into `options.py`
 - Bumped minimum required version of `xarray` to 2024.10.0 for `DataTree` support
 - Updated tutorials to reflect changes in the package
-- Other small bug fixes throughout
+- Other small bug fixes throughout (NB still some bugs remaining, in particular for k-conversion)
 
 ### Removed
 - Old data loaders moved to `to_depreciate` folder and these are no longer functional. Note, not all of these loaders have been ported to the new class-based structure yet.
 - General tidy up of some outdated code
+- Removed some modules not yet implemented to improve focus
 
 ## [0.2.0]
 ### Added

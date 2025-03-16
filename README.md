@@ -6,9 +6,9 @@
 [![black](https://img.shields.io/badge/code--style-black-black)](https://black.readthedocs.io/)
 [![log](https://img.shields.io/badge/change-log-informational)]()
 
-`peaks`: **P**ython **E**lectron Spectroscopy and Diffraction **A**nalysis by **K**ing Group **S**t Andrews.
+`peaks`: **P**ython **E**lectron Spectroscopy **A**nalysis by **K**ing Group **S**t Andrews.
 
-A collection of analysis tools for the loading, processing and display of spectroscopic and diffraction data, with a core focus on tools for angle-resolved photoemission and electron diffraction techniques.
+A collection of analysis tools for the loading, processing and display of spectroscopic data, with a core focus on tools for angle-resolved photoemission.
 
 `peaks` is an evolution of the `PyPhoto` package developed by Phil King, Brendan Edwards, Tommaso Antonelli, Edgar Abarca Morales, Liam Trzaska and Lewis Hart from the King group at the University of St Andrews. This version of `peaks` is the result of a major restructuring of the package in 2023 and 2024 by Brendan Edwards and Phil King.
 
@@ -32,6 +32,13 @@ Then install peaks using pip, directly from the Gitlab repo:
 ```
 
 To install a specific tagged version, append `@<tag>` to the end of the git link where `<tag>` is the tag name.
+
+### Optional dependencies
+To install optional dependencies, append `\[dep1, dep2, ...\]` to the end of the `pip install ...` command, where `dep` is the name of the dependency. The following options can be used:
+
+- **structure** - required for the use of the `bz` module, for e.g. plotting Brillouin zones on the data;
+- **ML** - required for the use of the machine learning module;
+- **dev** - optional development dependencies, used for e.g. formatting the code or building local copies of the documentation. 
 
 ## Basic Usage
 `peaks` is typically run in a Jupyter notebook or equivalent. To import peaks run:
