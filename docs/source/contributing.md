@@ -10,7 +10,7 @@ If you are actively developing the package, first clone the repo:
     git clone git@gitlab.st-andrews.ac.uk:physics-and-astronomy/king-group/peaks.git
 ```
 
-Then create a conda environment and install the package in "editable" mode, including optional development dependencies:
+Then create a conda environment and install the package in "editable" mode, including optional development dependencies (and any other desired dependencies):
 ```bash
 conda create -n peaks-dev python=3.12
 conda activate peaks-dev
@@ -18,9 +18,7 @@ pip install -e peaks\[dev\]
 ```
 
 ## Documentation
-The hosted documentation is automatically built by Gitlab CI/CD, and updated on each commit. To make a local build of the documentation, first install [`sphinx`](https://www.sphinx-doc.org/en/master/) and the required additional packages:
-```bash
-pip install sphinx sphinx-autoapi sphinx-copybutton sphinx-togglebutton sphinx-inline-tabs myst-parser pydata-sphinx-theme
+The hosted documentation is automatically built by Gitlab CI/CD, and updated on each commit. To make a local build of the documentation, first ensure you have installed the `dev` options of peaks - the relevant documentation packages should then be installed by default. 
 ```
 
 To build the documentation, navigate to the `docs` directory and run:
@@ -30,7 +28,7 @@ make html
 ```
 
 ```{note}
-We use sphinx and MyST-parser for the documentation. See the [MyST documentation](https://myst-parser.readthedocs.io/en/latest/) for more information on the MyST markdown format. We use the pydata-sphinx theme for the documentation. See the [documentation](https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html) for more information on the theme.
+We use sphinx and MyST-parser for the documentation. See the [MyST documentation](https://myst-parser.readthedocs.io/en/latest/) for more information on the MyST markdown format. We use the pydata-sphinx theme for the documentation. See the [documentation](https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html) for more information on the theme. Note, the version selector will not work for a local build of the documentation.
 ```
 
 ## Making changes
