@@ -1,17 +1,19 @@
-import natsort
 import os
+
+import natsort
 import numpy as np
-import xarray as xr
 import pint_xarray
+import xarray as xr
 from scipy import constants
 from tqdm.notebook import tqdm
+
+from peaks.core.fileIO.base_arpes_data_classes.base_arpes_data_class import (
+    BaseARPESDataLoader,
+)
 from peaks.core.fileIO.base_data_classes.base_photon_source_classes import (
     BasePumpProbeClass,
 )
 from peaks.core.fileIO.loc_registry import register_loader
-from peaks.core.fileIO.base_arpes_data_classes.base_arpes_data_class import (
-    BaseARPESDataLoader,
-)
 from peaks.core.utils.misc import analysis_warning
 
 ureg = pint_xarray.unit_registry
@@ -590,10 +592,11 @@ class ArtemisPhoibos(BaseARPESDataLoader, BasePumpProbeClass):
             delays = []
 
             for r in ranges:
-                start, stop, step = map(int, r.split("_"))
-                delays.extend(
-                    range(start, stop + step, step)
-                )  # +step to include the endpoint if it's on the step
+                if "_" in r:
+                    start, stop, step = map(int, r.split("_"))
+                    delays.extend(
+                        range(start, stop + step, step)
+                    )  # +step to include the endpoint if it's on the step
 
             delays = np.asarray(delays)
             return np.array([delays[0], delays[-1]]) * ureg("fs")
