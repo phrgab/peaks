@@ -3,7 +3,7 @@ import pint
 import pint_xarray
 from pydantic import BaseModel, ConfigDict
 from pydantic_core import core_schema
-from typing import Optional, Union, List
+from typing import Optional, Union
 
 # Define the appropriate unit registry
 ureg = pint_xarray.unit_registry
@@ -144,7 +144,7 @@ class PhotonMetadataModel(BaseMetadataModel):
     """Model to store photon-linked metadata."""
 
     hv: Optional[Union[str, Quantity]] = None
-    polarisation: Optional[Union[str, int, float, List[str]]] = None
+    polarisation: Optional[Union[str, int, float]] = None
     exit_slit: Optional[Union[str, Quantity]] = None
 
 
