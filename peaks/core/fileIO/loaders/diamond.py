@@ -631,7 +631,7 @@ class I05NanoARPESLoader(I05ARPESLoader):
             ZPy=metadata_dict.get("focussing_ZPy"),
             ZPz=metadata_dict.get("focussing_ZPz"),
         )
-        return {"focussing": optics_metadata}, None
+        return {"_focussing": optics_metadata}, None
 
     @register_accessor(xr.DataArray)
     @staticmethod
