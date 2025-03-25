@@ -469,6 +469,9 @@ class I05NanoARPESLoader(I05ARPESLoader):
         "x3": "smz",
         "defocus": "smdefocus",
     }
+    _manipulator_sign_conventions = {
+        "azi": -1,
+    }
 
     _desired_dim_order = [
         "scan_no",
