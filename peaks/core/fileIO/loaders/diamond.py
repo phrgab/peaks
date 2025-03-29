@@ -192,6 +192,7 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
     }
 
     _hdf5_metadata_key_mappings = {
+        "scan_command": "entry1/scan_command",
         "manipulator_polar": "entry1/instrument/manipulator/sapolar",
         "manipulator_tilt": "entry1/instrument/manipulator/satilt",
         "manipulator_azi": "entry1/instrument/manipulator/saazimuth",
@@ -502,6 +503,7 @@ class I05NanoARPESLoader(I05ARPESLoader):
     }
 
     _hdf5_metadata_key_mappings = {
+        "scan_command": "entry1/scan_command",
         "manipulator_polar": "entry1/instrument/manipulator/smpolar",
         "manipulator_tilt": "entry1/instrument/manipulator/smtilt",
         "manipulator_azi": "entry1/instrument/manipulator/smazimuth",
