@@ -381,6 +381,142 @@ def plot_DCs(
     plt.tight_layout()
 
 
+def plot_3d_stack(
+    da,
+    downsample=2,
+    stack_dim="eV",
+    vmax=None,
+    cmap="Purples",
+    figsize=(8, 12),
+    aspect=None,
+    elev=10.0,
+    azim=-60.0,
+    **kwargs,
+):
+    """Plot a stack of surface plots from a data cube
+
+    Parameters
+    ------------
+    da : xarray.DataArray
+        The data to plot.
+    downsample : int, optional
+        The downsample factor for the plot. Defaults to 2.
+    stack_dim : str, optional
+        The dimension to stack the data along. Defaults to 'eV'.
+    vmax : float, optional
+        The maximum value for the color scale. Defaults to None (i.e. the maximum value
+        of the data).
+    cmap : str, optional
+        The colormap to use. Defaults to 'Purples'.
+    figsize : tuple, optional
+        The size of the figure. Defaults to (8, 12).
+    aspect : tuple, optional
+        The aspect ratio for the plot (x, y, z), in units of the data, e.g. (1,1,200)
+        Defaults to None.
+    elev : float, optional
+        The elevation angle for the 3D plot. Defaults to 10.0.
+    azim : float, optional
+        The azimuthal angle for the 3D plot. Defaults to -60.0.
+    **kwargs : optional
+        Additional standard matplotlib calls arguments to pass to the plot.
+        Must be suitable for passing in ax.set(**kwargs) format.
+
+    Notes
+    ------------
+    `xlim` and `ylim` don't clip the range for this type of plot. Pass data over the
+    range you want to plot. Similarly, apply any normalisation to the data before
+    passing it to this function.
+    """
+
+    # Parse the dimensions
+    if stack_dim not in da.dims:
+        raise ValueError(
+            f"stack_dim '{stack_dim}' is not a dimension of the data array."
+        )
+    non_stack_dims = [d for d in da.dims if d != stack_dim]
+
+    # Normalise the data
+    if not vmax:  # no max colour limit specified
+        vmax = da.max().pint.dequantify().data
+    C = (da / vmax).copy().pint.dequantify()
+    C = np.clip(C, 0, 1)
+
+    # Set up the plot
+    plt.interactive(True)
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_subplot(111, projection="3d")
+    cmap_sel = plt.get_cmap(cmap)
+
+    # Define the grid
+    X = da[non_stack_dims[1]].data
+    Y = da[non_stack_dims[0]].data
+    XX, YY = np.meshgrid(X, Y)
+    Z = np.zeros_like(XX)
+
+    # Set the aspect ratio
+    if aspect:
+        stack_dim_range = np.ptp(da[stack_dim].data)
+        ax.set_box_aspect(
+            (np.ptp(X) * aspect[0], np.ptp(Y) * aspect[1], stack_dim_range * aspect[2])
+        )
+
+    # Make the plot surfaces (downsample 2x2)
+    for i in da["eV"].data:
+        ax.plot_surface(
+            XX,
+            YY,
+            Z + i,
+            rstride=downsample,
+            cstride=downsample,
+            facecolors=cmap_sel(C.sel(eV=i).data),
+            shade=False,
+        )
+
+    # Colour scale
+    m = cm.ScalarMappable(cmap=cmap)
+    m.set_array(np.linspace(0, vmax, 100))
+    cbar = plt.colorbar(m, ax=ax, shrink=0.2, aspect=8, pad=0.15, location="right")
+    cbar.ax.yaxis.set_ticks_position("right")
+    cbar.ax.yaxis.set_label_position("right")
+
+    # Some plot display settings
+    # Label the axes
+    ax.set_xlabel(non_stack_dims[1])
+    ax.set_ylabel(non_stack_dims[0])
+    ax.set_zlabel(stack_dim)
+
+    # Set overall view (no grids etc.)
+    ax.grid(False)
+    ax.xaxis.pane.set_edgecolor("black")
+    ax.yaxis.pane.set_edgecolor("black")
+    ax.xaxis.pane.fill = False
+    ax.yaxis.pane.fill = False
+    ax.zaxis.pane.fill = False
+
+    # Sort out axis label locations
+    [t.set_va("center") for t in ax.get_yticklabels()]
+    [t.set_ha("left") for t in ax.get_yticklabels()]
+    [t.set_va("center") for t in ax.get_xticklabels()]
+    [t.set_ha("right") for t in ax.get_xticklabels()]
+    [t.set_va("center") for t in ax.get_zticklabels()]
+    [t.set_ha("left") for t in ax.get_zticklabels()]
+    ax.xaxis.set_rotate_label(False)
+    ax.yaxis.set_rotate_label(False)
+    ax.zaxis.set_rotate_label(False)
+    ax.zaxis.labelpad = 20
+
+    # Set z-axis ticks to match the slices
+    ax.zaxis.set_major_locator(plt.FixedLocator(np.round(C["eV"].data, 3)))
+
+    # Set default elevation view
+    ax.view_init(elev=elev, azim=azim)
+
+    ax.set(**kwargs)
+
+    # Show the plot
+    plt.show()
+
+
 def plot_fit(fit_results_ds, show_components=True, figsize=None, **kwargs):
     def _plot_single_fit(fit_results, show_components, figsize, **kwargs):
         fig = plt.figure(figsize=figsize)

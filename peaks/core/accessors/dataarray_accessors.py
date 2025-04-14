@@ -1,9 +1,15 @@
 import xarray as xr
+
 from peaks.core.accessors.accessor_methods import register_lazy_accessor
 
 # List of function names and the module they belong to
 functions_to_register = {
-    "display.plotting": ["plot_DCs", "plot_fit_test", "plot_nanofocus"],
+    "display.plotting": [
+        "plot_DCs",
+        "plot_3d_stack",
+        "plot_fit_test",
+        "plot_nanofocus",
+    ],
     "fileIO.data_saving": [
         "save",
     ],
