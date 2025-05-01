@@ -424,15 +424,15 @@ def _fIp_inv(kx, ky, delta_, xi_, chi_, Ek):  # Type I, with deflector
     k2p_str = f"sqrt({kvac_str}**2 - kx**2 - ky**2)"
 
     # Mapping functions
-    arg1_str = f"({_tij(31)} * kx) + ({_tij(32)} * ky) + ({_tij(33)} * {k2p_str})"
-    arg2_str = f"({_tij(11)} * kx) + ({_tij(12)} * ky) + ({_tij(13)} * {k2p_str})"
-    arg3_str = f"({_tij(21)} * kx) + ({_tij(22)} * ky) + ({_tij(23)} * {k2p_str})"
+    arg1_str = f"(({_tij(31)}) * kx) + (({_tij(32)}) * ky) + (({_tij(33)}) * ({k2p_str}))"
+    arg2_str = f"(({_tij(11)}) * kx) + (({_tij(12)}) * ky) + (({_tij(13)}) * ({k2p_str}))"
+    arg3_str = f"(({_tij(21)}) * kx) + (({_tij(22)}) * ky) + (({_tij(23)}) * ({k2p_str}))"
 
     alpha = ne.evaluate(
-        f"-arccos({arg1_str} / {kvac_str}) * {arg2_str} / sqrt({kvac_str}**2 - {arg1_str}**2)"
+        f"-arccos(({arg1_str}) / ({kvac_str})) * ({arg2_str}) / sqrt(({kvac_str})**2 - ({arg1_str})**2)"
     )
     beta = ne.evaluate(
-        f"-arccos({arg1_str} / {kvac_str}) * {arg3_str} / sqrt({kvac_str}**2 - {arg1_str}**2)"
+        f"-arccos(({arg1_str}) / ({kvac_str})) * ({arg3_str}) / sqrt(({kvac_str})**2 - ({arg1_str})**2)"
     )
 
     return alpha, beta
@@ -470,15 +470,15 @@ def _fIIp_inv(kx, ky, delta_, xi_, chi_, Ek):  # Type II, with deflector
     k2p_str = f"sqrt({kvac_str}**2 - kx**2 - ky**2)"
 
     # Mapping functions
-    arg1_str = f"({_tij(31)} * kx) + ({_tij(32)} * ky) + ({_tij(33)} * {k2p_str})"
-    arg2_str = f"({_tij(21)} * kx) + ({_tij(22)} * ky) + ({_tij(23)} * {k2p_str})"
-    arg3_str = f"({_tij(11)} * kx) + ({_tij(12)} * ky) + ({_tij(13)} * {k2p_str})"
+    arg1_str = f"(({_tij(31)}) * kx) + (({_tij(32)}) * ky) + (({_tij(33)}) * ({k2p_str}))"
+    arg2_str = f"(({_tij(21)}) * kx) + (({_tij(22)}) * ky) + (({_tij(23)}) * ({k2p_str}))"
+    arg3_str = f"(({_tij(11)}) * kx) + (({_tij(12)}) * ky) + (({_tij(13)}) * ({k2p_str}))"
 
     alpha = ne.evaluate(
-        f"-arccos({arg1_str} / {kvac_str}) * {arg2_str} / sqrt({kvac_str}**2 - {arg1_str}**2) "
+        f"-arccos(({arg1_str}) / ({kvac_str})) * ({arg2_str}) / sqrt(({kvac_str})**2 - ({arg1_str})**2) "
     )
     beta = ne.evaluate(
-        f"-arccos({arg1_str} / {kvac_str}) * {arg3_str} / sqrt({kvac_str}**2 - {arg1_str}**2) "
+        f"-arccos(({arg1_str}) / ({kvac_str})) * ({arg3_str}) / sqrt(({kvac_str})**2 - ({arg1_str})**2) "
     )
 
     return alpha, beta
