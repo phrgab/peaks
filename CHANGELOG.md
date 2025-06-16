@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.2]
 
+### Added
+- Handling of automatic download of example data for the tutorials
+
 ### Fixed
 - Bug fixes in k-conversion (some sign convention problems remain)
 
