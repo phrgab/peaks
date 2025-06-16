@@ -11,7 +11,7 @@ from scipy.ndimage import gaussian_filter
 from skimage.registration import phase_cross_correlation
 
 from peaks.core.fitting.models import _shirley_bg
-from peaks.core.metadata.meatdata_methods import compare_metadata
+from peaks.core.metadata.metadata_methods import compare_metadata
 from peaks.core.process.fermi_level_correction import _flatten_EF
 from peaks.core.utils.datatree_utils import get_list_of_DataArrays_from_DataTree
 from peaks.core.utils.interpolation import _fast_bilinear_interpolate_rectilinear

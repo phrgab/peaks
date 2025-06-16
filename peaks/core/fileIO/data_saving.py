@@ -1,13 +1,12 @@
-"""Functions to save data as a netCDF file.
-
-"""
+"""Functions to save data as a netCDF file."""
 
 import copy
 import json
 import os
+
 import numpy as np
-import xarray as xr
 import pint_xarray  # noqa: F401
+import xarray as xr
 
 
 def _serialise_attrs(attrs):

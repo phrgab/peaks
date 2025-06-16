@@ -21,7 +21,7 @@ from peaks.core.GUI.GUI_utils import (
     KeyPressGraphicsLayoutWidget,
 )
 from peaks.core.GUI.GUI_utils.cursor_stats import _parse_norm_emission_cursor_stats
-from peaks.core.metadata.meatdata_methods import display_metadata
+from peaks.core.metadata.metadata_methods import display_metadata
 from peaks.core.process.tools import estimate_sym_point, sym
 
 
