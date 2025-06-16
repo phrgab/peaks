@@ -10,5 +10,6 @@ __pycache__/
 /tutorials/.ipynb_checkpoints/
 tutorials/*.zarr
 tutorials/*.nc
+tutorials/*.mp4
 tutorials/fit_example
 tutorials/saving_analysis_metadata.json
