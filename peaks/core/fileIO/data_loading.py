@@ -1,5 +1,6 @@
 """Functions to load data into DataArray format."""
 
+import glob
 import os
 
 import dask
@@ -27,31 +28,36 @@ def load(
     Parameters
     ------------
     fpath : str, list
-        Either the full file path(s), or the remainder of the file name(s) not already specified in the file global
-        options (see Notes).
+        Either the full file path(s), or the remainder of the file name(s) not already
+        specified in the file global options (see Notes).
 
     lazy : str, bool, optional
-        Whether to load data in a lazily evaluated dask format. Set explicitly using True/False Boolean. Defaults
-        to `None` where a file is only loaded in the dask format if its spectrum is above threshold set in
-        `opts.FileIO.lazy_size` or is a Zarr store, where it is lazily loaded by default.
+        Whether to load data in a lazily evaluated dask format. Set explicitly using
+        True/False Boolean. Defaults to `None` where a file is only loaded in the dask
+        format if its spectrum is above threshold set in `opts.FileIO.lazy_size` or is a
+        Zarr store, where it is lazily loaded by default.
 
     loc : str, optional
-        Location identifier for where data was acquired. Defaults to `None`, where the location will be attempted to be
-        automatically determined, unless a value is defined in `opts.FileIO.loc`. If `loc` is specified in the function
-        call, this takes priority over the value in `opts.FileIO.loc`.
+        Location identifier for where data was acquired. Defaults to `None`, where the
+        location will be attempted to be automatically determined, unless a value is
+        defined in `opts.FileIO.loc`. If `loc` is specified in the function call, this
+        takes priority over the value in `opts.FileIO.loc`.
 
     metadata : bool, optional
-        Whether to attempt to load metadata into the attributes of the :class:`xarray.DataArray`. Defaults to True.
+        Whether to attempt to load metadata into the attributes of the
+        :class:`xarray.DataArray`. Defaults to True.
 
     parallel : bool, optional
-        Whether to load data in parallel when multiple files are being loaded. Only compatible with certain file types
-        such as those based on the h5py format, e.g. nxs files. Takes priority over lazy, enforcing that all data is
-        computed and loaded into memory. Defaults to False.
+        Whether to load data in parallel when multiple files are being loaded. Only
+        compatible with certain file types such as those based on the h5py format, e.g.
+        .nxs files. Takes priority over lazy, enforcing that all data is computed and
+        loaded into memory. Defaults to False.
 
     names : list, optional
-        List of names to assign to the branches of the :class:xarray.DataTree when mutliple scans loaded
-        simultaneously. If provided, should be a list of unique strings of the same length as the number of scans
-        being loaded. If not, or if not provided, the names will be the file names. Defaults to None.
+        List of names to assign to the branches of the :class:xarray.DataTree when
+        mutliple scans loaded simultaneously. If provided, should be a list of unique
+        strings of the same length as the number of scans being loaded. If not, or if
+        not provided, the names will be the file names. Defaults to None.
 
     quiet : bool, optional
         Whether to suppress analysis warnings when loading data. Defaults to False.
@@ -66,22 +72,22 @@ def load(
 
     Notes
     ------------
-    Much of the file path can be set by the :class:`peaks.core.options.FileIO` global options:
+    Much of file path can be set by :class:`peaks.core.options.FileIO` global options:
 
         opts.FileIO.path : str, list
             Path (or list of paths) to folder(s) where data is stored,
             e.g. `opts.FileIO.path = 'C:/User/Documents/i05-1-123'`.
 
         opts.FileIO.ext : str, list
-            Extension (or list of extensions) of data, e.g. `opts.FileIO.ext = ['ibw', 'zip']`.
+            Extension (or list of) of data, e.g. `opts.FileIO.ext = ['ibw', 'zip']`.
 
         opts.FileIO.loc : str
             Location identifier for where data was acquired, e.g. `opts.FileIO.loc = 'MAX IV Bloch'`.
-            Current supported options can be Note: setting this prevents any automatic location
-            detection.
+            Current supported options can be obtained using `pks.locs()`.
 
         opts.FileIO.lazy_size : int
-            Size in bytes above which data is loaded in a lazily evaluated dask format. Defaults to 1 GB.
+            Size in bytes above which data is loaded in a lazily evaluated dask format.
+            Defaults to 1 GB.
 
     Examples
     ------------
@@ -101,18 +107,23 @@ def load(
         disp2 = pks.load('disp2')
         FM2 = pks.load('FM2')
 
-        # Define global options to define file structure, including a partial part of the scan name
+        # Define global options to define file structure, including part of the scan name
         pks.opts.FileIO.path = 'C:/User/Documents/Data/i05-1-123'
         pks.opts.FileIO.ext = 'nxs'
 
-        # Load data without needing to define data path or extension, nor the repeated part of the scan name
+        # Load data without needing to define data path or extension, nor the repeated
+        # part of the scan name
         disp3 = load(456)
         disp4 = load(457)
+
+        # Provide part of the scan name using a glob character
+        disps = load('45*')
 
         # Load multiple files at once
         disps = load([456, 457, 458])
 
-        # Still can load data using a complete data path; global options defined in `pks.opts.FileIO` will be ignored
+        # Still can load data using a complete data path
+        # global options defined in `pks.opts.FileIO` will be ignored
         disp1 = load('C:/User/Documents/Data/disp1.ibw')
 
         # Load data in a lazily evaluated dask format
@@ -121,10 +132,11 @@ def load(
         # Load data without metadata
         disp1 = load('C:/User/Documents/Data/disp1.ibw', metadata=False)
 
-        # Load data file for a defined location (use if automatic location identification fails)
+        # Load data file for a defined location (use if automatic location ID fails)
         disp1 = load('C:/User/Documents/Data/disp1.ibw', loc='MAX IV Bloch')
 
-        # Alternatively could define location using global options. Here loc will be defined as 'MAX IV Bloch'
+        # Alternatively could define location using global options.
+        # Here loc will be defined as 'MAX IV Bloch'
         pks.opts.FileIO.loc = 'MAXIV_Bloch_A'
         disp1 = load('C:/User/Documents/Data/disp1.ibw')
 
@@ -190,28 +202,40 @@ def load(
         if fname_ext != "" and fname_ext[1:] not in ext:
             ext.append(fname_ext[1:])
 
-        # Loop through file paths
+        # Add raw address file_name to valid_file_addresses
+        possible_file_addresses.append(file_name)
+
+        # Loop through base file paths and add file_path/file_name combinations
         for file_path in base_path:
-            # If file path is not None, add address file_path/file_name to possible_file_addresses
             if file_path:
-                possible_file_addresses.append(file_path + file_name)
-            # Add address file_name to valid_file_addresses
-            possible_file_addresses.append(file_name)
+                # Check if file_path is already an existing folder
+                if os.path.exists(file_path) and os.path.isdir(file_path):
+                    # If so, join properly so it doesn't matter if a terminator was given
+                    possible_file_addresses.append(os.path.join(file_path, file_name))
+                else:
+                    # Otherwise, must have had a partial file name, so just append
+                    possible_file_addresses.append(file_path + file_name)
 
     # Obtain all valid file addresses
     file_list = []
-    # Loop through the non-duplicated addresses in possible_file_addresses
     for address in possible_file_addresses:
         for extension in ext:
-            # For standard data files
+            # Construct the path pattern
             if extension:
-                current_file = address + "." + extension
-            # For data in folders e.g. SOLEIL CASSIOPEE FMs
+                pattern = f"{address}.{extension}"
             else:
-                current_file = address
-            # If file path is valid append current_file to file_list
-            if os.path.exists(current_file):
-                file_list.append(current_file)
+                pattern = address
+
+            # Use glob to expand wildcards
+            matched_files = glob.glob(pattern)
+
+            # Filter for existing paths and add them
+            for file in matched_files:
+                if os.path.exists(file):
+                    file_list.append(file)
+
+    # Remove duplicates from file_list
+    file_list = list(set(file_list))
 
     # Load data by calling load_data if a valid file has been found. If not raise an error
     if len(file_list) > 0:
