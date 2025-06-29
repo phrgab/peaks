@@ -116,6 +116,9 @@ def load(
         disp3 = load(456)
         disp4 = load(457)
 
+        # Provide part of the scan name using a glob character
+        disps = load('45*')
+
         # Load multiple files at once
         disps = load([456, 457, 458])
 
