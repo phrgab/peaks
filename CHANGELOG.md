@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Handling of automatic download of example data for the tutorials
+- More robust file path handling in loading, including adding glob character support
 
 ### Fixed
 - Bug fixes in k-conversion (some sign convention problems remain)
