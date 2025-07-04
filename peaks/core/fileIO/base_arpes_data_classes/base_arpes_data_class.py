@@ -249,6 +249,58 @@ class BaseARPESDataLoader(
         return {"polar": polar_group, "tilt": tilt_group, "azi": azi_group}
 
     @classmethod
+    def _get_relative_sign_conventions(cls, da, axis_key, axis_group):
+        """
+        Get the relative sign convention for a given axis to its physical manipulator axis
+        """
+        axis_groups = cls._group_axes(da)
+        polar_group = axis_groups.get('polar')
+
+        manipulator_axis = next((key for key in ['polar', 'tilt', 'azi'] if key in axis_group), None)
+
+        manipulator_axis_sign_convention = cls._get_sign_convention(manipulator_axis)
+        axis_key_sign_convention = cls._get_sign_convention(axis_key)
+        sign_product = manipulator_axis_sign_convention * axis_key_sign_convention
+
+        if axis_key == manipulator_axis:
+            return 1
+
+        if manipulator_axis == "azi" and axis_key == "azi_offset":
+            return 1 # always 1 as already corrected in disp 3d panel
+
+        if "polar" in polar_group and "deflector_perp" in polar_group:
+            # Analyser type must be either I or Ip
+            if manipulator_axis == "polar":
+                if axis_key == "ana_polar":
+                    # Type I
+                    return 1 if sign_product == 1 else -1
+                elif axis_key == "deflector_perp":
+                    # Type Ip
+                    return 1 if sign_product == 1 else -1
+            elif manipulator_axis == "tilt":
+                if axis_key == "theta_par":
+                    # Same for both I and Ip
+                    return -1 if sign_product == 1 else 1
+                elif axis_key == "deflector_parallel":
+                    return -1  # consistent with theta_par
+        else:
+            # Analyser type must be either II or IIp
+            if manipulator_axis == "tilt":
+                if axis_key == "ana_tilt":
+                    # Type II
+                    return 1 if sign_product == 1 else -1
+                elif axis_key == "deflector_perp":
+                    # Type IIp
+                    return -1 if sign_product == 1 else 1
+            elif manipulator_axis == "polar":
+                if axis_key == "theta_par":
+                    return -1 if sign_product == 1 else 1
+                elif axis_key == "deflector_parallel":
+                    return -1 # # consistent with theta_par
+
+        raise ValueError(f"Unexpected axis combination: manipulator_axis is {manipulator_axis}, axis_key is {axis_key}")
+
+    @classmethod
     def _parse_reference_value(cls, da, axis_key, value, axis_group):
         """
         Parse the manipulator reference value for a given axis.
@@ -262,12 +314,9 @@ class BaseARPESDataLoader(
         reference_signs = []
 
         # Primary axis value (user-specified)
-        reference_angles.append(
-            value
-            if axis_key in ["polar", "tilt", "azi", "ana_polar", "ana_tilt"]
-            else -value
-        )  # If one of the primary manipulator dims, no sign change is needed
-        reference_signs.append(cls._get_sign_convention(axis_key))
+        # Read the offsets from the GUI and assign relative sign conventions
+        reference_angles.append(value)
+        reference_signs.append(cls._get_relative_sign_conventions(da, axis_key, axis_group))
 
         # Secondary axes (from metadata)
         for axis in axis_group:
@@ -276,7 +325,7 @@ class BaseARPESDataLoader(
             angle_value = cls._get_axis_value(da, axis)
             if angle_value is not None:
                 reference_angles.append(angle_value)
-                reference_signs.append(cls._get_sign_convention(axis))
+                reference_signs.append(cls._get_relative_sign_conventions(da, axis, axis_group))
 
         # Convert angles to consistent units and sum
         total_reference_angle = cls._sum_angles(reference_angles, reference_signs)
@@ -336,14 +385,20 @@ class BaseARPESDataLoader(
                     specified_axis = ax
                     break
             if specified_axis:
-                value = specified_values[specified_axis]
-                # Parse the reference value
-                total_reference = cls._parse_reference_value(
-                    da, specified_axis, value, group
-                )
+                if (
+                    specified_axis in ["polar", "tilt", "azi"]
+                    and specified_axis not in da.dims
+                ):
+                    # If the axis is a core manipulator axis and not a scannable, use the specified value directly
+                    final_value = specified_values[specified_axis]
+                else:
+                    value = specified_values[specified_axis]
+                    # Parse the reference value
+                    total_reference = cls._parse_reference_value(
+                        da, specified_axis, value, group
+                    )
 
-                # Apply final sign convention
-                final_value = total_reference * cls._get_sign_convention(axis)
+                    final_value = total_reference
                 try:
                     reference_values[axis] = final_value.to("deg")
                 except AttributeError:
