@@ -475,7 +475,7 @@ def _fIIp_inv(kx, ky, delta_, xi_, chi_, Ek):  # Type II, with deflector
     arg3_str = f"(({_tij(11)}) * kx) + (({_tij(12)}) * ky) + (({_tij(13)}) * ({k2p_str}))"
 
     alpha = ne.evaluate(
-        f"-arccos(({arg1_str}) / ({kvac_str})) * ({arg2_str}) / sqrt(({kvac_str})**2 - ({arg1_str})**2) "
+        f"arccos(({arg1_str}) / ({kvac_str})) * ({arg2_str}) / sqrt(({kvac_str})**2 - ({arg1_str})**2) "
     )
     beta = ne.evaluate(
         f"-arccos(({arg1_str}) / ({kvac_str})) * ({arg3_str}) / sqrt(({kvac_str})**2 - ({arg1_str})**2) "

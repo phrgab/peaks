@@ -471,7 +471,11 @@ class I05NanoARPESLoader(I05ARPESLoader):
         "defocus": "smdefocus",
     }
     _manipulator_sign_conventions = {
-        "azi": -1,
+    }
+
+    _analyser_sign_conventions = {
+        "theta_par": -1,
+        "deflector_parallel": -1,  # consistent with theta_par
     }
 
     _desired_dim_order = [
