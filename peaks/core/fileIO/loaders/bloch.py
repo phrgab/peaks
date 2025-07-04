@@ -25,8 +25,10 @@ class BlochArpesLoader(SESDataLoader):
     }
     _manipulator_sign_conventions = {
         "polar": -1,
-        "azi": -1,
         "tilt": -1,
+    }
+    _analyser_sign_conventions = {
+        "deflector_perp": -1,
     }
     _SES_metadata_units = {
         f"manipulator_{dim}": ("mm" if dim in ["x1", "x2", "x3"] else "deg")

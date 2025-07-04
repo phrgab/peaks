@@ -12,7 +12,7 @@ dependencies = [
         "numpy (>=2.0,<3)",
         "matplotlib (>=3.9,<4)",
         "xarray (>=2025.6.0)",
-        "pint-xarray (>=0.4,<1)",
+        "pint-xarray (>=0.4,<0.5)",
         "dask[diagnostics] (>=2024.6.0)",
         "h5py (>=3.11,<4)",
         "tqdm (>=4.66,<5)",
@@ -32,7 +32,7 @@ dependencies = [
         "pydantic (>=2.9,<3)",
         "termcolor (>=2.5,<3)",
         "h5netcdf (>=1.4,<2)",
-        "zarr (>=3.08,<4)",
+        "zarr (>=3.0,<4)",
         ]
 dynamic = ["version"]
 
