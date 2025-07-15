@@ -10,7 +10,7 @@
 
 A collection of analysis tools for the loading, processing and display of spectroscopic data, with a core focus on tools for angle-resolved photoemission.
 
-`peaks` is an evolution of the `PyPhoto` package developed by Phil King, Brendan Edwards, Tommaso Antonelli, Edgar Abarca Morales, Liam Trzaska and Lewis Hart from the King group at the University of St Andrews. This version of `peaks` is the result of a major restructuring of the package in 2023 and 2024 by Brendan Edwards and Phil King.
+`peaks` is an evolution of the `PyPhoto` package originally developed by Phil King, Brendan Edwards, Tommaso Antonelli, Edgar Abarca Morales, and Lewis Hart from the King group at the University of St Andrews. This version of `peaks` is the result of a major restructuring of the package in 2023-2025 by Brendan Edwards and Phil King, with additional contributions from Shu Mo.
 
 Copyright the above authors. Contact pdk6@st-andrews.ac.uk for further information, to contribute, and for bug reporting.
 
