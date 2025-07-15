@@ -254,9 +254,9 @@ class BaseARPESDataLoader(
         Get the relative sign convention for a given axis to its physical manipulator axis
         """
         axis_groups = cls._group_axes(da)
-        polar_group = axis_groups.get('polar')
+        polar_group = axis_groups.get("polar")
 
-        manipulator_axis = next((key for key in ['polar', 'tilt', 'azi'] if key in axis_group), None)
+        manipulator_axis = next((key for key in ["polar", "tilt", "azi"] if key in axis_group), None)
 
         manipulator_axis_sign_convention = cls._get_sign_convention(manipulator_axis)
         axis_key_sign_convention = cls._get_sign_convention(axis_key)

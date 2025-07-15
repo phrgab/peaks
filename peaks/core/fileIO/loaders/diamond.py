@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import datetime, timezone
+from dateutil.parser import parse
 from typing import Optional, Union
 
 import h5py
@@ -181,7 +182,10 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
         "x3": "saz",
     }
 
-    _manipulator_sign_conventions = {"polar": 1, "tilt": 1}
+    _manipulator_sign_conventions = {
+        "tilt": -1,
+        "azi": -1,
+    }
 
     _analyser_name_conventions = {
         "deflector_perp": "deflector_x",
@@ -203,15 +207,14 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
         "analyser_model": lambda f: (
             (
                 "FIXED_VALUE:MBS A1"
-                if datetime.strptime(
+                if parse(
                     (
                         (f["entry1/start_time"][()]).decode()
                         if isinstance(f["entry1/start_time"][()], bytes)
                         else f["entry1/start_time"][()]
-                    ),
-                    "%Y-%m-%dT%H:%M:%S.%fZ",
+                    )
                 )
-                > datetime(2021, 7, 1)
+                > datetime(2021, 7, 1, tzinfo=timezone.utc)
                 else "FIXED_VALUE:Scienta R4000"
             )
             if "entry1/start_time" in f
@@ -375,7 +378,7 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
         coords_to_apply = {dim: coords.get(dim) for dim in dims if dim != "dummy"}
         # Handle the special case of an hv scan, where the kinetic energy is 2D
         for dim, coord in coords_to_apply.copy().items():
-            if coord.ndim == 2:
+            if coord.ndim == 2 and not np.array_equal(coords_to_apply["energies"][0], coords_to_apply["energies"][1]):
                 # Should be a 2D array with shape (value, KE) where value is the changing hv dim
                 hv_coord_label = {"value", "energy"}.intersection(
                     set(coords_to_apply.keys())
@@ -394,6 +397,9 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
                         "warning",
                         "Unexpected data shape",
                     )
+            elif coord.ndim == 2 and np.array_equal(coords_to_apply["energies"][0], coords_to_apply["energies"][1]):
+                # Deal with deflector maps with the energy axis somehow to be 2D
+                coords_to_apply[dim] = coord[0]
         da = da.assign_coords(coords_to_apply)
 
         # Normalise data by I0 if required
