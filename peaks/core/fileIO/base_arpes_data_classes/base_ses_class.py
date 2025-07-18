@@ -20,14 +20,15 @@ class SESDataLoader(BaseARPESDataLoader):
 
     Notes
     ------------
-    This class is intended to be subclassed to provide specific loaders for different locs using SES data formats.
+    This class is intended to be subclassed to provide specific loaders for different
+    locs using SES data formats.
 
-    Subclasses should define the `_SES_metadata_key_mappings` class variable to map any custom metadata fields or
-    fixed values to the standard peaks metadata keys. See the docstrings for `_SES_metadata_dict_keys_to_peaks_keys`
-    for more information.
+    Subclasses should define the `_SES_metadata_key_mappings` class variable to map any
+    custom metadata fields or fixed values to the standard peaks metadata keys. See the
+    docstrings for `_SES_metadata_dict_keys_to_peaks_keys` for more information.
 
-    Subclasses should also define the `_SES_metadata_units` dictionary to map any fixed units that are not determined
-    as part of the metadata loader.
+    Subclasses should also define the `_SES_metadata_units` dictionary to map any fixed
+    units that are not determined as part of the metadata loader.
 
     """
 
@@ -68,13 +69,15 @@ class SESDataLoader(BaseARPESDataLoader):
         """Load data from a .txt file."""
         # Give a legacy warning
         analysis_warning(
-            "Loading SES data from .txt file. This is a legacy format and only basic loading is supported. "
-            "It is strongly encouraged to save data using the .ibw format from the SES software.",
+            "Loading SES data from .txt file. This is a legacy format and only basic "
+            "loading is supported. It is strongly encouraged to save data using the "
+            ".ibw format from the SES software.",
             "warning",
             "Legacy format - SES .txt file loader",
         )
 
-        # Get the metadata here returning with keys in SES format - this as needed for parsing the core data.
+        # Get the metadata here returning with keys in SES format - this as needed for
+        # parsing the core data.
         metadata_dict_ses_keys = cls._load_metadata(fpath, return_in_SES_format=True)
         # Cahce it in the metadata cache to avoid having to load it again later
         cls._metadata_cache[fpath] = metadata_dict_ses_keys
@@ -225,7 +228,8 @@ class SESDataLoader(BaseARPESDataLoader):
                     header[i]: numeric_array[:, i] for i in range(len(header))
                 }
 
-                # In the SES data format the Point and Position columns define the scan and are duplicated in the raw axis columns
+                # In the SES data format the Point and Position columns define the scan
+                # and are duplicated in the raw axis columns
                 # Check which arrays match
                 matching_pairs = []
                 keys = list(header)
@@ -258,7 +262,8 @@ class SESDataLoader(BaseARPESDataLoader):
                         metadata_dict_SES_keys[axis] = manipulator_data[axis].mean()
                     else:
                         if axis in all_matched_keys:
-                            # This is a scannable - just return min and max for some basic info in metadata
+                            # This is a scannable - just return min and max for some
+                            # basic info in metadata
                             metadata_dict_SES_keys[axis] = np.asarray(
                                 [
                                     np.min(manipulator_data[axis]),
@@ -267,7 +272,8 @@ class SESDataLoader(BaseARPESDataLoader):
                             )
 
                         else:
-                            # This is likely an independent axis - return the full array to allow parsing if required
+                            # This is likely an independent axis - return the full array
+                            # to allow parsing if required
                             metadata_dict_SES_keys[axis] = manipulator_data[axis]
 
         # Handle some mapping of dimension names
@@ -354,7 +360,7 @@ class SESDataLoader(BaseARPESDataLoader):
     @classmethod
     def _load_metadata(cls, fpath, return_in_SES_format=False):
         """Load metadata from an SES file."""
-        # Check if there is a cached version (only cache in this loader with keys in SES format)
+        # Check for a cached version (only cache in this loader with keys in SES format)
         metadata_dict_SES_keys = cls._metadata_cache.get(fpath)
 
         # If no metadata in the cache, load it
@@ -404,7 +410,8 @@ class SESDataLoader(BaseARPESDataLoader):
             while True:
                 line = f.readline()
                 metadata_lines.append(line)
-                # When the line starting with '[Data' is encountered, metadata has ended and scan data has begun
+                # When the line starting with '[Data' is encountered, metadata has ended
+                # and scan data has begun
                 if "[Data" in line:
                     break
             # Manually add the lengths of the metadata section as needed for .txt loader
@@ -457,8 +464,9 @@ class SESDataLoader(BaseARPESDataLoader):
 
     @staticmethod
     def _SES_metadata_to_dict_w_SES_keys(metadata_lines):
-        """Convert metadata lines to a dictionary of key-value pairs with the keys being the metadata entries
-        as they appear in the SES metadata (i.e. not yet in :class:`peaks` convention).
+        """Convert metadata lines to a dictionary of key-value pairs with the keys being
+        the metadata entries as they appear in the SES metadata
+        (i.e. not yet in :class:`peaks` convention).
         """
 
         return {
@@ -471,7 +479,7 @@ class SESDataLoader(BaseARPESDataLoader):
 
     @classmethod
     def _SES_metadata_dict_keys_to_peaks_keys(cls, metadata_dict_SES_keys):
-        """Extract metadata values in peaks conventions and assign units where appropriate.
+        """Extract metadata in peaks conventions and assign units where appropriate.
 
         Parameters
         ------------
@@ -485,17 +493,20 @@ class SESDataLoader(BaseARPESDataLoader):
 
         Notes
         ------------
-        The extraction process is based on the mappings defined in the dictionaries `standard_keys` and
-        `standard_units`. The entries of these dictionaries are updated from the class variables
-        `_SES_metadata_key_mappings` and `_SES_metadata_units` respectively, and so subclasses can overwrite and
-        extend these defaults by specifying the appropriate mappings in these class variables.
+        The extraction process is based on the mappings defined in the dictionaries
+        `standard_keys` and `standard_units`. The entries of these dictionaries are
+        updated from the class variables `_SES_metadata_key_mappings` and
+        `_SES_metadata_units` respectively, and so subclasses can overwrite and  extend
+        these defaults by specifying the appropriate mappings in these class variables.
 
         The extraction process supports different types of keys:
             - If a single key is given, the value is extracted directly.
-            - If a list of keys is given, the function tries to extract values for all keys and returns a list or
-            array of all non-None values.
-            - If a callable is given, the function calls it, passing it the metadata dictionary and returns the result.
-            - A constant value can be given by defining a simple lambda function, for example `lambda x: -1`.
+            - If a list of keys is given, the function tries to extract values for all
+            keys and returns a list or array of all non-None values.
+            - If a callable is given, the function calls it, passing it the metadata
+            dictionary and returns the result.
+            - A constant value can be given by defining a simple lambda function, for
+            example `lambda x: -1`.
 
         """
 
@@ -564,8 +575,9 @@ class SESDataLoader(BaseARPESDataLoader):
 
         # Extract metadata values and give them units where appropriate
         # - if a single key is given, extract the value directly
-        # - if a list of keys is given, try and extract for all and return all non-None values
-        # - if a callable is given, call the function with the metadata dictionary and return the result
+        # - if a list of keys is given, try and extract and return all non-None values
+        # - if a callable is given, call the function with the metadata dictionary and
+        # return the result
         # - add units if given and extracted value is not None
         metadata_dict = {}
         units_failure = []
@@ -576,7 +588,7 @@ class SESDataLoader(BaseARPESDataLoader):
             except (ValueError, TypeError):
                 return value
 
-        # Handle extracting the metadata based on the arguments in the standard_keys dictionary
+        # Handle extracting metadata based on arguments in the standard_keys dictionary
         for peaks_key, ses_key in standard_keys.items():
             value = None
             if isinstance(ses_key, str):

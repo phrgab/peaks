@@ -10,7 +10,8 @@ import xarray as xr
 
 
 def _serialise_attrs(attrs):
-    """Serialises attributes of a :class:`xarray.DataArray` or similar for saving in NetCDF/Zarr files.
+    """Serialises attributes of a :class:`xarray.DataArray` or similar for saving in
+    NetCDF/Zarr files.
 
     Parameters
     ----------
@@ -28,7 +29,7 @@ def _serialise_attrs(attrs):
 
     # Make data attributes serialisable
     for attr_name, attr in attrs.copy().items():
-        try:  # Attrs should generally define a json method to convert to and from a json string
+        try:  # Attrs should generally define json method to convert to/from json string
             attrs[attr_name] = attr.json(by_alias=True)
             metadata_models[attr_name] = (
                 f"{attr.__class__.__module__}.{attr.__class__.__name__}"
@@ -49,7 +50,8 @@ def _serialise_attrs(attrs):
 
 
 def _enforce_extension(fpath, required_extension):
-    """Ensure that the file path has the required extension, and add it as a default if no extension passed.
+    """Ensure that the file path has the required extension, and add it as a default if
+    no extension passed.
 
     Parameters
     ----------
@@ -127,7 +129,8 @@ def _save_dt(data, fpath):
         return da
 
     def _serialise_da_in_dt(data):
-        """Serialises the attributes of a :class:`xarray.DataArray` or similar for saving in NetCDF/Zarr files."""
+        """Serialises the attributes of a :class:`xarray.DataArray` or similar for saving
+        in NetCDF/Zarr files."""
         data.attrs.update(_serialise_attrs(data.attrs))
         return data
 
@@ -148,7 +151,7 @@ def _save_dt(data, fpath):
             ds = _add_history_entry(ds)
         else:
             ds = ds.map(_add_history_entry)
-        # Serialise the attributes of each DataArray, mapping over the DataTree and Datasets
+        # Serialise attributes of each DataArray, mapping over the DataTree & Datasets
         ds = _serialise_da_in_dt(ds).map(_serialise_da_in_dt)
 
         # Dequantify the Dataset
@@ -178,11 +181,12 @@ def _save_dt(data, fpath):
 
 
 def save(data, fpath):
-    """This function saves data in the :class:`xarray.DataArray` or :class:`xarray.DataSet` format as a NetCDF file
-    or a :class:`xarray.DataTree` as a zarr file. These formats are restricted in what types of attributes can be
-    saved. This function attempts to save peaks metadata attributes in a way that can be parsed again when reloading
-    but if custom attributes are used or the file is not saved and loaded with the same version of `peaks`, there
-    may be some loss of metadata.
+    """This function saves data in the :class:`xarray.DataArray` or
+    :class:`xarray.DataSet` format as a NetCDF file or a :class:`xarray.DataTree` as a
+    zarr file. These formats are restricted in what types of attributes can be saved.
+    This function attempts to save peaks metadata attributes in a way that can be parsed
+    again when reloading but if custom attributes are used or the file is not saved and
+    loaded with the same version of `peaks`, there may be some loss of metadata.
 
     Parameters
     ------------

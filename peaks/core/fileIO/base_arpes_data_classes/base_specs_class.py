@@ -19,8 +19,8 @@ ureg = pint_xarray.unit_registry
 class SpecsDataLoader(BaseARPESDataLoader):
     """Data loader for Specs ARPES data measured using Specs Prodigy.
 
-    Define _scan_axis_resolution_order to define preferences for the primary dimension of a
-    3D scan where more than one user axis varies."""
+    Define _scan_axis_resolution_order to define preferences for the primary dimension of
+    a 3D scan where more than one user axis varies."""
 
     _loc_name = "Specs"
     _loc_description = "SPECS Phoibos Analysers with Prodigy control"
@@ -83,7 +83,8 @@ class SpecsDataLoader(BaseARPESDataLoader):
         else:
             spectrum_units = "counts"
 
-        # Extract the theta_par values (only need to take from the first cycle as they repeat after)
+        # Extract the theta_par values
+        # (only need to take from the first cycle as they repeat after)
         cycle0_lines = list(
             takewhile(lambda line: not line.startswith("# Cycle: 1"), meta_lines)
         )
@@ -132,7 +133,8 @@ class SpecsDataLoader(BaseARPESDataLoader):
                 "units": {"eV": "eV", "theta_par": "deg", "spectrum": spectrum_units},
             }
         else:
-            # If all the user axes have the same range, then we can parse this still with secondary coords
+            # If all the user axes have the same range, then we can parse this still
+            # with secondary coords
             if len(set(len(v) for v in parameters_dict.values())) == 1:
                 user_axes = list(parameters_dict.keys())
                 user_axis_names = [axis[0] for axis in user_axes]
@@ -145,7 +147,8 @@ class SpecsDataLoader(BaseARPESDataLoader):
                         number_of_KEs,
                     )
                 )
-                # Check if a resolution order for these axes has been defined to determine the primary dim
+                # Check if a resolution order for these axes has been defined to
+                # determine the primary dim
                 primary_dim = None
                 if cls._scan_axis_resolution_order:
                     for dim in cls._scan_axis_resolution_order:
@@ -182,7 +185,8 @@ class SpecsDataLoader(BaseARPESDataLoader):
                 }
             else:
                 raise ValueError(
-                    "Multiple user-varying parameters detected. Scan type not currently supported by loader."
+                    "Multiple user-varying parameters detected. Scan type not currently "
+                    "supported by loader."
                 )
 
     @classmethod
@@ -272,7 +276,7 @@ class SpecsDataLoader(BaseARPESDataLoader):
                 metadata_dict_SPECS_keys = metadata_parsers[file_extension](fpath)
             else:
                 raise ValueError(
-                    f"File extension {file_extension} not supported for metadata parsing."
+                    f"File extension {file_extension} not supported for metadata parsing"
                 )
 
         if return_in_SPECS_format:
@@ -355,7 +359,7 @@ class SpecsDataLoader(BaseARPESDataLoader):
 
     @classmethod
     def _SPECS_metadata_dict_keys_to_peaks_keys(cls, metadata_dict_SPECS_keys):
-        """Extract metadata values in peaks conventions and assign units where appropriate.
+        """Extract metadata values in peaks conventions and assign units where needed.
 
         Parameters
         ------------
@@ -369,17 +373,20 @@ class SpecsDataLoader(BaseARPESDataLoader):
 
         Notes
         ------------
-        The extraction process is based on the mappings defined in the dictionaries `standard_keys` and
-        `standard_units`. The entries of these dictionaries are updated from the class variables
-        `_SPECS_metadata_key_mappings` and `_SPECS_metadata_units` respectively, and so subclasses can overwrite and
-        extend these defaults by specifying the appropriate mappings in these class variables.
+        The extraction process is based on the mappings defined in the dictionaries
+        `standard_keys` and `standard_units`. The entries of these dictionaries are
+        updated from the class variables `_SPECS_metadata_key_mappings` and
+        `_SPECS_metadata_units` respectively, and so subclasses can overwrite and extend
+        these defaults by specifying the appropriate mappings in these class variables.
 
         The extraction process supports different types of keys:
             - If a single key is given, the value is extracted directly.
-            - If a list of keys is given, the function tries to extract values for all keys and returns a list or
-            array of all non-None values.
-            - If a callable is given, the function calls it, passing it the metadata dictionary and returns the result.
-            - A constant value can be given by defining a simple lambda function, for example `lambda x: -1`.
+            - If a list of keys is given, the function tries to extract values for all
+            keys and returns a list or array of all non-None values.
+            - If a callable is given, the function calls it, passing it the metadata
+            dictionary and returns the result.
+            - A constant value can be given by defining a simple lambda function, for
+            example `lambda x: -1`.
 
         """
 
@@ -477,8 +484,9 @@ class SpecsDataLoader(BaseARPESDataLoader):
 
         # Extract metadata values and give them units where appropriate
         # - if a single key is given, extract the value directly
-        # - if a list of keys is given, try and extract for all and return all non-None values
-        # - if a callable is given, call the function with the metadata dictionary and return the result
+        # - if a list of keys is given, try and extract all and return non-None values
+        # - if a callable is given, call the function with the metadata dictionary and
+        # return the result
         # - add units if given and extracted value is not None
         metadata_dict = {}
         units_failure = []
@@ -489,7 +497,7 @@ class SpecsDataLoader(BaseARPESDataLoader):
             except (ValueError, TypeError):
                 return value
 
-        # Handle extracting the metadata based on the arguments in the standard_keys dictionary
+        # Handle extracting metadata based on arguments in the standard_keys dictionary
         for peaks_key, local_key in standard_keys.items():
             value = None
             if isinstance(local_key, str):
