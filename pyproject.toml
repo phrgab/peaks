@@ -59,9 +59,7 @@ structure = [
         "trimesh (>4.6,<5)",
 ]
 ML = ["scikit-learn (>=1.3,<2)"]
-dev = [
-        "black (>=24.2,<25)",
-        "cookiecutter (>=2.5,<3)",
+docs = [
         "sphinx (>=8.2,<9)",
         "sphinx-copybutton (>=0.5,<1)",
         "sphinx-togglebutton (>=0.3,<1)",
@@ -71,12 +69,15 @@ dev = [
         "myst-nb (>=1.2,<2)",
         "pydata-sphinx-theme (>=0.16,<1)",
         ]
+dev = ["ruff","pre-commit"]
 
-all = ["peaks[structure,ML,dev]"]
+all = ["peaks[structure,ML,docs,dev]"]
 
 [tool.ruff]
-line-length = 89  # Match Black's default line length
-target-version = "py312"  # Set your Python version
-lint.select = ["E", "F", "I", "B"]  # Enable checks for errors, imports, and best practices
-lint.ignore = ["E203"]  # Black compatibility
-lint.fixable = ["I"]  # Automatically fix imports (isort-like functionality)
+line-length = 89
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = ["E203", "E501"]  # <- Move E501 here
+fixable = ["I"]
