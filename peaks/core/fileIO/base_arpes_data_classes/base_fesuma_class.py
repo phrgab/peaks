@@ -4,7 +4,7 @@ import dask
 import dask.array as da
 import h5py
 import numpy as np
-import pint_xarray
+import pint_xarray  # noqa: F401
 import xarray as xr
 
 from peaks.core.fileIO.base_arpes_data_classes.base_arpes_data_class import (
