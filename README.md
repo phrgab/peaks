@@ -36,7 +36,8 @@ To install optional dependencies, append `\[dep1, dep2, ...\]` to the end of the
 
 - **structure** - required for the use of the `bz` module, for e.g. plotting Brillouin zones on the data;
 - **ML** - required for the use of the machine learning module;
-- **dev** - optional development dependencies, used for e.g. formatting the code or building local copies of the documentation. 
+- **dev** - optional development dependencies, used for e.g. linting the code and installing pre-commit hooks.
+- **docs** - optional dependencies for building local copies of the documentation. 
 
 ## Basic Usage
 `peaks` is typically run in a Jupyter notebook or equivalent. To import peaks run:
@@ -51,6 +52,42 @@ The peaks documentation can be found at [research.st-andrews.ac.uk/kinggroup/pea
 
 ## Contributing
 Contributions to the package are welcome. Please see the [contributing guide](#contributing_section) in the documentation for more information.
+
+
+## Linting and Formatting with Ruff
+
+We use [**Ruff**](https://docs.astral.sh/ruff/) for linting, import sorting, and formatting.
+
+### Quick setup
+
+1. Install pre-commit (this is installed if you install the dev version of `peaks`):
+   ```bash
+   pip install pre-commit
+   ```
+2. Install the Git hook:
+    ```bash
+    pre-commit install
+    ```
+    Now Ruff will automatically check and fix code on each commit.
+
+### Manual use
+
+Run Ruff manually if needed:
+```bash
+pre-commit run --all-files       # Run all checks on all files
+ruff check . --fix               # Auto-fix lint issues
+ruff format .                    # Format code (like Black)
+```
+
+### CI enforcement
+Ruff also runs in CI. Commits and merge requests will fail if:
+
+- Code is not formatted
+- Lint errors are found except for line-length errors
+
+Bundled ipython notebooks are automatically excluded from the linting and checking.
+
+
 
 ## License
 Copyright 2019-2025, peaks developors
