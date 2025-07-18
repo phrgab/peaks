@@ -5,7 +5,7 @@ requires = ["flit_core >=3.2,<4"]
 [project]
 name = "peaks"
 description = "Python Electron spectroscopy Analysis by King group @ St Andrews"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 dependencies = [
         "ipykernel (>=6.25,<7)",
         "ipywidgets (>=8.1,<9)",
