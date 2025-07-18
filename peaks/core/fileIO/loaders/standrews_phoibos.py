@@ -38,8 +38,7 @@ class StAndrewsSpecs(SpecsDataLoader):
     _manipulator_sign_conventions = {
         "azi": -1,
     }
-    _analyser_sign_conventions = {
-    }
+    _analyser_sign_conventions = {}
 
     _SPECS_metadata_key_mappings = {}
     _SPECS_metadata_units = {}

@@ -424,9 +424,15 @@ def _fIp_inv(kx, ky, delta_, xi_, chi_, Ek):  # Type I, with deflector
     k2p_str = f"sqrt({kvac_str}**2 - kx**2 - ky**2)"
 
     # Mapping functions
-    arg1_str = f"(({_tij(31)}) * kx) + (({_tij(32)}) * ky) + (({_tij(33)}) * ({k2p_str}))"
-    arg2_str = f"(({_tij(11)}) * kx) + (({_tij(12)}) * ky) + (({_tij(13)}) * ({k2p_str}))"
-    arg3_str = f"(({_tij(21)}) * kx) + (({_tij(22)}) * ky) + (({_tij(23)}) * ({k2p_str}))"
+    arg1_str = (
+        f"(({_tij(31)}) * kx) + (({_tij(32)}) * ky) + (({_tij(33)}) * ({k2p_str}))"
+    )
+    arg2_str = (
+        f"(({_tij(11)}) * kx) + (({_tij(12)}) * ky) + (({_tij(13)}) * ({k2p_str}))"
+    )
+    arg3_str = (
+        f"(({_tij(21)}) * kx) + (({_tij(22)}) * ky) + (({_tij(23)}) * ({k2p_str}))"
+    )
 
     alpha = ne.evaluate(
         f"-arccos(({arg1_str}) / ({kvac_str})) * ({arg2_str}) / sqrt(({kvac_str})**2 - ({arg1_str})**2)"
@@ -470,9 +476,15 @@ def _fIIp_inv(kx, ky, delta_, xi_, chi_, Ek):  # Type II, with deflector
     k2p_str = f"sqrt({kvac_str}**2 - kx**2 - ky**2)"
 
     # Mapping functions
-    arg1_str = f"(({_tij(31)}) * kx) + (({_tij(32)}) * ky) + (({_tij(33)}) * ({k2p_str}))"
-    arg2_str = f"(({_tij(21)}) * kx) + (({_tij(22)}) * ky) + (({_tij(23)}) * ({k2p_str}))"
-    arg3_str = f"(({_tij(11)}) * kx) + (({_tij(12)}) * ky) + (({_tij(13)}) * ({k2p_str}))"
+    arg1_str = (
+        f"(({_tij(31)}) * kx) + (({_tij(32)}) * ky) + (({_tij(33)}) * ({k2p_str}))"
+    )
+    arg2_str = (
+        f"(({_tij(21)}) * kx) + (({_tij(22)}) * ky) + (({_tij(23)}) * ({k2p_str}))"
+    )
+    arg3_str = (
+        f"(({_tij(11)}) * kx) + (({_tij(12)}) * ky) + (({_tij(13)}) * ({k2p_str}))"
+    )
 
     alpha = ne.evaluate(
         f"arccos(({arg1_str}) / ({kvac_str})) * ({arg2_str}) / sqrt(({kvac_str})**2 - ({arg1_str})**2) "
@@ -851,9 +863,7 @@ def k_convert(
             np.min([kx.stop if kx.stop is not None else float("inf"), kx_range[1]]),
             kx.step if kx.step is not None else kx_range[2],
         )
-    if ky is not None and (
-        n_interpolation_dims == 3 or angles["type"] in ["II", "IIp"]
-    ):
+    if ky is not None and (n_interpolation_dims == 3 or angles["type"] in ["II", "IIp"]):
         ky_range = (
             np.max([ky.start if ky.start is not None else float("-inf"), ky_range[0]]),
             np.min([ky.stop if ky.stop is not None else float("inf"), ky_range[1]]),
@@ -1113,14 +1123,10 @@ def k_convert(
 
     # Update the history
     hist_str = "Converted to k-space using the following parameters: "
-    reference_angles = {
-        k: v for k, v in angles.items() if ("_0" in k and v is not None)
-    }
+    reference_angles = {k: v for k, v in angles.items() if ("_0" in k and v is not None)}
     hist_str += f"Reference angles: {reference_angles}, "
     if "hv" in da.dims:
-        hist_str += (
-            f"Inner potential: {da.metadata.calibration.V0 or 12 * ureg('eV')}, "
-        )
+        hist_str += f"Inner potential: {da.metadata.calibration.V0 or 12 * ureg('eV')}, "
     hist_str += f"Time taken: {pbar.format_dict['elapsed']:.2f}s."
     interpolated_data.history.add(hist_str)
 

@@ -1,6 +1,4 @@
-"""Miscellaneous helper functions.
-
-"""
+"""Miscellaneous helper functions."""
 
 import os
 from IPython.display import display, Javascript, Markdown

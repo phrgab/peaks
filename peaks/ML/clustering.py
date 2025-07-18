@@ -1,6 +1,4 @@
-"""Unsupervised clustering functions.
-
-"""
+"""Unsupervised clustering functions."""
 
 # Brendan Edwards 31/10/2023
 
@@ -288,12 +286,8 @@ def clusters_explore(
 
     # Perform k-means clustering analysis for the range of number of clusters (k) requested
     k_titles = ["k=" + str(k) for k in cluster_range]  # Titles for plots
-    inertias = (
-        []
-    )  # Empty list to store model inertias (a metric that defines spread of a cluster)
-    classification_maps = (
-        []
-    )  # Empty list to store classification maps (spatial maps of cluster labels)
+    inertias = []  # Empty list to store model inertias (a metric that defines spread of a cluster)
+    classification_maps = []  # Empty list to store classification maps (spatial maps of cluster labels)
     for num_clusters in tqdm(cluster_range, desc="Calculating", colour="CYAN"):
         model, labels = perform_k_means(
             data=df, k=num_clusters, n_init=n_init
@@ -560,9 +554,7 @@ def clusters(
         # Get reconstructed cluster center dispersions from reduced dimensionality dataset
         reconstructed_cluster_centers = pca.inverse_transform(
             model.cluster_centers_
-        ).reshape(
-            num_clusters, len(data.coords[coords[0]]), len(data.coords[coords[1]])
-        )
+        ).reshape(num_clusters, len(data.coords[coords[0]]), len(data.coords[coords[1]]))
         reconstructed_cluster_centers_disps = []
         for center in reconstructed_cluster_centers:
             disp_xarray = xr.DataArray(

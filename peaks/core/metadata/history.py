@@ -1,6 +1,4 @@
-"""Helper functions for acting on metadata.
-
-"""
+"""Helper functions for acting on metadata."""
 
 from datetime import datetime
 from pydantic import BaseModel, Field

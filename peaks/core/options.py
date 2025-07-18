@@ -1,6 +1,4 @@
-"""Classes to store peaks options.
-
-"""
+"""Classes to store peaks options."""
 
 from peaks.core.utils.misc import format_colored_dict
 
@@ -90,7 +88,6 @@ class FileIOOptions:
 
     @loc.setter
     def loc(self, value):
-
         if value is None:
             self._loc = None
         elif isinstance(value, str):

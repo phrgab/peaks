@@ -1,6 +1,4 @@
-"""Functions used to process data.
-
-"""
+"""Functions used to process data."""
 
 # from .data_select import (
 #     DC,

@@ -187,9 +187,7 @@ class SpecsDataLoader(BaseARPESDataLoader):
 
     @classmethod
     def _parse_data_from_sp2_file(cls, fpath):
-        metadata_dict_SPECS_keys = cls._load_metadata(
-            fpath, return_in_SPECS_format=True
-        )
+        metadata_dict_SPECS_keys = cls._load_metadata(fpath, return_in_SPECS_format=True)
 
         # Open the file and load lines
         rows = []

@@ -1,5 +1,4 @@
-"""Underlying custom fitting models or extensions for lmfit.
-"""
+"""Underlying custom fitting models or extensions for lmfit."""
 
 import re
 import numpy as np
@@ -182,9 +181,7 @@ class LinearDosFermiModel(GaussianConvolvedFitModel):
         # Guess DOS parameters
         cutoff = np.percentile(x_xr, 15)  # Take bottom 15% of data range
         dos_guess = data.sel({dim: slice(None, cutoff)}).quick_fit.linear()
-        pars[f"{self.base_model_prefix}dos_slope"].set(
-            value=dos_guess["slope"].data[()]
-        )
+        pars[f"{self.base_model_prefix}dos_slope"].set(value=dos_guess["slope"].data[()])
         pars[f"{self.base_model_prefix}dos_intercept"].set(
             value=dos_guess["intercept"].data[()]
         )

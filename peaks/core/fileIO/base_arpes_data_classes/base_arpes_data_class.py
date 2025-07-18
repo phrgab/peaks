@@ -256,7 +256,9 @@ class BaseARPESDataLoader(
         axis_groups = cls._group_axes(da)
         polar_group = axis_groups.get("polar")
 
-        manipulator_axis = next((key for key in ["polar", "tilt", "azi"] if key in axis_group), None)
+        manipulator_axis = next(
+            (key for key in ["polar", "tilt", "azi"] if key in axis_group), None
+        )
 
         manipulator_axis_sign_convention = cls._get_sign_convention(manipulator_axis)
         axis_key_sign_convention = cls._get_sign_convention(axis_key)
@@ -266,7 +268,7 @@ class BaseARPESDataLoader(
             return 1
 
         if manipulator_axis == "azi" and axis_key == "azi_offset":
-            return 1 # always 1 as already corrected in disp 3d panel
+            return 1  # always 1 as already corrected in disp 3d panel
 
         if "polar" in polar_group and "deflector_perp" in polar_group:
             # Analyser type must be either I or Ip
@@ -296,9 +298,11 @@ class BaseARPESDataLoader(
                 if axis_key == "theta_par":
                     return -1 if sign_product == 1 else 1
                 elif axis_key == "deflector_parallel":
-                    return -1 # # consistent with theta_par
+                    return -1  # # consistent with theta_par
 
-        raise ValueError(f"Unexpected axis combination: manipulator_axis is {manipulator_axis}, axis_key is {axis_key}")
+        raise ValueError(
+            f"Unexpected axis combination: manipulator_axis is {manipulator_axis}, axis_key is {axis_key}"
+        )
 
     @classmethod
     def _parse_reference_value(cls, da, axis_key, value, axis_group):
@@ -316,7 +320,9 @@ class BaseARPESDataLoader(
         # Primary axis value (user-specified)
         # Read the offsets from the GUI and assign relative sign conventions
         reference_angles.append(value)
-        reference_signs.append(cls._get_relative_sign_conventions(da, axis_key, axis_group))
+        reference_signs.append(
+            cls._get_relative_sign_conventions(da, axis_key, axis_group)
+        )
 
         # Secondary axes (from metadata)
         for axis in axis_group:
@@ -325,7 +331,9 @@ class BaseARPESDataLoader(
             angle_value = cls._get_axis_value(da, axis)
             if angle_value is not None:
                 reference_angles.append(angle_value)
-                reference_signs.append(cls._get_relative_sign_conventions(da, axis, axis_group))
+                reference_signs.append(
+                    cls._get_relative_sign_conventions(da, axis, axis_group)
+                )
 
         # Convert angles to consistent units and sum
         total_reference_angle = cls._sum_angles(reference_angles, reference_signs)

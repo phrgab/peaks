@@ -1,6 +1,4 @@
-"""Functions to load data from the Casiopee beamline at Soleil.
-
-"""
+"""Functions to load data from the Casiopee beamline at Soleil."""
 
 import os
 import natsort
@@ -63,9 +61,7 @@ class CASIOPEEArpesLoader(SESDataLoader):
             [
                 item
                 for item in os.listdir(fpath)
-                if "ROI1" in item
-                and isfile(join(fpath, item))
-                and item.endswith(".txt")
+                if "ROI1" in item and isfile(join(fpath, item)) and item.endswith(".txt")
             ]
         )
         file_list_i = natsort.natsorted(

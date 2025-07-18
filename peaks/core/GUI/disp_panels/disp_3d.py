@@ -870,9 +870,7 @@ class _Disp3D(QtWidgets.QMainWindow):
         }
         positions["azi_offset"] = -self.rotation_selection.value()
         try:
-            norm_emission = self.data.metadata.get_normal_emission_from_values(
-                positions
-            )
+            norm_emission = self.data.metadata.get_normal_emission_from_values(positions)
         except AttributeError:
             norm_emission = {}
 

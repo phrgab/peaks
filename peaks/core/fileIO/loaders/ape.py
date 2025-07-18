@@ -1,6 +1,4 @@
-"""Functions to load data from the APE beamline at Elettra.
-
-"""
+"""Functions to load data from the APE beamline at Elettra."""
 
 import pint_xarray
 

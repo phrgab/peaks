@@ -433,9 +433,7 @@ class _Disp4D(QtWidgets.QMainWindow):
         r, g, b = self.xh_brush[:3]
         cursor_text = f"<span style='color:#{r:02x}{g:02x}{b:02x}; font-size:15px'>"
         for i, pos in enumerate(self.primary_dims_xh.get_pos()):
-            cursor_text += (
-                f"&nbsp;&nbsp;{self.dim_labels[i]}:&nbsp;&nbsp; {pos:.2f}<br>"
-            )
+            cursor_text += f"&nbsp;&nbsp;{self.dim_labels[i]}:&nbsp;&nbsp; {pos:.2f}<br>"
         cursor_text += "</span>"
         self.primary_dims_cursor_stats.setText(cursor_text)
 

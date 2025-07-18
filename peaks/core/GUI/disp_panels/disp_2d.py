@@ -624,11 +624,7 @@ class _Disp2D(QtWidgets.QMainWindow):
             DC = self._select_DC(
                 self.current_data,
                 select_along_dim_no,
-                (
-                    xh.get_dim1_span()
-                    if select_along_dim_no == 1
-                    else xh.get_dim0_span()
-                ),
+                (xh.get_dim1_span() if select_along_dim_no == 1 else xh.get_dim0_span()),
             )
 
             # Update the plot
