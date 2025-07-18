@@ -2,14 +2,18 @@ import os
 import tempfile
 import zipfile
 from copy import deepcopy
+from pathlib import Path
 
+import matplotlib.pyplot as plt
 import requests
+from requests.adapters import HTTPAdapter
 from tqdm.notebook import tqdm
+from urllib3.util.retry import Retry
 
 from peaks.core.fileIO.data_loading import load
 from peaks.core.utils.misc import analysis_warning
 
-ROOT_URL = "https://zenodo.org/api/records/15661704/files"
+ROOT_URL = "https://zenodo.org/api/records/15928652/files"
 
 
 class ZenodoDownloader:
@@ -32,8 +36,33 @@ class ZenodoDownloader:
 
     def _download_with_progress(self, url, dest_path):
         headers = self._make_headers_if_needed(url)
-        response = requests.get(url, headers=headers, stream=True)
-        response.raise_for_status()
+
+        session = requests.Session()
+        retries = Retry(
+            total=5,
+            backoff_factor=1,
+            status_forcelist=[502, 503, 504],
+            allowed_methods=["GET"],
+            raise_on_status=False,
+        )
+        adapter = HTTPAdapter(max_retries=retries)
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
+
+        proxies = {"http": os.getenv("http_proxy"), "https": os.getenv("https_proxy")}
+
+        try:
+            response = session.get(
+                url,
+                headers=headers,
+                proxies=proxies,
+                stream=True,
+                timeout=(10, 300),  # (connect timeout, read timeout)
+            )
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            raise RuntimeError(f"Failed to download {url}: {e}")
+
         total = int(response.headers.get("content-length", 0))
 
         with (
@@ -47,9 +76,11 @@ class ZenodoDownloader:
                 leave=False,
             ) as bar,
         ):
-            for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
-                bar.update(len(chunk))
+            for chunk in response.iter_content(chunk_size=1024 * 1024):
+                if chunk:  # filter out keep-alive chunks
+                    f.write(chunk)
+                    f.flush()
+                    bar.update(len(chunk))
 
     def download(self):
         if self._tempdir_context is not None:
@@ -219,7 +250,7 @@ class ExampleData:
 
     @classproperty
     def SM(cls):
-        return cls._get_and_load("i05-1-24270.nxs")
+        return cls._get_and_load("i05-1-24270_sm.nc")
 
     @classproperty
     def nano_focus(cls):
@@ -265,3 +296,15 @@ class ExampleData:
     @classmethod
     def cleanup(cls):
         cls._cache.clear()
+
+
+def plot_tutorial_example_figure(fname, figsize=(16, 8)):
+    """Plot an example figure in the tutorial notebooks."""
+    tutorial_dir = os.path.join(
+        Path(__file__).resolve().parent.parent.parent.parent, "tutorials", "figs"
+    )
+    fig_path = os.path.join(tutorial_dir, fname)
+    plt.figure(figsize=figsize)
+    plt.imshow(plt.imread(fig_path))
+    plt.axis("off")
+    plt.show()

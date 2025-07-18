@@ -1,7 +1,9 @@
-""" Methods for numba-accelerated bilinear and trilinear interpolation. """
+"""Methods for numba-accelerated bilinear and trilinear interpolation."""
 
 import numpy as np
-from numba import jit, njit, prange
+from numba import njit, prange
+
+PARALLEL_MODE = True
 
 
 def _is_linearly_spaced(array, tol=1e-8):
@@ -30,7 +32,7 @@ def _is_linearly_spaced(array, tol=1e-8):
     return np.all(np.abs(diffs - diffs[0]) <= tol)
 
 
-@njit(parallel=True)
+@njit(parallel=PARALLEL_MODE)
 def _fast_linear_interpolate(desired_pos, orig_coords, orig_values):
     """
     Perform numba-accelerated linear interpolation on a 1D array of values.
@@ -85,7 +87,7 @@ def _fast_linear_interpolate(desired_pos, orig_coords, orig_values):
     return result
 
 
-@njit(parallel=True)
+@njit(parallel=PARALLEL_MODE)
 def _fast_linear_interpolate_rectilinear(desired_pos, orig_coords, orig_values):
     """
     Perform numba-accelerated linear interpolation on a 1D array of values assuming a linearly spaced input grid.
@@ -143,7 +145,7 @@ def _fast_linear_interpolate_rectilinear(desired_pos, orig_coords, orig_values):
     return result
 
 
-@njit(parallel=True)
+@njit(parallel=PARALLEL_MODE)
 def _fast_bilinear_interpolate(
     desired_pos_dim0,
     desired_pos_dim1,
@@ -234,7 +236,7 @@ def _fast_bilinear_interpolate(
     return result.reshape(desired_shape)
 
 
-@njit(parallel=True)
+@njit(parallel=PARALLEL_MODE)
 def _fast_bilinear_interpolate_rectilinear(
     desired_pos_dim0,
     desired_pos_dim1,
@@ -333,7 +335,7 @@ def _fast_bilinear_interpolate_rectilinear(
     return result.reshape(desired_shape)
 
 
-@njit(parallel=True)
+@njit(parallel=PARALLEL_MODE)
 def _fast_trilinear_interpolate(
     desired_pos_dim0,
     desired_pos_dim1,
@@ -457,7 +459,7 @@ def _fast_trilinear_interpolate(
     return result.reshape(desired_shape)
 
 
-@njit(parallel=True)
+@njit(parallel=PARALLEL_MODE)
 def _fast_trilinear_interpolate_rectilinear(
     desired_pos_dim0,
     desired_pos_dim1,
