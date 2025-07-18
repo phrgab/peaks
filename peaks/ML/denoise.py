@@ -4,6 +4,7 @@
 
 import xarray as xr
 from sklearn.decomposition import PCA
+
 from peaks.core.accessors.accessor_methods import register_accessor
 
 

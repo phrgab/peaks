@@ -1,8 +1,8 @@
 import re
+from datetime import datetime
 
 import numpy as np
 import pint_xarray
-from datetime import datetime
 
 from peaks.core.fileIO.base_arpes_data_classes.base_arpes_data_class import (
     BaseARPESDataLoader,

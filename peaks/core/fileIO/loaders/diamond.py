@@ -1,5 +1,4 @@
 from datetime import datetime, timezone
-from dateutil.parser import parse
 from typing import Optional, Union
 
 import h5py
@@ -7,6 +6,7 @@ import numpy as np
 import pint
 import pint_xarray
 import xarray as xr
+from dateutil.parser import parse
 
 from peaks.core.accessors.accessor_methods import register_accessor
 from peaks.core.fileIO.base_arpes_data_classes.base_arpes_data_class import (

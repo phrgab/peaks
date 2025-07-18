@@ -1,10 +1,11 @@
 """Underlying custom fitting models or extensions for lmfit."""
 
 import re
+
+import lmfit.models as lm_models
 import numpy as np
 import xarray as xr
-import lmfit.models as lm_models
-from lmfit import Model, CompositeModel
+from lmfit import CompositeModel, Model
 from scipy.ndimage import gaussian_filter1d
 
 from peaks.core.fitting.fit_functions import _fermi_function, _linear_dos_fermi

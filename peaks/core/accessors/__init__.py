@@ -1,3 +1,5 @@
+# ruff: noqa: I001
+
 # Import xarray Class-based accessors
 from peaks.core.metadata.history import History
 from peaks.core.metadata.metadata_methods import Metadata

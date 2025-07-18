@@ -1,11 +1,11 @@
+import dask as da
 import dill
+import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-import dask as da
 from scipy.ndimage import gaussian_filter1d
 from scipy.signal import find_peaks
 from tqdm.notebook import tqdm
-import matplotlib.pyplot as plt
 
 from peaks.core.fitting.models import LinearDosFermiModel
 from peaks.core.utils.misc import analysis_warning

@@ -1,6 +1,7 @@
 import pint_xarray
-from peaks.core.fileIO.loc_registry import register_loader
+
 from peaks.core.fileIO.base_arpes_data_classes.base_specs_class import SpecsDataLoader
+from peaks.core.fileIO.loc_registry import register_loader
 
 ureg = pint_xarray.unit_registry
 

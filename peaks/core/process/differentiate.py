@@ -2,6 +2,7 @@
 
 import numpy as np
 from scipy.ndimage import gaussian_gradient_magnitude
+
 from peaks.core.utils.misc import analysis_warning
 
 
