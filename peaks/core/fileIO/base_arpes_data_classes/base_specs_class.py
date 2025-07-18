@@ -1,16 +1,16 @@
-import numpy as np
-import re
 import os
-import pint_xarray
+import re
+from datetime import datetime
 from itertools import takewhile
 
-from datetime import datetime
+import numpy as np
+import pint_xarray
 
-from peaks.core.utils.misc import analysis_warning
-from peaks.core.fileIO.loc_registry import register_loader
 from peaks.core.fileIO.base_arpes_data_classes.base_arpes_data_class import (
     BaseARPESDataLoader,
 )
+from peaks.core.fileIO.loc_registry import register_loader
+from peaks.core.utils.misc import analysis_warning
 
 ureg = pint_xarray.unit_registry
 

@@ -1,8 +1,8 @@
 """Functions used to apply Fermi level corrections to data."""
 
+import numexpr as ne
 import numpy as np
 import xarray as xr
-import numexpr as ne
 
 from peaks.core.utils.interpolation import _fast_bilinear_interpolate_rectilinear
 from peaks.core.utils.misc import analysis_warning

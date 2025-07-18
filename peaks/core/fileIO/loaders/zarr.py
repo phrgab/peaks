@@ -1,6 +1,7 @@
 from xarray import open_datatree
-from peaks.core.fileIO.loc_registry import register_loader
+
 from peaks.core.fileIO.loaders.netcdf import NetCDFLoader
+from peaks.core.fileIO.loc_registry import register_loader
 from peaks.core.utils.misc import analysis_warning
 
 

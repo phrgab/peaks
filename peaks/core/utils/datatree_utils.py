@@ -1,7 +1,8 @@
-import xarray as xr
-from termcolor import colored
 import functools
 import re
+
+import xarray as xr
+from termcolor import colored
 
 from peaks.core.utils.misc import analysis_warning
 

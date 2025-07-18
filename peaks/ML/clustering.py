@@ -2,18 +2,19 @@
 
 # Brendan Edwards 31/10/2023
 
-import numpy as np
-import xarray as xr
-import pandas as pd
 import matplotlib.pyplot as plt
-from tqdm import tqdm
+import numpy as np
+import pandas as pd
+import xarray as xr
 from IPython.display import clear_output
-from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+from tqdm import tqdm
+
 from peaks.core.accessors.accessor_methods import register_accessor
-from peaks.utils import analysis_warning
 from peaks.core.display.plotting import plot_grid
+from peaks.utils import analysis_warning
 
 
 @register_accessor(xr.DataArray)

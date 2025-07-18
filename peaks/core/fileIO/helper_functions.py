@@ -3,11 +3,12 @@
 # Phil King 15/05/2021
 # Brendan Edwards 26/02/2024
 
+import h5py
 import numpy as np
 import xarray as xr
-import h5py
 from termcolor import colored
-from peaks.core.fileIO.data_loading import _make_DataArray, _extract_mapping_metadata
+
+from peaks.core.fileIO.data_loading import _extract_mapping_metadata, _make_DataArray
 from peaks.core.utils.misc import analysis_warning
 
 

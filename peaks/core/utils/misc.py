@@ -1,9 +1,10 @@
 """Miscellaneous helper functions."""
 
 import os
-from IPython.display import display, Javascript, Markdown
-from termcolor import colored
+
 import xarray as xr
+from IPython.display import Javascript, Markdown, display
+from termcolor import colored
 
 
 def analysis_warning(text, warn_type="info", title="Analysis info", quiet=False):

@@ -1,6 +1,6 @@
-import xarray as xr
 import pint
 import pint_xarray
+import xarray as xr
 
 ureg = pint_xarray.unit_registry
 
