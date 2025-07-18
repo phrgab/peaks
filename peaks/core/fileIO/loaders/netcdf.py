@@ -3,7 +3,7 @@ import json
 import re
 from typing import Optional
 
-import pint_xarray
+import pint_xarray  # noqa: F401
 import xarray as xr
 from pydantic import create_model
 
@@ -57,7 +57,7 @@ class NetCDFLoader(BaseDataLoader):
             cls._parse_metadata(data)
 
         # Actually load the data
-        if not (lazy or (lazy == None and data.nbytes > opts.FileIO.lazy_size)):
+        if (lazy is False) or (lazy is None and data.nbytes > opts.FileIO.lazy_size):
             data = data.compute()
 
         # Quantify the data if it has units

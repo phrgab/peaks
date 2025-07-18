@@ -1,7 +1,5 @@
 """Miscellaneous helper functions."""
 
-import os
-
 import xarray as xr
 from IPython.display import Javascript, Markdown, display
 from termcolor import colored

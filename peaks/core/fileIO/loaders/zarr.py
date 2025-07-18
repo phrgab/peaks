@@ -48,7 +48,7 @@ class ZarrLoader(NetCDFLoader):
         data = data.map_over_datasets(ZarrLoader._quantify_da_in_dt)
 
         # Actually load the data
-        if lazy == False:
+        if not lazy:
             data = data.map_over_datasets(ZarrLoader._load_all)
         elif not quiet:
             analysis_warning(

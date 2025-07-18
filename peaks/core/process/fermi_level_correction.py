@@ -65,7 +65,7 @@ def _get_E_shift_at_theta_par(da, theta_par, Ek=None):
         for i in range(1, len(EF_fn)):
             shift_str += f"+ {str(EF_fn[f'c{i}'])} * theta_par ** {i}"
         if Ek is not None:
-            shift_str += f"+ Ek"
+            shift_str += "+ Ek"
         return ne.evaluate(shift_str)
     else:
         if Ek is not None:

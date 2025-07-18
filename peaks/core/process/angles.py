@@ -213,7 +213,9 @@ def _parse_norm_angles(data, norm_angles, quiet):
     norm_emissions = {
         key: val
         for key, val in zip(
-            ["norm_polar", "norm_tilt", "norm_azi"], [norm_polar, norm_tilt, norm_azi]
+            ["norm_polar", "norm_tilt", "norm_azi"],
+            [norm_polar, norm_tilt, norm_azi],
+            strict=True,
         )
         if val is not None
     }
@@ -344,9 +346,6 @@ def _get_norm_angles(data):
     dict
         Dictionary of normal emission angles in both `peaks` format and where applicable the true manipulator angles.
     """
-
-    # Get angle conventions and analyser type
-    conventions = _get_conventions(data)
 
     # Get the peaks normal emission angles from the attributes
     norm_angles = {name: data.attrs.get(name) for name in NORM_ANGLE_NAMES}

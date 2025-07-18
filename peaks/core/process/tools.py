@@ -1518,9 +1518,7 @@ def subtract_data(data, quiet=False):
     return _sum_or_subtract_data(data, _sum=False, quiet=quiet)
 
 
-def merge_data(
-    data, dim="theta_par", sel=slice(None, None), offsets=None, hv_match_rounding=0
-):
+def merge_data(data, dim="theta_par", sel=None, offsets=None, hv_match_rounding=0):
     """Function to merge two or more DataArrays together along a given dimension.
 
     Parameters
@@ -1589,6 +1587,8 @@ def merge_data(
         merged_hv = pks.merge_data([hv_1, hv_2], dim='hv')
 
     """
+    if sel is None:
+        sel = slice(None, None)
 
     # If data is a DataTree, convert to a list
     if isinstance(data, xr.DataTree):

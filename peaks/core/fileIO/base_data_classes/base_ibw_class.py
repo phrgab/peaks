@@ -67,16 +67,16 @@ class BaseIBWDataLoader(BaseDataLoader):
                 # The size of the note text.
                 noteSize = np.fromfile(f, dtype=np.dtype("uint32"), count=1)[0]
                 # Reserved. Write zero. Ignore on read.
-                pictSize = np.fromfile(f, dtype=np.dtype("uint32"), count=1)[0]
+                pictSize = np.fromfile(f, dtype=np.dtype("uint32"), count=1)[0]  # noqa: F841
                 # Checksum over this header and the wave header.
-                checksum = np.fromfile(f, dtype=np.dtype("int16"), count=1)[0]
+                checksum = np.fromfile(f, dtype=np.dtype("int16"), count=1)[0]  # noqa: F841
             elif version == 5:
                 # Checksum over this header and the wave header.
-                checksum = np.fromfile(f, dtype=np.dtype("short"), count=1)[0]
+                checksum = np.fromfile(f, dtype=np.dtype("short"), count=1)[0]  # noqa: F841
                 # The size of the WaveHeader5 data structure plus the wave data.
-                wfmSize = np.fromfile(f, dtype=np.dtype("int32"), count=1)[0]
+                wfmSize = np.fromfile(f, dtype=np.dtype("int32"), count=1)[0]  # noqa: F841
                 # The size of the dependency formula, if any.
-                formulaSize = np.fromfile(f, dtype=np.dtype("int32"), count=1)[0]
+                formulaSize = np.fromfile(f, dtype=np.dtype("int32"), count=1)[0]  # noqa: F841
                 # The size of the note text.
                 noteSize = np.fromfile(f, dtype=np.dtype("int32"), count=1)[0]
                 # The size of optional extended data units.

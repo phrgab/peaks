@@ -61,7 +61,7 @@ class ZenodoDownloader:
             )
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
-            raise RuntimeError(f"Failed to download {url}: {e}")
+            raise RuntimeError(f"Failed to download {url}: {e}") from e
 
         total = int(response.headers.get("content-length", 0))
 

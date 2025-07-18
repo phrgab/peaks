@@ -98,7 +98,7 @@ def _dataarrays_to_datatree(data, names=None):
             if isinstance(da, xr.DataArray)
             else da  # Pass a DataSet directly if it is already a DataSet
         )
-        for da_name, da in zip(names, data)
+        for da_name, da in zip(names, data, strict=True)
     }
 
     return xr.DataTree.from_dict(ds_dict)

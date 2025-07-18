@@ -192,7 +192,7 @@ class SpecsDataLoader(BaseARPESDataLoader):
         # Open the file and load lines
         rows = []
         with open(fpath, "rb") as f:
-            for i, row in enumerate(f):
+            for i, row in enumerate(f):  # noqa: B007
                 if i >= metadata_dict_SPECS_keys["data_start_line"]:
                     rows.append(int(row.decode(errors="ignore").strip("\n")))
 
@@ -298,9 +298,9 @@ class SpecsDataLoader(BaseARPESDataLoader):
     @classmethod
     def _parse_metadata_from_sp2_file(cls, fpath):
         meta_dict_SPECS_keys = {}
-        stop_on_next_line = False
+        stop_on_next_line = False  # noqa: F841
         with open(fpath, "rb") as f:
-            for i, row in enumerate(f):
+            for i, row in enumerate(f):  # noqa: B007
                 row_ = row.decode(errors="ignore")
                 if isinstance(row_, str) and "=" in row_:
                     meta = row_.split("=", 1)
@@ -308,7 +308,7 @@ class SpecsDataLoader(BaseARPESDataLoader):
                         1
                     ].strip()
                     if meta[0].strip() == "SIZE_X":
-                        x_pixels = int(meta[1].strip())
+                        x_pixels = int(meta[1].strip())  # noqa: F841
                 if (
                     meta_dict_SPECS_keys.get("SIZE_X") is not None
                     and meta_dict_SPECS_keys.get("SIZE_X").split("#")[0].strip()

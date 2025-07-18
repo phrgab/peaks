@@ -388,7 +388,7 @@ def estimate_EF(da):
     else:
         try:
             return _estimate_EF(da.DOS().fillna(0).pint.dequantify().data, da.eV.data)
-        except:
+        except Exception:
             return None
 
 
