@@ -369,7 +369,7 @@ class BaseARPESDataLoader(
         Sum angles with appropriate sign conventions.
         """
         total_angle = 0.0 * ureg("deg")
-        for angle, sign in zip(angles, signs):
+        for angle, sign in zip(angles, signs, strict=True):
             try:
                 angle_value = angle.to("deg")
             except AttributeError:
@@ -423,7 +423,7 @@ class BaseARPESDataLoader(
         missing_references = {}
 
         # Helper functions
-        def get_angle(da, axis, default=0.0 * ureg("rad"), add_to_warning_list=True):
+        def get_angle(da, axis, default=None, add_to_warning_list=True):
             """Get the angle value for a given axis.
 
             If the value is missing, return the default value
@@ -442,6 +442,8 @@ class BaseARPESDataLoader(
             pint.Quantity
                 The angle value.
             """
+            if default is None:
+                default = 0.0 * ureg("rad")
             value = cls._get_axis_value(da, axis)
             if value is None:
                 if add_to_warning_list:
@@ -450,7 +452,7 @@ class BaseARPESDataLoader(
             else:
                 return value.to("rad") * cls._get_sign_convention(axis)
 
-        def get_reference_angle(da, axis, default=0.0 * ureg("rad")):
+        def get_reference_angle(da, axis, default=None):
             """Get the reference angle value for a given axis.
 
             If the value is missing, return the default value.
@@ -470,6 +472,9 @@ class BaseARPESDataLoader(
                 The angle value.
 
             """
+            if default is None:
+                default = 0.0 * ureg("rad")
+
             value = getattr(da.metadata.manipulator, axis).reference_value
             if value is None:
                 missing_references[axis] = str(default)

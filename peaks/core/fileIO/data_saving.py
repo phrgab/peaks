@@ -170,7 +170,7 @@ def _save_dt(data, fpath):
     data.to_zarr(fpath)
 
     # Reset the attributes of the data to their original state
-    for node, attrs in zip(data.subtree, original_attrs):
+    for node, attrs in zip(data.subtree, original_attrs, strict=True):
         node.attrs = attrs
 
     # Re-quanitfy the data

@@ -903,7 +903,7 @@ class _Disp2D(QtWidgets.QMainWindow):
     def _connect_key_press_signals(self):
         signals = [self.graphics_layout.keyPressed, self.graphics_layout.keyReleased]
         fns = [self._key_press_event, self._key_release_event]
-        for signal, fn in zip(signals, fns):
+        for signal, fn in zip(signals, fns, strict=True):
             signal.connect(fn)
             self.connected_plot_signals.append(signal)
 

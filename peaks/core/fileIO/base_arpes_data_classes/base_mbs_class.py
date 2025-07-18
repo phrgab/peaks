@@ -132,7 +132,7 @@ class MBSDataLoader(BaseARPESDataLoader):
             image_pos = []
             Y_size = []
             X_size = []
-            for i in range(num_images):
+            for _i in range(num_images):
                 # Extract position in array of the images in 32-bit integers
                 image_pos.append(np.fromfile(f, dtype=dtype, count=1)[0])
                 # Extract Y size of array (angular direction)
@@ -329,7 +329,7 @@ class MBSDataLoader(BaseARPESDataLoader):
 
             # Read the pointer array size, which is the first word of the array. Pointer array size is not used here,
             # but is read so that the next variable read is image position
-            pointer_array_size = np.fromfile(f, dtype=dtype, count=1)
+            pointer_array_size = np.fromfile(f, dtype=dtype, count=1)  # noqa: F841
 
             # Extract first image position and array size to know where in the file to find metadata
             image_pos = np.fromfile(f, dtype=dtype, count=1)[0]

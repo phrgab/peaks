@@ -188,7 +188,7 @@ def perform_k_means(data, k=3, n_init="auto"):
 @register_accessor(xr.DataArray)
 def clusters_explore(
     data,
-    cluster_range=range(1, 7),
+    cluster_range=None,
     n_init="auto",
     use_PCA=True,
     PCs=3,
@@ -266,6 +266,9 @@ def clusters_explore(
         SM.clusters_explore(cluster_range=range(1,11), use_PCA=False, extract='MDC', E=73.42, dE=0.02)
 
     """
+    if cluster_range is None:
+        # Default range of number of clusters to test
+        cluster_range = range(1, 7)
 
     # Prevent unwanted overwriting of original data
     data = data.copy(deep=True)
@@ -622,7 +625,7 @@ def clusters(
 @register_accessor(xr.DataArray)
 def PCA_explore(
     data,
-    PCs_range=range(1, 6),
+    PCs_range=None,
     threshold=0.95,
     extract="dispersion",
     E=0,
@@ -686,6 +689,9 @@ def PCA_explore(
         SM.PCA_explore(PCs_range=range(1,11), extract='MDC', E=73.42, dE=0.02)
 
     """
+    if PCs_range is None:
+        # Default range of principal components to test
+        PCs_range = range(1, 6)
 
     # Prevent unwanted overwriting of original data
     data = data.copy(deep=True)

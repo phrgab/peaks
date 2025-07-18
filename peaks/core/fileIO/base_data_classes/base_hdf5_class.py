@@ -185,7 +185,6 @@ class BaseHDF5DataLoader:
         dataset_color = "yellow"
         attribute_color = "green"
         link_color = "magenta"
-        grey_line = colored("|-- ", "light_grey")
 
         # Set the line connector based on whether the node is the last child
         connector = "└── " if is_last else "├── "

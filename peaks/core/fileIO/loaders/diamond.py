@@ -368,7 +368,9 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
             chunks="auto",
         )
         # Map local dimension names keeping I05 convention for now
-        ds = ds.rename({orig: new for orig, new in zip(ds[core_data_key].dims, dims)})
+        ds = ds.rename(
+            {orig: new for orig, new in zip(ds[core_data_key].dims, dims, strict=True)}
+        )
 
         # Get the core data
         da = ds[core_data_key]

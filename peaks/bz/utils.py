@@ -92,7 +92,6 @@ list, or np.ndarray of length 3."
             )
         surface_atoms = ase.build.surface(atoms, surface, 1)
         lattice = surface_atoms.cell.get_bravais_lattice()
-        cell = lattice.tocell()
 
     df = pd.DataFrame.from_dict(
         _get_special_points_inv_Ang(lattice),

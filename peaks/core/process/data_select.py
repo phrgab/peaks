@@ -694,8 +694,9 @@ def mask_data(data, ROI, return_integrated=True):
         "be a list of the vertices of the polygon for the labelled axis of the ROI. These must be of equal "
         "length for the two axes."
     )
-    if type(ROI) != dict or len(ROI) != 2:
+    if not isinstance(ROI, dict) or len(ROI) != 2:
         raise Exception(err_str)
+
     else:  # Seems correct format
         dims = list(ROI)  # Determine relevant dimensions for ROI
 
@@ -743,7 +744,7 @@ def mask_data(data, ROI, return_integrated=True):
         # Trim any rows or columns of only NaNs
         try:  # The top method works for 2D, but seems to fail for higher dimensions
             ROI_selected_data = _drop_nan_borders_2D(ROI_selected_data)
-        except:
+        except Exception:
             ROI_selected_data = drop_nan_borders(ROI_selected_data)
 
         hist = (

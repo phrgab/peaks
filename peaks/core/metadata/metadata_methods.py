@@ -122,7 +122,7 @@ def compare_metadata(da_or_model1, da_or_model2):
         if isinstance(val1, (list, tuple)) and isinstance(val2, (list, tuple)):
             if len(val1) != len(val2):
                 return False
-            return all(values_equal(v1, v2) for v1, v2 in zip(val1, val2))
+            return all(values_equal(v1, v2) for v1, v2 in zip(val1, val2, strict=True))
 
         # Handle dictionaries
         if isinstance(val1, dict) and isinstance(val2, dict):
@@ -467,7 +467,9 @@ class MetadataDT:
     def __init__(self, xarray_obj):
         self._obj = xarray_obj
 
-    def __call__(self, metadata_dict={}, **kwargs):
+    def __call__(self, metadata_dict=None, **kwargs):
+        if metadata_dict is None:
+            metadata_dict = {}
         metadata_dict.update(kwargs)
 
         def apply_metadata_to_ds(ds):
@@ -479,13 +481,16 @@ class MetadataDT:
                 # Otherwise map over all dataarrays in the dataset
                 for key, value in metadata_dict.items():
                     ds.map(
-                        lambda da: (getattr(da.metadata, key)(value), da)[1],
+                        lambda da, key=key, value=value: (
+                            getattr(da.metadata, key)(value),
+                            da,
+                        )[1],
                         keep_attrs=False,
                     )
 
             return ds
 
-        for key, value in metadata_dict.items():
+        for _key, _value in metadata_dict.items():
             self._obj.map_over_datasets(apply_metadata_to_ds)
 
         return self

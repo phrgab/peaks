@@ -12,10 +12,6 @@ from peaks.core.fileIO.base_arpes_data_classes.base_arpes_data_class import (
     ureg,
 )
 from peaks.core.fileIO.loc_registry import register_loader
-from peaks.core.utils.misc import analysis_warning
-
-# Define the unit registry
-ureg = pint_xarray.unit_registry
 
 
 @register_loader
@@ -149,7 +145,7 @@ class BaseFeSuMaDataLoader(BaseARPESDataLoader):
             name="spectrum",
         )
 
-        if lazy == False:
+        if not lazy:
             data_array = data_array.compute()
 
         data_array = data_array.groupby("steps").mean()

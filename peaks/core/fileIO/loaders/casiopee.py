@@ -203,7 +203,7 @@ class CASIOPEEArpesLoader(SESDataLoader):
         # lines, and stop when the scan data is reached
         with open(folder + "/" + file) as f:
             lines = f.readlines()
-            for counter, line in enumerate(lines):
+            for counter, line in enumerate(lines):  # noqa: B007
                 if line.startswith("inputA="):
                     break
 

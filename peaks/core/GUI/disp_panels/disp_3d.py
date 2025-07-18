@@ -622,12 +622,12 @@ class _Disp3D(QtWidgets.QMainWindow):
         # Make primary data slice
         self._set_slice(1)
 
-        # Try to estimate a data centre position from this slice and update other xh positions
+        # Try to estimate data centre from this slice and update other xh positions
         try:
             centre = estimate_sym_point(self.images[1], dims=self.centering_dims)
-            for dim, centre in centre.items():
-                self.cursor_positions_selection[self.dims.index(dim)].setValue(centre)
-        except:
+            for dim, coord in centre.items():
+                self.cursor_positions_selection[self.dims.index(dim)].setValue(coord)
+        except Exception:
             pass
         # Make the coresponding slices
         self._set_slice(0)
@@ -896,7 +896,9 @@ class _Disp3D(QtWidgets.QMainWindow):
             signal.connect(partial(self._update_cursor_boxes, i))  # Update cursor boxes
         # Update alignment tool rotation changes
         self.rotation_selection.valueChanged.connect(self._update_align_xh_angle)
-        for angle, button in zip(self.rotation_delta, self.rotation_delta_buttons):
+        for angle, button in zip(
+            self.rotation_delta, self.rotation_delta_buttons, strict=True
+        ):
             button.clicked.connect(
                 partial(self._update_align_xh_angle_change_by_delta, angle)
             )
