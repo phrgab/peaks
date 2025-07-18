@@ -1,6 +1,7 @@
 .DS_Store
 .idea
 .vscode
+.ruff_cache
 __pycache__/
 /docs/source/_apidoc/
 /docs/source/autoapi/
