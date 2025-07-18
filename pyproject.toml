@@ -73,3 +73,10 @@ dev = [
         ]
 
 all = ["peaks[structure,ML,dev]"]
+
+[tool.ruff]
+line-length = 89  # Match Black's default line length
+target-version = "py312"  # Set your Python version
+lint.select = ["E", "F", "I", "B"]  # Enable checks for errors, imports, and best practices
+lint.ignore = ["E203"]  # Black compatibility
+lint.fixable = ["I"]  # Automatically fix imports (isort-like functionality)
