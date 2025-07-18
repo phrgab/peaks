@@ -13,3 +13,5 @@ tutorials/*.nc
 tutorials/*.mp4
 tutorials/fit_example
 tutorials/saving_analysis_metadata.json
+/paper/jats
+/paper/paper.pdf
