@@ -76,6 +76,7 @@ all = ["peaks[structure,ML,docs,dev]"]
 [tool.ruff]
 line-length = 89
 target-version = "py312"
+exclude = ["*.ipynb"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B"]
