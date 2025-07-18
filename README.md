@@ -2,15 +2,13 @@
 
 [![git](https://img.shields.io/badge/repo-gitlab-orange)](https://gitlab.st-andrews.ac.uk/physics-and-astronomy/king-group/peaks)
 [![docs](https://img.shields.io/badge/docs-research.st--andrews-green?style=flat-square)](https://research.st-andrews.ac.uk/kinggroup/peaks)
-[![py](https://img.shields.io/badge/python->=3.12-blue)](https://www.python.org/)
-[![black](https://img.shields.io/badge/code--style-black-black)](https://black.readthedocs.io/)
-[![log](https://img.shields.io/badge/change-log-informational)]()
+[![Code Style: Ruff (Black-compatible)](https://img.shields.io/badge/code%20style-ruff-black?style=flat-square)](https://docs.astral.sh/ruff/formatter/)
 
 `peaks`: **P**ython **E**lectron Spectroscopy **A**nalysis by **K**ing Group **S**t Andrews.
 
 A collection of analysis tools for the loading, processing and display of spectroscopic data, with a core focus on tools for angle-resolved photoemission.
 
-`peaks` is an evolution of the `PyPhoto` package originally developed by Phil King, Brendan Edwards, Tommaso Antonelli, Edgar Abarca Morales, and Lewis Hart from the King group at the University of St Andrews. This version of `peaks` is the result of a major restructuring of the package in 2023-2025 by Brendan Edwards and Phil King, with additional contributions from Shu Mo.
+`peaks` is an evolution of the `PyPhoto` package originally developed by Phil King, Brendan Edwards, Tommaso Antonelli, Edgar Abarca Morales, and Lewis Hart from the King group at the University of St Andrews. This version of `peaks` is the result of a major restructuring of the package in 2023-2025 by Brendan Edwards and Phil King, with significant additional contributions from Shu Mo.
 
 Copyright the above authors. Contact pdk6@st-andrews.ac.uk for further information, to contribute, and for bug reporting.
 
@@ -53,3 +51,14 @@ The peaks documentation can be found at [research.st-andrews.ac.uk/kinggroup/pea
 
 ## Contributing
 Contributions to the package are welcome. Please see the [contributing guide](#contributing_section) in the documentation for more information.
+
+## License
+Copyright 2019-2025, peaks developors
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
+
+https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
+
+peaks also makes extensive use of many other packages - see dependencies in pyproject.toml and their relevant licenses in the source control of those packages. 
