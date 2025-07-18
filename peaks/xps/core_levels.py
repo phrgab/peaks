@@ -310,7 +310,7 @@ class CoreLevels:
             Photon energy in eV. If not specified, binding energy is displayed. If
             specified, kinetic energy is displayed.
         """
-        from peaks.core.utils.ptab import ptab
+        from peaks.core.GUI.periodic_table.ptab import ptab
 
         if hv is None:
             tooltip = "Binding energy:<br>@{core levels}{safe}"
