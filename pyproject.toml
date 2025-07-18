@@ -4,7 +4,7 @@ requires = ["flit_core >=3.2,<4"]
 
 [project]
 name = "peaks"
-description = "Python Electron Spectroscopy and Diffraction Analysis by King Group St Andrews"
+description = "Python Electron spectroscopy Analysis by King group @ St Andrews"
 requires-python = ">=3.12"
 dependencies = [
         "ipykernel (>=6.25,<7)",
@@ -43,6 +43,10 @@ email = "pdk6@st-andrews.ac.uk"
 [[project.authors]]
 name = "Brendan Edwards"
 email = "be23@st-andrews.ac.uk"
+
+[[project.authors]]
+name = "Shu Mo"
+email = "sm584@st-andrews.ac.uk"
 
 [project.urls]
 Source = "https://gitlab.st-andrews.ac.uk/physics-and-astronomy/king-group/peaks"
