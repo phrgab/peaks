@@ -91,7 +91,9 @@ class MBSDataLoader(BaseARPESDataLoader):
         y_scale_name, y_scale_units = cls._parse_axis_name_and_units(
             metadata_dict_MBS_keys["ScaleName"]
         )
-        y_scale_name = "theta_par" if y_scale_name.lower() in ["angle", "y angle"] else "y_scale"
+        y_scale_name = (
+            "theta_par" if y_scale_name.lower() in ["angle", "y angle"] else "y_scale"
+        )
 
         return {
             "spectrum": spectrum,
@@ -170,7 +172,11 @@ class MBSDataLoader(BaseARPESDataLoader):
             y_scale_name, y_scale_units = cls._parse_axis_name_and_units(
                 metadata_dict_MBS_keys["ScaleName"]
             )
-            y_scale_name = "theta_par" if y_scale_name.lower() in ["angle", "y angle"] else "y_scale"
+            y_scale_name = (
+                "theta_par"
+                if y_scale_name.lower() in ["angle", "y angle"]
+                else "y_scale"
+            )
 
             # If there is a single image, load 2D spectrum
             if num_images == 1:
@@ -267,9 +273,7 @@ class MBSDataLoader(BaseARPESDataLoader):
             }
             ext = fpath.split(".")[-1]
             metadata_lines = handlers[ext](fpath)
-            metadata_dict_MBS_keys = cls._MBS_metadata_to_dict_w_MBS_keys(
-                metadata_lines
-            )
+            metadata_dict_MBS_keys = cls._MBS_metadata_to_dict_w_MBS_keys(metadata_lines)
 
         if return_in_MBS_format:
             return metadata_dict_MBS_keys

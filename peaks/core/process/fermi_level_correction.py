@@ -1,6 +1,4 @@
-"""Functions used to apply Fermi level corrections to data.
-
-"""
+"""Functions used to apply Fermi level corrections to data."""
 
 import numpy as np
 import xarray as xr
@@ -109,9 +107,7 @@ def _flatten_EF(da):
 
     # Calculate interpolation target
     Ek_values = EK_new[:, np.newaxis] + EF_shift[np.newaxis, :]
-    theta_par_values = np.broadcast_to(
-        da.theta_par.data[np.newaxis, :], Ek_values.shape
-    )
+    theta_par_values = np.broadcast_to(da.theta_par.data[np.newaxis, :], Ek_values.shape)
 
     # Interpolate onto new energy scale
     interpolated_data = xr.apply_ufunc(

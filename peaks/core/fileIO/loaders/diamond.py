@@ -378,7 +378,9 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
         coords_to_apply = {dim: coords.get(dim) for dim in dims if dim != "dummy"}
         # Handle the special case of an hv scan, where the kinetic energy is 2D
         for dim, coord in coords_to_apply.copy().items():
-            if coord.ndim == 2 and not np.array_equal(coords_to_apply["energies"][0], coords_to_apply["energies"][1]):
+            if coord.ndim == 2 and not np.array_equal(
+                coords_to_apply["energies"][0], coords_to_apply["energies"][1]
+            ):
                 # Should be a 2D array with shape (value, KE) where value is the changing hv dim
                 hv_coord_label = {"value", "energy"}.intersection(
                     set(coords_to_apply.keys())
@@ -397,7 +399,9 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
                         "warning",
                         "Unexpected data shape",
                     )
-            elif coord.ndim == 2 and np.array_equal(coords_to_apply["energies"][0], coords_to_apply["energies"][1]):
+            elif coord.ndim == 2 and np.array_equal(
+                coords_to_apply["energies"][0], coords_to_apply["energies"][1]
+            ):
                 # Deal with deflector maps with the energy axis somehow to be 2D
                 coords_to_apply[dim] = coord[0]
         da = da.assign_coords(coords_to_apply)
@@ -476,8 +480,7 @@ class I05NanoARPESLoader(I05ARPESLoader):
         "x3": "smz",
         "defocus": "smdefocus",
     }
-    _manipulator_sign_conventions = {
-    }
+    _manipulator_sign_conventions = {}
 
     _analyser_sign_conventions = {
         "theta_par": -1,

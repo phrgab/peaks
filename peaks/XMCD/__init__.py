@@ -1,3 +1,1 @@
-"""Functions used for X-ray magnetic circular dichroism data.
-
-"""
+"""Functions used for X-ray magnetic circular dichroism data."""

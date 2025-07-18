@@ -625,9 +625,7 @@ def rotate(data, rotation, **centre_kwargs):
     # Check user-defined centre of rotations
     for dim in centre_kwargs.keys():
         if dim not in data.dims:
-            raise Exception(
-                f"{dim} is not a valid dimension of the inputted DataArray."
-            )
+            raise Exception(f"{dim} is not a valid dimension of the inputted DataArray.")
 
     # Get the relevant dimensions and centre of rotation
     if len(data.dims) == 2:
@@ -930,9 +928,7 @@ def sym_nfold(data, nfold, expand=True, fillna=True, **centre_kwargs):
     # Check user-defined centre of rotations
     for dim in centre_kwargs.keys():
         if dim not in data.dims:
-            raise Exception(
-                f"{dim} is not a valid dimension of the inputted DataArray."
-            )
+            raise Exception(f"{dim} is not a valid dimension of the inputted DataArray.")
 
     # Get the relevant dimensions
     if len(data.dims) == 2:

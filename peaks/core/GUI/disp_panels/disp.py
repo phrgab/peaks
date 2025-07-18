@@ -1,6 +1,4 @@
-"""Master function for interactive display panels.
-
-"""
+"""Master function for interactive display panels."""
 
 import xarray as xr
 

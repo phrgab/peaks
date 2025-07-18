@@ -106,6 +106,3 @@ list, or np.ndarray of length 3."
         )
 
     return df
-
-
-

@@ -232,9 +232,7 @@ def add(dt, data_source, name=None, add_at_root=False, **kwargs):
             return
 
         # Otherwise, add them as a new group with the given name or a default name
-        name = (
-            _make_name_callable(name) if name else _make_name_unique("scan_group", dt)
-        )
+        name = _make_name_callable(name) if name else _make_name_unique("scan_group", dt)
         data_source.name = name
         dt[name] = data_source
         return

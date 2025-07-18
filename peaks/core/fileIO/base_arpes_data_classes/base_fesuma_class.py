@@ -81,9 +81,7 @@ class BaseFeSuMaDataLoader(BaseARPESDataLoader):
                         self.eV = np.linspace(
                             float(f["AcquisitionEkinStart"][0]),
                             float(f["AcquisitionEkinStart"][0])
-                            + (
-                                f["AcquisitionEkinStep"][0] * (len(set(self.steps)) - 1)
-                            ),
+                            + (f["AcquisitionEkinStep"][0] * (len(set(self.steps)) - 1)),
                             len(set(self.steps)),
                         )
                     except KeyError:
@@ -96,8 +94,7 @@ class BaseFeSuMaDataLoader(BaseARPESDataLoader):
                             float(f["AcquisitionDelayStart"][0]),
                             float(f["AcquisitionDelayStart"][0])
                             + (
-                                f["AcquisitionDelayStep"][0]
-                                * (len(set(self.steps)) - 1)
+                                f["AcquisitionDelayStep"][0] * (len(set(self.steps)) - 1)
                             ),
                             len(set(self.steps)),
                         )

@@ -32,9 +32,7 @@ class SESDataLoader(BaseARPESDataLoader):
     """
 
     _loc_name = "SES"
-    _loc_description = (
-        "Loader for data acquired using the Scienta Omicron SES software."
-    )
+    _loc_description = "Loader for data acquired using the Scienta Omicron SES software."
     _loc_url = "https://scientaomicron.com"
     # Dictionary to overwrite or add to default metadata keys:
     _SES_metadata_key_mappings = {}  # mappings from SES metadata key to peaks key
@@ -119,9 +117,7 @@ class SESDataLoader(BaseARPESDataLoader):
         with zipfile.ZipFile(fpath) as z:
             files = z.namelist()
             file_bin = [file for file in files if ".bin" in file]
-            file_ini = [
-                file for file in files if "Spectrum_" in file and ".ini" in file
-            ]
+            file_ini = [file for file in files if "Spectrum_" in file and ".ini" in file]
 
             filename = file_bin[scan_no]
             filename_ini = file_ini[scan_no]
@@ -150,9 +146,7 @@ class SESDataLoader(BaseARPESDataLoader):
             theta_par_start = float(scan_metadata["heightoffset"])
             theta_par_step = float(scan_metadata["heightdelta"])
             theta_par_end = theta_par_start + (theta_par_step * (num_theta_par - 1))
-            theta_par_values = np.linspace(
-                theta_par_start, theta_par_end, num_theta_par
-            )
+            theta_par_values = np.linspace(theta_par_start, theta_par_end, num_theta_par)
             theta_par_units = cls._parse_SES_units_from_name(
                 scan_metadata.get("heightlabel", "")
             )
@@ -162,9 +156,7 @@ class SESDataLoader(BaseARPESDataLoader):
             defl_perp_start = float(scan_metadata["depthoffset"])
             defl_perp_step = float(scan_metadata["depthdelta"])
             defl_perp_end = defl_perp_start + (defl_perp_step * (num_defl_perp - 1))
-            defl_perp_values = np.linspace(
-                defl_perp_start, defl_perp_end, num_defl_perp
-            )
+            defl_perp_values = np.linspace(defl_perp_start, defl_perp_end, num_defl_perp)
             defl_perp_units = cls._parse_SES_units_from_name(
                 scan_metadata.get("depthlabel", "")
             )
@@ -214,9 +206,7 @@ class SESDataLoader(BaseARPESDataLoader):
             if "hv" in axis.lower() or "photon" in axis.lower()
         ]
         if has_binding_energy_dim or pos_or_point_scan_dim or has_hv_dim:
-            metadata_dict_SES_keys = cls._load_metadata(
-                fpath, return_in_SES_format=True
-            )
+            metadata_dict_SES_keys = cls._load_metadata(fpath, return_in_SES_format=True)
 
             if pos_or_point_scan_dim:
                 # Parse the manipulator (or other external) data for the scan
@@ -376,9 +366,7 @@ class SESDataLoader(BaseARPESDataLoader):
             }
             ext = fpath.split(".")[-1]
             metadata_lines = handlers[ext](fpath)
-            metadata_dict_SES_keys = cls._SES_metadata_to_dict_w_SES_keys(
-                metadata_lines
-            )
+            metadata_dict_SES_keys = cls._SES_metadata_to_dict_w_SES_keys(metadata_lines)
             # Check if there is additional run mode information in the metadata
             try:
                 run_mode_info_start_index = metadata_lines.index(

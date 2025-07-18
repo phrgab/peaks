@@ -212,7 +212,6 @@ class ARPESMetadataModel(BaseMetadataModel):
 
 
 class ARPESCalibrationModel(BaseMetadataModel):
-
     EF_correction: Optional[
         Union[
             float,

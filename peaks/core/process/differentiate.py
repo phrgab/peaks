@@ -1,6 +1,4 @@
-"""Functions used for derivative operations on data.
-
-"""
+"""Functions used for derivative operations on data."""
 
 import numpy as np
 from scipy.ndimage import gaussian_gradient_magnitude

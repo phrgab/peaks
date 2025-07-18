@@ -807,8 +807,7 @@ def disp_from_hv(da, hv):
         hv_scan["eV"] = hv_scan.eV.data + hv_scan.KE_delta.data
     else:
         hv_scan["eV"] = (
-            hv_scan.eV.data
-            + hv_scan.KE_delta.pint.to(orig_units).pint.dequantify().data
+            hv_scan.eV.data + hv_scan.KE_delta.pint.to(orig_units).pint.dequantify().data
         )  # Handle unit conversion
         hv_scan = hv_scan.pint.quantify(eV=orig_units)  # Add the units back
 

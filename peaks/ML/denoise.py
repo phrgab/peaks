@@ -1,6 +1,4 @@
-"""Functions that utilise machine learning techniques to denoise data.
-
-"""
+"""Functions that utilise machine learning techniques to denoise data."""
 
 # Brendan Edwards 31/10/2023
 

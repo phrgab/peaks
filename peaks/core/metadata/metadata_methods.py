@@ -365,9 +365,7 @@ class Metadata:
         # Get any set reference data in da
         current_reference_data = {
             axis: {
-                "reference_value": getattr(
-                    da.metadata.manipulator, axis
-                ).reference_value
+                "reference_value": getattr(da.metadata.manipulator, axis).reference_value
             }
             for axis in axes
             if getattr(da.metadata.manipulator, axis).reference_value is not None
