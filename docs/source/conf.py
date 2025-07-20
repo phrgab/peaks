@@ -119,9 +119,9 @@ html_theme_options = {
     ],
     "icon_links": [
         {
-            "name": "GitLab",
-            "url": "https://gitlab.st-andrews.ac.uk/physics-and-astronomy/king-group/peaks",
-            "icon": "fa-brands fa-solid fa-gitlab fa-2x",
+            "name": "GitHub",
+            "url": "https://github.com/phrgab/peaks",
+            "icon": "fa-brands fa-solid fa-github fa-2x",
             "type": "fontawesome",
         }
     ],

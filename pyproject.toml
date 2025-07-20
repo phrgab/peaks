@@ -80,5 +80,5 @@ exclude = ["*.ipynb"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B"]
-ignore = ["E203", "E501"]  # <- Move E501 here
+ignore = ["E203", "E501"]
 fixable = ["I"]
