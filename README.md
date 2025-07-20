@@ -22,7 +22,7 @@ Edgar Abarca Morales, and Lewis Hart \
 !!ref to be inserted!!
 ::: 
 
-Copyright the above authors. Contact pdk6@st-andrews.ac.uk.
+Contact pdk6@st-andrews.ac.uk.
 
 <!-- overview-end -->
 
