@@ -183,6 +183,7 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
     }
 
     _manipulator_sign_conventions = {
+        # HR-branch
         "tilt": -1,
         "azi": -1,
     }
@@ -477,6 +478,8 @@ class I05NanoARPESLoader(I05ARPESLoader):
         "defocus": "smdefocus",
     }
     _manipulator_sign_conventions = {
+        # Nano-branch
+        "azi": -1,
     }
 
     _analyser_sign_conventions = {
