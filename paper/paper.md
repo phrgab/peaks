@@ -20,6 +20,8 @@ authors:
     affiliation: 1
   - name: Lewis Hart
     affiliation: 1
+  - name: Liam Trzaska
+    affiliation: 1
 
 affiliations:
  - name: SUPA, School of Physics and Astronomy, University of St Andrews, St Andrews, KY16 9SS, UK
