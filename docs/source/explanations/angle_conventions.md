@@ -4,7 +4,6 @@
 
 The primary `peaks` coordinate convention is shown [below](#coord_conventions_figure).
 ```{figure} ../figs/peaks-reference-sign-conventions.png
-:scale: 50 %
 :alt: angle conventions schematic
 :name: coord_conventions_figure
 
