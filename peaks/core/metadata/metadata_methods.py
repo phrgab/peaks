@@ -20,7 +20,7 @@ ureg = pint_xarray.unit_registry
 
 def display_metadata(da_or_model, mode="ANSI"):
     # Recursive function to display dictionary with colored keys
-    colours = ["green", "blue", "red", "yellow"]
+    colours = ["#44AA99", "#88CCEE", "#DDCC77", "#CC6677"]
 
     # Recursive function to display dictionary with cycling colors for each indent level
     def display_colored_dict(d, indent_level=0, col_cycle=0):
@@ -39,7 +39,7 @@ def display_metadata(da_or_model, mode="ANSI"):
 
     def display_colored_dict_html(d, indent_level=0, col_cycle=0):
         indent = "&nbsp;" * 4 * indent_level
-        colours = ["green", "blue", "red", "yellow"]
+        colours = ["#44AA99", "#88CCEE", "#DDCC77", "#CC6677"]
         current_color = colours[col_cycle % len(colours)]  # Cycle through colors
         lines = []
         for key, value in d.items():

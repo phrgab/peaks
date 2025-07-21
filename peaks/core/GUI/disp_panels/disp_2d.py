@@ -73,12 +73,12 @@ class _Disp2D(QtWidgets.QMainWindow):
             [None for i in range(self.num_xhs)],
         ]  # Store for (dim0, dim1) DC positions
         self.xh_visible_store = []
-        self.DC_pens = [(0, 255, 0), (255, 0, 0), (0, 0, 255), (255, 255, 0)]
+        self.DC_pens = [(238, 119, 51), (51, 187, 238), (204, 51, 153), (0, 153, 136)]
         self.xh_brushes = [
-            (0, 255, 0, 50),
-            (255, 0, 0, 50),
-            (0, 0, 255, 50),
-            (255, 255, 0, 50),
+            (238, 119, 51, 70),
+            (51, 187, 238, 70),
+            (204, 51, 153, 70),
+            (0, 153, 136, 70),
         ]
 
         # Set keys for the keyboard control

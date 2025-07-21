@@ -55,7 +55,7 @@ class _Disp4D(QtWidgets.QMainWindow):
         self.data = data
 
         # Set some options
-        self.xh_brush = (255, 0, 0, 50)
+        self.xh_brush = (255, 0, 255, 50)
 
         # Set up the GUI
         self._init_UI()  # Initialize the layout
