@@ -70,18 +70,18 @@ class _Disp3D(QtWidgets.QMainWindow):
         self.metadata_text += "</span><br>"
 
         # Crosshair options
-        self.DC_pen = (51, 187, 238)
+        self.DC_pen = (238, 119, 51)
         self.DC_mirror_pen = pg.mkPen(
-            color=(238, 119, 51),
+            color=(51, 187, 238),
             style=QtCore.Qt.PenStyle.DashLine,
         )
         self.align_aid_pen = pg.mkPen(
-            color=(36, 117, 207),
+            color=(199, 83, 0),
             style=QtCore.Qt.PenStyle.DotLine,
-            width=2,
+            width=2.5,
         )
-        self.xh_brush = (36, 117, 207, 60)
-        self.DC_xh_brush = (51, 187, 238, 80)
+        self.xh_brush = (199, 83, 0, 60)
+        self.DC_xh_brush = (238, 119, 51, 80)
 
         # Set keys for the keyboard control
         def _get_key(param):
