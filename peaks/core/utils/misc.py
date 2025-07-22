@@ -1,8 +1,12 @@
 """Miscellaneous helper functions."""
 
+import time
+
 import xarray as xr
+from dask.callbacks import Callback
 from IPython.display import Javascript, Markdown, display
 from termcolor import colored
+from tqdm.auto import tqdm
 
 
 def analysis_warning(text, warn_type="info", title="Analysis info", quiet=False):
@@ -171,3 +175,56 @@ def make_cell(text, below=True, execute=True):
             """
                 )
             )
+
+
+class DaskTQDMProgressBar(Callback):
+    """
+    A global Dask progress bar using tqdm that mimics Dask's ProgressBar(minimum=...).
+    """
+
+    def __init__(self, desc="Dask compute", minimum=1.0, mininterval=0.1):
+        """
+        Parameters
+        ------------
+        desc : str, optional
+            Label for the progress bar. Defaults to "Dask compute".
+        minimum : float, optional
+            Delay (in seconds) before showing the bar. Defaults to 1.0.
+        mininterval : float, optional
+            Minimum interval between visual updates (in seconds). Defaults to 0.1.
+        """
+        self.desc = desc
+        self.minimum = minimum
+        self.mininterval = mininterval
+        self._tqdm = None
+        self._start_time = None
+        self._pending_updates = 0
+        self._showing = False
+
+    def _start_state(self, dsk, state):
+        self.total = sum(
+            len(state[k]) for k in ["ready", "waiting", "running", "finished"]
+        )
+        self._start_time = time.time()
+        self._pending_updates = 0
+        self._showing = False
+
+    def _posttask(self, key, result, dsk, state, id):
+        self._pending_updates += 1
+        elapsed = time.time() - self._start_time
+
+        if not self._showing and elapsed >= self.minimum:
+            self._tqdm = tqdm(
+                total=self.total,
+                desc=self.desc,
+                leave=True,
+                mininterval=self.mininterval,
+            )
+            self._tqdm.update(self._pending_updates)
+            self._showing = True
+        elif self._showing:
+            self._tqdm.update(1)
+
+    def _finish(self, dsk, state, errored):
+        if self._tqdm:
+            self._tqdm.close()
