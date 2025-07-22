@@ -37,32 +37,48 @@ bash ./tests/test_tutorials.sh
 This will also be run in CI for merge requests, and only passing tests will usually be merged.
 
 
-## Linting and Formatting with Ruff
+## Linting and Formatting 
+### Ruff (black-compatible) code style
 
-We use [`Ruff`](https://docs.astral.sh/ruff/) for linting, import sorting, and formatting (largely following [black](https://black.readthedocs.io/en/stable/the_black_code_style/current_style.html) code style.). `Ruff` is installed as part of the developer optional dependencies and can be run on the code base manually:
+We use [`Ruff`](https://docs.astral.sh/ruff/) for general linting, import sorting, and formatting (largely following [black](https://black.readthedocs.io/en/stable/the_black_code_style/current_style.html) code style.). `Ruff` is installed as part of the developer optional dependencies, and can be run on the code base manually:
 ```bash
 ruff check . --fix               # Auto-fix lint issues
 ruff format .                    # Format code (like Black)
 ```
 
+### Stripping tutorial notebooks
+The output and metadata of the tutorial notebooks should be stripped using `nbstripout`. This is isntalled as part of the developer optional dependencies, and can be run on the code base manually:
+```bash
+nbstripout tutorials/**/*.ipynb
+```
+
 ### Pre-commit hook
-A pre-commit hook is avaialble for checking and fixing lint issues where possible and formatting the code. From the project root, to register the hook:
+A pre-commit hook is avaialble for automating the above formatting operations upon commits. From the project root, to register the hook:
 ```bash
 pre-commit install
 ```
-Now Ruff will automatically check and fix code on each commit. For manual use:
+The Ruff checks/formatting and the nbstripout will automatically run on the staged files on each commit. This fails if any changes are made to the files, in which case these should be restaged. For manual use:
 ```bash
 # Run all checks on all files
 pre-commit run --all-files
+
+# Run on currently staged files
+pre-commit run
+
+# Run specific hooks
+pre-commit run ruff-check  # Runs ruff-check hook
+pre-commit run ruff-format  # Runs ruff-format hook
+pre-commit runn nbstripout  # Runs nbstripout hook
 ```
 
 ### CI enforcement
-Ruff also runs in CI. Commits and merge requests will fail if:
+Ruff and nbstripout also runs in a pipeline on CI. Merge requests will fail if:
 
 - Code is not formatted
 - Lint errors are found except for line-length errors
+- Notebooks are not already stripped
 
-Bundled ipython notebooks are automatically excluded from the linting and checking.
+Note, bundled ipython notebooks are automatically excluded from the linting and format checking.
 
 ## Changelog
 All notable changes to the project should be documented in the `CHANGELOG.md` file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
@@ -82,14 +98,15 @@ We are using `intersphinx` to make links to other documentation, which can be qu
 The hosted documentation is automatically built by Gitlab CI, and updated on each merge to the main branch and on the release of a new tagged version. It is important that all of the tutorials can run without any local data files. If specific example data is required which is not already avaialble in the `peaks.core.utils.sample_data` module, raise an Issue to discuss adding a new example dataset there.
 
 :::{tip}
-To make a local build of the documentation, install `peaks` including the optional `[docs]` dependency. To build the documentation, navigate to the `docs` directory and run:
+To make a local build of the documentation, install `peaks` including the optional `[docs]` dependency. To build the documentation, navigate to the `docs` directory and run one of the following commands:
 ```bash
-cp -f -r ../tutorials/* source/_tutorials/  # Copy the latest tutorials
-make clean  # Clean the old documentation
-make html  # Build the documentation
+./build_docs.sh              # Default: no execution of the tutorial notebooks, no clean
+./build_docs.sh --clean      # Cleans before building
+./build_docs.sh --exec-nb # Forces notebook execution
+./build_docs.sh --clean --exec-nb
 ```
 
- Note, the version selector will not work for a local build of the documentation.
+The documentation will now be built and located in `/docs/build/html`. Note, the version selector will not work for a local build of the documentation.
 :::
 
 
