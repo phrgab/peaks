@@ -76,11 +76,11 @@ class _Disp3D(QtWidgets.QMainWindow):
             style=QtCore.Qt.PenStyle.DashLine,
         )
         self.align_aid_pen = pg.mkPen(
-            color=(204, 51, 153),
+            color=(36, 117, 207),
             style=QtCore.Qt.PenStyle.DotLine,
             width=2,
         )
-        self.xh_brush = (204, 51, 153, 60)
+        self.xh_brush = (36, 117, 207, 60)
         self.DC_xh_brush = (51, 187, 238, 80)
 
         # Set keys for the keyboard control
