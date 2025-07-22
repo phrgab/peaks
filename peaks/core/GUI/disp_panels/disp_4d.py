@@ -137,7 +137,7 @@ class _Disp4D(QtWidgets.QMainWindow):
         # Add a ROI
         self.roi_dim01 = pg.PolyLineROI(
             positions=self._set_ROI_default_pos(0, 1),
-            pen=pg.mkPen("k", width=3),
+            pen=pg.mkPen("k", width=2.5),
             handlePen=pg.mkPen("k", width=2),
             closed=True,
         )
@@ -543,8 +543,8 @@ class _Disp4D(QtWidgets.QMainWindow):
             ROI_points = self._set_ROI_default_pos(2, 3)
         self.roi_dim23 = pg.PolyLineROI(
             positions=ROI_points,
-            pen=pg.mkPen((36, 117, 207), width=3),
-            handlePen=pg.mkPen((36, 117, 207), width=2),
+            pen=pg.mkPen((199, 83, 0), width=2.5),
+            handlePen=pg.mkPen((199, 83, 0), width=2),
             closed=True,
         )
         self.roi_disp2d.image_plot.addItem(self.roi_dim23)
