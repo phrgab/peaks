@@ -35,7 +35,7 @@ def display_metadata(da_or_model, mode="ANSI"):
         lines = []
         for key, value in d.items():
             if isinstance(value, dict):  # Nested dictionary (recursive case)
-                lines.append(f"{indent}{colored(key, current_color)}:")
+                lines.append(f"{indent}{current_color}{key}{RESET}:")
                 lines.extend(
                     display_colored_dict(value, indent_level + 1, col_cycle + 1)
                 )
