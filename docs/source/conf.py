@@ -80,7 +80,8 @@ napoleon_type_aliases = None
 napoleon_attr_annotations = True
 
 # myst-nb settings
-nb_execution_mode = "off"
+nb_execution_mode = "force" if os.getenv("FORCE_NB_EXECUTION") == "1" else "off"
+nb_execution_timeout = 300
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -95,6 +96,7 @@ myst_enable_extensions = [
     "tasklist",
     "fieldlist",
     "substitution",
+    "target-roles",
 ]
 
 myst_substitutions = {
