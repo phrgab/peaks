@@ -52,7 +52,7 @@ autoapi_options = [
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "pyserial": ("https://pyserial.readthedocs.io/en/latest/", None),
-    "xarray": ("https://xarray.pydata.org/en/stable/", None),
+    "xarray": ("https://docs.xarray.dev/en/stable/", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
     "dask": ("https://docs.dask.org/en/latest/", None),
     "matplotlib": ("https://matplotlib.org/stable/", None),
@@ -89,6 +89,7 @@ nb_execution_timeout = 300
 html_theme = "pydata_sphinx_theme"
 
 myst_enable_extensions = [
+    "target-roles",
     "colon_fence",
     "amsmath",
     "dollarmath",
@@ -96,7 +97,6 @@ myst_enable_extensions = [
     "tasklist",
     "fieldlist",
     "substitution",
-    "target-roles",
 ]
 
 myst_substitutions = {
