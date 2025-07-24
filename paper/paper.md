@@ -20,6 +20,7 @@ authors:
     affiliation: 1
   - name: Edgar Abarca Morales
     affiliation: 1
+    orcid: 0000-0002-7714-8228
   - name: Lewis Hart
     affiliation: 1
     orcid: 0000-0002-8598-6272
