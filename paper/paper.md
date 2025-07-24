@@ -18,6 +18,7 @@ authors:
     orcid: 0009-0009-1750-0363
   - name: Tommaso Antonelli
     affiliation: 1
+    orcid: 0000-0002-4990-7813
   - name: Edgar Abarca Morales
     affiliation: 1
     orcid: 0000-0002-7714-8228
