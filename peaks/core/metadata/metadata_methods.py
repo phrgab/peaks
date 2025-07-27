@@ -21,10 +21,10 @@ ureg = pint_xarray.unit_registry
 def display_metadata(da_or_model, mode="ANSI"):
     # Recursive function to display dictionary with colored keys
     colours = [
-            "\x1b[38;2;68;170;153m",  # #44AA99
-            "\x1b[38;2;136;204;238m",  # #88CCEE
-            "\x1b[38;2;221;204;119m",  # #DDCC77
-            "\x1b[38;2;204;102;119m",  # #CC6677
+            "\x1b[38;2;187;85;0m",  # orange
+            "\x1b[38;2;0;90;181m",  # blue
+            "\x1b[38;2;212;17;89m",  # magenta
+            "\x1b[38;2;0;133;119m",  # green
     ]
     RESET = "\x1b[0m"
 
