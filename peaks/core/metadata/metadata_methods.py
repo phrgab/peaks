@@ -45,7 +45,7 @@ def display_metadata(da_or_model, mode="ANSI"):
 
     def display_colored_dict_html(d, indent_level=0, col_cycle=0):
         indent = "&nbsp;" * 4 * indent_level
-        colours = ["#44AA99", "#88CCEE", "#DDCC77", "#CC6677"]
+        colours = ["#DDCC77", "#88CCEE", "#CC6677", "#44AA99"]
         current_color = colours[col_cycle % len(colours)]  # Cycle through colors
         lines = []
         for key, value in d.items():
