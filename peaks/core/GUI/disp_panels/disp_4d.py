@@ -137,8 +137,8 @@ class _Disp4D(QtWidgets.QMainWindow):
         # Add a ROI
         self.roi_dim01 = pg.PolyLineROI(
             positions=self._set_ROI_default_pos(0, 1),
-            pen=pg.mkPen("k", width=2.5),
-            handlePen=pg.mkPen("k", width=2),
+            pen=pg.mkPen((204, 51, 153), width=2.5),
+            handlePen=pg.mkPen((204, 51, 153), width=2),
             closed=True,
         )
         self.primary_dims_roi_plot.addItem(self.roi_dim01)
