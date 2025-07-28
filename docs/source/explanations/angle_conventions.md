@@ -3,7 +3,7 @@
 `peaks` aims to ensure a consistent handling of angle sign conventions in ARPES $k$-conversions, while still facilitating its easy use for on-the-fly analysis during data acquisition, where it is helpful to keep the same sign conventions as for the host system. 
 
 The primary `peaks` coordinate convention is shown [below](#coord_conventions_figure).
-```{figure} ../figs/peaks-reference-sign-conventions.png
+```{figure} ../figs/peaks-full-ref-sign-conventions.png
 :alt: angle conventions schematic
 :name: coord_conventions_figure
 
