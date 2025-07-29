@@ -1,7 +1,8 @@
 import xarray as xr
+
 from peaks.core.accessors.accessor_methods import (
-    register_lazy_accessor,
     PeaksDataTreeIteratorAccessor,
+    register_lazy_accessor,
 )
 
 # List of function names (and the module they belong to) to directly register the accessor on DataTree

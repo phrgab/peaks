@@ -36,7 +36,7 @@ class BaseIBWDataLoader(BaseDataLoader):
         dim_points = file_contents["wave"]["wave_header"]["nDim"]  # Number of points
         dim_end = dim_start + (dim_step * (dim_points - 1))
 
-        # Loop through the dimensions and extract the relevant dimension names and coordinates
+        # Loop through the dimensions, extract relevant dimension names and coordinates
         dims = []
         coords = {}
         counter = 0
@@ -62,21 +62,22 @@ class BaseIBWDataLoader(BaseDataLoader):
             # Determine file version and extract file information
             version = np.fromfile(f, dtype=np.dtype("int16"), count=1)[0]
             if version == 2:
-                # The size of the WaveHeader2 data structure plus the wave data plus 16 bytes of padding.
+                # The size of the WaveHeader2 data structure plus the wave data plus 16
+                # bytes of padding.
                 wfmSize = np.fromfile(f, dtype=np.dtype("uint32"), count=1)[0]
                 # The size of the note text.
                 noteSize = np.fromfile(f, dtype=np.dtype("uint32"), count=1)[0]
                 # Reserved. Write zero. Ignore on read.
-                pictSize = np.fromfile(f, dtype=np.dtype("uint32"), count=1)[0]
+                pictSize = np.fromfile(f, dtype=np.dtype("uint32"), count=1)[0]  # noqa: F841
                 # Checksum over this header and the wave header.
-                checksum = np.fromfile(f, dtype=np.dtype("int16"), count=1)[0]
+                checksum = np.fromfile(f, dtype=np.dtype("int16"), count=1)[0]  # noqa: F841
             elif version == 5:
                 # Checksum over this header and the wave header.
-                checksum = np.fromfile(f, dtype=np.dtype("short"), count=1)[0]
+                checksum = np.fromfile(f, dtype=np.dtype("short"), count=1)[0]  # noqa: F841
                 # The size of the WaveHeader5 data structure plus the wave data.
-                wfmSize = np.fromfile(f, dtype=np.dtype("int32"), count=1)[0]
+                wfmSize = np.fromfile(f, dtype=np.dtype("int32"), count=1)[0]  # noqa: F841
                 # The size of the dependency formula, if any.
-                formulaSize = np.fromfile(f, dtype=np.dtype("int32"), count=1)[0]
+                formulaSize = np.fromfile(f, dtype=np.dtype("int32"), count=1)[0]  # noqa: F841
                 # The size of the note text.
                 noteSize = np.fromfile(f, dtype=np.dtype("int32"), count=1)[0]
                 # The size of optional extended data units.
@@ -114,11 +115,13 @@ class BaseIBWDataLoader(BaseDataLoader):
                     + optionsSize2.sum()
                 )
 
-            # Move the file pointer to the location pointed by pointer_location, considering the offset
+            # Move the file pointer to the location pointed by pointer_location,
+            # considering the offset
             f.seek(pointer_location - offset)
             # read that bytes/characters to determine the wavenote
             wavenote = f.read(offset).decode()
-            # NB No not cache the wavenote, as other loaders rely on this method and that screws things up
+            # NB No not cache the wavenote, as other loaders rely on this method and
+            # that screws things up
 
         return {"wavenote": wavenote}
 

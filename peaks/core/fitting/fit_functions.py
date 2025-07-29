@@ -1,7 +1,7 @@
 import numba
 import numpy as np
-from scipy.special import expit
 from scipy.constants import physical_constants
+from scipy.special import expit
 
 TINY = 1.0e-15
 kb_eV, _, _ = physical_constants["Boltzmann constant in eV/K"]

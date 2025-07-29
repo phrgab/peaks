@@ -28,12 +28,12 @@ xr.set_options(
     display_expand_data=False,
 )
 
-# Register a dask progressbar with a minimum 1 second time
-from dask.diagnostics import ProgressBar as dask_prog_bar
+# # Register a progressbar for use during dask compute calls
+from peaks.core.utils.misc import DaskTQDMProgressBar
 
-dask_prog_bar(minimum=1).register()
+DaskTQDMProgressBar(desc="Evaluating deferred computation", minimum=1.0).register()
 
-# Enable pint accessor and sete default options
+# Enable pint accessor and set default options
 import pint_xarray
 
 ureg = pint_xarray.unit_registry

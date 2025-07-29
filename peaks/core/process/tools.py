@@ -625,9 +625,7 @@ def rotate(data, rotation, **centre_kwargs):
     # Check user-defined centre of rotations
     for dim in centre_kwargs.keys():
         if dim not in data.dims:
-            raise Exception(
-                f"{dim} is not a valid dimension of the inputted DataArray."
-            )
+            raise Exception(f"{dim} is not a valid dimension of the inputted DataArray.")
 
     # Get the relevant dimensions and centre of rotation
     if len(data.dims) == 2:
@@ -930,9 +928,7 @@ def sym_nfold(data, nfold, expand=True, fillna=True, **centre_kwargs):
     # Check user-defined centre of rotations
     for dim in centre_kwargs.keys():
         if dim not in data.dims:
-            raise Exception(
-                f"{dim} is not a valid dimension of the inputted DataArray."
-            )
+            raise Exception(f"{dim} is not a valid dimension of the inputted DataArray.")
 
     # Get the relevant dimensions
     if len(data.dims) == 2:
@@ -1522,9 +1518,7 @@ def subtract_data(data, quiet=False):
     return _sum_or_subtract_data(data, _sum=False, quiet=quiet)
 
 
-def merge_data(
-    data, dim="theta_par", sel=slice(None, None), offsets=None, hv_match_rounding=0
-):
+def merge_data(data, dim="theta_par", sel=None, offsets=None, hv_match_rounding=0):
     """Function to merge two or more DataArrays together along a given dimension.
 
     Parameters
@@ -1593,6 +1587,8 @@ def merge_data(
         merged_hv = pks.merge_data([hv_1, hv_2], dim='hv')
 
     """
+    if sel is None:
+        sel = slice(None, None)
 
     # If data is a DataTree, convert to a list
     if isinstance(data, xr.DataTree):

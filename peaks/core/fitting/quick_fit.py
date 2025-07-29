@@ -33,9 +33,7 @@ class QuickFit:
         if self._obj.ndim > 1:
             dependent_vars = set(self._obj.dims) - set([independent_var])
 
-            return (
-                self._obj.isel({dim: 0 for dim in dependent_vars}).squeeze().compute()
-            )
+            return self._obj.isel({dim: 0 for dim in dependent_vars}).squeeze().compute()
         else:
             return self._obj.compute()
 

@@ -67,7 +67,7 @@ class IdentifyLoc:
         # If measurement was performed using Specs analyser, location must be MAX IV Bloch-spin or StA-Phoibos
         if "SpecsLab" in line0:
             with open(fname) as f:
-                for i in range(30):
+                for _i in range(30):
                     # If the 'PhoibosSpin' identifier is present in any of the lines, location must be MAX IV Bloch-spin
                     if "PhoibosSpin" in f.readline():
                         return "MAX IV Bloch-spin"

@@ -70,18 +70,18 @@ class _Disp3D(QtWidgets.QMainWindow):
         self.metadata_text += "</span><br>"
 
         # Crosshair options
-        self.DC_pen = (255, 0, 0)
+        self.DC_pen = (238, 119, 51)
         self.DC_mirror_pen = pg.mkPen(
-            color=(0, 255, 0),
+            color=(51, 187, 238),
             style=QtCore.Qt.PenStyle.DashLine,
         )
         self.align_aid_pen = pg.mkPen(
-            color=(255, 255, 50),
+            color=(204, 51, 153),
             style=QtCore.Qt.PenStyle.DotLine,
-            width=2,
+            width=2.5,
         )
-        self.xh_brush = (255, 0, 0, 50)
-        self.DC_xh_brush = (255, 0, 0, 70)
+        self.xh_brush = (238, 119, 51, 60)
+        self.DC_xh_brush = (238, 119, 51, 80)
 
         # Set keys for the keyboard control
         def _get_key(param):
@@ -447,6 +447,11 @@ class _Disp3D(QtWidgets.QMainWindow):
                         self.ranges[active_dim_nos[1]],
                     ],
                     axisOrder="row-major",
+                    target_item_kwargs={
+                        "pen": pg.mkPen(color=(238, 119, 51)),
+                        "brush": pg.mkBrush(color=(238, 119, 51, 50)),
+                    },
+                    linear_region_item_kwargs={"pen": pg.mkPen(color=(238, 119, 51))},
                 )
             )
 
@@ -622,12 +627,12 @@ class _Disp3D(QtWidgets.QMainWindow):
         # Make primary data slice
         self._set_slice(1)
 
-        # Try to estimate a data centre position from this slice and update other xh positions
+        # Try to estimate data centre from this slice and update other xh positions
         try:
             centre = estimate_sym_point(self.images[1], dims=self.centering_dims)
-            for dim, centre in centre.items():
-                self.cursor_positions_selection[self.dims.index(dim)].setValue(centre)
-        except:
+            for dim, coord in centre.items():
+                self.cursor_positions_selection[self.dims.index(dim)].setValue(coord)
+        except Exception:
             pass
         # Make the coresponding slices
         self._set_slice(0)
@@ -870,9 +875,7 @@ class _Disp3D(QtWidgets.QMainWindow):
         }
         positions["azi_offset"] = -self.rotation_selection.value()
         try:
-            norm_emission = self.data.metadata.get_normal_emission_from_values(
-                positions
-            )
+            norm_emission = self.data.metadata.get_normal_emission_from_values(positions)
         except AttributeError:
             norm_emission = {}
 
@@ -898,7 +901,9 @@ class _Disp3D(QtWidgets.QMainWindow):
             signal.connect(partial(self._update_cursor_boxes, i))  # Update cursor boxes
         # Update alignment tool rotation changes
         self.rotation_selection.valueChanged.connect(self._update_align_xh_angle)
-        for angle, button in zip(self.rotation_delta, self.rotation_delta_buttons):
+        for angle, button in zip(
+            self.rotation_delta, self.rotation_delta_buttons, strict=True
+        ):
             button.clicked.connect(
                 partial(self._update_align_xh_angle_change_by_delta, angle)
             )

@@ -1,9 +1,10 @@
+from typing import Optional, Union
+
 import numpy as np
 import pint
 import pint_xarray
 from pydantic import BaseModel, ConfigDict
 from pydantic_core import core_schema
-from typing import Optional, Union
 
 # Define the appropriate unit registry
 ureg = pint_xarray.unit_registry
@@ -212,7 +213,6 @@ class ARPESMetadataModel(BaseMetadataModel):
 
 
 class ARPESCalibrationModel(BaseMetadataModel):
-
     EF_correction: Optional[
         Union[
             float,
