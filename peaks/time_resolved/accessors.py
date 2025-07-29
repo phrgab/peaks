@@ -1,5 +1,5 @@
-import xarray as xr
 import pint_xarray
+import xarray as xr
 
 from peaks.core.accessors.accessor_methods import (
     _pass_function_to_xarray_class_accessor,

@@ -1,15 +1,11 @@
-"""General data loading helper functions.
-
-"""
+"""General data loading helper functions."""
 
 # Phil King 15/05/2021
 # Brendan Edwards 26/02/2024
 
 import numpy as np
-import xarray as xr
-import h5py
-from termcolor import colored
-from peaks.core.fileIO.data_loading import _make_DataArray, _extract_mapping_metadata
+
+from peaks.core.fileIO.data_loading import _extract_mapping_metadata, _make_DataArray
 from peaks.core.utils.misc import analysis_warning
 
 
@@ -73,9 +69,7 @@ def make_hv_scan(data):
     KE0 = np.array(KE_values)[
         :, 0
     ]  # Get  the maximum kinetic energy of the scan as a function of photon energy
-    KE_delta = (
-        KE0 - KE0[0]
-    )  # Get the change in KE value of detector as a function of hv
+    KE_delta = KE0 - KE0[0]  # Get the change in KE value of detector as a function of hv
 
     # Define dictionary to be sent to the _make_DataArray function to make a xarray.DataArray
     data_dict = {

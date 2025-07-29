@@ -1,13 +1,14 @@
-import xarray as xr
-import json
 import importlib
+import json
 import re
-from pydantic import create_model
 from typing import Optional
-import pint_xarray
 
-from peaks.core.fileIO.loc_registry import register_loader
+import pint_xarray  # noqa: F401
+import xarray as xr
+from pydantic import create_model
+
 from peaks.core.fileIO.base_data_classes.base_data_class import BaseDataLoader
+from peaks.core.fileIO.loc_registry import register_loader
 from peaks.core.metadata.base_metadata_models import AxisMetadataModelWithReference
 from peaks.core.options import opts
 
@@ -56,7 +57,7 @@ class NetCDFLoader(BaseDataLoader):
             cls._parse_metadata(data)
 
         # Actually load the data
-        if not (lazy or (lazy == None and data.nbytes > opts.FileIO.lazy_size)):
+        if (lazy is False) or (lazy is None and data.nbytes > opts.FileIO.lazy_size):
             data = data.compute()
 
         # Quantify the data if it has units

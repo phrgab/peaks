@@ -1,6 +1,7 @@
 from xarray import open_datatree
-from peaks.core.fileIO.loc_registry import register_loader
+
 from peaks.core.fileIO.loaders.netcdf import NetCDFLoader
+from peaks.core.fileIO.loc_registry import register_loader
 from peaks.core.utils.misc import analysis_warning
 
 
@@ -47,7 +48,7 @@ class ZarrLoader(NetCDFLoader):
         data = data.map_over_datasets(ZarrLoader._quantify_da_in_dt)
 
         # Actually load the data
-        if lazy == False:
+        if not lazy:
             data = data.map_over_datasets(ZarrLoader._load_all)
         elif not quiet:
             analysis_warning(

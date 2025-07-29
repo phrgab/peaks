@@ -1,7 +1,8 @@
-import xarray as xr
-from termcolor import colored
 import functools
 import re
+
+import xarray as xr
+from termcolor import colored
 
 from peaks.core.utils.misc import analysis_warning
 
@@ -97,7 +98,7 @@ def _dataarrays_to_datatree(data, names=None):
             if isinstance(da, xr.DataArray)
             else da  # Pass a DataSet directly if it is already a DataSet
         )
-        for da_name, da in zip(names, data)
+        for da_name, da in zip(names, data, strict=True)
     }
 
     return xr.DataTree.from_dict(ds_dict)
@@ -232,9 +233,7 @@ def add(dt, data_source, name=None, add_at_root=False, **kwargs):
             return
 
         # Otherwise, add them as a new group with the given name or a default name
-        name = (
-            _make_name_callable(name) if name else _make_name_unique("scan_group", dt)
-        )
+        name = _make_name_callable(name) if name else _make_name_unique("scan_group", dt)
         data_source.name = name
         dt[name] = data_source
         return

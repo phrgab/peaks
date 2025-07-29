@@ -4,7 +4,7 @@ requires = ["flit_core >=3.2,<4"]
 
 [project]
 name = "peaks"
-description = "Python Electron Spectroscopy and Diffraction Analysis by King Group St Andrews"
+description = "Python Electron spectroscopy Analysis by King group @ St Andrews"
 requires-python = ">=3.11"
 dependencies = [
         "ipykernel (>=6.25,<7)",
@@ -44,6 +44,10 @@ email = "pdk6@st-andrews.ac.uk"
 name = "Brendan Edwards"
 email = "be23@st-andrews.ac.uk"
 
+[[project.authors]]
+name = "Shu Mo"
+email = "sm584@st-andrews.ac.uk"
+
 [project.urls]
 Source = "https://gitlab.st-andrews.ac.uk/physics-and-astronomy/king-group/peaks"
 Issues = "https://gitlab.st-andrews.ac.uk/physics-and-astronomy/king-group/peaks/-/issues"
@@ -55,9 +59,7 @@ structure = [
         "trimesh (>4.6,<5)",
 ]
 ML = ["scikit-learn (>=1.3,<2)"]
-dev = [
-        "black (>=24.2,<25)",
-        "cookiecutter (>=2.5,<3)",
+docs = [
         "sphinx (>=8.2,<9)",
         "sphinx-copybutton (>=0.5,<1)",
         "sphinx-togglebutton (>=0.3,<1)",
@@ -67,5 +69,16 @@ dev = [
         "myst-nb (>=1.2,<2)",
         "pydata-sphinx-theme (>=0.16,<1)",
         ]
+dev = ["ruff","pre-commit","nbstripout"]
 
-all = ["peaks[structure,ML,dev]"]
+all = ["peaks[structure,ML,docs,dev]"]
+
+[tool.ruff]
+line-length = 89
+target-version = "py312"
+exclude = ["*.ipynb"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = ["E203", "E501"]
+fixable = ["I"]

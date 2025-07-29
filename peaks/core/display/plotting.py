@@ -306,8 +306,7 @@ def plot_DCs(
     if norm:
         for coord in DC_array[stack_dim]:
             DC_array.loc[{stack_dim: coord}] = (
-                DC_array.loc[{stack_dim: coord}]
-                / DC_array.loc[{stack_dim: coord}].max()
+                DC_array.loc[{stack_dim: coord}] / DC_array.loc[{stack_dim: coord}].max()
             )
 
     # Get absolute offset from fractional offset

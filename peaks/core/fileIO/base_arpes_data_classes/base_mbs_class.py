@@ -1,8 +1,8 @@
 import re
+from datetime import datetime
 
 import numpy as np
 import pint_xarray
-from datetime import datetime
 
 from peaks.core.fileIO.base_arpes_data_classes.base_arpes_data_class import (
     BaseARPESDataLoader,
@@ -91,7 +91,9 @@ class MBSDataLoader(BaseARPESDataLoader):
         y_scale_name, y_scale_units = cls._parse_axis_name_and_units(
             metadata_dict_MBS_keys["ScaleName"]
         )
-        y_scale_name = "theta_par" if y_scale_name.lower() in ["angle", "y angle"] else "y_scale"
+        y_scale_name = (
+            "theta_par" if y_scale_name.lower() in ["angle", "y angle"] else "y_scale"
+        )
 
         return {
             "spectrum": spectrum,
@@ -130,7 +132,7 @@ class MBSDataLoader(BaseARPESDataLoader):
             image_pos = []
             Y_size = []
             X_size = []
-            for i in range(num_images):
+            for _i in range(num_images):
                 # Extract position in array of the images in 32-bit integers
                 image_pos.append(np.fromfile(f, dtype=dtype, count=1)[0])
                 # Extract Y size of array (angular direction)
@@ -170,7 +172,11 @@ class MBSDataLoader(BaseARPESDataLoader):
             y_scale_name, y_scale_units = cls._parse_axis_name_and_units(
                 metadata_dict_MBS_keys["ScaleName"]
             )
-            y_scale_name = "theta_par" if y_scale_name.lower() in ["angle", "y angle"] else "y_scale"
+            y_scale_name = (
+                "theta_par"
+                if y_scale_name.lower() in ["angle", "y angle"]
+                else "y_scale"
+            )
 
             # If there is a single image, load 2D spectrum
             if num_images == 1:
@@ -267,9 +273,7 @@ class MBSDataLoader(BaseARPESDataLoader):
             }
             ext = fpath.split(".")[-1]
             metadata_lines = handlers[ext](fpath)
-            metadata_dict_MBS_keys = cls._MBS_metadata_to_dict_w_MBS_keys(
-                metadata_lines
-            )
+            metadata_dict_MBS_keys = cls._MBS_metadata_to_dict_w_MBS_keys(metadata_lines)
 
         if return_in_MBS_format:
             return metadata_dict_MBS_keys
@@ -325,7 +329,7 @@ class MBSDataLoader(BaseARPESDataLoader):
 
             # Read the pointer array size, which is the first word of the array. Pointer array size is not used here,
             # but is read so that the next variable read is image position
-            pointer_array_size = np.fromfile(f, dtype=dtype, count=1)
+            pointer_array_size = np.fromfile(f, dtype=dtype, count=1)  # noqa: F841
 
             # Extract first image position and array size to know where in the file to find metadata
             image_pos = np.fromfile(f, dtype=dtype, count=1)[0]

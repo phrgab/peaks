@@ -1,11 +1,10 @@
-"""Functions that utilise machine learning techniques to denoise data.
-
-"""
+"""Functions that utilise machine learning techniques to denoise data."""
 
 # Brendan Edwards 31/10/2023
 
 import xarray as xr
 from sklearn.decomposition import PCA
+
 from peaks.core.accessors.accessor_methods import register_accessor
 
 

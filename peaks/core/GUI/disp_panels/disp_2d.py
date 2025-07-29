@@ -73,12 +73,12 @@ class _Disp2D(QtWidgets.QMainWindow):
             [None for i in range(self.num_xhs)],
         ]  # Store for (dim0, dim1) DC positions
         self.xh_visible_store = []
-        self.DC_pens = [(238, 119, 51), (51, 187, 238), (0, 153, 136), (204, 51, 153)]
+        self.DC_pens = [(0, 255, 0), (255, 0, 0), (0, 0, 255), (255, 255, 0)]
         self.xh_brushes = [
-            (238, 119, 51, 70),
-            (51, 187, 238, 70),
-            (0, 153, 136, 70),
-            (204, 51, 153, 70),
+            (0, 255, 0, 50),
+            (255, 0, 0, 50),
+            (0, 0, 255, 50),
+            (255, 255, 0, 50),
         ]
 
         # Set keys for the keyboard control
@@ -387,31 +387,6 @@ class _Disp2D(QtWidgets.QMainWindow):
         self.graphics_layout.addItem(self.colorbar, row=0, col=0)
 
         # Add crosshairs
-        xh_target_kwargs = [
-            {  # Crosshair1: orange
-                "pen": pg.mkPen(color=(238, 119, 51)),
-                "brush": pg.mkBrush(color=(238, 119, 51, 50)),
-            },
-            {  # Crosshair2: blue
-                "pen": pg.mkPen(color=(51, 187, 238)),
-                "brush": pg.mkBrush(color=(51, 187, 238, 50)),
-            },
-            {  # Crosshair3: green
-                "pen": pg.mkPen(color=(0, 153, 136)),
-                "brush": pg.mkBrush(color=(0, 153, 136, 50)),
-            },
-        ]
-        xh_linear_region_kwargs = [
-            {  # Crosshair1: orange
-                "pen": pg.mkPen(color=(238, 119, 51)),
-            },
-            {  # Crosshair2: blue
-                "pen": pg.mkPen(color=(51, 187, 238)),
-            },
-            {  # Crosshair3: green
-                "pen": pg.mkPen(color=(0, 153, 136)),
-            },
-        ]
         self.xhs = []
         for i in range(self.num_xhs):
             self.xhs.append(
@@ -423,8 +398,6 @@ class _Disp2D(QtWidgets.QMainWindow):
                     brush=self.xh_brushes[i % len(self.xh_brushes)],
                     bounds=[self.ranges[0], self.ranges[1]],
                     axisOrder="row-major",
-                    target_item_kwargs=xh_target_kwargs[i % len(xh_target_kwargs)],
-                    linear_region_item_kwargs=xh_linear_region_kwargs[i % len(xh_linear_region_kwargs)],
                 )
             )
 
@@ -651,11 +624,7 @@ class _Disp2D(QtWidgets.QMainWindow):
             DC = self._select_DC(
                 self.current_data,
                 select_along_dim_no,
-                (
-                    xh.get_dim1_span()
-                    if select_along_dim_no == 1
-                    else xh.get_dim0_span()
-                ),
+                (xh.get_dim1_span() if select_along_dim_no == 1 else xh.get_dim0_span()),
             )
 
             # Update the plot
@@ -934,7 +903,7 @@ class _Disp2D(QtWidgets.QMainWindow):
     def _connect_key_press_signals(self):
         signals = [self.graphics_layout.keyPressed, self.graphics_layout.keyReleased]
         fns = [self._key_press_event, self._key_release_event]
-        for signal, fn in zip(signals, fns):
+        for signal, fn in zip(signals, fns, strict=True):
             signal.connect(fn)
             self.connected_plot_signals.append(signal)
 

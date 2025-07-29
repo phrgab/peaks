@@ -1,4 +1,5 @@
 import numbers
+
 import numpy as np
 import xarray as xr
 
@@ -212,7 +213,9 @@ def _parse_norm_angles(data, norm_angles, quiet):
     norm_emissions = {
         key: val
         for key, val in zip(
-            ["norm_polar", "norm_tilt", "norm_azi"], [norm_polar, norm_tilt, norm_azi]
+            ["norm_polar", "norm_tilt", "norm_azi"],
+            [norm_polar, norm_tilt, norm_azi],
+            strict=True,
         )
         if val is not None
     }
@@ -272,7 +275,9 @@ def _set_norm_angles(
     norm_angles_out = _parse_norm_angles(data, norm_angles, quiet)
 
     # History to update
-    hist = f"Normal emission angles set to: {norm_angles_out} from user input {norm_angles}"
+    hist = (
+        f"Normal emission angles set to: {norm_angles_out} from user input {norm_angles}"
+    )
 
     if update_in_place:
         # Update the data attributes and history
@@ -341,9 +346,6 @@ def _get_norm_angles(data):
     dict
         Dictionary of normal emission angles in both `peaks` format and where applicable the true manipulator angles.
     """
-
-    # Get angle conventions and analyser type
-    conventions = _get_conventions(data)
 
     # Get the peaks normal emission angles from the attributes
     norm_angles = {name: data.attrs.get(name) for name in NORM_ANGLE_NAMES}
@@ -516,9 +518,7 @@ def _convert_angles_to_Ishida_Shin(data, quiet=False):
         angles_out["alpha"] = angles.get("theta_par", 0) * conventions.get(
             "theta_par", 1
         ) + (angles.get("defl_par", 0) * conventions.get("defl_par", 1))
-        angles_out["beta"] = angles.get("defl_perp", 0) * conventions.get(
-            "defl_perp", 1
-        )
+        angles_out["beta"] = angles.get("defl_perp", 0) * conventions.get("defl_perp", 1)
         angles_out["xi"] = angles.get("tilt", 0) * conventions.get("tilt", 1)
         angles_out["chi"] = (angles.get("polar", 0) * conventions.get("polar", 1)) + (
             angles.get("ana_polar", 0) * conventions.get("ana_polar", 1)
@@ -602,9 +602,9 @@ def _get_angles_for_k_conv(data, return_raw=False, quiet=False, warn_norm=True):
     # Put angles in correct notation cf. Ishida and Shin, Rev. Sci. Instrum. 89 (2018) 043903
     angles_out = dict()
     angles_out["ana_type"] = ana_type
-    angles_out["delta_"] = angles.get("azi", 0) * conventions.get(
-        "azi", 1
-    ) - angles.get("norm_azi", 0)
+    angles_out["delta_"] = angles.get("azi", 0) * conventions.get("azi", 1) - angles.get(
+        "norm_azi", 0
+    )
     if ana_type == "I":  # Type I
         angles_out["alpha"] = angles.get("theta_par", 0) * conventions.get(
             "theta_par", 1
@@ -630,9 +630,7 @@ def _get_angles_for_k_conv(data, return_raw=False, quiet=False, warn_norm=True):
         angles_out["alpha"] = angles.get("theta_par", 0) * conventions.get(
             "theta_par", 1
         ) + (angles.get("defl_par", 0) * conventions.get("defl_par", 1))
-        angles_out["beta"] = angles.get("defl_perp", 0) * conventions.get(
-            "defl_perp", 1
-        )
+        angles_out["beta"] = angles.get("defl_perp", 0) * conventions.get("defl_perp", 1)
         angles_out["beta_0"] = None
         angles_out["xi"] = angles.get("tilt", 0) * conventions.get("tilt", 1)
         angles_out["xi_0"] = angles.get("norm_tilt", 0)
