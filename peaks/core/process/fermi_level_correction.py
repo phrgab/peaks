@@ -1,10 +1,8 @@
-"""Functions used to apply Fermi level corrections to data.
+"""Functions used to apply Fermi level corrections to data."""
 
-"""
-
+import numexpr as ne
 import numpy as np
 import xarray as xr
-import numexpr as ne
 
 from peaks.core.utils.interpolation import _fast_bilinear_interpolate_rectilinear
 from peaks.core.utils.misc import analysis_warning
@@ -67,7 +65,7 @@ def _get_E_shift_at_theta_par(da, theta_par, Ek=None):
         for i in range(1, len(EF_fn)):
             shift_str += f"+ {str(EF_fn[f'c{i}'])} * theta_par ** {i}"
         if Ek is not None:
-            shift_str += f"+ Ek"
+            shift_str += "+ Ek"
         return ne.evaluate(shift_str)
     else:
         if Ek is not None:
@@ -109,9 +107,7 @@ def _flatten_EF(da):
 
     # Calculate interpolation target
     Ek_values = EK_new[:, np.newaxis] + EF_shift[np.newaxis, :]
-    theta_par_values = np.broadcast_to(
-        da.theta_par.data[np.newaxis, :], Ek_values.shape
-    )
+    theta_par_values = np.broadcast_to(da.theta_par.data[np.newaxis, :], Ek_values.shape)
 
     # Interpolate onto new energy scale
     interpolated_data = xr.apply_ufunc(

@@ -1,21 +1,20 @@
-"""Unsupervised clustering functions.
-
-"""
+"""Unsupervised clustering functions."""
 
 # Brendan Edwards 31/10/2023
 
-import numpy as np
-import xarray as xr
-import pandas as pd
 import matplotlib.pyplot as plt
-from tqdm import tqdm
+import numpy as np
+import pandas as pd
+import xarray as xr
 from IPython.display import clear_output
-from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+from tqdm import tqdm
+
 from peaks.core.accessors.accessor_methods import register_accessor
-from peaks.utils import analysis_warning
 from peaks.core.display.plotting import plot_grid
+from peaks.utils import analysis_warning
 
 
 @register_accessor(xr.DataArray)
@@ -189,7 +188,7 @@ def perform_k_means(data, k=3, n_init="auto"):
 @register_accessor(xr.DataArray)
 def clusters_explore(
     data,
-    cluster_range=range(1, 7),
+    cluster_range=None,
     n_init="auto",
     use_PCA=True,
     PCs=3,
@@ -267,6 +266,9 @@ def clusters_explore(
         SM.clusters_explore(cluster_range=range(1,11), use_PCA=False, extract='MDC', E=73.42, dE=0.02)
 
     """
+    if cluster_range is None:
+        # Default range of number of clusters to test
+        cluster_range = range(1, 7)
 
     # Prevent unwanted overwriting of original data
     data = data.copy(deep=True)
@@ -288,12 +290,8 @@ def clusters_explore(
 
     # Perform k-means clustering analysis for the range of number of clusters (k) requested
     k_titles = ["k=" + str(k) for k in cluster_range]  # Titles for plots
-    inertias = (
-        []
-    )  # Empty list to store model inertias (a metric that defines spread of a cluster)
-    classification_maps = (
-        []
-    )  # Empty list to store classification maps (spatial maps of cluster labels)
+    inertias = []  # Empty list to store model inertias (a metric that defines spread of a cluster)
+    classification_maps = []  # Empty list to store classification maps (spatial maps of cluster labels)
     for num_clusters in tqdm(cluster_range, desc="Calculating", colour="CYAN"):
         model, labels = perform_k_means(
             data=df, k=num_clusters, n_init=n_init
@@ -560,9 +558,7 @@ def clusters(
         # Get reconstructed cluster center dispersions from reduced dimensionality dataset
         reconstructed_cluster_centers = pca.inverse_transform(
             model.cluster_centers_
-        ).reshape(
-            num_clusters, len(data.coords[coords[0]]), len(data.coords[coords[1]])
-        )
+        ).reshape(num_clusters, len(data.coords[coords[0]]), len(data.coords[coords[1]]))
         reconstructed_cluster_centers_disps = []
         for center in reconstructed_cluster_centers:
             disp_xarray = xr.DataArray(
@@ -629,7 +625,7 @@ def clusters(
 @register_accessor(xr.DataArray)
 def PCA_explore(
     data,
-    PCs_range=range(1, 6),
+    PCs_range=None,
     threshold=0.95,
     extract="dispersion",
     E=0,
@@ -693,6 +689,9 @@ def PCA_explore(
         SM.PCA_explore(PCs_range=range(1,11), extract='MDC', E=73.42, dE=0.02)
 
     """
+    if PCs_range is None:
+        # Default range of principal components to test
+        PCs_range = range(1, 6)
 
     # Prevent unwanted overwriting of original data
     data = data.copy(deep=True)

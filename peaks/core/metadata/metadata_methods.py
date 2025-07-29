@@ -20,13 +20,7 @@ ureg = pint_xarray.unit_registry
 
 def display_metadata(da_or_model, mode="ANSI"):
     # Recursive function to display dictionary with colored keys
-    colours = [
-            "\x1b[38;2;187;85;0m",  # orange
-            "\x1b[38;2;0;90;181m",  # blue
-            "\x1b[38;2;212;17;89m",  # magenta
-            "\x1b[38;2;0;133;119m",  # green
-    ]
-    RESET = "\x1b[0m"
+    colours = ["green", "blue", "red", "yellow"]
 
     # Recursive function to display dictionary with cycling colors for each indent level
     def display_colored_dict(d, indent_level=0, col_cycle=0):
@@ -35,17 +29,17 @@ def display_metadata(da_or_model, mode="ANSI"):
         lines = []
         for key, value in d.items():
             if isinstance(value, dict):  # Nested dictionary (recursive case)
-                lines.append(f"{indent}{current_color}{key}{RESET}:")
+                lines.append(f"{indent}{colored(key, current_color)}:")
                 lines.extend(
                     display_colored_dict(value, indent_level + 1, col_cycle + 1)
                 )
             else:  # Base case (simple value)
-                lines.append(f"{indent}{current_color}{key}{RESET}: {value}")
+                lines.append(f"{indent}{colored(key, current_color)}: {value}")
         return lines
 
     def display_colored_dict_html(d, indent_level=0, col_cycle=0):
         indent = "&nbsp;" * 4 * indent_level
-        colours = ["#DDCC77", "#88CCEE", "#CC6677", "#44AA99"]
+        colours = ["green", "blue", "red", "yellow"]
         current_color = colours[col_cycle % len(colours)]  # Cycle through colors
         lines = []
         for key, value in d.items():
@@ -128,7 +122,7 @@ def compare_metadata(da_or_model1, da_or_model2):
         if isinstance(val1, (list, tuple)) and isinstance(val2, (list, tuple)):
             if len(val1) != len(val2):
                 return False
-            return all(values_equal(v1, v2) for v1, v2 in zip(val1, val2))
+            return all(values_equal(v1, v2) for v1, v2 in zip(val1, val2, strict=True))
 
         # Handle dictionaries
         if isinstance(val1, dict) and isinstance(val2, dict):
@@ -371,9 +365,7 @@ class Metadata:
         # Get any set reference data in da
         current_reference_data = {
             axis: {
-                "reference_value": getattr(
-                    da.metadata.manipulator, axis
-                ).reference_value
+                "reference_value": getattr(da.metadata.manipulator, axis).reference_value
             }
             for axis in axes
             if getattr(da.metadata.manipulator, axis).reference_value is not None
@@ -475,7 +467,9 @@ class MetadataDT:
     def __init__(self, xarray_obj):
         self._obj = xarray_obj
 
-    def __call__(self, metadata_dict={}, **kwargs):
+    def __call__(self, metadata_dict=None, **kwargs):
+        if metadata_dict is None:
+            metadata_dict = {}
         metadata_dict.update(kwargs)
 
         def apply_metadata_to_ds(ds):
@@ -487,13 +481,16 @@ class MetadataDT:
                 # Otherwise map over all dataarrays in the dataset
                 for key, value in metadata_dict.items():
                     ds.map(
-                        lambda da: (getattr(da.metadata, key)(value), da)[1],
+                        lambda da, key=key, value=value: (
+                            getattr(da.metadata, key)(value),
+                            da,
+                        )[1],
                         keep_attrs=False,
                     )
 
             return ds
 
-        for key, value in metadata_dict.items():
+        for _key, _value in metadata_dict.items():
             self._obj.map_over_datasets(apply_metadata_to_ds)
 
         return self

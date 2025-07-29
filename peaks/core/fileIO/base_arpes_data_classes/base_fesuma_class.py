@@ -1,20 +1,17 @@
-import numpy as np
-import pint_xarray
-import h5py
-import dask.array as da
-import dask
-import xarray as xr
 from datetime import datetime
+
+import dask
+import dask.array as da
+import h5py
+import numpy as np
+import pint_xarray  # noqa: F401
+import xarray as xr
 
 from peaks.core.fileIO.base_arpes_data_classes.base_arpes_data_class import (
     BaseARPESDataLoader,
     ureg,
 )
 from peaks.core.fileIO.loc_registry import register_loader
-from peaks.core.utils.misc import analysis_warning
-
-# Define the unit registry
-ureg = pint_xarray.unit_registry
 
 
 @register_loader
@@ -81,9 +78,7 @@ class BaseFeSuMaDataLoader(BaseARPESDataLoader):
                         self.eV = np.linspace(
                             float(f["AcquisitionEkinStart"][0]),
                             float(f["AcquisitionEkinStart"][0])
-                            + (
-                                f["AcquisitionEkinStep"][0] * (len(set(self.steps)) - 1)
-                            ),
+                            + (f["AcquisitionEkinStep"][0] * (len(set(self.steps)) - 1)),
                             len(set(self.steps)),
                         )
                     except KeyError:
@@ -96,8 +91,7 @@ class BaseFeSuMaDataLoader(BaseARPESDataLoader):
                             float(f["AcquisitionDelayStart"][0]),
                             float(f["AcquisitionDelayStart"][0])
                             + (
-                                f["AcquisitionDelayStep"][0]
-                                * (len(set(self.steps)) - 1)
+                                f["AcquisitionDelayStep"][0] * (len(set(self.steps)) - 1)
                             ),
                             len(set(self.steps)),
                         )
@@ -151,7 +145,7 @@ class BaseFeSuMaDataLoader(BaseARPESDataLoader):
             name="spectrum",
         )
 
-        if lazy == False:
+        if not lazy:
             data_array = data_array.compute()
 
         data_array = data_array.groupby("steps").mean()

@@ -1,6 +1,7 @@
 import pint_xarray
-from peaks.core.fileIO.loc_registry import register_loader
+
 from peaks.core.fileIO.base_arpes_data_classes.base_mbs_class import MBSDataLoader
+from peaks.core.fileIO.loc_registry import register_loader
 
 ureg = pint_xarray.unit_registry
 
@@ -32,12 +33,11 @@ class StAndrewsMBS(MBSDataLoader):
         axis for axis in _manipulator_name_conventions.keys()
     ]
 
-    _manipulator_sign_conventions = {
-    }
+    _manipulator_sign_conventions = {}
 
     _analyser_sign_conventions = {
         "theta_par": -1,
-        "deflector_parallel": -1, # consistent with theta_par
+        "deflector_parallel": -1,  # consistent with theta_par
     }
 
     _MBS_metadata_key_mappings = {}

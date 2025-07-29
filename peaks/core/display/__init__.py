@@ -1,5 +1,7 @@
 """Core functionality for in-line data display."""
 
+# ruff: noqa: F401
+
 from .plotting import (
     plot_DCs,
     plot_grid,

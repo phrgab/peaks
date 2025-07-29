@@ -255,10 +255,13 @@ class BaseARPESDataLoader(
         axis_group is either an axis group or a string
         """
         if isinstance(axis_group, str):
-            # Handle analyser angle to manipulator angle sign conventions used in get IshidaShin convetions function
+            # Handle analyser angle to manipulator angle sign conventions used in get
+            # Ishida and Shin convetions function
             manipulator_axis = axis_group
         elif isinstance(axis_group, set):
-            manipulator_axis = next((key for key in ["polar", "tilt", "azi"] if key in axis_group), None)
+            manipulator_axis = next(
+                (key for key in ["polar", "tilt", "azi"] if key in axis_group), None
+            )
             axis_groups = cls._group_axes(da)
             polar_group = axis_groups.get("polar")
 
@@ -274,7 +277,7 @@ class BaseARPESDataLoader(
             return 1
 
         if manipulator_axis == "azi" and axis_key == "azi_offset":
-            return 1 # always 1 as already corrected in disp 3d panel
+            return 1  # always 1 as already corrected in disp 3d panel
 
         if "polar" in polar_group and "deflector_perp" in polar_group:
             # Analyser type must be either I or Ip
@@ -306,11 +309,13 @@ class BaseARPESDataLoader(
                 if axis_key == "theta_par":
                     return -1 if sign_product == 1 else 1
                 elif axis_key == "deflector_parallel":
-                    return -1 # # consistent with theta_par
+                    return -1  # # consistent with theta_par
                 elif axis_key == "ana_polar":
                     return -1 if sign_product == 1 else 1
 
-        raise ValueError(f"Unexpected axis combination: manipulator_axis is {manipulator_axis}, axis_key is {axis_key}")
+        raise ValueError(
+            f"Unexpected axis combination: manipulator_axis is {manipulator_axis}, axis_key is {axis_key}"
+        )
 
     @classmethod
     def _parse_reference_value(cls, da, axis_key, value, axis_group):
@@ -328,7 +333,9 @@ class BaseARPESDataLoader(
         # Primary axis value (user-specified)
         # Read the offsets from the GUI and assign relative sign conventions
         reference_angles.append(value)
-        reference_signs.append(cls._get_relative_sign_conventions(da, axis_key, axis_group))
+        reference_signs.append(
+            cls._get_relative_sign_conventions(da, axis_key, axis_group)
+        )
 
         # Secondary axes (from metadata)
         for axis in axis_group:
@@ -337,7 +344,9 @@ class BaseARPESDataLoader(
             angle_value = cls._get_axis_value(da, axis)
             if angle_value is not None:
                 reference_angles.append(angle_value)
-                reference_signs.append(cls._get_relative_sign_conventions(da, axis, axis_group))
+                reference_signs.append(
+                    cls._get_relative_sign_conventions(da, axis, axis_group)
+                )
 
         # Convert angles to consistent units and sum
         total_reference_angle = cls._sum_angles(reference_angles, reference_signs)
@@ -373,7 +382,7 @@ class BaseARPESDataLoader(
         Sum angles with appropriate sign conventions.
         """
         total_angle = 0.0 * ureg("deg")
-        for angle, sign in zip(angles, signs):
+        for angle, sign in zip(angles, signs, strict=True):
             try:
                 angle_value = angle.to("deg")
             except AttributeError:
@@ -401,7 +410,8 @@ class BaseARPESDataLoader(
                     specified_axis in ["polar", "tilt", "azi"]
                     and specified_axis not in da.dims
                 ):
-                    # If the axis is a core manipulator axis and not a scannable, use the specified value directly
+                    # If the axis is a core manipulator axis and not a scannable,
+                    # use the specified value directly
                     final_value = specified_values[specified_axis]
                 else:
                     value = specified_values[specified_axis]
@@ -427,7 +437,7 @@ class BaseARPESDataLoader(
         missing_references = {}
 
         # Helper functions
-        def get_angle(da, axis, default=0.0 * ureg("rad"), add_to_warning_list=True):
+        def get_angle(da, axis, default=None, add_to_warning_list=True):
             """Get the angle value for a given axis.
 
             If the value is missing, return the default value
@@ -446,6 +456,8 @@ class BaseARPESDataLoader(
             pint.Quantity
                 The angle value.
             """
+            if default is None:
+                default = 0.0 * ureg("rad")
             value = cls._get_axis_value(da, axis)
             if value is None:
                 if add_to_warning_list:
@@ -454,7 +466,7 @@ class BaseARPESDataLoader(
             else:
                 return value.to("rad") * cls._get_sign_convention(axis)
 
-        def get_reference_angle(da, axis, default=0.0 * ureg("rad")):
+        def get_reference_angle(da, axis, default=None):
             """Get the reference angle value for a given axis.
 
             If the value is missing, return the default value.
@@ -474,6 +486,9 @@ class BaseARPESDataLoader(
                 The angle value.
 
             """
+            if default is None:
+                default = 0.0 * ureg("rad")
+
             value = getattr(da.metadata.manipulator, axis).reference_value
             if value is None:
                 missing_references[axis] = str(default)
@@ -510,17 +525,25 @@ class BaseARPESDataLoader(
                 type_ = "Ip"
                 alpha = get_angle(da, "theta_par") + deflector_angles["parallel"]
                 beta = deflector_angles["perp"]
-                chi = manipulator_angles["polar"] + analyser_angles["polar"] * cls._get_relative_sign_conventions(da, "ana_polar", "polar")
-                xi = manipulator_angles["tilt"] + analyser_angles["tilt"] * cls._get_relative_sign_conventions(da, "ana_tilt", "tilt")
+                chi = manipulator_angles["polar"] + analyser_angles[
+                    "polar"
+                ] * cls._get_relative_sign_conventions(da, "ana_polar", "polar")
+                xi = manipulator_angles["tilt"] + analyser_angles[
+                    "tilt"
+                ] * cls._get_relative_sign_conventions(da, "ana_tilt", "tilt")
                 beta_0 = None
                 chi_0 = get_reference_angle(da, "polar")
                 xi_0 = get_reference_angle(da, "tilt")
             else:
                 type_ = "I"
                 alpha = get_angle(da, "theta_par")
-                beta = manipulator_angles["polar"] + analyser_angles["polar"] * cls._get_relative_sign_conventions(da, "ana_polar", "polar")
+                beta = manipulator_angles["polar"] + analyser_angles[
+                    "polar"
+                ] * cls._get_relative_sign_conventions(da, "ana_polar", "polar")
                 chi = None
-                xi = manipulator_angles["tilt"] + analyser_angles["tilt"] * cls._get_relative_sign_conventions(da, "ana_tilt", "tilt")
+                xi = manipulator_angles["tilt"] + analyser_angles[
+                    "tilt"
+                ] * cls._get_relative_sign_conventions(da, "ana_tilt", "tilt")
                 beta_0 = get_reference_angle(da, "polar")
                 chi_0 = None
                 xi_0 = get_reference_angle(da, "tilt")
@@ -534,17 +557,25 @@ class BaseARPESDataLoader(
                 type_ = "IIp"
                 alpha = get_angle(da, "theta_par") + deflector_angles["parallel"]
                 beta = deflector_angles["perp"]
-                chi = manipulator_angles["polar"] + analyser_angles["polar"] * cls._get_relative_sign_conventions(da, "ana_polar", "polar")
-                xi = manipulator_angles["tilt"] + analyser_angles["tilt"] * cls._get_relative_sign_conventions(da, "ana_tilt", "tilt")
+                chi = manipulator_angles["polar"] + analyser_angles[
+                    "polar"
+                ] * cls._get_relative_sign_conventions(da, "ana_polar", "polar")
+                xi = manipulator_angles["tilt"] + analyser_angles[
+                    "tilt"
+                ] * cls._get_relative_sign_conventions(da, "ana_tilt", "tilt")
                 beta_0 = None
                 chi_0 = get_reference_angle(da, "polar")
                 xi_0 = get_reference_angle(da, "tilt")
             else:
                 type_ = "II"
                 alpha = get_angle(da, "theta_par")
-                beta = manipulator_angles["tilt"] + analyser_angles["tilt"] * cls._get_relative_sign_conventions(da, "ana_tilt", "tilt")
+                beta = manipulator_angles["tilt"] + analyser_angles[
+                    "tilt"
+                ] * cls._get_relative_sign_conventions(da, "ana_tilt", "tilt")
                 chi = None
-                xi = manipulator_angles["polar"] + analyser_angles["polar"] * cls._get_relative_sign_conventions(da, "ana_polar", "polar")
+                xi = manipulator_angles["polar"] + analyser_angles[
+                    "polar"
+                ] * cls._get_relative_sign_conventions(da, "ana_polar", "polar")
                 beta_0 = get_reference_angle(da, "tilt")
                 chi_0 = None
                 xi_0 = get_reference_angle(da, "polar")

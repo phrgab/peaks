@@ -140,9 +140,9 @@ list, or np.ndarray of length 3."
         raise ValueError("Invalid input for scale. Must be a float or int.")
     # Default from ase is BZ in units of 2pi, so we need to scale it by 2pi
     scale *= 2 * np.pi
-    l = LinearScalingTransform([scale, scale, scale])
+    scaling_transform = LinearScalingTransform([scale, scale, scale])
 
-    transforms = [r, l]
+    transforms = [r, scaling_transform]
     lattice.plot_bz(
         path=path,
         special_points=special_points,
@@ -164,8 +164,8 @@ list, or np.ndarray of length 3."
 
 def plot_bz_section(
     structure_or_lattice,
-    plane_origin=[0, 0, 0],
-    plane_normal=[0, 0, 1],
+    plane_origin=None,
+    plane_normal=None,
     repeat=1,
     ax=None,
     show=False,
@@ -194,6 +194,11 @@ def plot_bz_section(
     **kwargs
         Additional keyword arguments to pass to ax.plot
     """
+
+    if plane_origin is None:
+        plane_origin = [0, 0, 0]
+    if plane_normal is None:
+        plane_normal = [0, 0, 1]
 
     atoms, cell, lattice = _get_atoms_cell_lattice(structure_or_lattice)
     reciprocal_cell = atoms.cell.reciprocal() * 2 * np.pi  # in inv. Angstrom
@@ -244,7 +249,6 @@ def plot_bz_section(
             hull_xy = xy[np.append(hull_2D.vertices, hull_2D.vertices[0])]
 
             # Plot the hull
-            color = kwargs.pop("color", "k")
             ax.plot(hull_xy[:, 0], hull_xy[:, 1], color="k", **kwargs)
 
     if show_axes is not None:
