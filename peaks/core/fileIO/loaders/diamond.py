@@ -1,5 +1,4 @@
 from datetime import datetime, timezone
-from dateutil.parser import parse
 from typing import Optional, Union
 
 import h5py
@@ -7,6 +6,7 @@ import numpy as np
 import pint
 import pint_xarray
 import xarray as xr
+from dateutil.parser import parse
 
 from peaks.core.accessors.accessor_methods import register_accessor
 from peaks.core.fileIO.base_arpes_data_classes.base_arpes_data_class import (
@@ -369,7 +369,9 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
             chunks="auto",
         )
         # Map local dimension names keeping I05 convention for now
-        ds = ds.rename({orig: new for orig, new in zip(ds[core_data_key].dims, dims)})
+        ds = ds.rename(
+            {orig: new for orig, new in zip(ds[core_data_key].dims, dims, strict=True)}
+        )
 
         # Get the core data
         da = ds[core_data_key]
@@ -379,7 +381,9 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
         coords_to_apply = {dim: coords.get(dim) for dim in dims if dim != "dummy"}
         # Handle the special case of an hv scan, where the kinetic energy is 2D
         for dim, coord in coords_to_apply.copy().items():
-            if coord.ndim == 2 and not np.array_equal(coords_to_apply["energies"][0], coords_to_apply["energies"][1]):
+            if coord.ndim == 2 and not np.array_equal(
+                coords_to_apply["energies"][0], coords_to_apply["energies"][1]
+            ):
                 # Should be a 2D array with shape (value, KE) where value is the changing hv dim
                 hv_coord_label = {"value", "energy"}.intersection(
                     set(coords_to_apply.keys())
@@ -398,7 +402,9 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
                         "warning",
                         "Unexpected data shape",
                     )
-            elif coord.ndim == 2 and np.array_equal(coords_to_apply["energies"][0], coords_to_apply["energies"][1]):
+            elif coord.ndim == 2 and np.array_equal(
+                coords_to_apply["energies"][0], coords_to_apply["energies"][1]
+            ):
                 # Deal with deflector maps with the energy axis somehow to be 2D
                 coords_to_apply[dim] = coord[0]
         da = da.assign_coords(coords_to_apply)

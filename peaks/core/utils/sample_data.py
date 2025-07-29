@@ -61,7 +61,7 @@ class ZenodoDownloader:
             )
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
-            raise RuntimeError(f"Failed to download {url}: {e}")
+            raise RuntimeError(f"Failed to download {url}: {e}") from e
 
         total = int(response.headers.get("content-length", 0))
 
@@ -153,18 +153,10 @@ def get_tutorial1_data():
     return downloader
 
 
-class classproperty:
-    def __init__(self, func):
-        self.func = func
-
-    def __get__(self, instance, owner):
-        return self.func(owner)
-
-
 class ExampleData:
     """Class to access example data files for the Peaks package. The data is
     downloaded from Zenodo and cached for subsequent access.
-    The files are available as class properties, e.g., `ExampleData.dispersion`."""
+    The files are available as class methods, e.g., `ExampleData.dispersion()`."""
 
     _cache = {}
 
@@ -200,80 +192,80 @@ class ExampleData:
                 cls._cache[fname] = data
         return data.copy(deep=True)  # Return a copy to avoid modifying the cached data
 
-    @classproperty
+    @classmethod
     def dispersion(cls):
         return cls._get_and_load("i05-59819.nxs")
 
-    @classproperty
+    @classmethod
     def dispersion2a(cls):
         return cls._get_and_load("210326_GM2-667_GK_1.xy")
 
-    @classproperty
+    @classmethod
     def dispersion2b(cls):
         return cls._get_and_load("210326_GM2-667_GK_2.xy")
 
-    @classproperty
+    @classmethod
     def dispersion2c(cls):
         return cls._get_and_load("210326_GM2-667_GK_3.xy")
 
-    @classproperty
+    @classmethod
     def dispersion3(cls):
         return cls._get_and_load("i05-1-34301.nxs")
 
-    @classproperty
+    @classmethod
     def dispersion4(cls):
         return cls._get_and_load("i05-1-31473.nxs")
 
-    @classproperty
+    @classmethod
     def gold_reference(cls):
         return cls._get_and_load("i05-59853.nxs")
 
-    @classproperty
+    @classmethod
     def gold_reference2(cls):
         return cls._get_and_load("Gold.xy")
 
-    @classproperty
+    @classmethod
     def gold_reference3(cls):
         return cls._get_and_load("i05-70214.nxs")
 
-    @classproperty
+    @classmethod
     def gold_reference4(cls):
         return cls._get_and_load("Ep20eV.xy")
 
-    @classproperty
+    @classmethod
     def FS(cls):
         return cls._get_and_load("i05-59818.nxs")
 
-    @classproperty
+    @classmethod
     def hv_map(cls):
         return cls._get_and_load("i05-69294.nxs")
 
-    @classproperty
+    @classmethod
     def SM(cls):
         return cls._get_and_load("i05-1-24270_sm.nc")
 
-    @classproperty
+    @classmethod
     def nano_focus(cls):
         return cls._get_and_load("i05-1-49292.nxs")
 
-    @classproperty
+    @classmethod
     def nano_focus_w_I0norm(cls):
         return cls._get_and_load("i05-1-49292.nxs", norm_by_I0=True)
 
-    @classproperty
+    @classmethod
     def tr_arpes(cls):
         # Need to download and unzip the file to simulate the original data structure
         return cls._get_and_load_from_zip("029 Gr.zip")
 
-    @classproperty
+    @classmethod
     def tr_arpes2(cls):
         return cls._get_and_load_from_zip("028 Gr.zip")
 
-    @classproperty
+    @classmethod
     def xps(cls):
         return cls._get_and_load("i05-1-49260.nxs")
 
-    @classproperty
+    @classmethod
     def structure(cls):
         data = cls._cache.get("structure")
         if data is None:

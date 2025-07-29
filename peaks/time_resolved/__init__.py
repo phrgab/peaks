@@ -1,5 +1,3 @@
-"""Functions used for time-resolved spectroscopy data.
+"""Functions used for time-resolved spectroscopy data."""
 
-"""
-
-from peaks.time_resolved.accessors import TRAccessors
+from peaks.time_resolved.accessors import TRAccessors as TRAccessors

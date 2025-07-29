@@ -1,3 +1,1 @@
-"""Functions used for fitting.
-
-"""
+"""Functions used for fitting."""

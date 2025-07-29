@@ -1,13 +1,12 @@
-"""Functions to load data from the Casiopee beamline at Soleil.
+"""Functions to load data from the Casiopee beamline at Soleil."""
 
-"""
-
-import os
-import natsort
-import pint_xarray
 import itertools
-import numpy as np
+import os
 from os.path import isfile, join
+
+import natsort
+import numpy as np
+import pint_xarray
 from tqdm.notebook import tqdm
 
 from peaks.core.fileIO.base_arpes_data_classes.base_ses_class import SESDataLoader
@@ -63,9 +62,7 @@ class CASIOPEEArpesLoader(SESDataLoader):
             [
                 item
                 for item in os.listdir(fpath)
-                if "ROI1" in item
-                and isfile(join(fpath, item))
-                and item.endswith(".txt")
+                if "ROI1" in item and isfile(join(fpath, item)) and item.endswith(".txt")
             ]
         )
         file_list_i = natsort.natsorted(
@@ -206,7 +203,7 @@ class CASIOPEEArpesLoader(SESDataLoader):
         # lines, and stop when the scan data is reached
         with open(folder + "/" + file) as f:
             lines = f.readlines()
-            for counter, line in enumerate(lines):
+            for counter, line in enumerate(lines):  # noqa: B007
                 if line.startswith("inputA="):
                     break
 

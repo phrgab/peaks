@@ -1,6 +1,7 @@
 import pint_xarray
-from peaks.core.fileIO.loc_registry import register_loader
+
 from peaks.core.fileIO.base_arpes_data_classes.base_specs_class import SpecsDataLoader
+from peaks.core.fileIO.loc_registry import register_loader
 
 ureg = pint_xarray.unit_registry
 
@@ -38,8 +39,7 @@ class StAndrewsSpecs(SpecsDataLoader):
     _manipulator_sign_conventions = {
         "azi": -1,
     }
-    _analyser_sign_conventions = {
-    }
+    _analyser_sign_conventions = {}
 
     _SPECS_metadata_key_mappings = {}
     _SPECS_metadata_units = {}

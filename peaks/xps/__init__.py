@@ -1,1 +1,1 @@
-from .core_levels import CoreLevels
+from .core_levels import CoreLevels as CoreLevels

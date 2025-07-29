@@ -1,16 +1,15 @@
-"""Helper functions for acting on metadata.
+"""Helper functions for acting on metadata."""
 
-"""
-
-from datetime import datetime
-from pydantic import BaseModel, Field
-from typing import List, Union
 import copy
 import inspect
+from datetime import datetime
 from pprint import pprint
+from typing import List, Union
+
 import pandas as pd
 import xarray as xr
 from IPython.display import display
+from pydantic import BaseModel, Field
 
 from peaks.__version__ import __version__
 

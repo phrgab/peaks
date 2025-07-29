@@ -1,47 +1,115 @@
-(contributing_section)=
+(contributing)=
 # Contributing
 
-## Installation
-If you are actively developing the package, first clone the repo:
-```{tab} Using HTTPS
-    git clone https://gitlab.st-andrews.ac.uk/physics-and-astronomy/king-group/peaks.git
-```
-```{tab} Using SSH:
-    git clone git@gitlab.st-andrews.ac.uk:physics-and-astronomy/king-group/peaks.git
-```
+We welcome contributions to the advancement of `peaks` and hope for it to develop into a community package for analysis of ARPES and related spectroscopic data. Contributions are welcome in all areas, and particularly at present in:
+- implementing new [file loaders](#file_loaders)
+- testing functionality and bug-checking
+- developing a proper suite of unit tests
+- enhancing and correcting the project documentation, including relevant doc-strings
+- contributing feature enhancements.
 
-Then create a conda environment and install the package in "editable" mode, including optional development dependencies (and any other desired dependencies):
+If you wish to discuss a contribution or to report a bug, please open an issue on our [GitHub repository](https://github.com/phrgab/peaks/issues).
+
+## Installation
+If you are actively developing the package, we recommend cloning or forking the repository and installing an editable version from source, including with the optional development (and any other desired) dependencies:
+
 ```bash
 conda create -n peaks-dev python=3.12
 conda activate peaks-dev
-pip install -e peaks\[dev\]
-```
-
-## Documentation
-The hosted documentation is automatically built by Gitlab CI/CD, and updated on each commit. To make a local build of the documentation, first ensure you have installed the `dev` options of peaks - the relevant documentation packages should then be installed by default. 
-```
-
-To build the documentation, navigate to the `docs` directory and run:
-```bash
-cp -f ../tutorials/* source/_tutorials/
-make html
-```
-
-```{note}
-We use sphinx and MyST-parser for the documentation. See the [MyST documentation](https://myst-parser.readthedocs.io/en/latest/) for more information on the MyST markdown format. We use the pydata-sphinx theme for the documentation. See the [documentation](https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html) for more information on the theme. Note, the version selector will not work for a local build of the documentation.
+# From the project root
+pip install -e .\[dev\]
 ```
 
 ## Making changes
 Guidelines:
 - Open an issue to discuss the change.
-- Make changes in a new branch.
-- Thoroughly test the changes before making a pull request. 
-- Ensure the code is formatted with [`black`](https://black.readthedocs.io/en/stable/the_black_code_style/current_style.html) code style. This can be done automatically within your IDE. 
-- Document new features and changes in the changelog. We use [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-- Ensure the documentation is updated. For new features, consider updating the tutorials with relevant examples. Ensure to write informative docstrings for new functions and classes. 
+- Make changes in a new branch/fork.
+- Thoroughly [test](#testing) the changes before making a pull request. 
+- Ensure the code is formatted following our [conventions](#linting-and-formatting-with-ruff). 
+- Document new features and changes in the [changelog](#changelog). 
+- Ensure the [documentation is updated](#documentation). 
 
-```{tip}
+## Testing
+As well as thorougly testing the new feature, all of the existing tutorials (which act as a basic form of codebase test at present) should run without error. To test locally, from the parent directory of `peaks`, run:
+```bash
+bash ./tests/test_tutorials.sh
+```
+This will also be run in CI for merge requests, and only passing tests will usually be merged.
+
+
+## Linting and Formatting 
+### Ruff (black-compatible) code style
+
+We use [`Ruff`](https://docs.astral.sh/ruff/) for general linting, import sorting, and formatting (largely following [black](https://black.readthedocs.io/en/stable/the_black_code_style/current_style.html) code style.). `Ruff` is installed as part of the developer optional dependencies, and can be run on the code base manually:
+```bash
+ruff check . --fix               # Auto-fix lint issues
+ruff format .                    # Format code (like Black)
+```
+
+### Stripping tutorial notebooks
+The output and metadata of the tutorial notebooks should be stripped using `nbstripout`. This is isntalled as part of the developer optional dependencies, and can be run on the code base manually:
+```bash
+nbstripout tutorials/**/*.ipynb
+```
+
+### Pre-commit hook
+A pre-commit hook is avaialble for automating the above formatting operations upon commits. From the project root, to register the hook:
+```bash
+pre-commit install
+```
+The Ruff checks/formatting and the nbstripout will automatically run on the staged files on each commit. This fails if any changes are made to the files, in which case these should be restaged. For manual use:
+```bash
+# Run all checks on all files
+pre-commit run --all-files
+
+# Run on currently staged files
+pre-commit run
+
+# Run specific hooks
+pre-commit run ruff-check  # Runs ruff-check hook
+pre-commit run ruff-format  # Runs ruff-format hook
+pre-commit runn nbstripout  # Runs nbstripout hook
+```
+
+### CI enforcement
+Ruff and nbstripout also runs in a pipeline on CI. Merge requests will fail if:
+
+- Code is not formatted
+- Lint errors are found except for line-length errors
+- Notebooks are not already stripped
+
+Note, bundled ipython notebooks are automatically excluded from the linting and format checking.
+
+## Changelog
+All notable changes to the project should be documented in the `CHANGELOG.md` file. The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## Documentation
+We use sphinx and MyST-parser for building the project documentation. See the [MyST documentation](https://myst-parser.readthedocs.io/en/latest/) for more information on the MyST markdown format. We use the [pydata-sphinx theme](https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html).
+
+The core user documentation comes from a combination of the tutorials (Jupyter notebooks), which are automatically built to form a [User Guide](https://research.st-andrews.ac.uk/kinggroup/peaks/user_guide.html), and the docstrings, which form an [API reference](https://research.st-andrews.ac.uk/kinggroup/peaks/autoapi/index.html). For new features, please ensure to write informative docstrings for new functions and classes, including usage examples. Consider also updating the tutorials with relevant examples where appropriate.
+
+:::{tip}
 We use the [NumPy docstring format](https://numpydoc.readthedocs.io/en/latest/format.html). Specify Parameters and give relevant code examples. To make a code block, insert `::` at the end of the line before, and then leave a space and indent the text. 
 
 We are using `intersphinx` to make links to other documentation, which can be quite helpful. But this only works if we put in the full name not the abbreviation for the other package. so use e.g. `xarray.DataArray` and not `xr.DataArray` in type annotations in the docstring. This works out of the box if this is given as the type for a parameter or returns. If you want to include this within part of the general text, need to do `:class:xarray.DataArray`. See other modules for examples.
+:::
+
+The hosted documentation is automatically built by Gitlab CI, and updated on each merge to the main branch and on the release of a new tagged version. It is important that all of the tutorials can run without any local data files. If specific example data is required which is not already avaialble in the `peaks.core.utils.sample_data` module, raise an Issue to discuss adding a new example dataset there.
+
+:::{tip}
+To make a local build of the documentation, install `peaks` including the optional `[docs]` dependency. To build the documentation, navigate to the `docs` directory and run one of the following commands:
+```bash
+./build_docs.sh              # Default: no execution of the tutorial notebooks, no clean
+./build_docs.sh --clean      # Cleans before building
+./build_docs.sh --exec-nb # Forces notebook execution
+./build_docs.sh --clean --exec-nb
 ```
+
+The documentation will now be built and located in `/docs/build/html`. Note, the version selector will not work for a local build of the documentation.
+:::
+
+
+
+
+

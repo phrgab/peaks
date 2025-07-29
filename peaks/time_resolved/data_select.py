@@ -1,4 +1,3 @@
-import xarray as xr
 import pint
 import pint_xarray
 
@@ -23,7 +22,7 @@ def mean(da):
     )
 
 
-def static(da, t_static=-250.0 * ureg("fs")):
+def static(da, t_static=None):
     """Calculate the static spectrum from a time-resolved experiment.
     Assumes that all data points recorded for a time < t_static are equilibrium.
 
@@ -36,6 +35,8 @@ def static(da, t_static=-250.0 * ureg("fs")):
         time point to assume static up to. If no units are provided, the units of the data are assumed.
         default = -250 fs
     """
+    if t_static is None:
+        t_static = -250.0 * ureg("fs")
     t_static = _ensure_units(da, t_static)
     t_static_axis_units = t_static.to(da.t.units).magnitude
     return (
@@ -45,7 +46,7 @@ def static(da, t_static=-250.0 * ureg("fs")):
     )
 
 
-def diff(da, t_select=None, t_static=-250.0 * ureg("fs")):
+def diff(da, t_select=None, t_static=None):
     """Calculate the difference spectrum of the data at some time point or time window and the static data.
 
     Parameters
@@ -63,6 +64,9 @@ def diff(da, t_select=None, t_static=-250.0 * ureg("fs")):
         time point to assume static up to. If no units are provided, the units of the data are assumed.
         default = -250 fs
     """
+    if t_static is None:
+        t_static = -250.0 * ureg("fs")
+
     axis_units = da.t.units
     t_select_ = t_select
     if isinstance(t_select, slice):

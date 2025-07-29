@@ -1,20 +1,24 @@
 #!/usr/bin/env bash
 set -e
 
-max_retries=3
-mkdir -p tmp_outputs
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+TUTORIALS_DIR="$REPO_ROOT/tutorials"
 
-for nb in tutorials/*.ipynb; do
+max_retries=3
+mkdir -p "$REPO_ROOT/tmp_outputs"
+
+for nb in "$TUTORIALS_DIR"/*.ipynb; do
   echo "Running notebook: $nb"
-  output="tmp_outputs/$(basename "$nb")"
+  output="$REPO_ROOT/tmp_outputs/$(basename "$nb")"
   success=false
 
   for attempt in $(seq 1 $max_retries); do
     echo "Attempt $attempt for $nb..."
-    set +e  # allow papermill to fail without exiting script
+    set +e
     papermill "$nb" "$output" --log-output --progress-bar
     exit_code=$?
-    set -e  # re-enable strict mode
+    set -e
 
     if [ $exit_code -eq 0 ]; then
       echo "Success on attempt $attempt"
