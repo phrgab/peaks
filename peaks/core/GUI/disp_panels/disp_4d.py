@@ -55,7 +55,7 @@ class _Disp4D(QtWidgets.QMainWindow):
         self.data = data
 
         # Set some options
-        self.xh_brush = (255, 0, 0, 50)
+        self.xh_brush = (255, 0, 255, 50)
 
         # Set up the GUI
         self._init_UI()  # Initialize the layout
@@ -137,7 +137,8 @@ class _Disp4D(QtWidgets.QMainWindow):
         # Add a ROI
         self.roi_dim01 = pg.PolyLineROI(
             positions=self._set_ROI_default_pos(0, 1),
-            pen="r",
+            pen=pg.mkPen((204, 51, 153), width=2.5),
+            handlePen=pg.mkPen((204, 51, 153), width=2),
             closed=True,
         )
         self.primary_dims_roi_plot.addItem(self.roi_dim01)
@@ -540,7 +541,8 @@ class _Disp4D(QtWidgets.QMainWindow):
             ROI_points = self._set_ROI_default_pos(2, 3)
         self.roi_dim23 = pg.PolyLineROI(
             positions=ROI_points,
-            pen="r",
+            pen=pg.mkPen((204, 51, 153), width=2.5),
+            handlePen=pg.mkPen((204, 51, 153), width=2),
             closed=True,
         )
         self.roi_disp2d.image_plot.addItem(self.roi_dim23)
