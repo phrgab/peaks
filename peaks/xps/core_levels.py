@@ -178,7 +178,7 @@ class CoreLevels:
     def plot(
         cls,
         elements,
-        eV=slice(None, None),
+        eV=None,
         hv=None,
         max_order=1,
         ax=None,
@@ -209,6 +209,9 @@ class CoreLevels:
         """
 
         import matplotlib.pyplot as plt
+
+        if eV is None:
+            eV = slice(None, None)
 
         def extract_element_and_order(s):
             # Define the regular expression pattern
@@ -256,7 +259,7 @@ class CoreLevels:
             for i, element in enumerate(set(elements))
         }
 
-        for i, (idx, row) in enumerate(df.iterrows()):
+        for idx, row in df.iterrows():
             element, order = extract_element_and_order(idx)
             row_vals = row.dropna()
             for cl, en in row_vals.items():
@@ -310,7 +313,7 @@ class CoreLevels:
             Photon energy in eV. If not specified, binding energy is displayed. If
             specified, kinetic energy is displayed.
         """
-        from peaks.core.utils.ptab import ptab
+        from peaks.core.GUI.periodic_table.ptab import ptab
 
         if hv is None:
             tooltip = "Binding energy:<br>@{core levels}{safe}"

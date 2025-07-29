@@ -1,11 +1,11 @@
-"""Underlying custom fitting models or extensions for lmfit.
-"""
+"""Underlying custom fitting models or extensions for lmfit."""
 
 import re
+
+import lmfit.models as lm_models
 import numpy as np
 import xarray as xr
-import lmfit.models as lm_models
-from lmfit import Model, CompositeModel
+from lmfit import CompositeModel, Model
 from scipy.ndimage import gaussian_filter1d
 
 from peaks.core.fitting.fit_functions import _fermi_function, _linear_dos_fermi
@@ -147,7 +147,7 @@ class LinearDosFermiModel(GaussianConvolvedFitModel):
 
     def __init__(self, prefix="", *args, **kwargs):
         self.base_model_prefix = prefix
-        base_model = Model(_linear_dos_fermi, prefix=prefix, *args, **kwargs)
+        base_model = Model(_linear_dos_fermi, *args, prefix=prefix, **kwargs)
         base_model.set_param_hint("EF", min=-np.inf, max=np.inf)
         base_model.set_param_hint("T", value=10, min=0, vary=False)
         base_model.set_param_hint("bg_slope", value=0)
@@ -182,9 +182,7 @@ class LinearDosFermiModel(GaussianConvolvedFitModel):
         # Guess DOS parameters
         cutoff = np.percentile(x_xr, 15)  # Take bottom 15% of data range
         dos_guess = data.sel({dim: slice(None, cutoff)}).quick_fit.linear()
-        pars[f"{self.base_model_prefix}dos_slope"].set(
-            value=dos_guess["slope"].data[()]
-        )
+        pars[f"{self.base_model_prefix}dos_slope"].set(value=dos_guess["slope"].data[()])
         pars[f"{self.base_model_prefix}dos_intercept"].set(
             value=dos_guess["intercept"].data[()]
         )
@@ -265,15 +263,19 @@ def _shirley_bg(data, num_avg=1, offset_start=0, offset_end=0, max_iterations=10
     try:
         num_avg = int(num_avg)
         max_iterations = int(max_iterations)
-    except ValueError:
-        raise Exception("The inputs num_avg and max_iterations must both be integers")
+    except ValueError as e:
+        raise Exception(
+            "The inputs num_avg and max_iterations must both be integers"
+        ) from e
 
     # Ensure offset_start and offset_end are floats
     try:
         offset_start = float(offset_start)
         offset_end = float(offset_end)
-    except ValueError:
-        raise Exception("The inputs offset_start and offset_end must both be floats")
+    except ValueError as e:
+        raise Exception(
+            "The inputs offset_start and offset_end must both be floats"
+        ) from e
 
     # Get number of points in data and define tolerance
     num_points = len(data)
@@ -290,9 +292,8 @@ def _shirley_bg(data, num_avg=1, offset_start=0, offset_end=0, max_iterations=10
     B[0] = y_start - y_end
 
     # Define function to determine Shirley bkg
-    dk = lambda i: sum(
-        0.5 * (data[i:-1] + data[i + 1 :] - 2 * y_end - B[i:-1] + B[i + 1 :])
-    )
+    def dk(i):
+        return sum(0.5 * (data[i:-1] + data[i + 1 :] - 2 * y_end - B[i:-1] + B[i + 1 :]))
 
     # Perform iterative procedure to converge to Shirley bkg, stopping if maximum number of iterations is reached
     num_iterations = 0

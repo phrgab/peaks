@@ -1,3 +1,1 @@
-"""Functions used to load and save data.
-
-"""
+"""Functions used to load and save data."""

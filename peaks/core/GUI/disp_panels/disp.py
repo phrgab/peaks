@@ -1,6 +1,4 @@
-"""Master function for interactive display panels.
-
-"""
+"""Master function for interactive display panels."""
 
 import xarray as xr
 
@@ -56,8 +54,8 @@ def disp(data, primary_dim=None, exclude_from_centering="eV"):
         if len(data.children) == 0:
             try:
                 data = data.data
-            except AttributeError:
-                raise ValueError(err_str)
+            except AttributeError as e:
+                raise ValueError(err_str) from e
         else:
             try:
                 data = [
@@ -65,8 +63,8 @@ def disp(data, primary_dim=None, exclude_from_centering="eV"):
                     for node in data.subtree
                     if not node.is_empty and len(node.data.dims) == 2
                 ]
-            except AttributeError:
-                raise ValueError(err_str)
+            except AttributeError as e:
+                raise ValueError(err_str) from e
 
     if isinstance(data, list):
         for array in data:

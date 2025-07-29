@@ -1,5 +1,6 @@
 """Beamline/file-specific data loaders."""
 
+# ruff: noqa: F401
 from peaks.core.fileIO.loaders import (
     ape,
     bloch,

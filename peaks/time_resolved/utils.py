@@ -1,4 +1,3 @@
-import pint
 import pint_xarray
 
 ureg = pint_xarray.unit_registry

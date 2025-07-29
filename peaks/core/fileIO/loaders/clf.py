@@ -99,9 +99,7 @@ class ArtemisPhoibos(BaseARPESDataLoader, BasePumpProbeClass):
             )
 
             data_dict = BaseFeSuMaDataLoader._load_data(fpath, lazy, **kwargs)
-            if "delay_pos" in data_dict.get("dims") and "t" not in data_dict.get(
-                "dims"
-            ):
+            if "delay_pos" in data_dict.get("dims") and "t" not in data_dict.get("dims"):
                 coords = data_dict.get("coords")
                 units = data_dict.get("units")
                 delay_pos_m = (
@@ -585,9 +583,7 @@ class ArtemisPhoibos(BaseARPESDataLoader, BasePumpProbeClass):
             if input_string is None:
                 return None
             ranges = (
-                [input_string]
-                if "LF" not in input_string
-                else input_string.split("#LF")
+                [input_string] if "LF" not in input_string else input_string.split("#LF")
             )
             delays = []
 
@@ -635,9 +631,7 @@ class ArtemisPhoibos(BaseARPESDataLoader, BasePumpProbeClass):
                 if metadata_dict_artemis_keys.get("PE")
                 else None
             ),
-            "analyser_sweeps": cls._get_max_num_scans(
-                metadata_dict_artemis_keys, fpath
-            ),
+            "analyser_sweeps": cls._get_max_num_scans(metadata_dict_artemis_keys, fpath),
             "analyser_dwell": None,
             "analyser_lens_mode": metadata_dict_artemis_keys.get("LensMode"),
             "analyser_acquisition_mode": "fixed",

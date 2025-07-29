@@ -2,14 +2,18 @@ import os
 import tempfile
 import zipfile
 from copy import deepcopy
+from pathlib import Path
 
+import matplotlib.pyplot as plt
 import requests
+from requests.adapters import HTTPAdapter
 from tqdm.notebook import tqdm
+from urllib3.util.retry import Retry
 
 from peaks.core.fileIO.data_loading import load
 from peaks.core.utils.misc import analysis_warning
 
-ROOT_URL = "https://zenodo.org/api/records/15661704/files"
+ROOT_URL = "https://zenodo.org/api/records/15928652/files"
 
 
 class ZenodoDownloader:
@@ -32,8 +36,33 @@ class ZenodoDownloader:
 
     def _download_with_progress(self, url, dest_path):
         headers = self._make_headers_if_needed(url)
-        response = requests.get(url, headers=headers, stream=True)
-        response.raise_for_status()
+
+        session = requests.Session()
+        retries = Retry(
+            total=5,
+            backoff_factor=1,
+            status_forcelist=[502, 503, 504],
+            allowed_methods=["GET"],
+            raise_on_status=False,
+        )
+        adapter = HTTPAdapter(max_retries=retries)
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
+
+        proxies = {"http": os.getenv("http_proxy"), "https": os.getenv("https_proxy")}
+
+        try:
+            response = session.get(
+                url,
+                headers=headers,
+                proxies=proxies,
+                stream=True,
+                timeout=(10, 300),  # (connect timeout, read timeout)
+            )
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            raise RuntimeError(f"Failed to download {url}: {e}") from e
+
         total = int(response.headers.get("content-length", 0))
 
         with (
@@ -47,9 +76,11 @@ class ZenodoDownloader:
                 leave=False,
             ) as bar,
         ):
-            for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
-                bar.update(len(chunk))
+            for chunk in response.iter_content(chunk_size=1024 * 1024):
+                if chunk:  # filter out keep-alive chunks
+                    f.write(chunk)
+                    f.flush()
+                    bar.update(len(chunk))
 
     def download(self):
         if self._tempdir_context is not None:
@@ -122,18 +153,10 @@ def get_tutorial1_data():
     return downloader
 
 
-class classproperty:
-    def __init__(self, func):
-        self.func = func
-
-    def __get__(self, instance, owner):
-        return self.func(owner)
-
-
 class ExampleData:
     """Class to access example data files for the Peaks package. The data is
     downloaded from Zenodo and cached for subsequent access.
-    The files are available as class properties, e.g., `ExampleData.dispersion`."""
+    The files are available as class methods, e.g., `ExampleData.dispersion()`."""
 
     _cache = {}
 
@@ -169,80 +192,80 @@ class ExampleData:
                 cls._cache[fname] = data
         return data.copy(deep=True)  # Return a copy to avoid modifying the cached data
 
-    @classproperty
+    @classmethod
     def dispersion(cls):
         return cls._get_and_load("i05-59819.nxs")
 
-    @classproperty
+    @classmethod
     def dispersion2a(cls):
         return cls._get_and_load("210326_GM2-667_GK_1.xy")
 
-    @classproperty
+    @classmethod
     def dispersion2b(cls):
         return cls._get_and_load("210326_GM2-667_GK_2.xy")
 
-    @classproperty
+    @classmethod
     def dispersion2c(cls):
         return cls._get_and_load("210326_GM2-667_GK_3.xy")
 
-    @classproperty
+    @classmethod
     def dispersion3(cls):
         return cls._get_and_load("i05-1-34301.nxs")
 
-    @classproperty
+    @classmethod
     def dispersion4(cls):
         return cls._get_and_load("i05-1-31473.nxs")
 
-    @classproperty
+    @classmethod
     def gold_reference(cls):
         return cls._get_and_load("i05-59853.nxs")
 
-    @classproperty
+    @classmethod
     def gold_reference2(cls):
         return cls._get_and_load("Gold.xy")
 
-    @classproperty
+    @classmethod
     def gold_reference3(cls):
         return cls._get_and_load("i05-70214.nxs")
 
-    @classproperty
+    @classmethod
     def gold_reference4(cls):
         return cls._get_and_load("Ep20eV.xy")
 
-    @classproperty
+    @classmethod
     def FS(cls):
         return cls._get_and_load("i05-59818.nxs")
 
-    @classproperty
+    @classmethod
     def hv_map(cls):
         return cls._get_and_load("i05-69294.nxs")
 
-    @classproperty
+    @classmethod
     def SM(cls):
-        return cls._get_and_load("i05-1-24270.nxs")
+        return cls._get_and_load("i05-1-24270_sm.nc")
 
-    @classproperty
+    @classmethod
     def nano_focus(cls):
         return cls._get_and_load("i05-1-49292.nxs")
 
-    @classproperty
+    @classmethod
     def nano_focus_w_I0norm(cls):
         return cls._get_and_load("i05-1-49292.nxs", norm_by_I0=True)
 
-    @classproperty
+    @classmethod
     def tr_arpes(cls):
         # Need to download and unzip the file to simulate the original data structure
         return cls._get_and_load_from_zip("029 Gr.zip")
 
-    @classproperty
+    @classmethod
     def tr_arpes2(cls):
         return cls._get_and_load_from_zip("028 Gr.zip")
 
-    @classproperty
+    @classmethod
     def xps(cls):
         return cls._get_and_load("i05-1-49260.nxs")
 
-    @classproperty
+    @classmethod
     def structure(cls):
         data = cls._cache.get("structure")
         if data is None:
@@ -265,3 +288,15 @@ class ExampleData:
     @classmethod
     def cleanup(cls):
         cls._cache.clear()
+
+
+def plot_tutorial_example_figure(fname, figsize=(16, 8)):
+    """Plot an example figure in the tutorial notebooks."""
+    tutorial_dir = os.path.join(
+        Path(__file__).resolve().parent.parent.parent.parent, "tutorials", "figs"
+    )
+    fig_path = os.path.join(tutorial_dir, fname)
+    plt.figure(figsize=figsize)
+    plt.imshow(plt.imread(fig_path))
+    plt.axis("off")
+    plt.show()

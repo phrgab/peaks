@@ -52,7 +52,7 @@ autoapi_options = [
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "pyserial": ("https://pyserial.readthedocs.io/en/latest/", None),
-    "xarray": ("https://xarray.pydata.org/en/stable/", None),
+    "xarray": ("https://docs.xarray.dev/en/stable/", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
     "dask": ("https://docs.dask.org/en/latest/", None),
     "matplotlib": ("https://matplotlib.org/stable/", None),
@@ -80,7 +80,8 @@ napoleon_type_aliases = None
 napoleon_attr_annotations = True
 
 # myst-nb settings
-nb_execution_mode = "off"
+nb_execution_mode = "force" if os.getenv("FORCE_NB_EXECUTION") == "1" else "off"
+nb_execution_timeout = 300
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -88,6 +89,7 @@ nb_execution_mode = "off"
 html_theme = "pydata_sphinx_theme"
 
 myst_enable_extensions = [
+    "target-roles",
     "colon_fence",
     "amsmath",
     "dollarmath",
@@ -119,9 +121,9 @@ html_theme_options = {
     ],
     "icon_links": [
         {
-            "name": "GitLab",
-            "url": "https://gitlab.st-andrews.ac.uk/physics-and-astronomy/king-group/peaks",
-            "icon": "fa-brands fa-solid fa-gitlab fa-2x",
+            "name": "GitHub",
+            "url": "https://github.com/phrgab/peaks",
+            "icon": "fa-brands fa-solid fa-github fa-2x",
             "type": "fontawesome",
         }
     ],

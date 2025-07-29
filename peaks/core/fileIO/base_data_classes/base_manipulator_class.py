@@ -46,9 +46,7 @@ class BaseManipulatorDataLoader(BaseDataLoader):
     _desired_dim_order = ["x3", "x2", "x1", "polar", "tilt", "azi"]
     _manipulator_sign_conventions = {}  # Mapping of axes to sign conventions
     _manipulator_name_conventions = {}  # Mapping of peaks axes to local names
-    _manipulator_exclude_from_metadata_warn = (
-        []
-    )  # List of axes to ignore if the metadata is missing
+    _manipulator_exclude_from_metadata_warn = []  # List of axes to ignore if the metadata is missing
     _metadata_parsers = [
         "_parse_manipulator_metadata"
     ]  # Specific metadata parsers to apply

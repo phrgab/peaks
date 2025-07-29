@@ -8,7 +8,7 @@ with open(pyproject_path, "r") as f:
     pyproject = toml.load(f)
 
 # Extract the dev dependencies for building the docs
-dev_dependencies = pyproject["project"]["optional-dependencies"]["dev"]
+dev_dependencies = pyproject["project"]["optional-dependencies"]["docs"]
 
 
 # Function to format dependencies

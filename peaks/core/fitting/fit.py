@@ -1,11 +1,11 @@
+import dask as da
 import dill
+import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
-import dask as da
 from scipy.ndimage import gaussian_filter1d
 from scipy.signal import find_peaks
 from tqdm.notebook import tqdm
-import matplotlib.pyplot as plt
 
 from peaks.core.fitting.models import LinearDosFermiModel
 from peaks.core.utils.misc import analysis_warning
@@ -229,10 +229,10 @@ def fit_gold(data, EF_correction_type="poly4", **kwargs):
         fit_result = data.fit(gold_model, params)
         fit_result.plot_fit(show_components=False)
         results_text = (
-            f"Fermi energy: {str(np.round(fit_result['EF'].data,3))} ± "
-            f"{str(np.round(fit_result['EF_stderr'].data,3))} eV,  "
-            f"Resolution: {str(np.round(fit_result['sigma_conv'].data,3))} ± "
-            f"{str(np.round(fit_result['sigma_conv_stderr'].data,3))} eV"
+            f"Fermi energy: {str(np.round(fit_result['EF'].data, 3))} ± "
+            f"{str(np.round(fit_result['EF_stderr'].data, 3))} eV,  "
+            f"Resolution: {str(np.round(fit_result['sigma_conv'].data, 3))} ± "
+            f"{str(np.round(fit_result['sigma_conv_stderr'].data, 3))} eV"
         )
         fit_result.attrs["EF_correction"] = float(fit_result["EF"])
 
@@ -258,7 +258,7 @@ def fit_gold(data, EF_correction_type="poly4", **kwargs):
         if EF_correction_type == "average":
             EF_correction = float(EF_correction_fit["c0"])
             results_text = (
-                f"Average Fermi level correction: {np.round(EF_correction,3)}"
+                f"Average Fermi level correction: {np.round(EF_correction, 3)}"
             )
         else:
             EF_correction = {
@@ -267,7 +267,7 @@ def fit_gold(data, EF_correction_type="poly4", **kwargs):
             results_text = (
                 f"Polynomial Fermi level correction (order {_order}): "
                 + ", ".join(
-                    [f"{key}: {np.round(val,6)}" for key, val in EF_correction.items()]
+                    [f"{key}: {np.round(val, 6)}" for key, val in EF_correction.items()]
                 )
             )
 
@@ -357,9 +357,7 @@ def estimate_EF(da):
     """
 
     if "eV" not in da.dims:
-        raise ValueError(
-            "Data must have an 'eV' dimension to estimate the Fermi level."
-        )
+        raise ValueError("Data must have an 'eV' dimension to estimate the Fermi level.")
 
     # Check for an hv scan
     if "hv" in da.dims and "kinetic" in da.metadata.analyser.scan.eV_type.lower():
@@ -390,7 +388,7 @@ def estimate_EF(da):
     else:
         try:
             return _estimate_EF(da.DOS().fillna(0).pint.dequantify().data, da.eV.data)
-        except:
+        except Exception:
             return None
 
 

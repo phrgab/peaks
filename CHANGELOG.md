@@ -4,14 +4,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.2]
+## [0.4.0]
 
 ### Added
 - Handling of automatic download of example data for the tutorials
 - More robust file path handling in loading, including adding glob character support
+- Automated running of tutorial tests and linting in CI, and lint pre-commit hook
 
 ### Fixed
-- Bug fixes in k-conversion (some sign convention problems remain)
+- Significant bug fixes in k-conversion
+
+### Changed
+- Updated the project documentation and packaging
+
+### Removed
+- Some place-holders for modules not yet implemented
 
 ## [0.3.1]
 

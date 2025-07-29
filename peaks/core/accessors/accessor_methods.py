@@ -1,8 +1,10 @@
-import xarray as xr
 import importlib
-from functools import wraps
-from peaks.core.utils.misc import analysis_warning
 import sys
+from functools import wraps
+
+import xarray as xr
+
+from peaks.core.utils.misc import analysis_warning
 
 
 class LazyAccessorDescriptor:
