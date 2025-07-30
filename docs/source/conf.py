@@ -89,7 +89,6 @@ nb_execution_timeout = 300
 html_theme = "pydata_sphinx_theme"
 
 myst_enable_extensions = [
-    "target-roles",
     "colon_fence",
     "amsmath",
     "dollarmath",
