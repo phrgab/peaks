@@ -18,8 +18,8 @@ If you use `peaks` in your work, please cite:
 
 *`peaks`: a Python package for analysis of angle-resolved photoemission and related spectroscopies* \
 Phil D. C. King, Brendan Edwards, Shu Mo, Tommaso Antonelli,
-Edgar Abarca Morales, and Lewis Hart \
-!!ref to be inserted!!
+Edgar Abarca Morales, Lewis Hart, and Liam Trzaska \
+arXiv:!!ref to be inserted!! (2025)
 ::: 
 
 Contact pdk6@st-andrews.ac.uk.
