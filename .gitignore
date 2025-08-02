@@ -29,6 +29,3 @@ __pycache__/
 # Paper output
 /paper/jats/
 /paper/paper.pdf
-
-# Private keys
-/keys for github
