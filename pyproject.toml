@@ -49,8 +49,8 @@ name = "Shu Mo"
 email = "sm584@st-andrews.ac.uk"
 
 [project.urls]
-Source = "https://gitlab.st-andrews.ac.uk/physics-and-astronomy/king-group/peaks"
-Issues = "https://gitlab.st-andrews.ac.uk/physics-and-astronomy/king-group/peaks/-/issues"
+Source = "https://github.com/phrgab/peaks"
+Issues = "https://github.com/phrgab/peaks/issues"
 Documentation = "https://research.st-andrews.ac.uk/kinggroup/peaks/"
 
 [project.optional-dependencies]
