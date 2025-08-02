@@ -1,18 +1,34 @@
+# macOS system files
 .DS_Store
-.idea
-.vscode
-.ruff_cache
+
+# IDEs and editors
+.idea/
+.vscode/
+
+# Python cache and tools
 __pycache__/
+.ruff_cache/
+
+# Documentation build artifacts
+/docs/build/
 /docs/source/_apidoc/
 /docs/source/autoapi/
-/docs/build/
 /docs/source/_tutorials/
-/testing/
+
+# Jupyter and analysis artifacts
 /tutorials/.ipynb_checkpoints/
-tutorials/*.zarr
-tutorials/*.nc
-tutorials/*.mp4
-tutorials/fit_example
-tutorials/saving_analysis_metadata.json
-/paper/jats
+/tutorials/*.zarr
+/tutorials/*.nc
+/tutorials/*.mp4
+/tutorials/fit_example
+/tutorials/saving_analysis_metadata.json
+
+# Testing and intermediate analysis
+/testing/
+
+# Paper output
+/paper/jats/
 /paper/paper.pdf
+
+# Private keys
+/keys for github
