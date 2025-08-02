@@ -10,7 +10,7 @@ from datetime import date
 __name__ = "peaks"
 
 # Get current version
-vfpath = os.path.join(os.path.dirname(__file__), "..", "..", "peaks", "__version__.py")
+vfpath = os.path.join(os.path.dirname(__file__), "..", "..", "peaks", "__init__.py")
 with open(vfpath, "r") as f:
     contents = f.read()
 __version__ = re.search(r'__version__ = "(.*?)"', contents).group(1)
