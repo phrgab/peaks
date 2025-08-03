@@ -11,7 +11,7 @@ import xarray as xr
 from IPython.display import display
 from pydantic import BaseModel, Field
 
-from peaks.__version__ import __version__
+from peaks import __version__
 
 
 # Define the structure of a single analysis history record
