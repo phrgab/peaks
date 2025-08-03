@@ -29,3 +29,5 @@ __pycache__/
 # Paper output
 /paper/jats/
 /paper/paper.pdf
+/paper/*.tex
+/paper/local_compile.md
