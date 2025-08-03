@@ -4,7 +4,18 @@ requires = ["flit_core >=3.2,<4"]
 
 [project]
 name = "peaks"
-description = "Python Electron spectroscopy Analysis by King group @ St Andrews"
+description = "Python tools for spectroscopic analysis with a focus on angle-resolved photoemission"
+readme = "README.md"
+license = { file = "LICENSE.md" }
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+keywords = ["ARPES", "photoemission", "spectroscopy", "xarray"]
 requires-python = ">=3.11"
 dependencies = [
         "ipykernel (>=6.25,<7)",
@@ -26,7 +37,6 @@ dependencies = [
         "pyqt6 (>=6.7,<7)",
         "pyqtgraph (>=0.13,<1)",
         "scikit-image (>=0.24,<1)",
-        "jupyterlab",
         "pyperclip (>=1.9,<2)",
         "lmfit (>=1.3,<2)",
         "pydantic (>=2.9,<3)",
@@ -42,15 +52,14 @@ email = "pdk6@st-andrews.ac.uk"
 
 [[project.authors]]
 name = "Brendan Edwards"
-email = "be23@st-andrews.ac.uk"
 
 [[project.authors]]
 name = "Shu Mo"
 email = "sm584@st-andrews.ac.uk"
 
 [project.urls]
-Source = "https://gitlab.st-andrews.ac.uk/physics-and-astronomy/king-group/peaks"
-Issues = "https://gitlab.st-andrews.ac.uk/physics-and-astronomy/king-group/peaks/-/issues"
+Source = "https://github.com/phrgab/peaks"
+Issues = "https://github.com/phrgab/peaks/issues"
 Documentation = "https://research.st-andrews.ac.uk/kinggroup/peaks/"
 
 [project.optional-dependencies]
