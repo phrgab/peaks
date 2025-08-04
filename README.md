@@ -74,7 +74,7 @@ The peaks documentation can be found at [research.st-andrews.ac.uk/kinggroup/pea
 Contributions to the package are welcome. Please see the [contributing guide](https://research.st-andrews.ac.uk/kinggroup/peaks/latest/contributing.html) in the documentation for more information.
 
 ## License
-Copyright 2019-2025, peaks developors
+Copyright 2019-2025, peaks developers
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
 
