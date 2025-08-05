@@ -1,6 +1,8 @@
 """Miscellaneous helper functions."""
 
+import contextlib
 import time
+import warnings
 
 import xarray as xr
 from dask.callbacks import Callback
@@ -72,6 +74,16 @@ def dequantify_quantify_wrapper(func):
         return result
 
     return wrapper
+
+
+@contextlib.contextmanager
+def silence_unit_warnings():
+    from pint import UnitStrippedWarning
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=UnitStrippedWarning)
+
+        yield
 
 
 def format_colored_dict(d, indent_level=0, col_cycle=0):
