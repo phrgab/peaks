@@ -1,6 +1,9 @@
 """Miscellaneous helper functions."""
 
+import contextlib
+import re
 import time
+import warnings
 
 import xarray as xr
 from dask.callbacks import Callback
@@ -72,6 +75,31 @@ def dequantify_quantify_wrapper(func):
         return result
 
     return wrapper
+
+
+@contextlib.contextmanager
+def silence_unit_warnings():
+    """Temporarily patch warnings.warn to suppress known Pint unit-stripped warnings,
+    including those in delayed (lazy) Dask or HoloViews callbacks.
+    """
+    original_warn = warnings.warn
+
+    def filtered_warn(message, category=None, *args, **kwargs):
+        # Match Pint warning
+        msg = str(message)
+        if (
+            (category is not None and category.__name__ == "UnitStrippedWarning")
+            or re.search(r"unit.*stripped", msg, re.IGNORECASE)
+            or re.search(r"Unit information .* was dropped", msg)
+        ):
+            return  # suppress
+        return original_warn(message, category, *args, **kwargs)
+
+    warnings.warn = filtered_warn
+    try:
+        yield
+    finally:
+        warnings.warn = original_warn
 
 
 def format_colored_dict(d, indent_level=0, col_cycle=0):
