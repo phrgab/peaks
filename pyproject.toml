@@ -3,7 +3,7 @@ build-backend = "flit_core.buildapi"
 requires = ["flit_core >=3.2,<4"]
 
 [project]
-name = "peaks"
+name = "peaks-arpes"
 description = "Python tools for analysis of angle-resolved photoemission and related spectroscopic data"
 readme = "README.md"
 license = { file = "LICENSE.md" }
@@ -80,8 +80,6 @@ docs = [
         ]
 dev = ["ruff","pre-commit","nbstripout"]
 
-all = ["peaks[structure,ML,docs,dev]"]
-
 [tool.ruff]
 line-length = 89
 target-version = "py312"
@@ -91,3 +89,6 @@ exclude = ["*.ipynb"]
 select = ["E", "F", "I", "B"]
 ignore = ["E203", "E501"]
 fixable = ["I"]
+
+[tool.flit.module]
+name = "peaks"

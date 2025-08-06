@@ -28,12 +28,15 @@ arXiv:!!ref to be inserted!! (2025)
 
 <!-- installation-start -->
 ## Installation
-It is recommended to install peaks into its own environment. E.g. using conda:
+
+`peaks` is registed on [PyPI](https://pypi.org/project/peaks-arpes/) under the name `peaks-arpes`.
+
+It is recommended to install `peaks` in its own isolated environment. E.g. using conda:
 
 ```bash
 conda create -n peaks python=3.12
 conda activate peaks
-pip install peaks
+pip install peaks-arpes
 ```
 `peaks` will then be installed together with its core dependencies.
 
@@ -44,7 +47,6 @@ To install optional dependencies, append `\[dep1, dep2, ...\]` to the end of the
 - **ML** - required for the use of the machine learning module;
 - **dev** - optional development dependencies, used for e.g. linting the code and installing pre-commit hooks.
 - **docs** - optional dependencies for building local copies of the documentation. 
-- **all** - install peaks with all optional dependencies
 
 ### Installing from source
 

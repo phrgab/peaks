@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Handling of automatic download of example data for the tutorials
 - More robust file path handling in loading, including adding glob character support
 - Automated running of tutorial tests and linting in CI, and lint pre-commit hook
-- Adding CI for publishing on PyPI
+- Setting up for publishing on PyPI
 
 ### Fixed
 - Significant bug fixes in k-conversion
