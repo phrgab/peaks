@@ -89,3 +89,6 @@ exclude = ["*.ipynb"]
 select = ["E", "F", "I", "B"]
 ignore = ["E203", "E501"]
 fixable = ["I"]
+
+[tool.flit.module]
+name = "peaks"
