@@ -3,7 +3,7 @@ build-backend = "flit_core.buildapi"
 requires = ["flit_core >=3.2,<4"]
 
 [project]
-name = "peaks"
+name = "peaks-arpes"
 description = "Python tools for analysis of angle-resolved photoemission and related spectroscopic data"
 readme = "README.md"
 license = { file = "LICENSE.md" }
@@ -79,8 +79,6 @@ docs = [
         "pydata-sphinx-theme (>=0.16,<1)",
         ]
 dev = ["ruff","pre-commit","nbstripout"]
-
-all = ["peaks[structure,ML,docs,dev]"]
 
 [tool.ruff]
 line-length = 89
