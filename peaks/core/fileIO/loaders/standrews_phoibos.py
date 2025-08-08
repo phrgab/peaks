@@ -22,9 +22,9 @@ class StAndrewsSpecs(SpecsDataLoader):
         "polar": "Theta",
         "tilt": "Phi",
         "azi": "Azi",
-        "x1": "X",
-        "x2": "Y",
-        "x3": "Z",
+        "x1": "Y",
+        "x2": "Z",
+        "x3": "X",
     }
     _temperature_exclude_from_metadata_warn = [
         "sample",
@@ -38,6 +38,9 @@ class StAndrewsSpecs(SpecsDataLoader):
 
     _manipulator_sign_conventions = {
         "azi": -1,
+        "x1": -1,
+        "x2": -1,
+        "x3": -1,
     }
     _analyser_sign_conventions = {}
 
