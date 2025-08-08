@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2]
+
+### Changed
+- Reference sign conventions of spatial co-ordinates
+
+### Added
+- Spatial sign conventions in various loaders
+- Explanations of the sign convention for `deflector_parallel` in doc
+
 ## [0.4.1]
 
 ### Changed
