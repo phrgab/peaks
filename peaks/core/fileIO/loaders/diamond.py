@@ -174,18 +174,20 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
     _analyser_slit_angle = 0 * ureg.deg
 
     _manipulator_name_conventions = {
+        # HR-branch
         "polar": "sapolar",
         "tilt": "satilt",
         "azi": "saazimuth",
         "x1": "sax",
-        "x2": "say",
-        "x3": "saz",
+        "x2": "saz",
+        "x3": "say",
     }
 
     _manipulator_sign_conventions = {
         # HR-branch
         "tilt": -1,
         "azi": -1,
+        "x1": -1,
     }
 
     _analyser_name_conventions = {
@@ -486,6 +488,8 @@ class I05NanoARPESLoader(I05ARPESLoader):
     _manipulator_sign_conventions = {
         # Nano-branch
         "azi": -1,
+        "x1": -1,
+        "x3": -1,
     }
 
     _analyser_sign_conventions = {

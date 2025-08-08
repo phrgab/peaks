@@ -15,12 +15,12 @@ class StAndrewsMBS(MBSDataLoader):
     _loc_url = "https://www.quantummatter.co.uk/king"
     _analyser_slit_angle = 90 * ureg.deg
     _manipulator_name_conventions = {
-        "polar": "polar",
-        "tilt": "tilt",
-        "azi": "azi",
-        "x1": "y",
-        "x2": "z",
-        "x3": "x",
+        "polar": "sapolar",
+        "tilt": "satilt",
+        "azi": "saazi",
+        "x1": "say",
+        "x2": "saz",
+        "x3": "sax",
     }
     _temperature_exclude_from_metadata_warn = [
         "sample",
