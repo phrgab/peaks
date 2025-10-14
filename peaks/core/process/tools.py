@@ -1675,7 +1675,7 @@ def merge_data(data, dim="theta_par", sel=None, offsets=None, hv_match_rounding=
                 merged_data.pint.dequantify(),
                 current_data.pint.dequantify(),
                 hv_match_rounding,
-            )
+            ).pint.quantify()
         else:
             merged_data = _merge_two_DataArrays(
                 merged_data.pint.dequantify(), current_data.pint.dequantify(), dim
