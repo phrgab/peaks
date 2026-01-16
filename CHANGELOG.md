@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.5]
 
 ### Fixed
-- Bug when merging two FSMs
+- Bug when summing two FSMs
 - Pinned numba version to >=0.60.0 due to dependency requirements
 
 ## [0.4.4]
