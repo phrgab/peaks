@@ -19,6 +19,7 @@ ureg = pint_xarray.unit_registry
 
 def display_metadata(da_or_model, mode="ANSI"):
     # Recursive function to display dictionary with colored keys
+    # Paul Tol's colour scheme
     colours = [
         "\x1b[38;2;187;85;0m",  # orange
         "\x1b[38;2;0;90;181m",  # blue

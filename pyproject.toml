@@ -30,6 +30,7 @@ dependencies = [
         "natsort (>=8.4,<9)",
         "igor2 (>=0.5,<1)",
         "jupyterlab (>=4.2,<5)",
+        "numba (>=0.60.0)",
         "numbagg (>=0.8,<1)",
         "numba-progress (>=1.1,<2)",
         "numexpr (>=2.10, <3)",

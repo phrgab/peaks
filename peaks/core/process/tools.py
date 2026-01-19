@@ -1341,7 +1341,16 @@ def _sum_or_subtract_data(data, _sum=True, quiet=False):
                 current_data[dim].data == data_0_data[dim].data
             ).all():
                 # Interpolate the current DataArray onto the current dimension coordinate grid of the first DataArray
+                original_units = (
+                    current_data.data.units
+                    if hasattr(current_data.data, "units")
+                    else None
+                )  # Store units before interpolation
                 current_data = current_data.interp({dim: data_0_data[dim]})
+                if original_units is not None:
+                    current_data.data = (
+                        current_data.data * original_units
+                    )  # Restore units after interpolation
                 coords_warn_flag = True  # Update warning flag
                 # Display warning informing the user of the interpolation
                 warning_str = (
