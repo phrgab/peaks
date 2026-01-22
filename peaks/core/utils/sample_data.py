@@ -1,5 +1,6 @@
 import os
 import tempfile
+import time
 import zipfile
 from copy import deepcopy
 from pathlib import Path
@@ -26,8 +27,17 @@ class ZenodoDownloader:
         self.root_url = ROOT_URL.rstrip("/")
         self.file_list = file_list
         self.token = token or os.getenv("ZENODO_TOKEN")
+        self.local_mirror = "/Volumes/kinggroup/fakepath/test"
         self._tempdir_context = None
         self.downloaded_files = {}
+
+    def _get_local_path(self, filename):
+        """Check if files exist in local mirror"""
+        if self.local_mirror and os.path.isdir(self.local_mirror):
+            path = os.path.join(self.local_mirror, filename)
+            if os.path.isfile(path):
+                return path
+        return None
 
     def _make_headers_if_needed(self, url):
         if "draft" in url and self.token:
@@ -38,6 +48,9 @@ class ZenodoDownloader:
         headers = self._make_headers_if_needed(url)
 
         session = requests.Session()
+        session.headers.update(
+            {"User-Agent": "peaks (research software; https://github.com/phrgab/peaks)"}
+        )
         retries = Retry(
             total=5,
             backoff_factor=1,
@@ -58,6 +71,15 @@ class ZenodoDownloader:
                 proxies=proxies,
                 stream=True,
                 timeout=(10, 300),  # (connect timeout, read timeout)
+            )
+            print(
+                f"[DEBUG] X-RateLimit-Limit: {response.headers.get('X-RateLimit-Limit', 'not provided')}"
+            )
+            print(
+                f"[DEBUG] X-RateLimit-Remaining: {response.headers.get('X-RateLimit-Remaining', 'not provided')}"
+            )
+            print(
+                f"[DEBUG] X-RateLimit-Reset: {response.headers.get('X-RateLimit-Reset', 'not provided')}"
             )
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
@@ -93,10 +115,15 @@ class ZenodoDownloader:
             total=len(self.file_list), desc="Downloading sample file(s)", unit="file"
         ) as overall_bar:
             for filename in self.file_list:
-                url = f"{self.root_url}/{filename}/content"
-                dest_path = os.path.join(tmpdir, filename)
-                self._download_with_progress(url, dest_path)
-                self.downloaded_files[filename] = dest_path
+                local_path = self._get_local_path(filename)
+                if local_path:
+                    self.downloaded_files[filename] = local_path
+                else:
+                    url = f"{self.root_url}/{filename}/content"
+                    dest_path = os.path.join(tmpdir, filename)
+                    self._download_with_progress(url, dest_path)
+                    self.downloaded_files[filename] = dest_path
+                    time.sleep(1)  # pause between zenodo API for fair use
                 overall_bar.update(1)
 
         return self.downloaded_files
