@@ -44,6 +44,7 @@ dependencies = [
         "termcolor (>=2.5,<3)",
         "h5netcdf (>=1.4,<2)",
         "zarr (>=3.0,<4)",
+        "uncertainties (>=3.0,!=3.2.4)",
         ]
 dynamic = ["version"]
 

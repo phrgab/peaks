@@ -1,5 +1,6 @@
 import os
 import tempfile
+import time
 import zipfile
 from copy import deepcopy
 from pathlib import Path
@@ -38,6 +39,9 @@ class ZenodoDownloader:
         headers = self._make_headers_if_needed(url)
 
         session = requests.Session()
+        session.headers.update(
+            {"User-Agent": "peaks (research software; https://github.com/phrgab/peaks)"}
+        )
         retries = Retry(
             total=5,
             backoff_factor=1,
@@ -97,6 +101,7 @@ class ZenodoDownloader:
                 dest_path = os.path.join(tmpdir, filename)
                 self._download_with_progress(url, dest_path)
                 self.downloaded_files[filename] = dest_path
+                time.sleep(1)  # pause between zenodo API for fair use
                 overall_bar.update(1)
 
         return self.downloaded_files
