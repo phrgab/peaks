@@ -56,7 +56,7 @@ intersphinx_mapping = {
     "numpy": ("https://numpy.org/doc/stable/", None),
     "dask": ("https://docs.dask.org/en/latest/", None),
     "matplotlib": ("https://matplotlib.org/stable/", None),
-    "lmfit": ("https://lmfit.github.io/lmfit-py/index.html", None),
+    "lmfit": ("https://lmfit.github.io/lmfit-py/", None),
     "peaks": ("../build/html", "../build/html/objects.inv"),
 }
 

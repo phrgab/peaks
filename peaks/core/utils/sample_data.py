@@ -101,7 +101,7 @@ class ZenodoDownloader:
                 dest_path = os.path.join(tmpdir, filename)
                 self._download_with_progress(url, dest_path)
                 self.downloaded_files[filename] = dest_path
-                time.sleep(1)  # pause between zenodo API for fair use
+                time.sleep(1)  # pause between Zenodo API downloads for fair use
                 overall_bar.update(1)
 
         return self.downloaded_files
