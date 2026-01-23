@@ -355,7 +355,7 @@ class _Disp3D(QtWidgets.QMainWindow):
                   </tr>
                   <tr>
                     <td style='padding: 5px; font-weight: normal;'>Change primary slice</td>
-                    <td style='padding: 5px; font-weight: normal;'>{self.key_modifiers_characters["move_primary_dim"]} 
+                    <td style='padding: 5px; font-weight: normal;'>{self.key_modifiers_characters["move_primary_dim"]}
                     + Up/Down arrow keys</td>
                   </tr>
                   <tr>
@@ -384,7 +384,9 @@ class _Disp3D(QtWidgets.QMainWindow):
         """Extract some core parameters from the data."""
         self.dims = self.data.dims
         self.coords = [self.data.coords[dim].values for dim in self.dims]
-        self.step_sizes = [coord[1] - coord[0] for coord in self.coords]
+        self.step_sizes = [
+            (coord[-1] - coord[0]) / (len(coord) - 1) for coord in self.coords
+        ]
         self.ranges = [
             (min(coords) - self.step_sizes[i] / 2, max(coords) + self.step_sizes[i] / 2)
             for i, coords in enumerate(self.coords)
