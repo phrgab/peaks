@@ -401,7 +401,9 @@ class _Disp4D(QtWidgets.QMainWindow):
         self.dims = self.data.dims
         self.coords = [self.data.coords[dim].values for dim in self.dims]
         self.coarsened_coords = [coord for coord in self.coords[:2]]
-        self.step_sizes = [coord[1] - coord[0] for coord in self.coords]
+        self.step_sizes = [
+            (coord[-1] - coord[0]) / (len(coord) - 1) for coord in self.coords
+        ]
         self.ranges = [
             (min(coords) - self.step_sizes[i] / 2, max(coords) + self.step_sizes[i] / 2)
             for i, coords in enumerate(self.coords)
