@@ -458,7 +458,7 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
                 da = da.isel(ana_polar=slice(0, -1))
             if trim:
                 analysis_warning(
-                    "Non-monotonic angle values detected in ana_polar at end of travel. Trimmed {trim} data points.",
+                    f"Non-monotonic angle values detected in ana_polar at end of travel. Trimmed {trim} data points.",
                     "warning",
                     "Removed non-monotonic data",
                 )
