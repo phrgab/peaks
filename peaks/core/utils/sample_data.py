@@ -274,7 +274,7 @@ class ExampleData:
     def structure(cls):
         data = cls._cache.get("structure")
         if data is None:
-            url = "https://www.crystallography.net/cod/4515175.cif"
+            url = "https://qiserver.ugr.es/cod/4515175.cif"
             response = requests.get(url)
             if response.status_code == 200:
                 with tempfile.NamedTemporaryFile(
