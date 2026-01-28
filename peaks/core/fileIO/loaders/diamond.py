@@ -447,6 +447,22 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
                         break
         da = da.rename(dim_names_to_update)
 
+        # EDGE CASE - Handle problem with ana_polar data sometimes having non-monotonic points at end of range
+        if "ana_polar" in da.dims:
+            trim = 0
+            while not (
+                da.indexes["ana_polar"].is_monotonic_increasing
+                or da.indexes["ana_polar"].is_monotonic_decreasing
+            ):
+                trim += 1
+                da = da.isel(ana_polar=slice(0, -1))
+            if trim:
+                analysis_warning(
+                    f"Non-monotonic angle values detected in ana_polar at end of travel. Trimmed {trim} data points.",
+                    "warning",
+                    "Removed non-monotonic data",
+                )
+
         # Load array into memory if lazy loading not required
         if not (lazy or (lazy is None and da.size > opts.FileIO.lazy_size)):
             da = da.compute()
