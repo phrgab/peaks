@@ -1,4 +1,5 @@
 import os
+import shutil
 import tempfile
 import time
 import zipfile
@@ -21,14 +22,26 @@ class ZenodoDownloader:
     """Helper class to download files from Zenodo.
 
     If the data is not public, a Zenodo token must be provided. This will be taken
-    from the environment variable `ZENODO_TOKEN` if not explicitly provided."""
+    from the environment variable `ZENODO_TOKEN` if not explicitly provided.
+
+    If `LOCAL_MIRROR_PATH` is set, files will be copied from this local directory
+    with Zenodo serving as the fallback  (used in CI)."""
 
     def __init__(self, file_list, token=None):
         self.root_url = ROOT_URL.rstrip("/")
         self.file_list = file_list
         self.token = token or os.getenv("ZENODO_TOKEN")
+        self.local_mirror = os.getenv("LOCAL_MIRROR_PATH")
         self._tempdir_context = None
         self.downloaded_files = {}
+
+    def _get_local_path(self, filename):
+        """Check if local mirror available and if files exist there."""
+        if self.local_mirror and os.path.isdir(self.local_mirror):
+            path = os.path.join(self.local_mirror, filename)
+            if os.path.isfile(path):
+                return path
+        return None
 
     def _make_headers_if_needed(self, url):
         if "draft" in url and self.token:
@@ -97,11 +110,15 @@ class ZenodoDownloader:
             total=len(self.file_list), desc="Downloading sample file(s)", unit="file"
         ) as overall_bar:
             for filename in self.file_list:
-                url = f"{self.root_url}/{filename}/content"
+                local_path = self._get_local_path(filename)
                 dest_path = os.path.join(tmpdir, filename)
-                self._download_with_progress(url, dest_path)
+                if local_path:
+                    shutil.copy(local_path, dest_path)
+                else:
+                    url = f"{self.root_url}/{filename}/content"
+                    self._download_with_progress(url, dest_path)
+                    time.sleep(1)  # pause between Zenodo API downloads for fair use
                 self.downloaded_files[filename] = dest_path
-                time.sleep(1)  # pause between Zenodo API downloads for fair use
                 overall_bar.update(1)
 
         return self.downloaded_files
