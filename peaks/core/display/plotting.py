@@ -955,7 +955,7 @@ def plot_nanofocus(data, focus="defocus"):
     # along the spatial dimension
     mean_abs_deriv_smoothed = mean_abs_deriv.smooth(**{focus: 2 * focus_step})
     mean_abs_deriv_smoothed.plot(ax=axes[1, 0], c="black", alpha=0.2)
-    max_mean_abs_deriv = mean_abs_deriv_smoothed.argmax()
+    max_mean_abs_deriv = mean_abs_deriv_smoothed.argmax(dim="defocus")
     focal_point_mean_abs_deriv = mean_abs_deriv[focus].data[max_mean_abs_deriv]
     axes[1, 0].set_title(
         "Mean of the abs(deriv) estimate: {focal_point}".format(
@@ -976,7 +976,7 @@ def plot_nanofocus(data, focus="defocus"):
     # along the spatial dimension
     max_abs_deriv_smoothed = max_abs_deriv.smooth(**{focus: 2 * focus_step})
     max_abs_deriv_smoothed.plot(ax=axes[1, 1], c="black", alpha=0.2)
-    max_max_abs_deriv = max_abs_deriv_smoothed.argmax()
+    max_max_abs_deriv = max_abs_deriv_smoothed.argmax(dim="defocus")
     focal_point_max_abs_deriv = max_abs_deriv[focus].data[max_max_abs_deriv]
     axes[1, 1].set_title(
         "Max of the abs(deriv) estimate: {focal_point}".format(
@@ -995,7 +995,7 @@ def plot_nanofocus(data, focus="defocus"):
     # Estimate and plot the focal point from the focus-dependent variance along the spatial dimension
     variance_smoothed = variance.smooth(**{focus: 2 * focus_step})
     variance_smoothed.plot(ax=axes[2, 0], c="black", alpha=0.2)
-    max_variance = variance_smoothed.argmax()
+    max_variance = variance_smoothed.argmax(dim="defocus")
     focal_point_max_variance = variance[focus].data[max_variance]
     axes[2, 0].set_title(
         "Max of the variance estimate: {focal_point}".format(
@@ -1016,7 +1016,7 @@ def plot_nanofocus(data, focus="defocus"):
     else:
         FFT_data.data = abs(fft(data.pint.dequantify().data))  # Perform FFT
     FFT_data = FFT_data.pint.quantify(data.pint.units)
-    FFT_data_out = FFT_data.isel({spatial: FFT_data.argmax(spatial).data[0] + 1})
+    FFT_data_out = FFT_data.isel({spatial: FFT_data.argmax(dim=spatial).data[0] + 1})
 
     # Plot the FFT analysis results
     FFT_data_out.plot(ax=axes[2, 1], c="black")
@@ -1024,7 +1024,7 @@ def plot_nanofocus(data, focus="defocus"):
     # Estimate and plot the focal point from the FFT analysis
     FFT_data_out_smoothed = FFT_data_out.smooth(**{focus: 2 * focus_step})
     FFT_data_out_smoothed.plot(ax=axes[2, 1], c="black", alpha=0.2)
-    max_FFT = FFT_data_out_smoothed.argmax()
+    max_FFT = FFT_data_out_smoothed.argmax(dim="defocus")
     focal_point_max_FFT = FFT_data_out[focus].data[max_FFT]
     axes[2, 1].set_title(
         "Fast Fourier transform estimate: {focal_point}".format(
@@ -1048,7 +1048,7 @@ def plot_nanofocus(data, focus="defocus"):
     )
     estimates_no_outliers = []
     for i, item in enumerate(abs(abs(estimates) - abs(estimates.mean()))):
-        if item < (2 * estimates.std()):
+        if item <= (2 * estimates.std()):
             estimates_no_outliers.append(estimates[i])
     avg_estimate = round(np.mean(estimates_no_outliers), 2)
 

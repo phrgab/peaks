@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.9]
+
+### Fixed
+
+- `numpy`-related errors when converting an `ndim > 0` array to a scalar
+- `xarray` warnings about `.argmax()` calls
+- Boundary case in `plot_nanofocus` when all focus estimates are identical and `.std()` is 0
+
 ## [0.4.8]
 
 ### Added
