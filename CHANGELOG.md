@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `xarray` warnings about `.argmax()` calls
 - Boundary case in `plot_nanofocus` when all focus estimates are identical and `.std()` is 0
 
+### Added
+
+- Local mirror path support for structure example data, falling back to remote download if unavailable
+
+### Removed
+
+- The slant correction section from the docs, along with the associated function for downloading the related example data
+
 ## [0.4.8]
 
 ### Added
