@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - The slant correction section from the docs, along with the associated function for downloading the related example data
+- `numba` version constraint
 
 ## [0.4.8]
 
@@ -52,7 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Bug when summing two FSMs
-- Pinned numba version to >=0.60.0 to resolve dependency conflicts
+- Pinned `numba` version to >=0.60.0 to resolve dependency conflicts
 - Downloading errors due to rate limiting
 
 ## [0.4.4]
