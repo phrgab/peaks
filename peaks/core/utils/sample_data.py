@@ -25,7 +25,7 @@ class ZenodoDownloader:
     from the environment variable `ZENODO_TOKEN` if not explicitly provided.
 
     If `LOCAL_MIRROR_PATH` is set, files will be copied from this local directory
-    with Zenodo serving as the fallback  (used in CI)."""
+    with Zenodo serving as the fallback (used in CI)."""
 
     def __init__(self, file_list, token=None):
         self.root_url = ROOT_URL.rstrip("/")
@@ -235,10 +235,6 @@ class ExampleData:
         return cls._get_and_load("i05-1-34301.nxs")
 
     @classmethod
-    def dispersion4(cls):
-        return cls._get_and_load("i05-1-31473.nxs")
-
-    @classmethod
     def gold_reference(cls):
         return cls._get_and_load("i05-59853.nxs")
 
@@ -289,22 +285,30 @@ class ExampleData:
 
     @classmethod
     def structure(cls):
+        """If `LOCAL_MIRROR_PATH` is set, files will be copied from this local directory
+        with the database sever as the fallback (used in CI)."""
         data = cls._cache.get("structure")
         if data is None:
-            url = "https://qiserver.ugr.es/cod/4515175.cif"
-            response = requests.get(url)
-            if response.status_code == 200:
-                with tempfile.NamedTemporaryFile(
-                    "w+", suffix=".cif", delete=True
-                ) as tmp:
-                    tmp.write(response.text)
-                    tmp.flush()
-                    data = load(tmp.name)
-                    cls._cache["structure"] = data
-            else:
-                raise ValueError(
-                    f"Failed to download CIF. HTTP status code: {response.status_code}"
-                )
+            local_mirror = os.getenv("LOCAL_MIRROR_PATH")
+            if local_mirror:
+                local_path = os.path.join(local_mirror, "4515175.cif")
+                if os.path.exists(local_path):
+                    data = load(local_path)
+            if data is None:
+                url = "https://qiserver.ugr.es/cod/4515175.cif"
+                response = requests.get(url)
+                if response.status_code == 200:
+                    with tempfile.NamedTemporaryFile(
+                        "w+", suffix=".cif", delete=True
+                    ) as tmp:
+                        tmp.write(response.text)
+                        tmp.flush()
+                        data = load(tmp.name)
+                else:
+                    raise ValueError(
+                        f"Failed to download CIF. HTTP status code: {response.status_code}"
+                    )
+            cls._cache["structure"] = data
         return deepcopy(data)
 
     @classmethod
