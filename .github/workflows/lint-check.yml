@@ -1,0 +1,35 @@
+name: Lint check
+
+on:
+  pull_request: # triggers on PR open or update
+  push: # triggers on any branch push
+    branches:
+      - "**"
+
+jobs:
+  lint-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v5
+
+      - name: Set up python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+
+      - name: Install linting packages
+        run: pip install ruff nbstripout
+
+      - name: Ruff linting
+        run: |
+          ruff check ./peaks --fix
+          ruff format ./peaks
+
+      - name: Strip notebook outputs from tutorial notebooks
+        run: find tutorials -name "*.ipynb" -exec nbstripout {} +
+
+      - name: Fail if files were modified
+        run: git diff --exit-code
