@@ -7,6 +7,7 @@ on:
 
 jobs:
   install-test:
+    if: ${{ github.repository == 'phrgab/peaks' }}
     runs-on: ${{ matrix.os }}
 
     strategy:
