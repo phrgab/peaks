@@ -1,8 +1,6 @@
 name: Install test
 
 on:
-  push:
-    branches: installation-tests-CI
   schedule:
     - cron: "30 8 * * 1" # every Monday at 0830 UTC
   workflow_dispatch: # can be triggered manually from the GH UI
