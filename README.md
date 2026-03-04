@@ -1,8 +1,8 @@
 # peaks
 
 [![git](https://img.shields.io/badge/repo-github-blue?logo=github)](https://github.com/phrgab/peaks)
+[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/phrgab/peaks/test-installs.yml?logo=github-actions&logoColor=white&label=install%20tests)](https://github.com/phrgab/peaks/actions/workflows/test-installs.yml)
 [![Latest version on pypi](https://img.shields.io/pypi/v/peaks-arpes?logo=pypi&logoColor=white&color=brightgree)](https://pypi.org/project/peaks-arpes/)
-[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/phrgab/peaks/test-installs.yml?logo=github-actions&logoColor=white&label=Install%20tests)](https://github.com/phrgab/peaks/actions/workflows/test-installs.yml)
 [![Supported Python versions](https://img.shields.io/pypi/pyversions/peaks-arpes?logo=python&logoColor=white)](https://www.python.org)
 [![docs](https://img.shields.io/badge/docs-research.st--andrews-blueviolet)](https://research.st-andrews.ac.uk/kinggroup/peaks)
 [![Code Style: Ruff (Black-compatible)](https://img.shields.io/badge/code%20style-ruff-black)](https://docs.astral.sh/ruff/formatter/)
@@ -25,7 +25,7 @@ Contact [pdk6@st-andrews.ac.uk](pdk6@st-andrews.ac.uk).
 
 If you use `peaks` in your work, please cite:
 
-*`peaks`: a Python package for analysis of angle-resolved photoemission and related spectroscopies* \
+_`peaks`: a Python package for analysis of angle-resolved photoemission and related spectroscopies_ \
 Phil D. C. King, Brendan Edwards, Shu Mo, Tommaso Antonelli,
 Edgar Abarca Morales, Lewis Hart, and Liam Trzaska \
 [arXiv:2508.04803](https://arxiv.org/abs/2508.04803) (2025)
