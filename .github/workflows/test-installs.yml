@@ -28,7 +28,7 @@ jobs:
           cache: "pip"
 
       - name: Install peaks
-        run: pip install .
+        run: pip install ".[structure]"
 
       - name: Test import
         run: python -c "import peaks"
