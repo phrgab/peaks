@@ -5,24 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.4.9]
+## [0.4.9] - 2026-03-06
 
 ### Fixed
 
-- `numpy`-related errors when converting an `ndim > 0` array to a scalar
-- `xarray` warnings about `.argmax()` calls
-- Boundary case in `plot_nanofocus` when all focus estimates are identical and `.std()` is 0
+- `numpy`-related errors when converting an `ndim > 0` array to a scalar ([PR#4](https://github.com/phrgab/peaks/pull/4))
+- `xarray` warnings about `.argmax()` calls ([PR#4](https://github.com/phrgab/peaks/pull/4))
+- Boundary case in `plot_nanofocus` when all focus estimates are identical and `.std()` is 0 ([PR#4](https://github.com/phrgab/peaks/pull/4))
 
 ### Added
 
-- Local mirror path support for structure example data, falling back to remote download if unavailable
+- Local mirror path support for structure example data, falling back to remote download if unavailable ([PR#5](https://github.com/phrgab/peaks/pull/5))
+- CI for lint checks and installation tests ([PR#6](https://github.com/phrgab/peaks/pull/6), [PR#7](https://github.com/phrgab/peaks/pull/7))
 
 ### Removed
 
-- The slant correction section from the docs, along with the associated function for downloading the related example data
-- `numba` version constraint
+- The slant correction section from the docs, along with the associated function for downloading the related example data ([PR#5](https://github.com/phrgab/peaks/pull/5))
+- `numba` version constraint ([PR#5](https://github.com/phrgab/peaks/pull/5))
 
-## [0.4.8]
+## [0.4.8] - 2026-02-04
 
 ### Added
 
@@ -33,14 +34,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Removed Python version upper bound; now supports Python 3.11-3.14
 
-## [0.4.7]
+## [0.4.7] - 2026-01-28
 
 ### Fixed
 
 - Subtle crosshair deviations from real value on motor axes in 3D and 4D GUI
 - Trimming non-monotonic data at end of travel in Diamond I05-nano ana_polar maps
 
-## [0.4.6]
+## [0.4.6] - 2026-01-22
 
 ### Fixed
 
@@ -48,7 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Excluded yanked `uncertainties` version 3.2.4
 - `lmfit` intersphinx URL for doc building
 
-## [0.4.5]
+## [0.4.5] - 2026-01-19
 
 ### Fixed
 
@@ -56,19 +57,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pinned `numba` version to >=0.60.0 to resolve dependency conflicts
 - Downloading errors due to rate limiting
 
-## [0.4.4]
+## [0.4.4] - 2025-10-15
 
 ### Fixed
 
 - Pinned python version to <3.14 due to dependency requirements
 
-## [0.4.3]
+## [0.4.3] - 2025-10-14
 
 ### Fixed
 
 - k-conversion failure for merged hv scans
 
-## [0.4.2]
+## [0.4.2] - 2025-08-08
 
 ### Changed
 
@@ -79,13 +80,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Spatial sign conventions in various loaders
 - Explanations of the sign convention for `deflector_parallel` in doc
 
-## [0.4.1]
+## [0.4.1] - 2025-08-08
 
 ### Changed
 
 - Minor docs update
 
-## [0.4.0]
+## [0.4.0] - 2025-08-06
 
 ### Added
 
