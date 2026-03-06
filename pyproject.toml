@@ -55,8 +55,17 @@ email = "pdk6@st-andrews.ac.uk"
 
 [[project.authors]]
 name = "Brendan Edwards"
+email = "78918760+Brendan-M-Edwards@users.noreply.github.com"
 
 [[project.authors]]
+name = "Shu Mo"
+email = "sm584@st-andrews.ac.uk"
+
+[[project.maintainers]]
+name = "Phil King"
+email = "pdk6@st-andrews.ac.uk"
+
+[[project.maintainers]]
 name = "Shu Mo"
 email = "sm584@st-andrews.ac.uk"
 
