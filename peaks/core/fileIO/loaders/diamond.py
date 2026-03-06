@@ -95,6 +95,10 @@ class DiamondNXSLoader(BaseHDF5DataLoader):
         if isinstance(attr, bytes):
             attr = attr.decode()
 
+        if isinstance(attr, np.ndarray):
+            if attr.size == 1:
+                attr = attr.item()
+
         if isinstance(attr, str):
             if "," in attr:
                 attr = [int(i) for i in attr.split(",")]

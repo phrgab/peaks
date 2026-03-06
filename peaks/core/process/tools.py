@@ -1172,8 +1172,8 @@ def degrid(data, width=0.1, height=0.1, cutoff=4):
     )
 
     # Ensure n=0 components are unaffected by changing their values in the filter to 1
-    FFT_filter[int(np.where(n1_values == 0)[0])] = 1
-    FFT_filter[:, int(np.where(n2_values == 0)[0])] = 1
+    FFT_filter[int(np.where(n1_values == 0)[0].item())] = 1
+    FFT_filter[:, int(np.where(n2_values == 0)[0].item())] = 1
 
     # Define degrid_data, and assign its contents to the inverse FFT of the original FFT of the data, multiplied by the
     # filter to remove intense high frequency Fourier components
