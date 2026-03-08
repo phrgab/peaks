@@ -204,8 +204,17 @@ class IdentifyLoc:
 
     @staticmethod
     def _handler_h5(fname):
-        # Use CLF_Artemis loader which will in turn call the FeSuMa loader for the key things
-        return "CLF_Artemis"
+        with h5py.File(fname, "r", swmr=True) as h5file:
+            if("/Entry/Facility" in h5file):
+                #In newer(2026 onwards) SGM4 files, the facility identifier is specified.
+                if(h5file["/Entry/Data/ScanDetails/"]=="SGM4"):
+                    return "SGM4"
+            elif("/Entry/Data/ScanDetails/" in h5file):
+                #For legacy compatibility, we rely on the end-station specific file structure.
+                return "SGM4"
+            else:
+                # Use CLF_Artemis loader which will in turn call the FeSuMa loader for the key things
+                return "CLF_Artemis"
 
     @staticmethod
     def _handler_nc(fname):
