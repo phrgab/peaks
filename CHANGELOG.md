@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `BaseOpticsDataLoader` class providing metadata handling for optical components
 - `precooling_stage` and `heater_power` entries in `BaseTemperatureDataLoader`
 - `heater_power` now in the metadata for data collected at I05, Diamond
+- Loader added for data collected at SGM4, ASTRID2 in Aarhus.
 
 ### Fixed
 
