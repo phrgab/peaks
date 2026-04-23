@@ -90,7 +90,7 @@ docs = [
         "myst-nb (>=1.2,<2)",
         "pydata-sphinx-theme (>=0.16,<1)",
         ]
-dev = ["ruff","pre-commit","nbstripout"]
+dev = ["ruff","pre-commit","nbstripout","pytest"]
 
 [tool.ruff]
 line-length = 89

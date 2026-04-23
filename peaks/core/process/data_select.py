@@ -414,10 +414,10 @@ def radial_cuts(data, num_azi=361, num_points=200, radius=2, **centre_kwargs):
     data : xarray.DataArray
         Data to extract radial cuts from.
 
-    num_azi : float, optional
+    num_azi : int, optional
         Number of evenly spaced azi values between 0 and 360 degrees to take radial cuts. Defaults to 361.
 
-    num_points : float, optional
+    num_points : int, optional
         Number of evenly spaced points to sample along a cut. Defaults to 200.
 
     radius : float, optional
@@ -452,7 +452,7 @@ def radial_cuts(data, num_azi=361, num_points=200, radius=2, **centre_kwargs):
 
     """
 
-    angle_dims = list(set(data.dims) - {"eV"})
+    angle_dims = [dim for dim in data.dims if dim != "eV"]
 
     # Check remaining data is 2D
     if len(angle_dims) != 2:
@@ -563,7 +563,7 @@ def extract_cut(data, start_point, end_point, num_points=None):
         FM = pks.load('FM.zip')
 
         # Extract cut from (0, 0) to (15, 12) with 100 points
-        cut = FM.extract_dispersion({'theta_par': 0, 'polar': 0}, {'theta_par': 15, 'polar': 12}, num_points=100)
+        cut = FM.extract_cut({'theta_par': 0, 'polar': 0}, {'theta_par': 15, 'polar': 12}, num_points=100)
 
     """
 

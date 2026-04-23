@@ -233,7 +233,7 @@ def plot_DCs(
         smallest dimension.
 
     figsize : tuple, optional
-        Size of figure to be plotted. Defaults to None.
+        Size of figure to be plotted. Defaults to (6, 6).
 
     linewidth : float, optional
         Width of lines to be plotted. Defaults to 1.

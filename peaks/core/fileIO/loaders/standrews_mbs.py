@@ -27,6 +27,8 @@ class StAndrewsMBS(MBSDataLoader):
         "cryostat",
         "shield",
         "setpoint",
+        "precooling_stage",
+        "heater_power",
     ]
     _photon_exclude_from_metadata_warn = ["hv", "polarisation", "exit_slit"]
     _manipulator_exclude_from_metadata_warn = [

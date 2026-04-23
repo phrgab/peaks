@@ -63,11 +63,6 @@ class ArtemisPhoibos(BaseARPESDataLoader, BasePumpProbeClass):
         "azi",
     ]
     _manipulator_exclude_from_metadata_warn = ["x1", "x2", "x3", "polar", "tilt", "azi"]
-    _temperature_exclude_from_metadata_warn = [
-        "cryostat",
-        "setpoint",
-        "shield",
-    ]
 
     @classmethod
     def _load_data(cls, fpath, lazy, **kwargs):

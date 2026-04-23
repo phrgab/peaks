@@ -190,23 +190,23 @@ def bgs(
         S2p_XPS = load('XPS1.ibw').DOS()
 
         # Subtract a constant background of 3.5 from the data
-        bgs_disp = disp.bkg(3.5)
+        bgs_disp = disp.bgs(3.5)
 
         # Subtract a constant background equal to the mean value of the data from the data
-        disp_norm = disp.bkg('all')
+        disp_norm = disp.bgs('all')
 
         # Subtract a background equal to an integrated MDC from the data
-        disp_norm = disp.bkg('eV')
+        disp_norm = disp.bgs('eV')
 
         # Subtract a background equal to an integrated EDC from the data
-        disp_norm = disp.bkg('theta_par')
+        disp_norm = disp.bgs('theta_par')
 
         # Subtract a Shirley background from the data
-        bgs_S2p_XPS = S2p_XPS.bkg('Shirley')
+        bgs_S2p_XPS = S2p_XPS.bgs('Shirley')
 
         # Subtract a Shirley background from the data, using 3 points to calculate the average value of the data start
         # and end points
-        bgs_S2p_XPS = S2p_XPS.bkg('Shirley', num_avg=3)
+        bgs_S2p_XPS = S2p_XPS.bgs('Shirley', num_avg=3)
 
     """
 
@@ -554,6 +554,9 @@ def smooth(data, **smoothing_kwargs):
 
     # Update DataArray with smoothed data
     smoothed_data.data = array_sm
+    smoothed_data.data = (
+        array_sm * data.data.units
+    )  # re-apply the units to the smoothed data
 
     # Check that all supplied smoothing_kwargs are used, giving a warning if not (this occurs if an axis does not exist)
     if len(smoothing_kwargs) != 0:
@@ -917,7 +920,7 @@ def sym_nfold(data, nfold, expand=True, fillna=True, **centre_kwargs):
         # Perform a 3-fold symmetrisation of the Fermi surface around a
         # (theta_par=3, ana_polar=5) centre of rotation, restricting the coordinate grid
         # of the output to that of the input, and not replacing NaNs.
-        FS1_sym = FS1.sym(theta_par=3, ana_polar=5, expand=False, fillna=False)
+        FS1_sym = FS1.sym_nfold(theta_par=3, ana_polar=5, expand=False, fillna=False)
 
     """
 

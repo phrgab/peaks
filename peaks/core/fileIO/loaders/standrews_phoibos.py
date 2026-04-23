@@ -31,6 +31,8 @@ class StAndrewsSpecs(SpecsDataLoader):
         "cryostat",
         "shield",
         "setpoint",
+        "precooling_stage",
+        "heater_power",
     ]
     _manipulator_exclude_from_metadata_warn = [
         axis for axis in _manipulator_name_conventions.keys()

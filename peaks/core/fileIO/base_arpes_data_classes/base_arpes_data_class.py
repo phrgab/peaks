@@ -28,7 +28,9 @@ ureg = pint_xarray.unit_registry
 
 
 class BaseARPESDataLoader(
-    BasePhotonSourceDataLoader, BaseTemperatureDataLoader, BaseManipulatorDataLoader
+    BasePhotonSourceDataLoader,
+    BaseTemperatureDataLoader,
+    BaseManipulatorDataLoader,
 ):
     """Base class for data loaders for ARPES systems. Assume a cryo-manipulator and photon source
 

@@ -9,6 +9,7 @@ from peaks.core.fileIO.loaders import (
     clf,
     diamond,
     netcdf,
+    sgm4,
     standrews_mbs,
     standrews_phoibos,
     zarr,

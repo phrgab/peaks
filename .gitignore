@@ -26,6 +26,11 @@ __pycache__/
 # Testing and intermediate analysis
 /testing/
 
+# pytest cache and coverage reports
+.pytest_cache/
+.coverage
+/htmlcov/
+
 # Paper output
 /paper/jats/
 /paper/paper.pdf

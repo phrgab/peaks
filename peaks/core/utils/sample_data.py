@@ -15,7 +15,7 @@ from urllib3.util.retry import Retry
 from peaks.core.fileIO.data_loading import load
 from peaks.core.utils.misc import analysis_warning
 
-ROOT_URL = "https://zenodo.org/api/records/15928652/files"
+ROOT_URL = "https://zenodo.org/api/records/19336694/files"
 
 
 class ZenodoDownloader:

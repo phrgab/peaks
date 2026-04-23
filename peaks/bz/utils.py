@@ -79,8 +79,8 @@ def sym_points(structure_or_lattice, surface=None, hv=None):
 
     Returns
     -------
-    sym_points : dict
-        Dictionary containing the symmetry points
+    sym_points : pandas.DataFrame
+        DataFrame containing the symmetry points
     """
     atoms, cell, lattice = _get_atoms_cell_lattice(structure_or_lattice)
 

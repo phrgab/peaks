@@ -327,11 +327,11 @@ def curvature(data, **parameter_kwargs):
     Cy = parameter_kwargs[dimy]
 
     # Determine various derivatives used in curvature analysis (0 and 1 in following notation represent dimx and dimy)
-    dx = curv_data.deriv(dimx)  # d/dx
-    d2x = curv_data.deriv([dimx, dimx])  # d^2/dx^2
-    dy = curv_data.deriv(dimy)  # d/dy
-    d2y = curv_data.deriv([dimy, dimy])  # d^2/dy^2
-    dxdy = curv_data.deriv([dimx, dimy])  # d^2/dxdy
+    dx = curv_data.deriv(dimx).pint.dequantify()  # d/dx
+    d2x = curv_data.deriv([dimx, dimx]).pint.dequantify()  # d^2/dx^2
+    dy = curv_data.deriv(dimy).pint.dequantify()  # d/dy
+    d2y = curv_data.deriv([dimy, dimy]).pint.dequantify()  # d^2/dy^2
+    dxdy = curv_data.deriv([dimx, dimy]).pint.dequantify()  # d^2/dxdy
 
     # Perform 2D curvature analysis
     curv_data = (
@@ -340,7 +340,8 @@ def curvature(data, **parameter_kwargs):
         + ((1 + (Cy * (dy**2))) * Cx * d2x)
     ) / ((1 + (Cx * (dx**2)) + (Cy * (dy**2))) ** 1.5)
 
-    # Rewrite attributes
+    # Restore units and rewrite attributes
+    curv_data = curv_data.pint.quantify(data.pint.units)
     curv_data.attrs = attributes
 
     # Update analysis history
@@ -353,7 +354,7 @@ def curvature(data, **parameter_kwargs):
 
 
 def min_gradient(data, **smoothing_kwargs):
-    """Perform minimum gradient analysis of data, using Gaussian filtering (see Rev. Sci. Instrum 88 (2017) 07390 for
+    """Perform minimum gradient analysis of data, using Gaussian filtering (see Rev. Sci. Instrum 88 (2017) 073903 for
     analysis procedure).
 
     Parameters
