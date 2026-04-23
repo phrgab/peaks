@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.5.0.dev]
+## [0.5.0] - 2026-04-23
 
 ### Added
 
@@ -15,21 +15,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `core/process`: `data_select`, `differentiate`, `tools`
   - `core/utils`: `interpolation`, `misc`
 - Unit tests added to CI workflow ([PR#10](https://github.com/phrgab/peaks/pull/10))
-- `BaseOpticsDataLoader` class providing metadata handling for optical components
-- `precooling_stage` and `heater_power` entries in `BaseTemperatureDataLoader`
-- `heater_power` now in the metadata for data collected at I05, Diamond
-- Loader added for data collected at SGM4, ASTRID2 in Aarhus.
+- `BaseOpticsDataLoader` class providing metadata handling for optical components ([PR#11](https://github.com/phrgab/peaks/pull/11))
+- `precooling_stage` and `heater_power` entries in `BaseTemperatureDataLoader` ([PR#11](https://github.com/phrgab/peaks/pull/11))
+- `heater_power` now in the metadata for data collected at I05, Diamond ([PR#11](https://github.com/phrgab/peaks/pull/11))
+- `AGENTS.md` ([PR#13](https://github.com/phrgab/peaks/pull/13))
+- Loader added for data collected at SGM4, ASTRID2 in Aarhus ([PR#3](https://github.com/phrgab/peaks/pull/3), [PR#16](https://github.com/phrgab/peaks/pull/16))
 
 ### Fixed
 
 - `.smooth` and `.curvature` now preserve pint units during analysis ([PR#10](https://github.com/phrgab/peaks/pull/10))
 - Non-deterministic azimuthal origin across python sessions in `radial_cuts` ([PR#10](https://github.com/phrgab/peaks/pull/10))
-- Stale docstrings updated
+- Stale docstrings ([PR#10](https://github.com/phrgab/peaks/pull/10))
+- OpticsMetadataModel serialisation issue for additional optics axes when saving data ([PR#12](https://github.com/phrgab/peaks/pull/12))
 
 ### Changed
 
-- `I05NanoARPESLoader` optics metadata now uses `BaseOpticsDataLoader` instead of the bespoke `I05NanoFocussingMetadataModel`
-- Optics metadata stored under `_optics` attribute (previously `_focussing`)
+- `I05NanoARPESLoader` optics metadata now uses `BaseOpticsDataLoader` instead of the bespoke `I05NanoFocussingMetadataModel` ([PR#11](https://github.com/phrgab/peaks/pull/11))
+- Optics metadata stored under `_optics` attribute (previously `_focussing`) ([PR#11](https://github.com/phrgab/peaks/pull/11))
+- Zenodo URL to version 3 ([PR#12](https://github.com/phrgab/peaks/pull/12))
 
 :::{attention}
 **For Diamond I05-nano data:** As a result, any files containing `I05NanoFocussingMetadataModel` previously saved by `peaks` using `.save` will not reload properly; please re-save from the original `.nxs` files.
@@ -38,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - `core/utils/consts.py` deprecated as replaced by `scipy.constants` ([PR#10](https://github.com/phrgab/peaks/pull/10))
-- `I05NanoFocussingMetadataModel` as replaced by `OpticsMetadataModel`
+- `I05NanoFocussingMetadataModel` as replaced by `OpticsMetadataModel` ([PR#11](https://github.com/phrgab/peaks/pull/11))
 
 ## [0.4.9] - 2026-03-06
 
