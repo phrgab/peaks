@@ -40,9 +40,16 @@ class ZarrLoader(NetCDFLoader):
         # Load Zarr file as xarray.DataArray or xarray.Dataset
         data = open_datatree(fpath, engine="zarr", chunks={})
 
-        # Parse the metadata if requested
-        if metadata:
-            data = data.map_over_datasets(ZarrLoader._parse_ds_metadata)
+        # Parse the metadata
+        data = data.map_over_datasets(ZarrLoader._parse_ds_metadata)
+
+        if metadata is False and not quiet:
+            analysis_warning(
+                "`metadata=False` option has no effect when loading NetCDF files. "
+                "Metadata are always parsed from saved files.",
+                title="Loading info",
+                warn_type="info",
+            )
 
         # Quantify the data
         data = data.map_over_datasets(ZarrLoader._quantify_da_in_dt)
