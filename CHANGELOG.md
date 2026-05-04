@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Error when loading NetCDF files saved by `peaks` with `metadata=False`.
+- Errors when loading NetCDF files and processing Zarr files saved by `peaks` with `metadata=False` ([PR#20](https://github.com/phrgab/peaks/pull/20))
 
 ## [0.5.0] - 2026-04-23
 

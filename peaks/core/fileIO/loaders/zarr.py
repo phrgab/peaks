@@ -45,7 +45,7 @@ class ZarrLoader(NetCDFLoader):
 
         if metadata is False and not quiet:
             analysis_warning(
-                "`metadata=False` option has no effect when loading NetCDF files. "
+                "`metadata=False` option has no effect when loading Zarr files. "
                 "Metadata are always parsed from saved files.",
                 title="Loading info",
                 warn_type="info",
