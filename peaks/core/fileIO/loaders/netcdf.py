@@ -11,6 +11,7 @@ from peaks.core.fileIO.base_data_classes.base_data_class import BaseDataLoader
 from peaks.core.fileIO.loc_registry import register_loader
 from peaks.core.metadata.base_metadata_models import AxisMetadataModelWithReference
 from peaks.core.options import opts
+from peaks.core.utils.misc import analysis_warning
 
 
 # Classes for data loaders
@@ -52,9 +53,16 @@ class NetCDFLoader(BaseDataLoader):
         except ValueError:
             data = xr.open_dataset(fpath)
 
-        # Parse the metadata if requested
-        if metadata:
-            cls._parse_metadata(data)
+        # Parse the metadata
+        cls._parse_metadata(data)
+
+        if metadata is False and not quiet:
+            analysis_warning(
+                "`metadata=False` option has no effect when loading NetCDF files. "
+                "Metadata are always parsed from saved files.",
+                title="Loading info",
+                warn_type="info",
+            )
 
         # Actually load the data
         if (lazy is False) or (lazy is None and data.nbytes > opts.FileIO.lazy_size):
