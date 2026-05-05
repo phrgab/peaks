@@ -50,7 +50,7 @@ pip install peaks-arpes
 
 ### Optional dependencies
 
-To install optional dependencies, append `\[dep1, dep2, ...\]` to the end of the `pip install ...` command, where `dep` is the name of the dependency. The following options can currently be specified:
+`peaks` can be installed with optional additional dependencies, as `pip install "peaks-arpes[dep1, dep2, ...]"` where `dep` is the name of the dependency. The following options can currently be specified:
 
 - **structure** - required for the use of the `bz` module, for e.g. plotting Brillouin zones on the data;
 - **ML** - required for the use of the machine learning module;

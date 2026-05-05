@@ -34,7 +34,7 @@ Guidelines:
 - Open an issue to discuss the change.
 - Make changes in a new branch/fork.
 - Thoroughly [test](#testing) the changes before making a pull request.
-- Ensure the code is formatted following our [conventions](#linting-and-formatting-with-ruff).
+- Ensure the code is formatted following our [conventions](#linting-and-formatting).
 - Document new features and changes in the [changelog](#changelog).
 - Ensure the [documentation is updated](#documentation).
 - Open a pull request to merge onto the `dev` branch.
