@@ -104,6 +104,10 @@ See the [User Guide](https://research.st-andrews.ac.uk/kinggroup/peaks/latest/us
 
 The peaks documentation can be found at [research.st-andrews.ac.uk/kinggroup/peaks](https://research.st-andrews.ac.uk/kinggroup/peaks).
 
+## Support
+
+For general questions (e.g. installation, usage, contributing), please use our [GitHub Discussions](https://github.com/phrgab/peaks/discussions) page. If that is not possible, please e-mail pdk6@st-andrews.ac.uk.
+
 ## Contributing
 
 Contributions to the package are welcome. Please see the [contributing guide](https://research.st-andrews.ac.uk/kinggroup/peaks/latest/contributing.html) in the documentation for more information.
