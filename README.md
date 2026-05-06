@@ -76,13 +76,13 @@ pip install peaks-arpes
 
 ### Installing from source
 
-The latest version of `peaks` can be installed directly from source:
+The latest release of `peaks` can be installed directly from source:
 
 ```bash
 pip install git+https://github.com/phrgab/peaks.git
 ```
 
-To install a specific tagged version, append `@<tag>` to the end of the git link where `<tag>` is the tag name.
+To install a specific tagged version, append `@<tag>` to the end of the git link where `<tag>` is the tag name. Use `@dev` to install the latest development version.
 
 <!-- source-installation-end -->
 
