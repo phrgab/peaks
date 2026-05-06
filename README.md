@@ -15,8 +15,6 @@
 
 `peaks` is an evolution of the `PyPhoto` package originally developed by Phil King, Brendan Edwards, Tommaso Antonelli, Edgar Abarca Morales, Lewis Hart, and Liam Trzaska from the [King group](https://www.quantummatter.co.uk/king) at the [University of St Andrews](http://www.st-andrews.ac.uk). This version of `peaks` is the result of a major restructuring of the package in 2023-2025 by Brendan Edwards, Phil King, and Shu Mo.
 
-Contact [pdk6@st-andrews.ac.uk](pdk6@st-andrews.ac.uk).
-
 <!-- overview-end -->
 
 ## Citation
@@ -50,7 +48,7 @@ pip install peaks-arpes
 
 ### Optional dependencies
 
-To install optional dependencies, append `\[dep1, dep2, ...\]` to the end of the `pip install ...` command, where `dep` is the name of the dependency. The following options can currently be specified:
+`peaks` can be installed with optional additional dependencies, as `pip install "peaks-arpes[dep1, dep2, ...]"` where `dep` is the name of the dependency. The following options can currently be specified:
 
 - **structure** - required for the use of the `bz` module, for e.g. plotting Brillouin zones on the data;
 - **ML** - required for the use of the machine learning module;
@@ -76,13 +74,13 @@ pip install peaks-arpes
 
 ### Installing from source
 
-The latest version of `peaks` can be installed directly from source:
+The latest release of `peaks` can be installed directly from source:
 
 ```bash
 pip install git+https://github.com/phrgab/peaks.git
 ```
 
-To install a specific tagged version, append `@<tag>` to the end of the git link where `<tag>` is the tag name.
+To install a specific tagged version, append `@<tag>` to the end of the git link where `<tag>` is the tag name. Use `@dev` to install the latest development version.
 
 <!-- source-installation-end -->
 
@@ -103,6 +101,14 @@ See the [User Guide](https://research.st-andrews.ac.uk/kinggroup/peaks/latest/us
 ## Documentation
 
 The peaks documentation can be found at [research.st-andrews.ac.uk/kinggroup/peaks](https://research.st-andrews.ac.uk/kinggroup/peaks).
+
+<!-- support-start -->
+
+## Support
+
+For general questions (e.g. installation, usage, contributing), please use our [GitHub Discussions](https://github.com/phrgab/peaks/discussions) page. If that is not possible, please e-mail [Phil](mailto:pdk6@st-andrews.ac.uk).
+
+<!-- support-end -->
 
 ## Contributing
 

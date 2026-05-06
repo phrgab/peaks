@@ -6,11 +6,28 @@ We welcome contributions to the advancement of `peaks` and hope for it to develo
 
 - implementing new [file loaders](#file_loaders)
 - testing functionality and bug-checking
-- developing a proper suite of unit tests
+- developing a more extensive suite of unit tests
 - enhancing and correcting the project documentation, including relevant doc-strings
 - contributing feature enhancements.
 
-If you wish to discuss a contribution or to report a bug, please open an issue on our [GitHub repository](https://github.com/phrgab/peaks/issues).
+## Support
+
+### Questions and usage
+
+For general questions about contributing to the development of `peaks`, or of its usage, please use our [GitHub Discussions](https://github.com/phrgab/peaks/discussions) page. If that is not possible, please e-mail [Phil](mailto:pdk6@st-andrews.ac.uk).
+
+### Bug reports
+
+If you believe you have found a bug, please open an issue in our [GitHub repository](https://github.com/phrgab/peaks/issues). When reporting a bug, please include:
+
+- A clear description of the problem
+- Steps to reproduce
+- Expected vs actual behaviour
+- Version information and environment details (Python version, OS, key dependency versions)
+
+### Feature requests
+
+Suggestions for new features or improvements are welcome. We suggest to first start a discussion in the “Ideas” category of our [GitHub Discussions](https://github.com/phrgab/peaks/discussions) page.
 
 ## Installation
 
@@ -20,7 +37,7 @@ If you are actively developing the package, we recommend cloning or forking the 
 conda create -n peaks-dev python=3.12
 conda activate peaks-dev
 # From the project root
-pip install -e .\[dev\]
+pip install -e ".[dev]"
 ```
 
 ## Making changes
@@ -31,10 +48,10 @@ The `main` branch tracks the latest stable release on PyPI. It is highly recomme
 
 Guidelines:
 
-- Open an issue to discuss the change.
+- Open an issue or Discussion item to discuss the bug/change.
 - Make changes in a new branch/fork.
 - Thoroughly [test](#testing) the changes before making a pull request.
-- Ensure the code is formatted following our [conventions](#linting-and-formatting-with-ruff).
+- Ensure the code is formatted following our [conventions](#linting-and-formatting).
 - Document new features and changes in the [changelog](#changelog).
 - Ensure the [documentation is updated](#documentation).
 - Open a pull request to merge onto the `dev` branch.
@@ -64,7 +81,7 @@ ruff format .                    # Format code (like Black)
 
 ### Stripping tutorial notebooks
 
-The output and metadata of the tutorial notebooks should be stripped using `nbstripout`. This is isntalled as part of the developer optional dependencies, and can be run on the code base manually:
+The output and metadata of the tutorial notebooks should be stripped using `nbstripout`. This is installed as part of the developer optional dependencies, and can be run on the code base manually:
 
 ```bash
 nbstripout tutorials/**/*.ipynb
@@ -72,7 +89,7 @@ nbstripout tutorials/**/*.ipynb
 
 ### Pre-commit hook
 
-A pre-commit hook is avaialble for automating the above formatting operations upon commits. From the project root, to register the hook:
+A pre-commit hook is available for automating the above formatting operations upon commits. From the project root, to register the hook:
 
 ```bash
 pre-commit install
