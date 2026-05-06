@@ -22,6 +22,6 @@
 ```
 
 ```{include} ../../README.md
-:start-after: <!-- source-support-start -->
-:end-before: <!-- basic-support-end -->
+:start-after: <!-- support-start -->
+:end-before: <!-- support-end -->
 ```

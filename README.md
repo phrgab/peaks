@@ -15,8 +15,6 @@
 
 `peaks` is an evolution of the `PyPhoto` package originally developed by Phil King, Brendan Edwards, Tommaso Antonelli, Edgar Abarca Morales, Lewis Hart, and Liam Trzaska from the [King group](https://www.quantummatter.co.uk/king) at the [University of St Andrews](http://www.st-andrews.ac.uk). This version of `peaks` is the result of a major restructuring of the package in 2023-2025 by Brendan Edwards, Phil King, and Shu Mo.
 
-Contact [pdk6@st-andrews.ac.uk](pdk6@st-andrews.ac.uk).
-
 <!-- overview-end -->
 
 ## Citation
@@ -108,7 +106,7 @@ The peaks documentation can be found at [research.st-andrews.ac.uk/kinggroup/pea
 
 ## Support
 
-For general questions (e.g. installation, usage, contributing), please use our [GitHub Discussions](https://github.com/phrgab/peaks/discussions) page. If that is not possible, please e-mail pdk6@st-andrews.ac.uk.
+For general questions (e.g. installation, usage, contributing), please use our [GitHub Discussions](https://github.com/phrgab/peaks/discussions) page. If that is not possible, please e-mail [Phil](mailto:pdk6@st-andrews.ac.uk).
 
 <!-- support-end -->
 

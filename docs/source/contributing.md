@@ -12,9 +12,9 @@ We welcome contributions to the advancement of `peaks` and hope for it to develo
 
 ## Support
 
-### Questions and Usage
+### Questions and usage
 
-For general questions about contributing to the development of `peaks`, or of its usage, please use our [GitHub Discussions](https://github.com/phrgab/peaks/discussions) page. If that is not possible, please e-mail pdk6@st-andrews.ac.uk.
+For general questions about contributing to the development of `peaks`, or of its usage, please use our [GitHub Discussions](https://github.com/phrgab/peaks/discussions) page. If that is not possible, please e-mail [Phil](mailto:pdk6@st-andrews.ac.uk).
 
 ### Bug reports
 
