@@ -6,9 +6,9 @@
 If you develop a new data loader, please consider [contributing](#contributing) this to the `peaks` codebase. Please try and minimise the number of new dependencies required.
 :::
 
-A core set of file loaders are included within `peaks.core.fileIO.loaders`. To make a new loader, the general approach is to subclass the most relevant base loader(s), implementing only the required custom logic. For data saved using the default format of one of the main ARPES spectrometer manufacturers, this can make the entire loader rather compact, largely defining the mapping from `peaks` to local [axis names and co-ordinate system](coordinate-conventions).
+A core set of file loaders are included within {py:mod}`peaks.core.fileIO.loaders`. To make a new loader, the general approach is to subclass the most relevant base loader(s), implementing only the required custom logic. For data saved using the default format of one of the main ARPES spectrometer manufacturers, this can make the entire loader rather compact, largely defining the mapping from `peaks` to local [axis names and co-ordinate system](coordinate-conventions).
 
-For example, for data collected in the SES data format at the A-branch of the [Bloch beamline](http://blochdocs.maxiv.lu.se), we can subclass the `peaks.core.fileIO.base_arpes_data_classes_base_ses_class:SESDataLoader`, meaning the entire loader can be defined as:
+For example, for data collected in the SES data format at the A-branch of the [Bloch beamline](http://blochdocs.maxiv.lu.se), we can subclass the {py:class}`peaks.core.fileIO.base_arpes_data_classes.base_ses_class.SESDataLoader`, meaning the entire loader can be defined as:
 
 ```python
 class BlochArpesLoader(SESDataLoader):
@@ -45,7 +45,7 @@ class BlochArpesLoader(SESDataLoader):
     }
 ```
 
-For data saved using a custom format, or for additional features not yet implemented in the `peaks` loader classes, a full loader function can be written, but this should still subclass e.g. the `BaseARPESDataLoader` class for ARPES data, or should subclass (a combination of) the `BasePhotonSourceDataLoader`, `BaseTemperatureDataLoader`, `BaseManipulatorDataLoader`, `BaseOpticsDataLoader` for other data types. For more examples, see the current loaders in `peaks.core.fileIO.loaders`.
+For data saved using a custom format, or for additional features not yet implemented in the `peaks` loader classes, a full loader function can be written, but this should still subclass e.g. the {py:class}`~peaks.core.fileIO.base_arpes_data_classes.base_arpes_data_class.BaseARPESDataLoader` class for ARPES data, or should subclass (a combination of) the {py:class}`~peaks.core.fileIO.base_data_classes.base_photon_source_classes.BasePhotonSourceDataLoader`, {py:class}`~peaks.core.fileIO.base_data_classes.base_temperature_class.BaseTemperatureDataLoader`, {py:class}`~peaks.core.fileIO.base_data_classes.base_manipulator_class.BaseManipulatorDataLoader`, {py:class}`~peaks.core.fileIO.base_data_classes.base_optics_class.BaseOpticsDataLoader` for other data types. For more examples, see the current loaders in {py:mod}`peaks.core.fileIO.loaders`.
 
 ## Registering a new data loader
 
@@ -58,7 +58,7 @@ import peaks as pks
 pks.locs()
 ```
 
-To be used within `peaks`, a new loader must be registered using the `register_loader` accessor:
+To be used within `peaks`, a new loader must be registered using the {py:func}`register_loader <peaks.core.fileIO.loc_registry.register_loader>` accessor:
 
 ```python
 from peaks.core.fileIO.loc_registry import register_loader
@@ -68,7 +68,7 @@ class NewLoader(...):
     ...
 ```
 
-It will now become visible in the `pks.locs()` listing. To use this loader, call `pks.load()` passing `loc=<_loc_name>` as an argument. To be able to use automatic data source determination for calling this loader, the `peaks.core.fileIO.loc_registry:IdentifyLoc` class must be updated.
+It will now become visible in the {py:func}`pks.locs() <peaks.locs>` listing. To use this loader, call {py:func}`pks.load <peaks.core.fileIO.data_loading.load>` passing `loc=<_loc_name>` as an argument. To be able to use automatic data source determination for calling this loader, the {py:class}`peaks.core.fileIO.loc_registry.IdentifyLoc` class must be updated.
 
 ## Testing
 
