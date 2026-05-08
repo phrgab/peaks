@@ -54,10 +54,8 @@ intersphinx_mapping = {
     "pyserial": ("https://pyserial.readthedocs.io/en/latest/", None),
     "xarray": ("https://docs.xarray.dev/en/stable/", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
-    "dask": ("https://docs.dask.org/en/latest/", None),
     "matplotlib": ("https://matplotlib.org/stable/", None),
     "lmfit": ("https://lmfit.github.io/lmfit-py/", None),
-    "peaks": ("../build/html", "../build/html/objects.inv"),
 }
 
 source_suffix = [".rst", ".md"]
