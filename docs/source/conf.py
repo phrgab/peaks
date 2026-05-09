@@ -5,7 +5,9 @@
 
 import os
 import re
+import sys
 from datetime import date
+from pathlib import Path
 
 __name__ = "peaks"
 
@@ -25,6 +27,10 @@ copyright = f"{date.today().year}, {author}"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
+
+# add the extension directory to the path for custom extensions
+sys.path.append(str(Path("_ext").resolve()))
+
 extensions = [
     "autoapi.extension",
     "sphinx.ext.viewcode",
@@ -36,6 +42,7 @@ extensions = [
     "sphinx_togglebutton",
     "sphinx_inline_tabs",
     "myst_nb",
+    "list_peaks_accessors",  # custom
 ]
 autoapi_dirs = ["../../peaks"]
 autoapi_options = [
