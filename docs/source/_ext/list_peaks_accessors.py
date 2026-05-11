@@ -15,7 +15,7 @@ from sphinx.application import Sphinx
 from sphinx.util.typing import ExtensionMetadata
 
 
-# formatters and retrieve accessor info from source
+# formatters and row builders
 def _format_table(rows: list[tuple[str, str]]) -> str:
     header = "| Accessor | Source function |\n"
     line = "|---|---|\n"
@@ -23,16 +23,46 @@ def _format_table(rows: list[tuple[str, str]]) -> str:
     return header + line + body
 
 
-def _dataarray_rows() -> list[tuple[str, str]]:
-    mod = importlib.import_module("peaks.core.accessors.dataarray_accessors")
+def _registry_rows(module_name: str, registry_attr: str) -> list[tuple[str, str]]:
+    mod = importlib.import_module(module_name)
+    registry = getattr(mod, registry_attr)
     rows: list[tuple[str, str]] = []
-    for sub_module, func_names in mod.functions_to_register.items():
+    for sub_module, func_names in registry.items():
         full_module = f"peaks.core.{sub_module}"
         for func_name in func_names:
             rows.append((func_name, f"{full_module}.{func_name}"))
     return rows
 
 
+def _dataarray_rows() -> list[tuple[str, str]]:
+    return _registry_rows(
+        "peaks.core.accessors.dataarray_accessors",
+        "functions_to_register",
+    )
+
+
+def _dataset_rows() -> list[tuple[str, str]]:
+    return _registry_rows(
+        "peaks.core.accessors.dataset_accessors",
+        "functions_to_register",
+    )
+
+
+def _datatree_direct_rows() -> list[tuple[str, str]]:
+    return _registry_rows(
+        "peaks.core.accessors.datatree_accessors",
+        "functions_to_register_for_direct_accessor",
+    )
+
+
+def _datatree_iter_rows() -> list[tuple[str, str]]:
+    return _registry_rows(
+        "peaks.core.accessors.datatree_accessors",
+        "functions_to_register_for_iterable_accessor",
+    )
+
+
+# dedicated row builder for time-resolved accessors
 def _tr_rows() -> list[tuple[str, str]]:
     rows: list[tuple[str, str]] = []
     tr_mod = importlib.import_module("peaks.time_resolved.accessors")
@@ -55,22 +85,55 @@ def _build_page() -> str:
 
         `peaks` registers many of its core functions as
         [xarray accessors](https://docs.xarray.dev/en/latest/internals/extending-xarray.html) which
-        can be called as methods acting directly on an {py:class}`xarray.DataArray`. For example,
-        instead of `peaks.core.process.data_select.MDC(da, E=6.2, dE=0.01)`, `da.MDC(6.2, 0.01)` can be used.
+        can be called as methods acting directly on an {py:class}`xarray.DataArray`, {py:class}`xarray.Dataset`, or
+        {py:class}`xarray.DataTree`. For example, instead of `peaks.core.process.data_select.MDC(da, E=6.2, dE=0.01)`,
+        `da.MDC(6.2, 0.01)` can be used, where `da` is the {py:class}`xarray.DataArray` holding the data loaded by `peaks`.
 
-        ## Direct accessors
+        ## DataArray accessors
 
         Called directly on an {py:class}`xarray.DataArray`, e.g. `da.EDC(...)`.
 
         """
     )
 
-    heading = dedent(
+    dataset_heading = dedent(
+        """\
+
+            ## Dataset accessors
+
+            Called directly on an {py:class}`xarray.Dataset`.
+
+            """
+    )
+
+    datatree_direct_heading = dedent(
+        """\
+
+        ## DataTree accessors (direct)
+
+        Called directly on an {py:class}`xarray.DataTree` and acting on the tree as a whole.
+
+        """
+    )
+
+    datatree_iter_heading = dedent(
+        """\
+
+        ## DataTree accessors (iterable)
+
+        Called on an {py:class}`xarray.DataTree` and acting over the tree by applying the source function to each
+        {py:class}`xarray.DataArray` in the {py:class}`xarray.DataTree`.
+
+        """
+    )
+
+    tr_heading = dedent(
         """\
 
         ## Time-resolved accessors (`.tr` namespace)
 
-        Accessed via the `.tr` handle, e.g. `da.tr.set_t0(...)`.
+        Accessed via the `.tr` namespace, e.g. `da.tr.set_t0(...)`. These work directly on {py:class}`xarray.DataArray`s and
+        iteratively on {py:class}`xarray.DataTree`s.
 
         """
     )
@@ -78,7 +141,18 @@ def _build_page() -> str:
     tr_rows = _tr_rows()
     tr_section = _format_table(tr_rows) if tr_rows else "_None detected._\n"
 
-    return intro + _format_table(_dataarray_rows()) + heading + tr_section
+    return (
+        intro
+        + _format_table(_dataarray_rows())
+        + dataset_heading
+        + _format_table(_dataset_rows())
+        + datatree_direct_heading
+        + _format_table(_datatree_direct_rows())
+        + datatree_iter_heading
+        + _format_table(_datatree_iter_rows())
+        + tr_heading
+        + tr_section
+    )
 
 
 # sphinx hooks
