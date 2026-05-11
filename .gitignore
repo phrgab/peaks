@@ -14,6 +14,7 @@ __pycache__/
 /docs/source/_apidoc/
 /docs/source/autoapi/
 /docs/source/_tutorials/
+/docs/source/explanations/peaks_accessors.md
 
 # Jupyter and analysis artifacts
 /tutorials/.ipynb_checkpoints/
