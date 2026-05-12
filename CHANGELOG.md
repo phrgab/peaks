@@ -7,13 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.5.1.dev]
 
+### Added
+
+- Cross-references to the API documentation throughout the user guide ([PR#26](https://github.com/phrgab/peaks/pull/26))
+- List of accessors that `peaks` adds on top of `xarray` on the explanations page ([PR#26](https://github.com/phrgab/peaks/pull/26))
+- conda-forge package publishing
+
 ### Fixed
 
 - Errors when loading NetCDF files and processing Zarr files saved by `peaks` with `metadata=False` ([PR#20](https://github.com/phrgab/peaks/pull/20))
+- Error when calling `plot_tutorial_example_figure` locally ([PR#28](https://github.com/phrgab/peaks/pull/28))
 
 ### Changed
 
 - Minor documentation improvements ([PR#23](https://github.com/phrgab/peaks/pull/23))
+- Installation instructions now cover `uv`, conda-forge and the traditional Python venv approach ([PR#28](https://github.com/phrgab/peaks/pull/28))
 
 ## [0.5.0] - 2026-04-23
 
