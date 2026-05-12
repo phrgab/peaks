@@ -322,6 +322,14 @@ def plot_tutorial_example_figure(fname, figsize=(16, 8)):
         Path(__file__).resolve().parent.parent.parent.parent, "tutorials", "figs"
     )
     fig_path = os.path.join(tutorial_dir, fname)
+    if not os.path.exists(fig_path):
+        analysis_warning(
+            f"See '{fname}' in 'tutorials/figs/' in the <a href='https://github.com/phrgab/peaks'>peaks repo</a>. "
+            "This cell only plots the figure inline during the docs build.",
+            title="Tutorial figure not shown inline",
+            warn_type="info",
+        )
+        return
     plt.figure(figsize=figsize)
     plt.imshow(plt.imread(fig_path))
     plt.axis("off")
