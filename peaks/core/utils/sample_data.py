@@ -325,7 +325,8 @@ def plot_tutorial_example_figure(fname, figsize=(16, 8)):
     if not os.path.exists(fig_path):
         analysis_warning(
             f"See '{fname}' in 'tutorials/figs/' in the <a href='https://github.com/phrgab/peaks'>peaks repo</a>. "
-            "This cell only plots the figure inline during the docs build.",
+            "This cell only plots the figure inline during the docs build. "
+            "To run this interactively, call `.disp()` on the loaded data.",
             title="Tutorial figure not shown inline",
             warn_type="info",
         )
