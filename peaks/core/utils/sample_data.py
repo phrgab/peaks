@@ -8,7 +8,6 @@ from base64 import b64encode
 from copy import deepcopy
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import requests
 from IPython.display import HTML, Video
 from requests.adapters import HTTPAdapter
