@@ -1,13 +1,16 @@
+import mimetypes
 import os
 import shutil
 import tempfile
 import time
 import zipfile
+from base64 import b64encode
 from copy import deepcopy
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import requests
+from IPython.display import HTML, Video
 from requests.adapters import HTTPAdapter
 from tqdm.notebook import tqdm
 from urllib3.util.retry import Retry
@@ -324,14 +327,24 @@ def plot_tutorial_example_figure(fname, figsize=(16, 8)):
     fig_path = os.path.join(tutorial_dir, fname)
     if not os.path.exists(fig_path):
         analysis_warning(
-            f"See '{fname}' in 'tutorials/figs/' in the <a href='https://github.com/phrgab/peaks'>peaks repo</a>. "
+            f"See <code>{fname}</code> in <code>tutorials/figs/</code> in the <a href='https://github.com/phrgab/peaks'>peaks repo</a>. "
             "This cell only plots the figure inline during the docs build. "
-            "To run this interactively, call `.disp()` on the loaded data.",
+            "To run this interactively, call <code>.disp()</code> on the loaded data.",
             title="Tutorial figure not shown inline",
             warn_type="info",
         )
         return
-    plt.figure(figsize=figsize)
-    plt.imshow(plt.imread(fig_path))
-    plt.axis("off")
-    plt.show()
+
+    if Path(fname).suffix.lower() == ".mp4":
+        return Video(
+            fig_path,
+            embed=True,
+            html_attributes='controls muted playsinline style="max-width:100%; height:auto"',
+        )
+
+    mime, _ = mimetypes.guess_type(fig_path)
+    with open(fig_path, "rb") as f:
+        encoded = b64encode(f.read()).decode("ascii")
+    return HTML(
+        f'<img src="data:{mime};base64,{encoded}" style="max-width:100%; height:auto" />'
+    )
