@@ -318,7 +318,7 @@ class ExampleData:
         cls._cache.clear()
 
 
-def plot_tutorial_example_figure(fname, figsize=(16, 8)):
+def plot_tutorial_example_figure(fname, max_width="100%"):
     """Plot an example figure in the tutorial notebooks."""
     tutorial_dir = os.path.join(
         Path(__file__).resolve().parent.parent.parent.parent, "tutorials", "figs"
@@ -334,16 +334,16 @@ def plot_tutorial_example_figure(fname, figsize=(16, 8)):
         )
         return
 
+    style = f"max-width:{max_width}; height:auto"
+
     if Path(fname).suffix.lower() == ".mp4":
         return Video(
             fig_path,
             embed=True,
-            html_attributes='controls muted playsinline style="max-width:100%; height:auto"',
+            html_attributes=f'controls muted playsinline style="{style}"',
         )
 
     mime, _ = mimetypes.guess_type(fig_path)
     with open(fig_path, "rb") as f:
         encoded = b64encode(f.read()).decode("ascii")
-    return HTML(
-        f'<img src="data:{mime};base64,{encoded}" style="max-width:100%; height:auto" />'
-    )
+    return HTML(f'<img src="data:{mime};base64,{encoded}" style="{style}" />')

@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Errors when loading NetCDF files and processing Zarr files saved by `peaks` with `metadata=False` ([PR#20](https://github.com/phrgab/peaks/pull/20))
 - Error when calling `plot_tutorial_example_figure` locally ([PR#28](https://github.com/phrgab/peaks/pull/28))
+- Empty inline interactive `iplot` when using the `groupby` argument in static CI docs builds
 
 ### Changed
 
