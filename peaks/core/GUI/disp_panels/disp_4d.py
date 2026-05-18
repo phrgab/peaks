@@ -654,11 +654,15 @@ class _Disp4D(QtWidgets.QMainWindow):
             dimB_data.extend([dimB_data[0]])
 
             if plot_no == 0:
-                line_plot = pg.PlotDataItem(dimB_data, dimA_data, pen="g")
+                line_plot = pg.PlotDataItem(
+                    dimB_data, dimA_data, pen=pg.mkPen((204, 51, 153, 85), width=3)
+                )
                 self.primary_dims_roi_plot.addItem(line_plot)
                 self.display_ROIs_01.append(line_plot)
             else:
-                line_plot = pg.PlotDataItem(dimB_data, dimA_data, pen="g")
+                line_plot = pg.PlotDataItem(
+                    dimB_data, dimA_data, pen=pg.mkPen((204, 51, 153, 85), width=3)
+                )
                 self.roi_disp2d.image_plot.addItem(line_plot)
                 self.display_ROIs_23.append(line_plot)
 
