@@ -12,20 +12,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cross-references to the API documentation throughout the user guide ([PR#26](https://github.com/phrgab/peaks/pull/26))
 - List of accessors that `peaks` adds on top of `xarray` on the explanations page ([PR#26](https://github.com/phrgab/peaks/pull/26))
 - conda-forge package publishing
-- Demo video showing how to use the ROI panel in the 4D GUI
-- `plot_tutorial_example_figure` now renders videos
+- Demo video showing how to use the ROI panel in the 4D GUI ([PR#30](https://github.com/phrgab/peaks/pull/30))
+- D101 and D103 to `ruff` linting rules to enforce docstrings on public classes and functions ([PR#30](https://github.com/phrgab/peaks/pull/30))
+- numpy convention to `ruff` linting ([PR#30](https://github.com/phrgab/peaks/pull/30))
 
 ### Fixed
 
 - Errors when loading NetCDF files and processing Zarr files saved by `peaks` with `metadata=False` ([PR#20](https://github.com/phrgab/peaks/pull/20))
 - Error when calling `plot_tutorial_example_figure` locally ([PR#28](https://github.com/phrgab/peaks/pull/28))
-- Empty inline interactive `iplot` when using the `groupby` argument in static CI docs builds
+- Empty inline interactive `iplot` when using the `groupby` argument in static CI docs builds ([PR#30](https://github.com/phrgab/peaks/pull/30))
 
 ### Changed
 
-- Minor documentation improvements ([PR#23](https://github.com/phrgab/peaks/pull/23))
+- Minor documentation improvements and plenty of cosmetic auto-fixes required by numpy-style docstring format ([PR#23](https://github.com/phrgab/peaks/pull/23), [PR#30](https://github.com/phrgab/peaks/pull/30))
 - Installation instructions now cover `uv`, conda-forge and the traditional Python venv approach ([PR#28](https://github.com/phrgab/peaks/pull/28))
-- Figure aspect ratios in output cells are preserved on docs build
+- `plot_tutorial_example_figure` now renders videos ([PR#30](https://github.com/phrgab/peaks/pull/30))
+- Figure aspect ratios in output cells are preserved on docs build ([PR#30](https://github.com/phrgab/peaks/pull/30))
+
+### Removed
+
+- `peaks/core/GUI/disp_panels/degrid_panel.py` - redundant legacy file ([PR#30](https://github.com/phrgab/peaks/pull/30))
 
 ## [0.5.0] - 2026-04-23
 
