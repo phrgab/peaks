@@ -16,6 +16,14 @@ from peaks.core.fileIO.loc_registry import register_loader
 
 @register_loader
 class BaseFeSuMaDataLoader(BaseARPESDataLoader):
+    """Generic data loader for FeSuMa data.
+
+    Notes
+    -----
+    This class is intended to be subclassed to provide specific loaders for different locs
+    using FeSuMa data formats.
+    """
+
     # Define class variables
     _loc_name = "FeSuMa"
 

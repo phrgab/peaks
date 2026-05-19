@@ -16,7 +16,7 @@ ureg = pint_xarray.unit_registry
 
 
 def display_metadata(da_or_model, mode="ANSI"):
-    # Recursive function to display dictionary with colored keys
+    """Recursive function to display dictionary with coloured keys."""
     # Paul Tol's colour scheme
     colours = [
         "\x1b[38;2;187;85;0m",  # orange
@@ -76,7 +76,8 @@ def display_metadata(da_or_model, mode="ANSI"):
 
 
 def compare_metadata(da_or_model1, da_or_model2):
-    # Function to extract metadata dictionary
+    """Compare metadata between two DataArrays (or Pydantic metadata models)."""
+
     def get_metadata(da_or_model):
         try:
             metadata = {

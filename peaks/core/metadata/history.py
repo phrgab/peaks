@@ -14,8 +14,9 @@ from pydantic import BaseModel, Field
 from peaks import __version__
 
 
-# Define the structure of a single analysis history record
 class AnalysisHistoryRecord(BaseModel):
+    """Define the structure of a single analysis history record."""
+
     time: datetime
     peaks_version: str = Field(..., alias="peaks version")
     record: Union[str, dict]
@@ -27,8 +28,9 @@ class AnalysisHistoryRecord(BaseModel):
         )
 
 
-# A model to hold the list of records
 class AnalysisHistoryRecordCollection(BaseModel):
+    """A model to hold the list of records."""
+
     records: List[AnalysisHistoryRecord] = []
 
     # Method to append new records

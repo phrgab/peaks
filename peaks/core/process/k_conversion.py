@@ -39,6 +39,8 @@ PI = np.pi
 
 
 def ensure_radians(func):
+    """Decorator stripping units from any :class:`pint.Quantity` args after angular checking."""
+
     def wrapper(*args, **kwargs):
         processed_args = []
         for arg in args:

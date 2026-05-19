@@ -56,6 +56,8 @@ def analysis_warning(text, warn_type="info", title="Analysis info", quiet=False)
 
 
 def dequantify_quantify_wrapper(func):
+    """Decorator stripping pint units of first arg before calling ``func`` and re-appling them."""
+
     def wrapper(*args, **kwargs):
         # Apply dequantify to the first argument
         args = (args[0].pint.dequantify(),) + args[1:]
@@ -77,6 +79,7 @@ def dequantify_quantify_wrapper(func):
 
 @contextlib.contextmanager
 def silence_unit_warnings():
+    """Suppresses pint's :class:`UnitStrippedWarning` within its block."""
     from pint import UnitStrippedWarning
 
     with warnings.catch_warnings():

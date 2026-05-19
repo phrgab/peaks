@@ -168,6 +168,8 @@ class DiamondNXSLoader(BaseHDF5DataLoader):
 
 @register_loader
 class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
+    """Data loader for ARPES data from the I05-HR beamline at Diamond Light Source."""
+
     _loc_name = "Diamond_I05_ARPES"
     _loc_description = "HR-ARPES branch line of I05 beamline at Diamond Light Source"
     _loc_url = "https://www.diamond.ac.uk/Instruments/Structures-and-Surfaces/I05.html"
@@ -479,6 +481,8 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
 
 @register_loader
 class I05NanoARPESLoader(I05ARPESLoader, BaseOpticsDataLoader):
+    """Data loader for ARPES data from the I05-nano beamline at Diamond Light Source."""
+
     _loc_name = "Diamond_I05_Nano-ARPES"
     _loc_description = "Nano-ARPES branch line of I05 beamline at Diamond Light Source"
     _loc_url = "https://www.diamond.ac.uk/Instruments/Structures-and-Surfaces/I05.html"

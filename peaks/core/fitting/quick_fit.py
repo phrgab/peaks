@@ -21,6 +21,8 @@ xarray.DataSet
 
 @xr.register_dataarray_accessor("quick_fit")
 class QuickFit:
+    """xarray DataArray accessor providing one-liner fits with automatic parameter guessing."""
+
     def __init__(self, xarray_obj):
         self._obj = xarray_obj
 

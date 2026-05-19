@@ -514,6 +514,18 @@ def plot_3d_stack(
 
 
 def plot_fit(fit_results_ds, show_components=True, figsize=None, **kwargs):
+    """Plot fit results from a fit stored in an xarray.Dataset.
+
+    Parameters
+    ----------
+    fit_results_ds : xarray.Dataset
+        Fit results from :func:`fit`. Must contain a ``fit_model`` variable.
+    show_components : bool, optional
+        If True (default) overlay individual model components as dashed lines.
+    figsize : tuple of float, optional
+    **kwargs : optional
+    """
+
     def _plot_single_fit(fit_results, show_components, figsize, **kwargs):
         fig = plt.figure(figsize=figsize)
         for dim in fit_results.dims:
