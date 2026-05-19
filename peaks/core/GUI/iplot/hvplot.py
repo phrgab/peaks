@@ -1,4 +1,4 @@
-"""Thin wrapper around hvplot to set some defaults and automate handling pint dequantify"""
+"""Thin wrapper around hvplot to set some defaults and automate handling pint dequantify."""
 
 import os
 

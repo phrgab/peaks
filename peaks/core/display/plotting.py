@@ -29,7 +29,7 @@ def plot_grid(
     """Plots an array of 2D DataArrays on a grid.
 
     Parameters
-    ------------
+    ----------
     data : list or xarray.DataTree
          A list or :class:`xarray.DataTree` containing 2D scans (in :class:`xarray.DataArray` format) to be plotted.
          If a datatree, the tree should be hollow, and the leaves should be :class:`xarray.Dataset`'s with a single
@@ -69,7 +69,7 @@ def plot_grid(
         Additional standard matplotlib calls arguments to pass to the plot.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         from peaks import *
@@ -90,7 +90,6 @@ def plot_grid(
         plot_grid(disps_to_plot, titles=disp_titles, sharex=True, add_colorbar=False)
 
     """
-
     # Number of plots
     nplots = len(data)
 
@@ -209,7 +208,7 @@ def plot_DCs(
     """Plot a DC stack with the colours varying according to a colormap.
 
     Parameters
-    ------------
+    ----------
     DCs : xarray.DataArray, list
          DCs to plot, either as a list of single DC DataArrays, or a single DataArray with the stack of DCs included.
 
@@ -245,7 +244,7 @@ def plot_DCs(
         Additional standard matplotlib calls arguments to pass to the plot.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         import peaks as pks
@@ -265,7 +264,6 @@ def plot_DCs(
         plot_DCs([MDC_1, MDC_2, MDC_3], titles = ['EF', 'EF - 0.01 eV', 'EF -0.02 eV'], norm=True, offset=0.05)
 
     """
-
     # If a list of DCs is supplied, combine them into a single DataArray
     if isinstance(DCs, list):
         DC_array = xr.concat(DCs, dim="DC_no")
@@ -392,10 +390,10 @@ def plot_3d_stack(
     azim=-60.0,
     **kwargs,
 ):
-    """Plot a stack of surface plots from a data cube
+    """Plot a stack of surface plots from a data cube.
 
     Parameters
-    ------------
+    ----------
     da : xarray.DataArray
         The data to plot.
     downsample : int, optional
@@ -421,12 +419,11 @@ def plot_3d_stack(
         Must be suitable for passing in ax.set(**kwargs) format.
 
     Notes
-    ------------
+    -----
     `xlim` and `ylim` don't clip the range for this type of plot. Pass data over the
     range you want to plot. Similarly, apply any normalisation to the data before
     passing it to this function.
     """
-
     # Parse the dimensions
     if stack_dim not in da.dims:
         raise ValueError(
@@ -587,7 +584,7 @@ def plot_fit_test(data, model, params, show_components=True, **kwargs):
     """Compare a fit model evaluated for some fit parameters to a 1D data array.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         The data to compare the model to.
     model : lmfit.Model
@@ -599,7 +596,6 @@ def plot_fit_test(data, model, params, show_components=True, **kwargs):
     **kwargs : optional
         Additional standard matplotlib calls arguments to pass to the plot.
     """
-
     data = data.pint.dequantify()
 
     if len(data.dims) != 1:
@@ -642,7 +638,7 @@ def plot_ROI(
     """This function plots a region of interest (ROI).
 
     Parameters
-    ------------
+    ----------
     ROI : dict
         A dictionary of two lists which contains the vertices of the polygon for the ROI definition, in the form
         {'dim1': [pt1, pt2, pt3, ...], 'dim2'=[pt1', pt2', pt3', ...]}. As many points can be specified as required,
@@ -672,7 +668,7 @@ def plot_ROI(
         Additional standard matplotlib calls arguments to pass to the plot.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
     from peaks import *
@@ -699,7 +695,6 @@ def plot_ROI(
         plot_ROI(ROI2, label='ROI 2', ax=axes[1])
 
     """
-
     # Determine relevant dimensions for ROI
     dims = list(ROI)
 
@@ -784,7 +779,6 @@ def plot_kpar_cut(
     **kwargs
         Additional keyword arguments to pass to the plot.
     """
-
     from peaks.core.process.k_conversion import get_kpar_cut
 
     kx, ky = get_kpar_cut(
@@ -854,7 +848,6 @@ def plot_kz_cut(
     **kwargs
         Additional keyword arguments to pass to the plot.
     """
-
     from peaks.core.process.k_conversion import get_kz_cut
 
     kx, kz = get_kz_cut(
@@ -887,11 +880,12 @@ def plot_kz_cut(
 
 def plot_nanofocus(data, focus="defocus"):
     """Function to determine the focus of a scan obtained at the nano branch of the I05 beamline at Diamond Light
-    Source, and plot the results. The function works by determining the focal position at which at scanned feature
-    becomes sharpest.
+    Source, and plot the results.
+
+    The function works by determining the focal position at which a scanned feature becomes sharpest.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         The 2D (or 4D) focussing scan data with some spatial direction dimension and some focussing direction
         dimension (and additionally theta_par and eV dimensions for 4D data).
@@ -900,7 +894,7 @@ def plot_nanofocus(data, focus="defocus"):
         The dimension of the data that represents the focussing direction.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         from peaks import *
@@ -911,7 +905,6 @@ def plot_nanofocus(data, focus="defocus"):
         focus_scan.plot_nanofocus()
 
     """
-
     # Ensure the data is a 2D DataArray by integrating in energy and angle space if required
     if len(data.dims) == 4:
         data = data.mean(["theta_par", "eV"], keep_attrs=True)

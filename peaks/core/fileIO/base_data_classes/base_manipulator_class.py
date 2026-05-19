@@ -70,7 +70,6 @@ class BaseManipulatorDataLoader(BaseDataLoader):
     @classmethod
     def _parse_manipulator_metadata(cls, metadata_dict):
         """Parse metadata specific to the manipulator."""
-
         # Build manipulator metadata model
         fields = {
             axis: (Optional[AxisMetadataModelWithReference], None)

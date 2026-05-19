@@ -27,7 +27,8 @@ class ZenodoDownloader:
     from the environment variable `ZENODO_TOKEN` if not explicitly provided.
 
     If `LOCAL_MIRROR_PATH` is set, files will be copied from this local directory
-    with Zenodo serving as the fallback (used in CI)."""
+    with Zenodo serving as the fallback (used in CI).
+    """
 
     def __init__(self, file_list, token=None):
         self.root_url = ROOT_URL.rstrip("/")
@@ -178,16 +179,20 @@ def get_tutorial1_data():
 
 
 class ExampleData:
-    """Class to access example data files for the Peaks package. The data is
-    downloaded from Zenodo and cached for subsequent access.
-    The files are available as class methods, e.g., `ExampleData.dispersion()`."""
+    """Class to access example data files for the Peaks package.
+
+    The data is downloaded from Zenodo and cached for subsequent access.
+    The files are available as class methods, e.g., `ExampleData.dispersion()`.
+    """
 
     _cache = {}
 
     @classmethod
     def _get_and_load(cls, fname, **kwargs):
         """Load data from a file, downloading it if not already cached.
-        kwargs are passed to the `load` function."""
+
+        kwargs are passed to the `load` function.
+        """
         data = cls._cache.get(fname)
         if data is None:
             with ZenodoDownloader([fname]) as downloader:
@@ -199,9 +204,11 @@ class ExampleData:
 
     @classmethod
     def _get_and_load_from_zip(cls, fname, **kwargs):
-        """Load data from a file inside a zip archive, downloading it if not already
-        cached. The zip file is downloaded, extracted, and the specified file is loaded.
-        kwargs are passed to the `load` function."""
+        """Load data from a file inside a zip archive, downloading it if not already cached.
+
+        The zip file is downloaded, extracted, and the specified file is loaded.
+        kwargs are passed to the `load` function.
+        """
         data = cls._cache.get(fname)
         if data is None:
             with ZenodoDownloader([fname]) as downloader:

@@ -60,7 +60,6 @@ class _Crosshair(pg.GraphicsObject):
         ValueError
             If an unsupported orientation or axisOrder is specified.
         """
-
         super().__init__()
         self.parent_plot = plot
         self.orientation = orientation
@@ -271,7 +270,8 @@ class _Crosshair(pg.GraphicsObject):
         Returns
         -------
         tuple of float
-            Position of the crosshair's center in (dim0, dim1) order."""
+            Position of the crosshair's center in (dim0, dim1) order.
+        """
         if self.axis_order == "col-major":
             x, y = self.xh.pos()
         else:

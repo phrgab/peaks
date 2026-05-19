@@ -4,10 +4,10 @@ ureg = pint_xarray.unit_registry
 
 
 def _set_t0(da, t0, delay_line_no_trips=2, assign=True):
-    """Set a new t0 in a TR-ARPES data set
+    """Set a new t0 in a TR-ARPES data set.
 
     Parameters
-    -----------
+    ----------
     da : xarray.DataArray
         da : xarray.DataArray
         time-resolved data, with a time axis with dimension "t", and a metadata attribute pump.t0_position defining
@@ -33,7 +33,6 @@ def _set_t0(da, t0, delay_line_no_trips=2, assign=True):
     set_t0
     assign_t0
     """
-
     if not t0:  # No correction to do if t0 = 0
         return da
 
@@ -82,10 +81,10 @@ def _set_t0(da, t0, delay_line_no_trips=2, assign=True):
 
 
 def set_t0(da, t0, delay_line_roundtrips=2):
-    """Set a new t0 for a time-resolved data set
+    """Set a new t0 for a time-resolved data set.
 
     Parameters
-    -----------
+    ----------
     da : xarray.DataArray
         da : xarray.DataArray
         time-resolved data, with a time axis with dimension "t", and a metadata attribute pump.t0_position defining
@@ -102,7 +101,6 @@ def set_t0(da, t0, delay_line_roundtrips=2):
     None
         The :class:xarray.DataArray is updated in place
     """
-
     _set_t0(da, t0, delay_line_roundtrips, assign=False)
 
 
@@ -110,7 +108,7 @@ def set_t0_like(da, da_ref):
     """Set t0 of a time-resolved data set to match another data set. Assumes the default delay line round trips of 2.
 
     Parameters
-    -----------
+    ----------
     da : xarray.DataArray
         time-resolved data, with a time axis with dimension "t", and a metadata attribute pump.t0_position defining
         the delay line position corresponding to t0.
@@ -118,16 +116,15 @@ def set_t0_like(da, da_ref):
     da_ref : xarray.DataArray
         Reference time-resolved data set, with the t0 already calibtrated
     """
-
     t0 = da_ref.metadata.pump.t0_position
     set_t0(da, t0)
 
 
 def assign_t0(da, t0, delay_line_roundtrips=2):
-    """Set a new t0 in a TR-ARPES data set
+    """Set a new t0 in a TR-ARPES data set.
 
     Parameters
-    -----------
+    ----------
     da : xarray.DataArray
         da : xarray.DataArray
         time-resolved data, with a time axis with dimension "t", and a metadata attribute pump.t0_position defining
@@ -144,7 +141,6 @@ def assign_t0(da, t0, delay_line_roundtrips=2):
     xarray.DataArray
         The updated xarray.DataArray
     """
-
     return _set_t0(da, t0, delay_line_roundtrips, assign=True)
 
 
@@ -152,7 +148,7 @@ def assign_t0_like(da, da_ref):
     """Set t0 of a time-resolved data set to match another data set. Assumes the default delay line round trips of 2.
 
     Parameters
-    -----------
+    ----------
     da : xarray.DataArray
         time-resolved data, with a time axis with dimension "t", and a metadata attribute pump.t0_position defining
         the delay line position corresponding to t0.
@@ -165,5 +161,4 @@ def assign_t0_like(da, da_ref):
     xarray.DataArray
         The updated xarray.DataArray
     """
-
     return assign_t0(da, da_ref.metadata.pump.t0_position)

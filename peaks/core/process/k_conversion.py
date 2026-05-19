@@ -96,7 +96,7 @@ def _fI(alpha, beta_, delta_, xi_, Ek):  # Type I, no deflector
     following the conventions and nomenclature of Ishida and Shin, Rev. Sci. Instrum. 89 (2018) 043903.
 
     Parameters
-    -----------
+    ----------
     alpha : float or np.ndarray
         theta_par angle (analyser slit angle, rad)
     beta_ : float or np.ndaarray
@@ -109,13 +109,12 @@ def _fI(alpha, beta_, delta_, xi_, Ek):  # Type I, no deflector
         Kinetic energy (eV)
 
     Returns
-    --------
+    -------
     kx : float or np.ndarray
         k-vector along analyser slit (1/A)
     ky : float or np.ndarray
         k-vector perp to analyser slit (1/A)
     """
-
     # k_vacuum from KE
     kvac_str = "KVAC_CONST * sqrt(Ek)"
 
@@ -136,8 +135,8 @@ def _fII(alpha, beta_, delta_, xi_, Ek):  # Type II, no deflector
     """Convert angles to k-space for a type-II analyser with no deflector,
     following the conventions and nomenclature of Ishida and Shin, Rev. Sci. Instrum. 89 (2018) 043903.
 
-       Parameters
-       ----------
+    Parameters
+    ----------
        alpha : float or np.ndarray
            theta_par angle (analyser slit angle, rad)
        beta_ : float or np.ndarray
@@ -149,8 +148,8 @@ def _fII(alpha, beta_, delta_, xi_, Ek):  # Type II, no deflector
        Ek : float or np.ndarray
            Kinetic energy (eV)
 
-       Returns
-       -------
+    Returns
+    -------
        kx : float or np.ndarray
            k-vector perp to analyser slit (1/A)
        ky : float or np.ndarray
@@ -198,7 +197,6 @@ def _fIp(alpha, beta, delta_, xi_, chi_, Ek):  # Type I with deflector
     ky : float or np.ndarray
         k-vector perp to analyser slit (1/A)
     """
-
     # k_vacuum from KE
     kvac_str = "KVAC_CONST * sqrt(Ek)"
 
@@ -248,7 +246,6 @@ def _fIIp(alpha, beta, delta_, xi_, chi_, Ek):  # Type II with deflector
     ky : float or np.ndarray
         k-vector along analyser slit (1/A)
     """
-
     # k_vacuum from KE
     kvac_str = "KVAC_CONST * sqrt(Ek)"
 
@@ -376,7 +373,6 @@ def _tij(ij):
     str
         String representation of relevant element of T_rot^-1 for passing to ne.evaluate().
     """
-
     expressions = {
         11: "cos(xi_) * cos(delta_)",
         12: "cos(xi_) * sin(delta_)",
@@ -418,7 +414,6 @@ def _fIp_inv(kx, ky, delta_, xi_, chi_, Ek):  # Type I, with deflector
     beta : float or np.ndarray
         polar angle (rad)
     """
-
     # k_vacuum from KE
     kvac_str = "(KVAC_CONST * sqrt(Ek))"
     k2p_str = f"sqrt({kvac_str}**2 - kx**2 - ky**2)"
@@ -470,7 +465,6 @@ def _fIIp_inv(kx, ky, delta_, xi_, chi_, Ek):  # Type II, with deflector
     beta : float or np.ndarray
         mapping angle (rad)
     """
-
     # k_vacuum from KE
     kvac_str = "(KVAC_CONST * sqrt(Ek))"
     k2p_str = f"sqrt({kvac_str}**2 - kx**2 - ky**2)"
@@ -515,7 +509,6 @@ def _f_kz(Ek, k_along_slit, k_perp_slit, V0):
     kz : float or np.ndarray
         k-vector for out-of-plan direction (1/A).
     """
-
     return ne.evaluate(
         "KVAC_CONST * sqrt(Ek - V0 - ((k_along_slit**2 + k_perp_slit**2)/(KVAC_CONST**2)))"
     )
@@ -544,7 +537,6 @@ def _f_inv_kz(kz, k_along_slit, k_perp_slit, V0, BE, wf):
     hv : float or np.ndarray
         Photon energy (eV).
     """
-
     return ne.evaluate(
         "(kz**2 + k_along_slit**2 + k_perp_slit**2) / (KVAC_CONST**2) + V0 + wf - BE"
     )
@@ -571,7 +563,6 @@ def _reshape_for_2d(arr1, arr2):
     np.ndarray
         Reshaped array 2.
     """
-
     arr1 = np.asarray(arr1).reshape(-1, 1)
     arr2 = np.asarray(arr2).reshape(1, -1)
 
@@ -600,7 +591,6 @@ def _reshape_for_3d(arr1, arr2, arr3):
     np.ndarray
         Reshaped array 3.
     """
-
     arr1 = np.asarray(arr1).reshape(-1, 1, 1)
     arr2 = np.asarray(arr2).reshape(1, -1, 1)
     arr3 = np.asarray(arr3).reshape(1, 1, -1)
@@ -699,7 +689,6 @@ def get_kz_cut(
     V0 : float, optional
         Inner potential (eV) (default=12).
     """
-
     # Calculate for a type I analyser
     alpha = np.radians(np.linspace(*theta_par_range, 101))
 
@@ -764,7 +753,6 @@ def k_convert(
     xarray.DataArray
         Data converted to k-space.
     """
-
     # Parse basic data properties
     loader = BaseDataLoader.get_loader(da.metadata.scan.loc)
     angles = loader._get_angles_Ishida_Shin(da, quiet=quiet)  # Get angles for k-conv

@@ -66,7 +66,7 @@ class ArtemisPhoibos(BaseARPESDataLoader, BasePumpProbeClass):
 
     @classmethod
     def _load_data(cls, fpath, lazy, **kwargs):
-        """Artemis core data loading
+        """Artemis core data loading.
 
         Parameters
         ----------
@@ -86,7 +86,6 @@ class ArtemisPhoibos(BaseARPESDataLoader, BasePumpProbeClass):
                 - num_scans
 
         """
-
         if os.path.splitext(fpath)[1] == ".h5":
             # If the file is an HDF5 file, should be a FeSuMa scan; use the BaseFeSuMaDataLoader
             from peaks.core.fileIO.base_arpes_data_classes.base_fesuma_class import (
@@ -654,7 +653,7 @@ class ArtemisPhoibos(BaseARPESDataLoader, BasePumpProbeClass):
 
     @classmethod
     def load_stats(cls, fpath, metadata=True, quiet=False):
-        """Return the signal and temperature stats vs. time from an Artemis measurement run
+        """Return the signal and temperature stats vs. time from an Artemis measurement run.
 
         Parameters
         ----------
@@ -672,7 +671,6 @@ class ArtemisPhoibos(BaseARPESDataLoader, BasePumpProbeClass):
         xarray.Dataset
             Dataset containing the temperature and signal stats vs. measurement time
         """
-
         stats = cls._load_stats(fpath)
         stats_da = xr.DataArray(
             data=stats["measurement_stats"],

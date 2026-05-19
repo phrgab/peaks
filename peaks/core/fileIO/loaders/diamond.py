@@ -28,12 +28,12 @@ class DiamondNXSLoader(BaseHDF5DataLoader):
 
     @property
     def data_key_resolution_order(self):
-        """The priority order of keys to specify the main data group in the file"""
+        """The priority order of keys to specify the main data group in the file."""
         return self._data_group_key_resolution_order
 
     @staticmethod
     def get_root_key(f):
-        """Get the root key of the file, which is assumed to be the only key in the file at root level
+        """Get the root key of the file, which is assumed to be the only key in the file at root level.
 
         Parameters
         ----------
@@ -45,7 +45,6 @@ class DiamondNXSLoader(BaseHDF5DataLoader):
         root_key : str
             The root key of the file.
         """
-
         if len(f.keys()) != 1:
             raise ValueError(
                 "The file has multiple root keys, which is not expected for the standard Diamond NeXus file."
@@ -54,7 +53,7 @@ class DiamondNXSLoader(BaseHDF5DataLoader):
 
     @classmethod
     def get_data_group_addr(cls, f, root_key=None):
-        """Get the main data group from the file, with priority as per _data_key_resolution_order
+        """Get the main data group from the file, with priority as per _data_key_resolution_order.
 
         Parameters
         ----------
@@ -68,7 +67,6 @@ class DiamondNXSLoader(BaseHDF5DataLoader):
         data_group_addr : str
             The full path of the main data group in the file.
         """
-
         if root_key is None:
             root_key = cls.get_root_key(f)
 
@@ -90,7 +88,7 @@ class DiamondNXSLoader(BaseHDF5DataLoader):
 
     @staticmethod
     def _parse_nxs_primary_attr(attr):
-        """Parse the attribute value for a signal or primary key to a standard format"""
+        """Parse the attribute value for a signal or primary key to a standard format."""
         if isinstance(attr, bytes):
             attr = attr.decode()
 
@@ -112,7 +110,7 @@ class DiamondNXSLoader(BaseHDF5DataLoader):
 
     @staticmethod
     def _parse_nxs_axis_attr(attr):
-        """Parse the attribute value for an axis key to a standard format"""
+        """Parse the attribute value for an axis key to a standard format."""
         if isinstance(attr, (list, np.ndarray)):
             attr = attr[0]
         if isinstance(attr, bytes):
@@ -123,7 +121,7 @@ class DiamondNXSLoader(BaseHDF5DataLoader):
     def get_core_data_key(cls, f, data_address):
         """Find the core data in an HDF5/nxs group. First attempts to resolve data by key located in
         `_core_data_key_resolution_order` class variable. If that fails, fall back to trying to automatically parse
-        by looking for a signal attribute flag
+        by looking for a signal attribute flag.
 
         Parameters
         ----------
@@ -133,7 +131,6 @@ class DiamondNXSLoader(BaseHDF5DataLoader):
         data_address : str
             The key of the core data in the `data_address` group of the HDF5 file
         """
-
         # Parse all data entries with a signal key
         data_group = f[data_address]
 
@@ -271,7 +268,6 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
     @classmethod
     def _load_data(cls, fpath, lazy, **kwargs):
         """Load the data from a Diamond I05 ARPES NeXus file. Try to automatically determine the core scan structure."""
-
         with h5py.File(fpath, "r") as f:
             # Parse the data group structure
             data_group_addr = cls.get_data_group_addr(f)
@@ -683,7 +679,7 @@ class I05NanoARPESLoader(I05ARPESLoader, BaseOpticsDataLoader):
         branch of the I05 beamline at Diamond Light Source in 2021/22.
 
         Parameters
-        ------------
+        ----------
         data : xarray.DataArray
             The data to be corrected.
 
@@ -691,12 +687,12 @@ class I05NanoARPESLoader(I05ARPESLoader, BaseOpticsDataLoader):
             The slant factor correction (degrees/eV) to use. Defaults to 8/PE (where PE is the pass energy used).
 
         Returns
-        ------------
+        -------
         corrected_data : xarray.DataArray
             The corrected data.
 
         Examples
-        ------------
+        --------
         Example usage is as follows::
 
             from peaks import pks
@@ -708,7 +704,6 @@ class I05NanoARPESLoader(I05ARPESLoader, BaseOpticsDataLoader):
             disp = pks.load('i05-1-13579.ibw')
             disp_sc = disp.slant_correct()
         """
-
         # Set the slant factor to the default correction if it has not been supplied
         if slant_factor is None:
             slant_factor = 8 * ureg.deg / data.metadata.analyser.scan.PE.to("eV")

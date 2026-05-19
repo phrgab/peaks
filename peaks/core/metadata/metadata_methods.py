@@ -1,6 +1,4 @@
-"""
-Helper functions and xarray accessors for providing the user interface to metadata
-"""
+"""Helper functions and xarray accessors for providing the user interface to metadata."""
 
 import copy
 import pprint
@@ -232,7 +230,6 @@ class Metadata:
 
 
         """
-
         # Get loc and loader class
         loc = self._obj.metadata.scan.loc
         loader = BaseDataLoader.get_loader(loc)
@@ -319,7 +316,6 @@ class Metadata:
         da : xarray.DataArray
             The data array to match the normal emission angles to.
         """
-
         # Get any set reference data in da
         current_reference_data = self._get_normal_emission_dict(da)
         # Apply the new reference data to the current dataarray
@@ -392,12 +388,11 @@ class Metadata:
             - a float or int, this will be taken as a constant shift in energy.
             - an xarray.Dataset containing the fit_result as returned by the `peaks` `.fit_gold` method
 
-          Returns
-         -------
+        Returns
+        -------
          None
              Adds the Fermi level correction to the data attributes.
         """
-
         # Do some checks on the EF_correction format
         if isinstance(EF_correction, xr.Dataset):
             EF_correction = copy.deepcopy(EF_correction.attrs.get("EF_correction"))

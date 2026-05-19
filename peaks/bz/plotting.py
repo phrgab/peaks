@@ -17,8 +17,7 @@ from peaks.bz.utils import _get_atoms_cell_lattice
 
 
 class LinearScalingTransform:
-    """
-    Linear scaling transformation for scaling coordinates along each axis."""
+    """Linear scaling transformation for scaling coordinates along each axis."""
 
     def __init__(self, scaling_factors):
         """
@@ -115,7 +114,6 @@ def plot_bz(
 
 
     """
-
     atoms, cell, lattice = _get_atoms_cell_lattice(structure_or_lattice)
 
     if surface is not None:
@@ -194,7 +192,6 @@ def plot_bz_section(
     **kwargs
         Additional keyword arguments to pass to ax.plot
     """
-
     if plane_origin is None:
         plane_origin = [0, 0, 0]
     if plane_normal is None:

@@ -1,5 +1,5 @@
 # peaks/_lazy_import.py
-"""_lzay_import.py
+"""_lzay_import.py.
 
 This module provides a class that allows for lazy importing of modules, i.e. to only import a module when it is called.
 

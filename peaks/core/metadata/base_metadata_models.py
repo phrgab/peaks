@@ -206,7 +206,8 @@ class ARPESScanMetadataModel(BaseMetadataModel):
 class ARPESAnalyserAnglesMetadataModel(BaseMetadataModel):
     """Model to store analyser angles metadata.
     This is a general definiton which allows distinguishing analyser type (slit parallel or perp to slit)
-    as well as allowing for the general case where the analyser can move."""
+    as well as allowing for the general case where the analyser can move.
+    """
 
     polar: Optional[Union[str, Quantity]] = None
     tilt: Optional[Union[str, Quantity]] = None

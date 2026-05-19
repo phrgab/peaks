@@ -30,7 +30,7 @@ def _disp_2d(data, primary_dim, exclude_from_centering):
     """Display a 2D interactive display panel.
 
     Parameters
-    ------------
+    ----------
     data : list or xarray.DataArray
          Either a single 2D :class:`xarray.DataArray` or a list of 2D :class:`xarray.DataArray` objects.
 
@@ -270,7 +270,7 @@ class _Disp2D(QtWidgets.QMainWindow):
         bottom_panel_layout_right.addStretch()
 
     def _build_menu(self):
-        """Add a menu"""
+        """Add a menu."""
         self.menu = self.menuBar().addMenu("Display Panel")
         self.shortcuts_action = QtGui.QAction("Help", self)
 
@@ -766,7 +766,7 @@ class _Disp2D(QtWidgets.QMainWindow):
             self._show_hide_DCs(i)
 
     def _align_data(self):
-        """Estimate symmetry points in the data"""
+        """Estimate symmetry points in the data."""
         # Get the current view range
         x_range, y_range = self.image_plot.getViewBox().viewRange()
         data_to_centre = self.current_data.sel(
@@ -788,7 +788,6 @@ class _Disp2D(QtWidgets.QMainWindow):
 
     def _update_cursor_stats_text(self):
         """Update the cursor stats."""
-
         cursor_colors = [f"#{r:02x}{g:02x}{b:02x}" for r, g, b in self.DC_pens]
         cursor_text = ""
 
@@ -1014,7 +1013,7 @@ class _Disp2D(QtWidgets.QMainWindow):
         )
 
     def _check_crosshair_in_range(self, pos):
-        """Check if crosshair pos is within the coordinate range"""
+        """Check if crosshair pos is within the coordinate range."""
         return (min(self.ranges[0]) <= pos[0] <= max(self.ranges[0])) and (
             min(self.ranges[1]) <= pos[1] <= max(self.ranges[1])
         )

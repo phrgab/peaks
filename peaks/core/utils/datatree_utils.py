@@ -25,7 +25,8 @@ def _ensure_empty_node(func):
 
 def _ensure_name_does_not_exist(func):
     """Decorator to enforce passed name does not exist in the DataTree before calling the function,
-    to avoid overwriting existing entries."""
+    to avoid overwriting existing entries.
+    """
 
     @functools.wraps(func)
     def wrapper(dt, *args, **kwargs):
@@ -39,7 +40,7 @@ def _ensure_name_does_not_exist(func):
 
 
 def _make_name_callable(name):
-    """Replace any character that is not a letter, digit, or underscore with an underscore"""
+    """Replace any character that is not a letter, digit, or underscore with an underscore."""
     return re.sub(r"[^a-zA-Z0-9_]", "_", name)
 
 
@@ -69,7 +70,7 @@ def _make_name_unique(name, dt):
 
 
 def _dataarrays_to_datatree(data, names=None):
-    """Parse one or a `list` of :class:`xarray.DataArray`'s into a :class:`xarray.DataTree` structure
+    """Parse one or a `list` of :class:`xarray.DataArray`'s into a :class:`xarray.DataTree` structure.
 
     Parameters
     ----------
@@ -79,7 +80,6 @@ def _dataarrays_to_datatree(data, names=None):
     names : list of str, optional
         Names to assign to each DataArray. If not provided, the names will be automatically generated.
     """
-
     # Parse the names automatically if the names list not provided or not suitable
     if names and (len(names) != len(data) or len(set(names)) != len(names)):
         analysis_warning(
@@ -172,7 +172,6 @@ def add_scan_group(dt, name=None):
         # Add a new group to the DataTree
         dt.add_scan_group()
     """
-
     if not name:
         name = _make_name_unique("scan_group", dt)
     new_name = _make_name_callable(name)
@@ -223,7 +222,6 @@ def add(dt, data_source, name=None, add_at_root=False, **kwargs):
         # Add a new dispersion into the DataTree
         disps.add('disp3.ibw')
     """
-
     if isinstance(data_source, xr.DataTree):
         # Group of scans passed.
         if add_at_root:

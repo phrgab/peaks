@@ -20,7 +20,8 @@ class SpecsDataLoader(BaseARPESDataLoader):
     """Data loader for Specs ARPES data measured using Specs Prodigy.
 
     Define _scan_axis_resolution_order to define preferences for the primary dimension of
-    a 3D scan where more than one user axis varies."""
+    a 3D scan where more than one user axis varies.
+    """
 
     _loc_name = "Specs"
     _loc_description = "SPECS Phoibos Analysers with Prodigy control"
@@ -362,17 +363,17 @@ class SpecsDataLoader(BaseARPESDataLoader):
         """Extract metadata values in peaks conventions and assign units where needed.
 
         Parameters
-        ------------
+        ----------
         metadata_dict_SPECS_keys : dict
             Dictionary of metadata key-value pairs with keys in SPECS format.
 
         Returns
-        ------------
+        -------
         metadata_dict : dict
             Dictionary of metadata key-value pairs with keys in peaks format.
 
         Notes
-        ------------
+        -----
         The extraction process is based on the mappings defined in the dictionaries
         `standard_keys` and `standard_units`. The entries of these dictionaries are
         updated from the class variables `_SPECS_metadata_key_mappings` and

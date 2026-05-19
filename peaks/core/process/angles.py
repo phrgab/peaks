@@ -39,7 +39,6 @@ def _get_conventions(data):
     class
         Relevant data convention Class instance.
     """
-
     loc = data.attrs.get("beamline")
     return LocOpts.get_conventions(loc)
 
@@ -159,7 +158,6 @@ def _parse_norm_angles(data, norm_angles, quiet):
     dict :
         Dictionary of normal emission angles that could be parsed from the supplied arguments.
     """
-
     # Get angle conventions and analyser type
     conventions = _get_conventions(data)
     ana_type = conventions.get("ana_type")
@@ -346,7 +344,6 @@ def _get_norm_angles(data):
     dict
         Dictionary of normal emission angles in both `peaks` format and where applicable the true manipulator angles.
     """
-
     # Get the peaks normal emission angles from the attributes
     norm_angles = {name: data.attrs.get(name) for name in NORM_ANGLE_NAMES}
 
@@ -395,7 +392,6 @@ class NormAngles:
             disp.norm_angles()
 
         """
-
         norm_angles = _get_norm_angles(self._obj)
         display_str = "<br>"
         axes = ["norm_polar", "norm_tilt", "norm_azi"]
@@ -479,7 +475,6 @@ def _convert_angles_to_Ishida_Shin(data, quiet=False):
     dict
         Angles of converted angles.
     """
-
     # Get angle conventions and analyser type
     conventions = _get_conventions(data)
     ana_type = conventions.get("ana_type")
@@ -548,7 +543,6 @@ def _get_angles_for_k_conv(data, return_raw=False, quiet=False, warn_norm=True):
     dict
         Angles for the k-space conversion (if return_raw=False) or raw angles (if return_raw=True).
     """
-
     # Get angle conventions and analyser type
     conventions = _get_conventions(data)
     ana_type = conventions.get("ana_type")

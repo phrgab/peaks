@@ -9,7 +9,7 @@ def disp(data, primary_dim=None, exclude_from_centering="eV"):
     passing the relevant parameters in the function call.
 
     Parameters
-    ------------
+    ----------
     data : list or xarray.DataArray
          Either a single 2D, 3D, or 4D :class:`xarray.DataArray` or a list of 2D :class:`xarray.DataArray` objects.
 
@@ -25,7 +25,7 @@ def disp(data, primary_dim=None, exclude_from_centering="eV"):
         The dimension to exclude from centering for 2D and 3D data. Default is 'eV'.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         import peaks as pks
@@ -43,7 +43,6 @@ def disp(data, primary_dim=None, exclude_from_centering="eV"):
         FS_map.disp()
 
     """
-
     # If a DataTree instance is passed, try to parse into a form `.disp` can handle
     err_str = (
         "DataTree does not meet the required format to call `.disp`. It should either be a single leaf or a tree "

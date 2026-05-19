@@ -40,7 +40,6 @@ class BasePhotonSourceDataLoader(BaseDataLoader):
     @classmethod
     def _parse_photon_metadata(cls, metadata_dict):
         """Parse metadata specific to the photon data."""
-
         # Build and populate the photon metadata model
         photon_metadata = PhotonMetadataModel(
             hv=metadata_dict.get("photon_hv"),

@@ -20,8 +20,8 @@ def _linear_dos_fermi(
     """Base function for fitting typical poly-Au Fermi edge data. Includes: Fermi cutoff (EF, T), linear DOS (dos_),
     and linear background above E_F accounting for e.g. inhomogeneous detector efficiency (bg_).
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     x : np.ndarray
         Energy values in eV.
     EF : float
@@ -42,7 +42,6 @@ def _linear_dos_fermi(
     numpy.ndarray
         The calculated Fermi function + DOS and backgrounds vs. x
     """
-
     return (bg_intercept + bg_slope * x) + (
         dos_intercept - bg_intercept + (dos_slope - bg_slope) * x
     ) / (1 + np.exp((1.0 * x - EF) / max(TINY, T * kb_eV)))
@@ -66,5 +65,4 @@ def _fermi_function(x, EF, T):
     numpy.ndarray
         The calculated Fermi function vs. x
     """
-
     return expit((EF - x) / max(kb_eV * T, TINY))

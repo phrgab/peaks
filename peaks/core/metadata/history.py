@@ -44,7 +44,7 @@ def _update_hist(data, record_text, fn_name=None, update_in_place=True):
     the updated history.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         The :class:`xarray.DataArray` for which the analysis history is to be updated.
 
@@ -60,12 +60,12 @@ def _update_hist(data, record_text, fn_name=None, update_in_place=True):
 
 
     Returns
-    ------------
+    -------
     xarray.DataArray, optional
         The DataArray with the updated analysis history metadata. If `update_in_place` is set `True`, returns None.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         import peaks as pks
@@ -94,7 +94,6 @@ def _update_hist(data, record_text, fn_name=None, update_in_place=True):
             _update_hist(data, 'Data incremented by 1', fn_name='add_one', update_in_place=True)
             return data
     """
-
     # Get current analysis history metadata list, creating if it doesn't exist
     if "_analysis_history" not in data.attrs:
         data.attrs["_analysis_history"] = AnalysisHistoryRecordCollection()
@@ -135,12 +134,12 @@ def update_history_decorator(record_text):
     the function is to act, and that the function returns a modified :class:`xarray.DataArray` object.
 
     Parameters
-    ------------
+    ----------
     record_text : string
         Descriptive string to append to the DataArray's history metadata record.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         import peaks as pks
@@ -226,7 +225,6 @@ class History:
             disp_k.history()
 
         """
-
         record = (
             self._obj.attrs.get("_analysis_history")
             .records[index if index is not None else -1]
@@ -284,7 +282,6 @@ class History:
         list or dict
             The relevant history metadata item(s)
         """
-
         return (
             self._obj.attrs.get("_analysis_history")
             .dict(by_alias=True)

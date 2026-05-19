@@ -24,8 +24,8 @@ def fit(
     the indepednent variable. Fit broadcasts along other dimensions. Returns the results of the fit as a
     :class:`xarray.DataArray` with uncertainties and the full :class:`lmfit.ModelResult`.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     data_array: xarray.DataArray
           The data to fit the model to.
     model: lmfit.Model
@@ -45,7 +45,7 @@ def fit(
     reverse_sequential_fit_order: bool
         Use to reverse the order of a sequential fit along the non-independent dimension. Defaults to False.
 
-    Returns:
+    Returns
     -------
     xarray.DataSet
         A DataSet containing the best-fit parameters, their uncertainties, and the :class:`lmfit.ModelResult` object.
@@ -180,10 +180,10 @@ def fit_gold(data, EF_correction_type="poly4", **kwargs):
     - DOS intercept (dos_intercept)
     - Background slope (bg_slope)
     - Background intercept (bg_intercept)
-    - Gaussian convolution (sigma_conv)
+    - Gaussian convolution (sigma_conv).
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     data_array : xarray.DataArray
         The gold reference data to fit.
 
@@ -199,12 +199,12 @@ def fit_gold(data, EF_correction_type="poly4", **kwargs):
     **kwargs : optional
         Additional keyword arguments to initialise paramaeter values
 
-    Returns:
+    Returns
     -------
     xarray.DataSet
         A DataSet containing the best-fit parameters, their uncertainties, and the :class:`lmfit.ModelResult` object.
 
-    Examples:
+    Examples
     --------
     Example usage is as follows::
 
@@ -307,15 +307,15 @@ def _estimate_EF(y, x):
     """
     Estimate the Fermi level from the first negative peak in the first derivative of the data.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     y : numpy.ndarray
         The data array to estimate the Fermi level from.
     x : numpy.ndarray
         The corresponding x-axis values.
 
-    Returns:
-    --------
+    Returns
+    -------
     float
         The estimated Fermi level.
     """
@@ -339,23 +339,23 @@ def _estimate_EF(y, x):
 
 
 def estimate_EF(da):
-    """Make an approximate guess for the Fermi level from the corresponding peak in the derivative of the data
+    """Make an approximate guess for the Fermi level from the corresponding peak in the derivative of the data.
+
     :::{warning}
     This is only a very approximate method for use in making estiamtes to feed into fit functions and GUIs etc.
     It should not be used as a true determination of the Fermi level.
     :::
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     data: xarray.DataArray
         The data to estimate the Fermi level from.
 
-    Returns:
-    --------
+    Returns
+    -------
     float
         The estimated Fermi level.
     """
-
     if "eV" not in da.dims:
         raise ValueError("Data must have an 'eV' dimension to estimate the Fermi level.")
 
@@ -396,18 +396,17 @@ def save_fit(fit_result, filename):
     """
     Save the results of a fit.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     fit_result : xarray.DataSet
         The results of the fit to save.
     filename : str
         The name of the file to save the fit results to.
 
-    Returns:
-    --------
+    Returns
+    -------
     None
     """
-
     result_as_dict = fit_result.to_dict()
     with open(filename, "wb") as f:
         dill.dump(result_as_dict, f, protocol=-1)
@@ -417,17 +416,16 @@ def load_fit(filename):
     """
     Load the results of a fit from a netCDF file.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     filename : str
         The name of the file to load the fit results from.
 
-    Returns:
-    --------
+    Returns
+    -------
     xarray.DataSet
         The results of the fit.
     """
-
     with open(filename, "rb") as f:
         result_as_dict = dill.load(f)
     return xr.Dataset.from_dict(result_as_dict)
