@@ -52,6 +52,7 @@ class ZenodoDownloader:
         return {}
 
     def _download_with_progress(self, url, dest_path):
+        """Download a file from *url* to *dest_path* with a live progress bar."""
         headers = self._make_headers_if_needed(url)
 
         session = requests.Session()
@@ -103,6 +104,13 @@ class ZenodoDownloader:
                     bar.update(len(chunk))
 
     def download(self):
+        """Download the specified files to a temporary directory and return a dict of local paths.
+
+        Returns
+        -------
+        dict[str, str]
+        Mapping of filename to its local path inside the temporary directory.
+        """
         if self._tempdir_context is not None:
             return self.downloaded_files
 
@@ -137,6 +145,13 @@ class ZenodoDownloader:
         return self._tempdir_context.name
 
     def cleanup(self, quiet=False):
+        """Delete the temporary directory and all downloaded files and reset download state.
+
+        Parameters
+        ----------
+        quiet : bool, optional
+        If ``True``, suppress the success notice. Defaults to ``False``.
+        """
         if self._tempdir_context is not None:
             self._tempdir_context.cleanup()
             self._tempdir_context = None
@@ -326,7 +341,7 @@ class ExampleData:
 
 
 def plot_tutorial_example_figure(fname, max_width="100%"):
-    """Plot an example figure in the tutorial notebooks."""
+    """Plot an example figure/video in the tutorial notebooks."""
     tutorial_dir = os.path.join(
         Path(__file__).resolve().parent.parent.parent.parent, "tutorials", "figs"
     )
