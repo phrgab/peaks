@@ -240,71 +240,88 @@ class ExampleData:
 
     @classmethod
     def dispersion(cls):
+        """Download sample dispersion data *dispersion* and load it."""
         return cls._get_and_load("i05-59819.nxs")
 
     @classmethod
     def dispersion2a(cls):
+        """Download sample dispersion data *dispersion2a* and load it."""
         return cls._get_and_load("210326_GM2-667_GK_1.xy")
 
     @classmethod
     def dispersion2b(cls):
+        """Download sample dispersion data *dispersion2b* and load it."""
         return cls._get_and_load("210326_GM2-667_GK_2.xy")
 
     @classmethod
     def dispersion2c(cls):
+        """Download sample dispersion data *dispersion2c* and load it."""
         return cls._get_and_load("210326_GM2-667_GK_3.xy")
 
     @classmethod
     def dispersion3(cls):
+        """Download sample dispersion data *dispersion3* and load it."""
         return cls._get_and_load("i05-1-34301.nxs")
 
     @classmethod
     def gold_reference(cls):
+        """Download sample Au reference data *gold_reference* and load it."""
         return cls._get_and_load("i05-59853.nxs")
 
     @classmethod
     def gold_reference2(cls):
+        """Download sample Au reference data *gold_reference2* and load it."""
         return cls._get_and_load("Gold.xy")
 
     @classmethod
     def gold_reference3(cls):
+        """Download sample Au reference data *gold_reference3* and load it."""
         return cls._get_and_load("i05-70214.nxs")
 
     @classmethod
     def gold_reference4(cls):
+        """Download sample Au reference data *gold_reference4* and load it."""
         return cls._get_and_load("Ep20eV.xy")
 
     @classmethod
     def FS(cls):
+        """Download sample Fermi surface map *FS* and load it."""
         return cls._get_and_load("i05-59818.nxs")
 
     @classmethod
     def hv_map(cls):
+        """Download sample photon energy scan *hv_map* and load it."""
         return cls._get_and_load("i05-69294.nxs")
 
     @classmethod
     def SM(cls):
+        """Download sample spatial map *SM* and load it."""
         return cls._get_and_load("i05-1-24270_sm.nc")
 
     @classmethod
     def nano_focus(cls):
+        """Download sample data *nano_focus* and load it."""
         return cls._get_and_load("i05-1-49292.nxs")
 
     @classmethod
     def nano_focus_w_I0norm(cls):
+        """Download sample data *nano_focus_w_I0norm* and load it normalised by I0 (photon flux)."""
         return cls._get_and_load("i05-1-49292.nxs", norm_by_I0=True)
 
     @classmethod
     def tr_arpes(cls):
+        """Download sample time-resolved data *tr_arpes* and load it."""
         # Need to download and unzip the file to simulate the original data structure
         return cls._get_and_load_from_zip("029 Gr.zip")
 
     @classmethod
     def tr_arpes2(cls):
+        """Download sample time-resolved data *tr_arpes2* and load it."""
         return cls._get_and_load_from_zip("028 Gr.zip")
 
     @classmethod
     def xps(cls):
+        """Download sample XPS data *xps* and load it."""
         return cls._get_and_load("i05-1-49260.nxs")
 
     @classmethod
@@ -337,6 +354,7 @@ class ExampleData:
 
     @classmethod
     def cleanup(cls):
+        """Clear the cached data."""
         cls._cache.clear()
 
 

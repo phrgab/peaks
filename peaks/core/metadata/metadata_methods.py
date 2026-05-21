@@ -187,6 +187,11 @@ class Metadata:
         return super().__dir__() + list(self.keys()) + ["history"]
 
     def keys(self):
+        """Return the names of the metadata attributes.
+
+        These are the leading-underscore-prefixed entries in ``self._obj.attrs``
+        with the prefix stripped; ``_analysis_history`` is excluded.
+        """
         return {
             k.lstrip("_"): v
             for k, v in self._obj.attrs.items()
@@ -307,6 +312,10 @@ class Metadata:
         return normal_emission
 
     def assign_normal_emission(self, norm_values, **kwargs):
+        """Return a copy of the data with the normal emission angles applied.
+
+        .. note:: Not yet implemented; raises :class:`NotImplementedError`.
+        """
         raise NotImplementedError("This method is not yet implemented.")
 
     def set_normal_emission_like(self, da):
@@ -470,6 +479,7 @@ class MetadataDT:
         self._obj = xarray_obj
 
     def __call__(self, metadata_dict=None, **kwargs):
+        """Apply metadata updates to all scans in the DataTree."""
         if metadata_dict is None:
             metadata_dict = {}
         metadata_dict.update(kwargs)
@@ -498,9 +508,14 @@ class MetadataDT:
         return self
 
     def set_normal_emission(self):
+        """Set the normal emission angles for each scan in the DataTree.
+
+        .. note:: Not yet implemented; raises :class:`NotImplementedError`.
+        """
         raise NotImplementedError("This method is not yet implemented.")
 
     def set_normal_emission_like(self, da):
+        """Set the normal emission angles for each scan in the DataTree to match another scan."""
         # Get any set reference data in da
         current_reference_data = Metadata._get_normal_emission_dict(da)
 
@@ -520,11 +535,13 @@ class MetadataDT:
         self._obj.map_over_datasets(apply_normal_to_ds)
 
     def set_EF_correction(self, EF_correction):
+        """Set the Fermi level correction for each scan in the DataTree."""
         _map_over_dt_containing_single_das(
             self._obj, lambda da: da.metadata.set_EF_correction(EF_correction)
         )
 
     def set_EF_correction_like(self, da_to_set_like):
+        """Set the Fermi level correction for each scan in the DataTree to the same as another DataArray."""
         _map_over_dt_containing_single_das(
             self._obj, lambda da: da.metadata.set_EF_correction_like(da_to_set_like)
         )
@@ -593,6 +610,18 @@ class MetadataItem:
             self.set(name, value)
 
     def set(self, name, value, add_history=True):
+        """Set the value of a metadata attribute with optional history logging.
+
+        Parameters
+        ----------
+        name : str
+            Attribute name to set on the underlying metadata model or dict.
+        value : Any
+            New value. If the existing value is a ``pint.Quantity`` and ``value`` is not,
+            the existing units are reapplied.
+        add_history : bool, default True
+            Whether to append an entry to the analysis history.
+        """
         data = self._data
         full_path = f"{self._path}.{name}" if self._path else name
         if isinstance(data, BaseModel):
@@ -632,6 +661,19 @@ class MetadataItem:
             raise AttributeError(f"Cannot set attribute '{name}' on type {type(data)}")
 
     def __call__(self, value=None):
+        """Update the underlying metadata model or dict from a dictionary.
+
+        Parameters
+        ----------
+        value : dict, optional
+            Mapping of attribute names to new values. Nested mappings are applied
+            recursively to nested models/dicts. If ``None``, no update is performed.
+
+        Returns
+        -------
+        MetadataItem
+            ``self``
+        """
         if value is not None:
             data = self._data
             path = self._path

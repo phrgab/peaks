@@ -66,6 +66,7 @@ class BasePumpProbeClass(BasePhotonSourceDataLoader):
 
     @property
     def pump_photon_attributes(self):
+        """Return the pump photon attributes."""
         return self._pump_photon_attributes
 
     @classmethod

@@ -98,13 +98,13 @@ target-version = "py313"
 exclude = ["*.ipynb"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "B", "D101", "D103"]
+select = ["E", "F", "I", "B", "D101", "D102", "D103"]
 ignore = ["E203", "E501"]
 fixable = ["I"]
 
 [tool.ruff.lint.per-file-ignores]
-"docs/**" = ["D101", "D103"]
-"tests/**" = ["D101", "D103"]
+"docs/**" = ["D101", "D102", "D103"]
+"tests/**" = ["D101", "D102", "D103"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"

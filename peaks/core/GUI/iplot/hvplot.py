@@ -15,7 +15,7 @@ class HVPlotAccessor:
         self._obj = xarray_obj
 
     def __call__(self, *args, **kwargs):
-        # Generate the plot
+        """Dequantify the underlying object and return an interactive hvplot."""
         if (
             os.getenv("FORCE_NB_EXECUTION") == "1"
         ):  # 1: in a docs build see build_docs.sh

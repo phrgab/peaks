@@ -134,6 +134,7 @@ class BaseARPESDataLoader(
 
     @property
     def analyser_attributes(self):
+        """Return the list of analyser attribute names recognised by the loader."""
         return self._analyser_attributes
 
     @classmethod

@@ -20,6 +20,11 @@ class Quantity(pint.Quantity):
 
     @classmethod
     def validate(cls, v, info):
+        """Validate a value as a pint.Quantity.
+
+        Accepts a pint.Quantity, a dictionary with 'value' and 'units' keys, a tuple of (value, units)
+        or a dimensionlessnumber/ndarray.
+        """
         if isinstance(v, pint.Quantity):
             return v
         elif isinstance(v, dict):

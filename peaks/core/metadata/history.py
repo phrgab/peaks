@@ -33,8 +33,8 @@ class AnalysisHistoryRecordCollection(BaseModel):
 
     records: List[AnalysisHistoryRecord] = []
 
-    # Method to append new records
     def add_record(self, new_record: dict):
+        """Append a new analysis record to the history."""
         record = AnalysisHistoryRecord(**new_record)
         self.records.append(record)
 
