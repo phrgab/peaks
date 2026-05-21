@@ -16,9 +16,11 @@ def disp(data, primary_dim=None, exclude_from_centering="eV"):
     primary_dim : str or tuple of str or list of str, optional
         The primary dimension for the viewer, should be a single dim for 2D and 3D plots or a tuple or list of two
         dims for a 4D plot. Primary dim will be shown:
+
         - on the y-axis for 2D plots
-        - as the central panel for 3D plots
-        - as the primary data explorer panel for 4D plots
+        - as the axis perpendicular to the central panel for 3D plots
+        - on the y- and x-axes of the primary data explorer panel (left) for 4D plots
+
         Default behaviour is based on the conventional peaks data structure for ARPES data.
 
     exclude_from_centering : str or tuple of str or list of str or None, optional
@@ -36,11 +38,15 @@ def disp(data, primary_dim=None, exclude_from_centering="eV"):
 
         # To display a set of 2D dispersions with theta_par axis on the vertical axis
         disps_to_plot = [load(f"disp{i}.ibw") for i in range(1, 5)]  # Load dispersions
-        pks.disp(disps_to_plot, primary_dim='theta_par')  # Open dispersions in viewer
+        pks.disp(disps_to_plot, primary_dim='theta_par')  # Open dispersions in viewer and show theta_par on y-axis
 
         # To display a Fermi surface map
         FS_map = load('FS_map.nxs')
         FS_map.disp()
+
+        # To display a spatial map
+        SM = load('spatial_map.nxs')
+        SM.disp(primary_dim=('x1', 'x2'))  # Show x1 on y-axis and x2 on x-axis
 
     """
     # If a DataTree instance is passed, try to parse into a form `.disp` can handle
