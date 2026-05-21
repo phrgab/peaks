@@ -24,6 +24,8 @@ from peaks.core.GUI.GUI_utils.cursor_stats import _parse_norm_emission_cursor_st
 from peaks.core.metadata.metadata_methods import display_metadata
 from peaks.core.process.tools import estimate_sym_point, sym
 
+_active_viewers: list = []  # to store active viewer instances and prevent garbage collection
+
 
 def _disp_3d(data, primary_dim, exclude_from_centering):
     """Display a 3D interactive display panel.
@@ -46,8 +48,28 @@ def _disp_3d(data, primary_dim, exclude_from_centering):
         app = QApplication(sys.argv)
 
     viewer = _Disp3D(data, primary_dim, exclude_from_centering)
+    _active_viewers.append(viewer)
+    viewer.destroyed.connect(
+        lambda *_: _active_viewers.remove(viewer)
+        if viewer in _active_viewers
+        else None  # Remove viewer from active viewers list when it is closed
+    )
     viewer.show()
-    app.exec()
+
+    # to support multiple display panels
+    try:
+        from IPython import get_ipython
+
+        ip = get_ipython()
+        if ip is not None:
+            if getattr(ip, "active_eventloop", None) == "qt6":
+                return
+    except Exception:
+        pass
+
+    # fallback to Qt event loop if not in IPython or if IPYthon does not have an active event loop
+    if not any(v.isVisible() for v in _active_viewers if v is not viewer):
+        app.exec()
 
 
 class _Disp3D(QtWidgets.QMainWindow):
@@ -114,9 +136,9 @@ class _Disp3D(QtWidgets.QMainWindow):
         self.closeEvent = self._close_application
 
     def _close_application(self, event):
-        """Close the application when the window is closed."""
+        """Close the application when the window is closed without shutting down the event loop."""
         self.graphics_layout.close()
-        app.quit()
+        event.accept()
 
     # ##############################
     # GUI layout
