@@ -16,6 +16,12 @@ from peaks.core.fileIO.loc_registry import register_loader
 
 @register_loader
 class BaseFeSuMaDataLoader(BaseARPESDataLoader):
+    """Loader for FeSuMa HDF5-based data.
+
+    The loader builds a lazily-indexed detector image cube and maps the acquisition
+    coordinate onto the appropriate :mod:`peaks` axis when enough metadata is available.
+    """
+
     # Define class variables
     _loc_name = "FeSuMa"
 

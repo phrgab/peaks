@@ -10,6 +10,8 @@ ureg = pint_xarray.unit_registry
 
 @register_loader
 class BlochArpesLoader(SESDataLoader):
+    """SES-based loader for the Bloch ARPES branch at MAX IV."""
+
     _loc_name = "MAXIV_Bloch_A"
     _loc_description = "A branch (ARPES) of Bloch beamline at Max-IV"
     _loc_url = "https://www.maxiv.lu.se/beamlines-accelerators/beamlines/bloch/"

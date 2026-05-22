@@ -32,27 +32,17 @@ class BaseARPESDataLoader(
     BaseTemperatureDataLoader,
     BaseManipulatorDataLoader,
 ):
-    """Base class for data loaders for ARPES systems. Assume a cryo-manipulator and photon source
+    """Base loader for ARPES data with analyser, manipulator, temperature, and photon metadata.
 
-    Subclasses should define the `_load_analyser_metadata` method to return a dictionary of relevant metadata
-    values with keys of the form in `analyser_item` where `item` is the names in the `_analyser_attributes` list,
-    i.e. is given in :class:`peaks` convention. This method should return values as :class:`pint.Quantity` objects
-    where possible to ensure units are appropriately captured and propagated. Alternatively, the main `_load_metadata`
-    method can be overwritten to return the full metadata dictionary, including manipulator metadata.
+    This mixin extends :class:`~peaks.core.fileIO.base_data_classes.base_data_class.BaseDataLoader`
+    with the metadata conventions needed for ARPES workflows, including defining analyser geometry,
+    deflectors, and manipulator axes, temperatures, and photon-source metadata.
+    Subclasses normally supply analyser metadata via ``_load_metadata()`` using :mod:`peaks` keys
+    such as ``analyser_eV``, ``analyser_PE``, and ``analyser_deflector_parallel``.
 
-    Subclasses should add any additional analyser attributes via the `_add_analyser_attributes` class variable,
-    providing a list of additional attributes.
-
-    Subclasses should also define the `_analyser_slit_angle` class variable if this is fixed. If custom logic is
-    required, this should be left as None and the logic handled within the metadata loading.
-
-    See Also
-    --------
-    BaseDataLoader
-    BaseDataLoader._load_metadata
-    BasePhotonSourceDataLoader
-    BaseTemperatureDataLoader
-    BaseManipulatorDataLoader
+    Concrete loaders should also define ``_analyser_slit_angle`` when it is fixed for
+    the instrument, plus any name/sign convention mappings required to translate from
+    local beamline terminology into the shared :mod:`peaks` coordinate system.
     """
 
     # Define class variables
