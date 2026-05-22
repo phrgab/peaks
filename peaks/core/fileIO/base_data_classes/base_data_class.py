@@ -211,7 +211,9 @@ class BaseDataLoader:
             loc = loc if loc else cls._get_loc(fpath)
             cls._check_valid_loc(loc)  # Check a valid loc
             if loc != "Base":
-                return cls.get_loader(loc).load_metadata(fpath, return_as_dict, quiet)
+                return cls.get_loader(loc).load_metadata(
+                    fpath, return_as_dict=return_as_dict, quiet=quiet
+                )
         # Otherwise, use the loc defined in the subclass
         loc = cls._loc_name
 
