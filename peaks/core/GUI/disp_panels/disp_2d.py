@@ -64,9 +64,9 @@ def _disp_2d(data, primary_dim, exclude_from_centering):
         )
 
     viewer.destroyed.connect(
-        lambda *_: active_viewers.remove(viewer)
-        if viewer in active_viewers
-        else None  # Remove viewer from active viewers list when it is closed
+        lambda *_: (
+            active_viewers.remove(viewer) if viewer in active_viewers else None
+        )  # Remove viewer from active viewers list when it is closed
     )
     viewer.show()
 
