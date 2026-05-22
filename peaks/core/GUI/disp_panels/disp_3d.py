@@ -23,8 +23,7 @@ from peaks.core.GUI.GUI_utils import (
 from peaks.core.GUI.GUI_utils.cursor_stats import _parse_norm_emission_cursor_stats
 from peaks.core.metadata.metadata_methods import display_metadata
 from peaks.core.process.tools import estimate_sym_point, sym
-
-_active_viewers: list = []  # to store active viewer instances and prevent garbage collection
+from peaks.core.utils.misc import analysis_warning
 
 
 def _disp_3d(data, primary_dim, exclude_from_centering):
@@ -47,11 +46,25 @@ def _disp_3d(data, primary_dim, exclude_from_centering):
     if app is None:
         app = QApplication(sys.argv)
 
+    if not hasattr(app, "_peaks_active_viewers"):
+        app._peaks_active_viewers = []
+    active_viewers = app._peaks_active_viewers
+
     viewer = _Disp3D(data, primary_dim, exclude_from_centering)
-    _active_viewers.append(viewer)
+    active_viewers.append(viewer)
+
+    # fire a warning if there are already 3 or more disp panels open
+    if len(active_viewers) >= 3:
+        analysis_warning(
+            f"There are currenly {len(active_viewers)} active display panels. "
+            "This may cause performance issues.",
+            warn_type="warning",
+            title="Multiple dispaly panels open",
+        )
+
     viewer.destroyed.connect(
-        lambda *_: _active_viewers.remove(viewer)
-        if viewer in _active_viewers
+        lambda *_: active_viewers.remove(viewer)
+        if viewer in active_viewers
         else None  # Remove viewer from active viewers list when it is closed
     )
     viewer.show()
@@ -68,7 +81,7 @@ def _disp_3d(data, primary_dim, exclude_from_centering):
         pass
 
     # fallback to Qt event loop if not in IPython or if IPYthon does not have an active event loop
-    if not any(v.isVisible() for v in _active_viewers if v is not viewer):
+    if not any(v.isVisible() for v in active_viewers if v is not viewer):
         app.exec()
 
 
