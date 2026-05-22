@@ -30,22 +30,20 @@ def disp(data, primary_dim=None, exclude_from_centering="eV"):
     --------
     Example usage is as follows::
 
-        import peaks as pks
-
         # To display a single dispersion
-        disp = load('disp.ibw')  # Load the dispersion
+        disp = pks.load('disp.ibw')  # Load the dispersion
         disp.disp()  # Display it in the UI
 
         # To display a set of 2D dispersions with theta_par axis on the vertical axis
-        disps_to_plot = [load(f"disp{i}.ibw") for i in range(1, 5)]  # Load dispersions
-        pks.disp(disps_to_plot, primary_dim='theta_par')  # Open dispersions in viewer and show theta_par on y-axis
+        multiple_disp = pks.load(['disp1.nxs','disp2.nxs','disp3.nxs'],names=['1','2','3'])  # Load dispersions into a DataTree
+        multiple_disp.disp(primary_dim='theta_par')  # Open dispersions in viewer and show theta_par on y-axis
 
         # To display a Fermi surface map
-        FS_map = load('FS_map.nxs')
+        FS_map = pks.load('FS_map.nxs')
         FS_map.disp()
 
-        # To display a spatial map
-        SM = load('spatial_map.nxs')
+        # To display a spatial map with x1 on the vertical axis
+        SM = pks.load('spatial_map.nxs')
         SM.disp(primary_dim=('x1', 'x2'))  # Show x1 on y-axis and x2 on x-axis
 
     """
