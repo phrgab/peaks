@@ -12,7 +12,7 @@ To make a new loader, the general approach is to subclass the most relevant base
 
 Manufacturer-specific base classes are defined for most of the core ARPES spectrometer manufacturers ({py:mod}`peaks.core.fileIO.base_arpes_data_classes`).
 This can make new system-specific data loaders rather compact, largely defining the mapping from `peaks` to local [axis names and co-ordinate system](coordinate-conventions).
-For example, for data collected in the SES data format at the A-branch of the [Bloch beamline](http://blochdocs.maxiv.lu.se) (as of 2025), we can subclass the {py:class}`peaks.core.fileIO.base_arpes_data_classes.base_ses_class.SESDataLoader`, meaning the entire loader can be defined as:
+For example, for data collected in the SES data format at the A-branch of the [Bloch beamline](http://blochdocs.maxiv.lu.se) (as of 2025), we can subclass the {py:class}`~peaks.core.fileIO.base_arpes_data_classes.base_ses_class.SESDataLoader`, meaning the entire loader can be defined as:
 
 ```python
 class BlochArpesLoader(SESDataLoader):
@@ -60,18 +60,18 @@ For examples, see the current loaders in {py:mod}`peaks.core.fileIO.loaders`.
 ## Metadata conventions
 
 A core feature of `peaks` is that it provides rich metadata, some of which is specifically required in subsequent analysis (e.g. k-conversion).
-To abstract facility- and instrument-specific details away, we define a common set of metadata names which are defined as [`pydantic`](https://pydantic.dev/docs/validation/latest/get-started/) models in {py:mod}`~peaks.peaks.core.metadata.base_metadata_models` and by our
+To abstract facility- and instrument-specific details away, we define a common set of metadata names and fields which are defined via [`pydantic`](https://pydantic.dev/docs/validation/latest/get-started/) models in {py:mod}`~peaks.peaks.core.metadata.base_metadata_models` and by our
 [co-ordinate conventions](coordinate-conventions).
-These can be expanded if required, e.g. to handle custom metadata specific to a given facility or to add additional axes to a manipulator or optical system, but in general we strongly encourage using a standardised metadata convention wherever possible.
+These can be expanded if required, e.g. to handle custom metadata specific to a given facility or to add additional axes to an optical system, but in general we strongly encourage using a standardised metadata convention wherever possible to avoid interoperability and ease of use across different facilities.
 For some fields (e.g. manipulators, optics), reference names should be defined in the loader, mapping from the `peaks` naming convention to the local axis name to aid the experimenter during data acquisition.
 
 To standardise loading of common metadata, additional base classes exist which data loaders can inherit from.
 For example, {py:class}`~peaks.core.fileIO.base_arpes_data_classes.base_arpes_data_class.BaseARPESDataLoader` already inherits from {py:class}`~peaks.core.fileIO.base_data_classes.base_photon_source_classes.BasePhotonSourceDataLoader`, {py:class}`~peaks.core.fileIO.base_data_classes.base_temperature_class.BaseTemperatureDataLoader`, and {py:class}`~peaks.core.fileIO.base_data_classes.base_manipulator_class.BaseManipulatorDataLoader` to orchestrate loading of this common metadata for all ARPES data, including defining the metadata parsing logic.
-Nano-ARPES loaders additionally inherits from the {py:class}`~peaks.core.fileIO.base_data_classes.base_optics_class.BaseOpticsDataLoader`.
+Nano-ARPES loaders additionally inherit from the {py:class}`~peaks.core.fileIO.base_data_classes.base_optics_class.BaseOpticsDataLoader` to define the focussing optics.
 
 ## Registering a new data loader
 
-Currently supported file loaders can be accessed as:
+Location identifiers for currently supported file loaders can be accessed as:
 
 ```python
 import peaks as pks
