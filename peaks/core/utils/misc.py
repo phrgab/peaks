@@ -15,7 +15,7 @@ def analysis_warning(text, warn_type="info", title="Analysis info", quiet=False)
     """Tool to display a string as a warning in a formatted box.
 
     Parameters
-    ------------
+    ----------
     text : str
         Text string to be displayed.
 
@@ -33,7 +33,7 @@ def analysis_warning(text, warn_type="info", title="Analysis info", quiet=False)
         Determines whether the warning is displayed. Defaults to False.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         import peaks as pks
@@ -45,7 +45,6 @@ def analysis_warning(text, warn_type="info", title="Analysis info", quiet=False)
         pks.analysis_warning('Fitting result could not converge.', warn_type='danger', title='Analysis info')
 
     """
-
     # Display warning
     if not quiet:
         display(
@@ -57,6 +56,8 @@ def analysis_warning(text, warn_type="info", title="Analysis info", quiet=False)
 
 
 def dequantify_quantify_wrapper(func):
+    """Decorator stripping pint units of first arg before calling ``func`` and re-appling them."""
+
     def wrapper(*args, **kwargs):
         # Apply dequantify to the first argument
         args = (args[0].pint.dequantify(),) + args[1:]
@@ -78,6 +79,7 @@ def dequantify_quantify_wrapper(func):
 
 @contextlib.contextmanager
 def silence_unit_warnings():
+    """Suppresses pint's :class:`UnitStrippedWarning` within its block."""
     from pint import UnitStrippedWarning
 
     with warnings.catch_warnings():
@@ -107,7 +109,7 @@ def make_cell(text, below=True, execute=True):
     """Generate a new cell in the Jupyter notebook, directly below or above the currently running cell.
 
     Parameters
-    ------------
+    ----------
     text : str
         Code to be generated in new cell.
 
@@ -119,7 +121,7 @@ def make_cell(text, below=True, execute=True):
         Determines whether the newly generated cell is automatically executed. Defaults to True.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         from peaks import *
@@ -131,7 +133,6 @@ def make_cell(text, below=True, execute=True):
         make_cell('5+7', below=False, execute=False)
 
     """
-
     # Ensure text is in an appropriate format
     text = text.replace("\n", "\\n").replace("'", "\\'")
 
@@ -190,14 +191,12 @@ def make_cell(text, below=True, execute=True):
 
 
 class DaskTQDMProgressBar(Callback):
-    """
-    A global Dask progress bar using tqdm that mimics Dask's ProgressBar(minimum=...).
-    """
+    """A global Dask progress bar using tqdm that mimics Dask's ProgressBar(minimum=...)."""
 
     def __init__(self, desc="Dask compute", minimum=1.0, mininterval=0.1):
         """
         Parameters
-        ------------
+        ----------
         desc : str, optional
             Label for the progress bar. Defaults to "Dask compute".
         minimum : float, optional

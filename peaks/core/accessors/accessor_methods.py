@@ -169,7 +169,6 @@ def register_lazy_accessor(
     func_name, module_name, cls, accessor_class=PeaksDirectCallAccessor
 ):
     """Register a lazy-loading accessor as a descriptor on the class."""
-
     # Check if the accessor already exists on cls and issue a warning if so
     if hasattr(cls, func_name):
         analysis_warning(
@@ -189,13 +188,13 @@ def register_accessor(cls):
     """Decorator (function wrapper) used to allow a function to be used as an object-oriented programming method.
 
     Parameters
-    ------------
+    ----------
     cls : object
         Here, this will be an:class:`xarray.DataArray` or similar. This allows a function to be applied to that
         class as a method.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         import peaks as pks

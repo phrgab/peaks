@@ -50,7 +50,6 @@ class BaseTemperatureDataLoader(BaseDataLoader):
     @classmethod
     def _parse_temperature_metadata(cls, metadata_dict):
         """Parse metadata specific to the temperature data."""
-
         # Build and populate the temperature metadata model
         temperature_metadata = TemperatureMetadataModel(
             sample=metadata_dict.get("temperature_sample"),

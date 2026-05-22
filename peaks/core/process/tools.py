@@ -24,7 +24,7 @@ def norm(data, dim=None, **kwargs):
     """Function to apply a normalisation to data.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         The data to be normalised.
 
@@ -38,12 +38,12 @@ def norm(data, dim=None, **kwargs):
         Multiple slices can be defined to define a ROI to normalise by.
 
     Returns
-    ------------
+    -------
     norm_data : xarray.DataArray
         The normalised data.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         import peaks as pks
@@ -67,7 +67,6 @@ def norm(data, dim=None, **kwargs):
         disp_norm = disp.norm(eV=slice(105, 105.1), theta_par=slice(-12, -8))
 
     """
-
     # Copy the input data to prevent overwriting issues
     norm_data = data.copy(deep=True)
 
@@ -134,7 +133,7 @@ def bgs(
     """Function to subtract a background from data.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         The data from which a background will be subtracted.
 
@@ -175,12 +174,12 @@ def bgs(
         by the eV slice given. Multiple slices can be defined to define a ROI to subtract the mean of.
 
     Returns
-    ------------
+    -------
     bgs_data : xarray.DataArray
         The background subtracted data.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         from peaks import *
@@ -209,7 +208,6 @@ def bgs(
         bgs_S2p_XPS = S2p_XPS.bgs('Shirley', num_avg=3)
 
     """
-
     # Check a subtraction argument has been inputted
     if not subtraction and not kwargs:
         raise Exception(
@@ -321,7 +319,7 @@ def bin_data(data, binning=None, boundary="trim", **binning_kwargs):
     analysis history.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         The data to be binned.
 
@@ -337,12 +335,12 @@ def bin_data(data, binning=None, boundary="trim", **binning_kwargs):
         Used to define dimension-specific binning in the format dim = bin_size, e.g. theta_par = 2.
 
     Returns
-    ------------
+    -------
     binned_data : xarray.DataArray
         The binned data.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         import peaks as pks
@@ -356,7 +354,6 @@ def bin_data(data, binning=None, boundary="trim", **binning_kwargs):
         disp_binned2 = disp.bin_data(theta_par=2, eV=3)
 
     """
-
     # If binning argument is defined, apply same size bins to all dimensions
     if binning:
         # If binning argument is not an integer, raise an error
@@ -406,7 +403,7 @@ def bin_spectra(data, binning=2, boundary="trim"):
     automatically determined and binned with the factor set in binning. All other dimensions are left as they are.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         The data to be binned.
 
@@ -418,12 +415,12 @@ def bin_spectra(data, binning=2, boundary="trim"):
         Other options are 'exact' and 'pad'; see :class:`xarray.DataArray.coarsen` for more information.
 
     Returns
-    ------------
+    -------
     binned_data : xarray.DataArray
         The binned data.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         import peaks as pks
@@ -434,7 +431,7 @@ def bin_spectra(data, binning=2, boundary="trim"):
         disp_binned = disp.bin_spectra()
 
     See Also
-    ------------
+    --------
     :meth:`xarray.DataArray.bin_data`
 
     """
@@ -458,7 +455,7 @@ def smooth(data, **smoothing_kwargs):
     """Function to smooth data by applying a Gaussian smoothing operator.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         The data to smooth.
 
@@ -468,12 +465,12 @@ def smooth(data, **smoothing_kwargs):
         the same units as the axis.
 
     Returns
-    ------------
+    -------
     smoothed_data : xarray.DataArray
         The smoothed data.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         import peaks as pks
@@ -489,7 +486,6 @@ def smooth(data, **smoothing_kwargs):
         EDC1_smooth = EDC1.smooth(eV=0.1)
 
     """
-
     # Check that some axes to smooth over were passed
     if len(smoothing_kwargs) == 0:
         raise Exception("Function requires axes to be smoothed over to be defined.")
@@ -579,7 +575,7 @@ def rotate(data, rotation, **centre_kwargs):
     """Function to rotate 2D or 3D data around a given centre of rotation.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         The data to be rotated.
 
@@ -595,12 +591,12 @@ def rotate(data, rotation, **centre_kwargs):
 
 
     Returns
-    ------------
+    -------
     rotated_data : xarray.DataArray
         The rotated data.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         from peaks import *
@@ -616,7 +612,6 @@ def rotate(data, rotation, **centre_kwargs):
         FS1_rotated_2 = FS1.rotate(50, theta_par=5, ana_polar=5)
 
     """
-
     # If the rotation is a multiple of 360, no need to do anything
     if rotation % 360 == 0:
         return data
@@ -647,10 +642,10 @@ def rotate(data, rotation, **centre_kwargs):
 
     # Prepare to interpolate data onto expanded coordinate grid determined by rotation
     def _rot_point(dim0, dim1, cen, angle):
-        """Rotate a point around a centre while preserving xarray's (dim0, dim1) notation
+        """Rotate a point around a centre while preserving xarray's (dim0, dim1) notation.
 
         Parameters
-        ------------
+        ----------
         dim0 : float or np.ndarray
             The first coordinate (typically y-axis).
 
@@ -664,7 +659,7 @@ def rotate(data, rotation, **centre_kwargs):
             The angle of rotation in degrees.
 
         Returns
-        ------------
+        -------
         new_dim0, new_dim1 : tuple
             The rotated coordinates (dim0, dim1).
         """
@@ -758,7 +753,7 @@ def sym(data, flipped=False, fillna=True, **sym_kwarg):
     It can alternatively be used to simply flip data around a given axis.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         The data to be symmetrised.
 
@@ -779,12 +774,12 @@ def sym(data, flipped=False, fillna=True, **sym_kwarg):
         Defaults to eV=0.
 
     Returns
-    ------------
+    -------
     sym_data : xarray.DataArray
         The symmetrised (or simply flipped) data.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         import peaks as pks
@@ -798,7 +793,6 @@ def sym(data, flipped=False, fillna=True, **sym_kwarg):
         disp_sym = disp.sym(theta_par=3, flipped=True)
 
     """
-
     # Copy the input data to prevent overwrite issues
     sym_data = data.copy(deep=True)
 
@@ -872,7 +866,7 @@ def sym_nfold(data, nfold, expand=True, fillna=True, **centre_kwargs):
     """Function to perform an n-fold symmetrisation of data around a centre coordinate.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         The data to be symmetrised.
 
@@ -900,12 +894,12 @@ def sym_nfold(data, nfold, expand=True, fillna=True, **centre_kwargs):
         different behaviour or if there is no eV dimenison, must pass the centre_kwargs.
 
     Returns
-    ------------
+    -------
     sym_data : xarray.DataArray
         The symmetrised data.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         from peaks import *
@@ -923,7 +917,6 @@ def sym_nfold(data, nfold, expand=True, fillna=True, **centre_kwargs):
         FS1_sym = FS1.sym_nfold(theta_par=3, ana_polar=5, expand=False, fillna=False)
 
     """
-
     # Check data is 2D or 3D
     if len(data.dims) not in [2, 3]:
         raise Exception("Function only acts on 2D or 3D data.")
@@ -1072,7 +1065,7 @@ def degrid(data, width=0.1, height=0.1, cutoff=4):
     """Function which removes a mesh grid from 2D data by filtering its fast Fourier transform (FFT).
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         The 2D data to remove a mesh grid from.
 
@@ -1089,12 +1082,12 @@ def degrid(data, width=0.1, height=0.1, cutoff=4):
         multiples of the mean of data (i.e. intensity > cutoff * (data).mean()) are removed. Defaults to 4.
 
     Returns
-    ------------
+    -------
     degrid_data : xarray.DataArray
         The data with the mesh grid removed.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         from peaks import *
@@ -1110,7 +1103,6 @@ def degrid(data, width=0.1, height=0.1, cutoff=4):
         degrid_disp = disp.degrid(width=0.2, height=0.2, cutoff=3.2)
 
     """
-
     # Ensure data is a 2D scan, if not raise an error
     if len(data.dims) == 2:
         # Copy the input data to prevent overwrite issues
@@ -1270,7 +1262,7 @@ def _sum_or_subtract_data(data, _sum=True, quiet=False):
     If in subtract mode, only two DataArrays can be inputted.
 
     Parameters
-    ------------
+    ----------
     data : list or xarray.DataTree
         Any number of :class:`xarray.DataArray` items to sum together, either passed as a list or
         as a tree containing the relevant dataarrays.
@@ -1282,7 +1274,7 @@ def _sum_or_subtract_data(data, _sum=True, quiet=False):
         Whether to suppress warnings. Defaults to False.
 
     Returns
-    ------------
+    -------
     summed_data : xarray.DataArray
         The single summed :class:`xarray.DataArray`.
 
@@ -1459,7 +1451,7 @@ def sum_data(data, quiet=False):
     coordinate grid of the first inputted DataArray.
 
     Parameters
-    ------------
+    ----------
     data : list or xarray.DataTree
         Any number of :class:`xarray.DataArray` items to sum together, either passed as a list or
         as a tree containing the relevant dataarrays.
@@ -1468,12 +1460,12 @@ def sum_data(data, quiet=False):
         Whether to suppress warnings. Defaults to False.
 
     Returns
-    ------------
+    -------
     summed_data : xarray.DataArray
         The single summed :class:`xarray.DataArray`.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         import peaks as pks
@@ -1487,7 +1479,6 @@ def sum_data(data, quiet=False):
         dt = pks.load(['disp1.ibw', 'disp2.ibw'])
         disp_sum = pks.sum_data(dt, quiet=True)  # Sum the dispersions
     """
-
     return _sum_or_subtract_data(data, _sum=True, quiet=quiet)
 
 
@@ -1498,7 +1489,7 @@ def subtract_data(data, quiet=False):
     coordinate grid of the first inputted DataArray.
 
     Parameters
-    ------------
+    ----------
     data : list or xarray.DataTree
         Any number of :class:`xarray.DataArray` items to sum together, either passed as a list or
         as a tree containing the relevant dataarrays.
@@ -1507,12 +1498,12 @@ def subtract_data(data, quiet=False):
         Whether to suppress warnings. Defaults to False.
 
     Returns
-    ------------
+    -------
     summed_data : xarray.DataArray
         The single summed :class:`xarray.DataArray`.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         import peaks as pks
@@ -1526,7 +1517,6 @@ def subtract_data(data, quiet=False):
         dt = pks.load(['disp1.ibw', 'disp2.ibw'])
         disp_diff = pks.subtract_data(dt, quiet=True)  # Calculate the difference
     """
-
     return _sum_or_subtract_data(data, _sum=False, quiet=quiet)
 
 
@@ -1534,7 +1524,7 @@ def merge_data(data, dim="theta_par", sel=None, offsets=None, hv_match_rounding=
     """Function to merge two or more DataArrays together along a given dimension.
 
     Parameters
-    ------------
+    ----------
     data : list or xarray.DataTree
         Any number of N-dimensional DataArrays to merge together, or a :class:`xarray.DataTree` contining the
         data to merge.
@@ -1560,12 +1550,12 @@ def merge_data(data, dim="theta_par", sel=None, offsets=None, hv_match_rounding=
         axis. Defaults to 0.
 
     Returns
-    ------------
+    -------
     merged_data : xarray.DataArray
         The single merged :class:`xarray.DataArray`.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         import peaks as pks
@@ -1714,7 +1704,7 @@ def _merge_two_DataArrays(DataArray1, DataArray2, dim):
     """Function to merge two N-dimensional DataArrays together along a given dimension.
 
     Parameters
-    ------------
+    ----------
     DataArray1 : xarray.DataArray
         The first DataArray to be merged, with the lowest coordinates along dim.
 
@@ -1725,12 +1715,12 @@ def _merge_two_DataArrays(DataArray1, DataArray2, dim):
         The dimension to merge along.
 
     Returns
-    ------------
+    -------
     merged_data : xarray.DataArray
         The single merged :class:`xarray.DataArray`.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         from peaks import *
@@ -1744,7 +1734,6 @@ def _merge_two_DataArrays(DataArray1, DataArray2, dim):
         merged_disp = merge_data(disp1, disp2, 'theta_par')
 
     """
-
     # Ensure dims of the inputted DataArrays are the same
     if not DataArray1.dims == DataArray2.dims:
         raise ValueError("The dimensions of the inputted DataArrays do not match.")
@@ -1838,7 +1827,7 @@ def _merge_two_DataArrays(DataArray1, DataArray2, dim):
 
 
 def _join_two_hv_scans(scan1, scan2, hv_match_rounding=0):
-    """Join two hv scans into a single hv scan
+    """Join two hv scans into a single hv scan.
 
     Parameters
     ----------
@@ -1852,7 +1841,6 @@ def _join_two_hv_scans(scan1, scan2, hv_match_rounding=0):
         The number of decimal places to round the hv values to before checking for
         duplicates, default is 0
     """
-
     # Check for duplicated hv values
     duplicate_hv = set(np.round(scan1.hv.data, hv_match_rounding)).intersection(
         set(np.round(scan2.hv.data, hv_match_rounding))
@@ -1889,7 +1877,7 @@ def estimate_sym_point(data, dims=None, upsample_factor=100):
     Used for e.g. estimating normal emission of an ARPES scan.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         The data to estimate the centrepoint of.
 
@@ -1902,12 +1890,12 @@ def estimate_sym_point(data, dims=None, upsample_factor=100):
         Defaults to 100.
 
     Returns
-    ------------
+    -------
     centre : dict
         The estimated centrepoint of the data along the specified dims.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         import peaks as pks
@@ -1921,7 +1909,6 @@ def estimate_sym_point(data, dims=None, upsample_factor=100):
         centre = estimate_sym_point(FS, dims=['theta_par', 'polar'])
 
     """
-
     # Ensure dims is of list type
     if isinstance(dims, str):
         dims = [dims]
@@ -1956,7 +1943,7 @@ def drift_correction(reference_data, moving_data, orig_pos=None, **kwargs):
     """Estimate new position to correct for drift between two spatial maps.
 
     Parameters
-    ------------
+    ----------
     reference_data : xarray.DataArray
         The original data, should be a 1D or 2D DataArray
 
@@ -1972,13 +1959,12 @@ def drift_correction(reference_data, moving_data, orig_pos=None, **kwargs):
         the subpixel image registration
 
     Returns
-    ------------
+    -------
     shift : dict
         Dictionary of shifts required to register ``moving_data`` with ``reference_data``.
     new_pos : dict, optional
         If orig_pos supplied, dictionary of position in new_map corresponding to orig_pos in orig_map
     """
-
     reference_data = reference_data.squeeze()
     moving_data = moving_data.squeeze()
     if len(reference_data.shape) >= 3 or len(moving_data.shape) >= 3:

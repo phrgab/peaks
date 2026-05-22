@@ -22,7 +22,6 @@ def _get_EF_at_theta_par0(da):
     float or np.ndarray
         Kinetic energy of the Fermi level at the given theta_par value(s).
     """
-
     # Get EF_correction, estimating if not present
     if "hv" not in da.dims:
         if da.metadata.calibration.EF_correction is None:
@@ -57,7 +56,6 @@ def _get_E_shift_at_theta_par(da, theta_par, Ek=None):
     float or np.ndarray
         Energy shift of the Fermi level at the given theta_par value(s).
     """
-
     # Get EF_correction
     EF_fn = da.metadata.get_EF_correction()
     if isinstance(EF_fn, dict) and len(EF_fn) > 1:  # Theta-par-dep EF correction
@@ -159,7 +157,6 @@ def _get_wf(da):
     wf : float or np.ndarray
         Work function to use for the data processing. Will be an array if an hv scan passed
     """
-
     # Get EF values, estimating if not already set
     Ek_at_EF = _get_EF_at_theta_par0(da)
 
@@ -177,7 +174,7 @@ def _get_wf(da):
 
 
 def _get_BE_scale(da):
-    """Gets the relevant binding energy scale from the kinetic energy scale, padding to account for any theta-par
+    r"""Gets the relevant binding energy scale from the kinetic energy scale, padding to account for any theta-par
     dependence of the Fermi level on the detector and any shift of EF within the detector for hv-dep data.
 
     Parameters
@@ -241,7 +238,6 @@ def _add_estimated_EF(da):
         Adds the estimated Fermi level to the data attributes or coordinates as appropraite.
 
     """
-
     # Check no existing EF correction exists
     if da.metadata.calibration.EF_correction is not None:
         if "hv" in da.dims and "EF" not in da.coords:
@@ -283,7 +279,6 @@ def _add_estimated_hv(da):
         Adds the estimated photon energy to the data attributes.
 
     """
-
     # Check no existing hv value exists
     if "hv" in da.dims or (
         hasattr(hasattr(da.metadata, "photon"), "hv") and da.metadata.photon.hv

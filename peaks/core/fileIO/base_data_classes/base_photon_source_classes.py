@@ -40,7 +40,6 @@ class BasePhotonSourceDataLoader(BaseDataLoader):
     @classmethod
     def _parse_photon_metadata(cls, metadata_dict):
         """Parse metadata specific to the photon data."""
-
         # Build and populate the photon metadata model
         photon_metadata = PhotonMetadataModel(
             hv=metadata_dict.get("photon_hv"),
@@ -59,12 +58,15 @@ class BasePhotonSourceDataLoader(BaseDataLoader):
 
 
 class BasePumpProbeClass(BasePhotonSourceDataLoader):
+    """Mix-in adding pump-photon metadata (hv, polarisation, delay, power, to) to a loader."""
+
     _pump_photon_attributes = ["hv", "polarisation", "delay", "power"]
     _pump_photon_exclude_from_metadata_warn = _pump_photon_attributes
     _metadata_parsers = ["_parse_pump_photon_metadata"]
 
     @property
     def pump_photon_attributes(self):
+        """Return the pump photon attributes."""
         return self._pump_photon_attributes
 
     @classmethod

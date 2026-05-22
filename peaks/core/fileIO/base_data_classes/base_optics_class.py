@@ -51,7 +51,6 @@ class BaseOpticsDataLoader(BaseDataLoader):
     @classmethod
     def _parse_optics_metadata(cls, metadata_dict):
         """Parse metadata specific to the optics data."""
-
         optics_metadata_dict = {}
 
         # Extract the primary axes metadata and parse in a form for passing to the model

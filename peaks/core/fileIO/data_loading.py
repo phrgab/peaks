@@ -26,7 +26,7 @@ def load(
     """Core function to load data.
 
     Parameters
-    ------------
+    ----------
     fpath : str, list
         Either the full file path(s), or the remainder of the file name(s) not already
         specified in the file global options (see Notes).
@@ -66,12 +66,12 @@ def load(
         Additional keyword arguments to pass to the data loader.
 
     Returns
-    ------------
+    -------
     loaded_data : xarray.DataArray, xarray.DataSet, xarray.DataTree
         The loaded data.
 
     Notes
-    ------------
+    -----
     Much of file path can be set by :class:`peaks.core.options.FileIO` global options:
 
         opts.FileIO.path : str, list
@@ -90,7 +90,7 @@ def load(
             Defaults to 1 GB.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         import peaks as pks
@@ -155,7 +155,6 @@ def load(
             disp2 = pks.load('disp2')
             FM2 = pks.load('FM2')
     """
-
     load_opts = {
         "lazy": lazy,
         "loc": loc,
@@ -248,16 +247,15 @@ def _load_data(fpath, lazy, loc, metadata, parallel, names, quiet, **kwargs):
     """Function to handle loading of single or multiple data files into the xarray DataArray format.
 
     Returns
-    ------------
+    -------
     loaded_data : xarray.DataArray, xarray.DataSet, list
         The loaded data.
 
     See Also
-    ------------
+    --------
     load : Public function to load data, which sets much of the fpath and defines the options to pass to `_load_data`.
 
     """
-
     load_opts = {"lazy": lazy, "loc": loc, "metadata": metadata, "quiet": quiet}
     load_opts.update(kwargs)
 

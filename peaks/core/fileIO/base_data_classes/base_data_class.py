@@ -15,7 +15,7 @@ ureg = pint_xarray.unit_registry
 
 
 class BaseDataLoader:
-    """Base Class for data loaders
+    """Base Class for data loaders.
 
     Notes
     -----
@@ -100,7 +100,7 @@ class BaseDataLoader:
         """Top-level method to load data and return a DataArray.
 
         Parameters
-        ------------
+        ----------
         fpath : str, list
             Full file path of file to load.
 
@@ -123,12 +123,12 @@ class BaseDataLoader:
             Additional keyword arguments to pass to the individual loaders.
 
         Returns
-        ------------
+        -------
         da : xarray.DataArray
             The loaded data as an xarray DataArray.
 
         Examples
-        ------------
+        --------
         Normally used via the `pks.load` core function. If needed to be accessed directly, example usage is as follows::
 
             from peaks.core.fileIO.base_data_classes import BaseDataLoader
@@ -142,7 +142,6 @@ class BaseDataLoader:
         If building a data loader by subclassing this, make sure so put any loc-specific logic in the
         _load method.
         """
-
         # Make sure the metadata cache for this file is empty
         cls._metadata_cache.pop(fpath, None)
 
@@ -165,7 +164,7 @@ class BaseDataLoader:
         """Top-level method to load metadata and return it in a dictionary.
 
         Parameters
-        ------------
+        ----------
         fpath : str
             Path to the file to be loaded.
 
@@ -186,12 +185,12 @@ class BaseDataLoader:
 
 
         Returns
-        ------------
+        -------
         metadata_dict : dict
             The loaded metadata as a dictionary simple dictionary or a dictionary of parsed metadata models.
 
         Examples
-        ------------
+        --------
         Example usage is as follows::
 
             from peaks.core.fileIO.base_data_classes import BaseDataLoader
@@ -205,7 +204,6 @@ class BaseDataLoader:
         If building a data loader by subclassing this, make sure so put any loc-specific logic in the
         _load_metadata method.
         """
-
         # Parse the loc - if the base class is used, determine the loc automatically and route to the right subclass
         if cls._loc_name == "Base":
             loc = loc if loc else cls._get_loc(fpath)
@@ -245,22 +243,22 @@ class BaseDataLoader:
         """Get the loader class for the given location.
 
         Parameters
-        ------------
+        ----------
         loc : str
             The location at which the data was obtained.
 
         Returns
-        ------------
+        -------
         loader_class : class
             The loader class for the given location.
 
         Raises
-        ------------
+        ------
         ValueError
             If no loader is found for the given location.
 
         Examples
-        ------------
+        --------
         Example usage is as follows::
 
                 from peaks.core.fileIO.base_data_classes import BaseDataLoader
@@ -284,12 +282,12 @@ class BaseDataLoader:
         """This function determines the location at which the data was obtained.
 
         Parameters
-        ------------
+        ----------
         fpath : str
             Path to the file to be loaded.
 
         Returns
-        ------------
+        -------
         loc : str
             The name of the location (typically a beamline).
         """
@@ -348,7 +346,7 @@ class BaseDataLoader:
         """Load the data. To be implemented by subclasses.
 
         Parameters
-        ------------
+        ----------
         fpath : str
             Path to the file to be loaded.
 
@@ -376,12 +374,12 @@ class BaseDataLoader:
         Loaders that subclass this class should implement this method.
 
         Parameters
-        ------------
+        ----------
         fpath : str
             Path to the file to be loaded.
 
         Returns
-        ------------
+        -------
         metadata_dict : dict
             Dictionary mapping metadata keys to values.
             Keys should be `peaks` notation, generally of the form subclass_item (e.g. `analyser_eV`)
@@ -392,7 +390,6 @@ class BaseDataLoader:
     @classmethod
     def _parse_general_metadata(cls, metadata_dict):
         """Apply general metadata to the DataArray - implemented irrespective of the loader."""
-
         fpath = metadata_dict.get("fpath")
         general_scan_metadata = BaseScanMetadataModel(
             name=fpath.split("/")[-1].split(".")[0],
@@ -408,7 +405,7 @@ class BaseDataLoader:
         """Method to orchastrate applying loader-specific metadata to the DataArray.
 
         Parameters
-        ------------
+        ----------
         metadata_dict : dict
             Dictionary containing all available metadata as returned by `_load_metadata`.
 
@@ -416,7 +413,7 @@ class BaseDataLoader:
             Whether to suppress missing metadata warnings when loading data.
 
         Returns
-        ------------
+        -------
         parsed_metadata : dict
             Dictionary containing all parsed metadata as Pydantic models.
 
@@ -468,7 +465,7 @@ class BaseDataLoader:
         """Convert data into an xarray DataArray.
 
         Parameters
-        ------------
+        ----------
         data : dict
             Dictionary containing:
                 spectrum : the data to be converted
@@ -487,7 +484,6 @@ class BaseDataLoader:
     @classmethod
     def _apply_conventions(cls, da):
         """Apply relevant conventions to the DataArray."""
-
         # Ensure that all the DataArray dimension coordinates are ordered low to high
         for dim in da.dims:
             if len(da[dim]) > 1:

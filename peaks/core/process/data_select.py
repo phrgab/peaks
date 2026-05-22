@@ -27,7 +27,7 @@ def drop_nan_borders(data):
         The data to trim.
 
     Returns
-    --------
+    -------
     trimmed_data : xarray.DataArray or xarray.Dataset
         Trimmed :class:`xarray` object with NaN edges removed.
 
@@ -43,7 +43,6 @@ def drop_nan_borders(data):
             # Trim all zero edges from the data
             trimmed_data = data.drop_nan_borders()
     """
-
     # Iterate over each dimension to trim NaN edges
     for dim in data.dims:
         # Create a boolean mask where data is not NaN along the dimension
@@ -78,7 +77,7 @@ def drop_zero_borders(data):
         The data to trim.
 
     Returns
-    --------
+    -------
     trimmed_data : xarray.DataArray or xarray.Dataset
         Trimmed :class:`xarray` object with NaN edges removed.
 
@@ -94,7 +93,6 @@ def drop_zero_borders(data):
             # Trim all zero edges from the data
             trimmed_data = data.drop_zero_borders()
     """
-
     # Iterate over each dimension to trim zero edges
     for dim in data.dims:
         # Create a boolean mask where data is not zero along the dimension
@@ -115,7 +113,7 @@ def DC(data, coord="eV", val=0, dval=0, ana_hist=True):
     """General function to extract DCs from data along any coordinate.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         The data to extract a DC from.
 
@@ -132,12 +130,12 @@ def DC(data, coord="eV", val=0, dval=0, ana_hist=True):
         Defines whether the function appends information to the analysis history metadata. Defaults to True.
 
     Returns
-    ------------
+    -------
     dc : xarray.DataArray
         Extracted DC(s).
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         from peaks import *
@@ -157,7 +155,6 @@ def DC(data, coord="eV", val=0, dval=0, ana_hist=True):
         DC4 = disp.DC('eV', (-0.2, 0.1, 0.05), 0.02)
 
     """
-
     # If val is a 3 element tuple of the format (start, end, step), make val an numpy.ndarray of the relevant values
     if isinstance(val, tuple):
         if len(val) == 3:
@@ -203,7 +200,7 @@ def MDC(data, E=0, dE=0):
     """Extract MDCs (i.e. slices at constant energy) from data. Broadcasts to higher dimensions as necessary.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         The dispersion to extract an MDC from.
 
@@ -214,12 +211,12 @@ def MDC(data, E=0, dE=0):
         Integration range (represents the total range, i.e. integrates over +/- dE/2). Defaults to 0.
 
     Returns
-    ------------
+    -------
     mdc : xarray.DataArray
         Extracted MDC(s).
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         import peaks as pks
@@ -241,7 +238,6 @@ def MDC(data, E=0, dE=0):
         FS_map = FS1.MDC()  # No integration required - defaults are good!
         FS_map2 = FS1.MDC(dE=0.02)  # Integration over +/- 0.01 eV
     """
-
     # Call function to extract relevant MDC from dispersion
     mdc = data.DC(coord="eV", val=E, dval=dE, ana_hist=False)
 
@@ -256,7 +252,7 @@ def EDC(data, k=0, dk=0):
     """Extract EDCs from data.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         The dispersion to extract an EDC from.
 
@@ -267,12 +263,12 @@ def EDC(data, k=0, dk=0):
         Integration range (represents the total range, i.e. integrates over +/- dk/2). Defaults to 0.
 
     Returns
-    ------------
+    -------
     edc : xarray.DataArray
         Extracted EDC(s).
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         from peaks import *
@@ -295,7 +291,6 @@ def EDC(data, k=0, dk=0):
         EDC5 = disp.EDC((0.7, 1.2, 0.1), 0.02)
 
     """
-
     # Work out correct variable for dispersive direction (i.e. is data in angle or k-space)
     coords = list(data.dims)
     coords.remove("eV")
@@ -315,17 +310,17 @@ def DOS(data):
     """Integrate over all but the energy axis to return the best approximation to the DOS possible from the data.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         Data to extract DOS from.
 
     Returns
-    ------------
+    -------
     dos : xarray.DataArray
         Extracted DOS.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         from peaks import *
@@ -341,7 +336,6 @@ def DOS(data):
         FM_DOS = FM.DOS()
 
     """
-
     # Get relevant dimensions to integrate over
     int_dim = list(filter(lambda i: i != "eV", data.dims))
 
@@ -359,7 +353,7 @@ def tot(data, spatial_int=False):
     """Integrate spatial map data over all non-spatial (energy and angle/k) or all spatial dimensions.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         Spatial map data.
 
@@ -367,12 +361,12 @@ def tot(data, spatial_int=False):
         Determines whether integration is performed over spatial or non-spatial dimensions. Defaults to False.
 
     Returns
-    ------------
+    -------
     data_tot : xarray.DataArray
         The integrated data.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         from peaks import *
@@ -386,7 +380,6 @@ def tot(data, spatial_int=False):
         SM_int_spatial = SM.tot(spatial_int=True)
 
     """
-
     # Integrate over spatial dimensions
     if spatial_int:
         data_tot = data.mean(["x1", "x2"], keep_attrs=True)
@@ -410,7 +403,7 @@ def radial_cuts(data, num_azi=361, num_points=200, radius=2, **centre_kwargs):
     """Extract radial cuts of a Fermi surface slice or cube as a function of azimuthal angle, about some central point.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         Data to extract radial cuts from.
 
@@ -428,12 +421,12 @@ def radial_cuts(data, num_azi=361, num_points=200, radius=2, **centre_kwargs):
         Default centre of rotation is (0, 0).
 
     Returns
-    ------------
+    -------
     data_to_return : xarray.DataArray
         Radial cuts against azi.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         import peaks as pks
@@ -451,7 +444,6 @@ def radial_cuts(data, num_azi=361, num_points=200, radius=2, **centre_kwargs):
         FS1_radial_cuts_2 = FS1.radial_cuts()
 
     """
-
     angle_dims = [dim for dim in data.dims if dim != "eV"]
 
     # Check remaining data is 2D
@@ -535,7 +527,7 @@ def extract_cut(data, start_point, end_point, num_points=None):
     """Extract cut between two end-points, e.g. dispersion or MDC from a Fermi map data cube.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         Data to extract radial cuts from.
 
@@ -550,12 +542,12 @@ def extract_cut(data, start_point, end_point, num_points=None):
         based on the original data.
 
     Returns
-    ------------
+    -------
     data_to_return : xarray.DataArray
         Extracted cut
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         import peaks as pks
@@ -566,7 +558,6 @@ def extract_cut(data, start_point, end_point, num_points=None):
         cut = FM.extract_cut({'theta_par': 0, 'polar': 0}, {'theta_par': 15, 'polar': 12}, num_points=100)
 
     """
-
     # Check the start and end points specification
     if set(start_point.keys()) != set(end_point.keys()):
         raise ValueError(
@@ -650,7 +641,7 @@ def mask_data(data, ROI, return_integrated=True):
     the ROI.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         The multidimensional data to apply the ROI selection to.
 
@@ -664,13 +655,13 @@ def mask_data(data, ROI, return_integrated=True):
         Defaults to True.
 
     Returns
-    ------------
+    -------
     ROI_selected_data : xarray.DataArray
         The input data with the ROI applied as a mask, and (if return_integrated=True) the mean taken over those
         remaining dimensions.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         from peaks import *
@@ -687,7 +678,6 @@ def mask_data(data, ROI, return_integrated=True):
         ROI_SM = SM.mask_data(ROI, return_integrated=False)
 
     """
-
     # Check function has been fed with suitable dictionary for ROI generation
     err_str = (
         "ROI must be a dictionary containing two entries for the relevant axes. Each of these entries should "
@@ -763,7 +753,7 @@ def disp_from_hv(da, hv):
     (KE_delta) that arise from using the hv scan loading method.
 
     Parameters
-    ------------
+    ----------
     da : xarray.DataArray
         The hv scan extract a single dispersion from.
 
@@ -771,12 +761,12 @@ def disp_from_hv(da, hv):
          The photon energy at which to extract a dispersion at.
 
     Returns
-    ------------
+    -------
     hv_disp : xarray.DataArray
         The extracted dispersion.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         from peaks import *
@@ -787,7 +777,6 @@ def disp_from_hv(da, hv):
         disp_79eV = hv_scan.disp_from_hv(79)
 
     """
-
     # Ensure the inputted data is an hv scan
     if "hv" not in da.dims:
         raise Exception(

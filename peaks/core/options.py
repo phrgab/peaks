@@ -42,6 +42,7 @@ class FileIOOptions:
 
     @property
     def path(self):
+        """Return the file path(s)."""
         return self._path
 
     @path.setter
@@ -63,6 +64,7 @@ class FileIOOptions:
 
     @property
     def ext(self):
+        """Return the file extension(s)."""
         return self._ext
 
     @ext.setter
@@ -84,6 +86,7 @@ class FileIOOptions:
 
     @property
     def loc(self):
+        """Return the location where the data were collected."""
         return self._loc
 
     @loc.setter
@@ -110,6 +113,7 @@ class FileIOOptions:
 
     @property
     def lazy_size(self):
+        """Return the lazy loading file size threshold (in bytes)."""
         return self._lazy_size
 
     @lazy_size.setter
@@ -224,6 +228,7 @@ class Options:
     _fileio_old_opts = None
 
     def __new__(cls):
+        """Return the singleton ``Options`` instance, creating it on first call."""
         if cls._instance is None:
             cls._instance = super(Options, cls).__new__(cls)
             cls._instance.FileIO = FileIOOptions()  # Initialize FileIO options here
