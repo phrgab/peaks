@@ -60,7 +60,7 @@ For examples, see the current loaders in {py:mod}`peaks.core.fileIO.loaders`.
 ## Metadata conventions
 
 A core feature of `peaks` is that it provides rich metadata, some of which is specifically required in subsequent analysis (e.g. k-conversion).
-To abstract facility- and instrument-specific details away, we define a common set of metadata names which are defined in {py:mod}`~peaks.peaks.core.metadata.base_metadata_models` and by our
+To abstract facility- and instrument-specific details away, we define a common set of metadata names which are defined as [`pydantic`](https://pydantic.dev/docs/validation/latest/get-started/) models in {py:mod}`~peaks.peaks.core.metadata.base_metadata_models` and by our
 [co-ordinate conventions](coordinate-conventions).
 These can be expanded if required, e.g. to handle custom metadata specific to a given facility or to add additional axes to a manipulator or optical system, but in general we strongly encourage using a standardised metadata convention wherever possible.
 For some fields (e.g. manipulators, optics), reference names should be defined in the loader, mapping from the `peaks` naming convention to the local axis name to aid the experimenter during data acquisition.
