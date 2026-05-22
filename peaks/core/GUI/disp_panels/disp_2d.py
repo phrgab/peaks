@@ -57,10 +57,10 @@ def _disp_2d(data, primary_dim, exclude_from_centering):
     # fire a warning if there are already 3 or more disp panels open
     if len(active_viewers) >= 3:
         analysis_warning(
-            f"There are currenly {len(active_viewers)} active display panels. "
+            f"There are currently {len(active_viewers)} active display panels. "
             "This may cause performance issues.",
             warn_type="warning",
-            title="Multiple dispaly panels open",
+            title="Multiple display panels open",
         )
 
     viewer.destroyed.connect(
