@@ -8,7 +8,7 @@ from bokeh.transform import dodge, factor_cmap
 
 def ptab(modify_elements_func=None, add_to_tooltips=None):
     """Plot the periodic table
-    Modified from https://docs.bokeh.org/en/2.4.3/docs/gallery/periodic.html
+    Modified from https://docs.bokeh.org/en/2.4.3/docs/gallery/periodic.html.
 
     Parameters
     ----------

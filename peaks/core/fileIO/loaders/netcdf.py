@@ -46,7 +46,6 @@ class NetCDFLoader(BaseDataLoader):
         data : xarray.DataArray or xarray.Dataset
             The loaded data.
         """
-
         # Open NetCDF file as xarray.DataArray or xarray.Dataset
         try:
             data = xr.open_dataarray(fpath)
@@ -81,7 +80,6 @@ class NetCDFLoader(BaseDataLoader):
     @classmethod
     def _parse_metadata(cls, data):
         """Parse the metadata from the loaded data, returning to `peaks` format."""
-
         if data.attrs.get("metadata_models"):
             # Try to parse the loc
             loc = None
@@ -118,7 +116,7 @@ class NetCDFLoader(BaseDataLoader):
 
     @classmethod
     def _get_metadata_model(cls, class_path):
-        """Dynamically load the relevant metadata class from the fully qualified class name
+        """Dynamically load the relevant metadata class from the fully qualified class name.
 
         Parameters
         ----------
@@ -130,7 +128,6 @@ class NetCDFLoader(BaseDataLoader):
         class
             The class object
         """
-
         # Split the class_path into module and class parts
         module_name, class_name = class_path.rsplit(".", 1)
 

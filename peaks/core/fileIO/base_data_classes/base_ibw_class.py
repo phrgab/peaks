@@ -25,7 +25,6 @@ class BaseIBWDataLoader(BaseDataLoader):
     @classmethod
     def _load_data(cls, fpath, lazy):
         """Load the data from an Igor Binary Wave file."""
-
         # Open the file and load its contents
         file_contents = binarywave.load(fpath)
 

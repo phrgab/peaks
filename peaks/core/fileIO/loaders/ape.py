@@ -13,7 +13,7 @@ class APEArpesLoader(SESDataLoader):
     """Data loader for APE ARPES system at Elettra.
 
     Notes
-    ------------
+    -----
     Loading spin data is not yet supported.
 
     """

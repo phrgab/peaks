@@ -25,7 +25,7 @@ def ML_pre_proc(
     This DataFrame format is used to represent data in machine learning functions.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         The spatial mapping data to change to a tabular pandas dataframe.
 
@@ -56,12 +56,12 @@ def ML_pre_proc(
         Whether to normalise the data at each spatial position. Defaults to False.
 
     Returns
-    ------------
+    -------
     df : pandas.DataFrame
         The spatial mapping data represented as a tabular pandas dataframe.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         from peaks import *
@@ -75,7 +75,6 @@ def ML_pre_proc(
         SM_df2 = SM.ML_pre_proc(extract='MDC', E=73.42, dE=0.02)
 
     """
-
     # List to store spatial mapping data
     sample_data = []
 
@@ -132,7 +131,7 @@ def perform_k_means(data, k=3, n_init="auto"):
     """Perform k-means clustering using scikit-learn.
 
     Parameters
-    ------------
+    ----------
     data : pandas.DataFrame
         The data represented as a tabular pandas dataframe to perform clustering analysis on.
 
@@ -147,7 +146,7 @@ def perform_k_means(data, k=3, n_init="auto"):
         similar).
 
     Returns
-    ------------
+    -------
     model : sklearn.cluster._kmeans.KMeans
         K-means clustering analysis model information.
 
@@ -155,7 +154,7 @@ def perform_k_means(data, k=3, n_init="auto"):
         Array of spatially-dependent cluster assignments.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         from peaks import *
@@ -172,7 +171,6 @@ def perform_k_means(data, k=3, n_init="auto"):
         model2, labels2 = perform_k_means(SM_df, k=4)
 
     """
-
     # Create a k-means clustering model
     model = KMeans(n_clusters=k, n_init=n_init)
 
@@ -203,7 +201,7 @@ def clusters_explore(
     """Perform an exploratory k-means clustering analysis on a spatial map for a range of number of clusters.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         The spatial mapping data to perform an exploratory k-means clustering analysis on.
 
@@ -250,7 +248,7 @@ def clusters_explore(
         Whether to normalise the data at each spatial position. Defaults to False.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         from peaks import *
@@ -358,7 +356,7 @@ def clusters(
     """Perform a k-means clustering analysis on a spatial map.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         The spatial mapping data to perform an exploratory k-means clustering analysis on.
 
@@ -414,7 +412,7 @@ def clusters(
         Matplotlib vmax value used in plots of dispersions. Defaults to None.
 
     Returns
-    ------------
+    -------
     classification_map : xarray.DataArray
         Spatial map of cluster labels.
 
@@ -422,7 +420,7 @@ def clusters(
         Dispersions for each cluster center.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         from peaks import *
@@ -437,7 +435,6 @@ def clusters(
         cluster_map2, cluster_disps2 = SM.clusters(num_clusters=3, use_PCA=False, extract='MDC', E=73.42, dE=0.02)
 
     """
-
     # Prevent unwanted overwriting of original data
     data = data.copy(deep=True)
 
@@ -638,7 +635,7 @@ def PCA_explore(
     """Perform an exploratory principal component analysis on a spatial map for a range of principal components.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         The spatial mapping data to perform an exploratory principal component analysis on.
 
@@ -675,7 +672,7 @@ def PCA_explore(
         Whether to normalise the data at each spatial position. Defaults to False.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         from peaks import *

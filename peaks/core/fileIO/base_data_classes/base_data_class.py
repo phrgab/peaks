@@ -99,7 +99,7 @@ class BaseDataLoader:
         """Load a single file using the registered loader for location ``loc``.
 
         Parameters
-        ------------
+        ----------
         fpath : str, list
             Full file path of file to load.
 
@@ -122,7 +122,7 @@ class BaseDataLoader:
             Additional keyword arguments to pass to the individual loaders.
 
         Returns
-        ------------
+        -------
         da : xarray.DataArray
             The loaded data as an :class:`xarray.DataArray`.
 
@@ -141,7 +141,6 @@ class BaseDataLoader:
         loader framework, keep location-specific logic in ``_load()``, ``_load_data()``,
         or ``_load_metadata()`` on the concrete subclass rather than here.
         """
-
         # Make sure the metadata cache for this file is empty
         cls._metadata_cache.pop(fpath, None)
 
@@ -164,7 +163,7 @@ class BaseDataLoader:
         """Load metadata for the file ``fpath``.
 
         Parameters
-        ------------
+        ----------
         fpath : str
             Path to the file to be loaded.
 
@@ -185,13 +184,13 @@ class BaseDataLoader:
 
 
         Returns
-        ------------
+        -------
         metadata_dict : dict
             Either a flat raw metadata dictionary or a dictionary of parsed metadata
             models, depending on ``return_as_dict``.
 
         Examples
-        ------------
+        --------
         Example usage is as follows::
 
             from peaks.core.fileIO.base_data_classes import BaseDataLoader
@@ -205,7 +204,6 @@ class BaseDataLoader:
         first resolves the concrete loader from ``loc`` or the file contents, then delegates to
         that loader's metadata implementation.
         """
-
         # Parse the loc - if the base class is used, determine the loc automatically and route to the right subclass
         if cls._loc_name == "Base":
             loc = loc if loc else cls._get_loc(fpath)
@@ -247,22 +245,22 @@ class BaseDataLoader:
         """Get the loader class for the given location.
 
         Parameters
-        ------------
+        ----------
         loc : str
             The location at which the data was obtained.
 
         Returns
-        ------------
+        -------
         loader_class : class
             The loader class for the given location.
 
         Raises
-        ------------
+        ------
         ValueError
             If no loader is found for the given location.
 
         Examples
-        ------------
+        --------
         Example usage is as follows::
 
                 from peaks.core.fileIO.base_data_classes import BaseDataLoader
@@ -286,12 +284,12 @@ class BaseDataLoader:
         """Determine the location at which the data was obtained.
 
         Parameters
-        ------------
+        ----------
         fpath : str
             Path to the file to be loaded.
 
         Returns
-        ------------
+        -------
         loc : str
             The name of the location (typically a beamline).
         """
@@ -350,7 +348,7 @@ class BaseDataLoader:
         """Load raw array data for ``fpath``.
 
         Parameters
-        ------------
+        ----------
         fpath : str
             Path to the file to be loaded.
 
@@ -374,12 +372,12 @@ class BaseDataLoader:
         """Load raw metadata for ``fpath``.
 
         Parameters
-        ------------
+        ----------
         fpath : str
             Path to the file to be loaded.
 
         Returns
-        ------------
+        -------
         metadata_dict : dict
             Dictionary mapping `peaks` metadata keys to values. Keys should
             generally be of the form `subsystem_item`, for example `analyser_eV`.
@@ -390,7 +388,6 @@ class BaseDataLoader:
     @classmethod
     def _parse_general_metadata(cls, metadata_dict):
         """Apply general metadata to the DataArray - implemented irrespective of the loader."""
-
         fpath = metadata_dict.get("fpath")
         general_scan_metadata = BaseScanMetadataModel(
             name=fpath.split("/")[-1].split(".")[0],
@@ -406,7 +403,7 @@ class BaseDataLoader:
         """Parse loader-specific metadata models from a raw metadata dictionary.
 
         Parameters
-        ------------
+        ----------
         metadata_dict : dict
             Dictionary containing all available metadata as returned by ``_load_metadata``.
 
@@ -414,7 +411,7 @@ class BaseDataLoader:
             Whether to suppress missing metadata warnings when loading data.
 
         Returns
-        ------------
+        -------
         parsed_metadata : dict
             Dictionary containing all parsed metadata as Pydantic models.
 
@@ -467,7 +464,7 @@ class BaseDataLoader:
         """Convert the standard loader payload into an :class:`xarray.DataArray`.
 
         Parameters
-        ------------
+        ----------
         data : dict
             Dictionary containing:
                 spectrum : the data to be converted

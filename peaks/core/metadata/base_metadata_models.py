@@ -10,8 +10,9 @@ from pydantic_core import core_schema
 ureg = pint_xarray.unit_registry
 
 
-# Class to handle storing and validating pint Quantities in pydantic model
 class Quantity(pint.Quantity):
+    """Class to handle storing and validating pint Quantities in pydantic model."""
+
     @classmethod
     def __get_pydantic_core_schema__(cls, source_type, handler):
         # Use with_info_plain_validator_function to handle both value and info
@@ -19,6 +20,11 @@ class Quantity(pint.Quantity):
 
     @classmethod
     def validate(cls, v, info):
+        """Validate a value as a pint.Quantity.
+
+        Accepts a pint.Quantity, a dictionary with 'value' and 'units' keys, a tuple of (value, units)
+        or a dimensionlessnumber/ndarray.
+        """
         if isinstance(v, pint.Quantity):
             return v
         elif isinstance(v, dict):
@@ -206,7 +212,8 @@ class ARPESScanMetadataModel(BaseMetadataModel):
 class ARPESAnalyserAnglesMetadataModel(BaseMetadataModel):
     """Model to store analyser angles metadata.
     This is a general definiton which allows distinguishing analyser type (slit parallel or perp to slit)
-    as well as allowing for the general case where the analyser can move."""
+    as well as allowing for the general case where the analyser can move.
+    """
 
     polar: Optional[Union[str, Quantity]] = None
     tilt: Optional[Union[str, Quantity]] = None
@@ -230,6 +237,8 @@ class ARPESMetadataModel(BaseMetadataModel):
 
 
 class ARPESCalibrationModel(BaseMetadataModel):
+    """Model to store ARPES calibration metadata."""
+
     EF_correction: Optional[
         Union[
             float,

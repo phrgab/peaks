@@ -21,6 +21,8 @@ xarray.DataSet
 
 @xr.register_dataarray_accessor("quick_fit")
 class QuickFit:
+    """xarray DataArray accessor providing one-liner fits with automatic parameter guessing."""
+
     def __init__(self, xarray_obj):
         self._obj = xarray_obj
 
@@ -38,10 +40,10 @@ class QuickFit:
             return self._obj.compute()
 
     def _get_percentile_data(self, data, percentile=10, region="start"):
-        """Get the data below or above a certain percentile of the dimension range
+        """Get the data below or above a certain percentile of the dimension range.
 
         Parameters
-        -----------
+        ----------
         data : xarray.DataArray
             The data to extract the percentile from.
         percentile : int, optional
@@ -50,11 +52,10 @@ class QuickFit:
             The region of the data to use for the fit. Options are 'start' or 'end'. Defaults to 'start'.
 
         Returns
-        --------
+        -------
         xarray.DataArray
             The data below or above the percentile cutoff.
         """
-
         dim = data.dims[0]
         cutoff = np.percentile(data[dim].data, percentile)
         if region == "start":
@@ -65,7 +66,7 @@ class QuickFit:
             raise ValueError("Region must be 'start' or 'end'")
 
     def linear(self, independent_var=None, **kwargs):
-        """Quick fit to a linear model"""
+        """Quick fit to a linear model."""
         from .models import LinearModel
 
         data_for_guess = self._get_data_for_guess(
@@ -77,10 +78,10 @@ class QuickFit:
     linear.__doc__ = linear.__doc__ + QUICK_FIT_COMMON_DOC
 
     def poly(self, degree=3, independent_var=None, **kwargs):
-        """Quick fit to a polynomial model
+        """Quick fit to a polynomial model.
 
         Parameters
-        -----------
+        ----------
         independent_var : str, optional
             The dimension corresponding to the independent variable. Must be specified if data has >1 dimension.
         degree : int, optional
@@ -89,7 +90,7 @@ class QuickFit:
             Additional keyword arguments to initialise parameter values.
 
         Returns
-        ---------
+        -------
         xarray.DataSet
             A DataSet containing the best-fit parameters, their uncertainties, and the :class:`lmfit.ModelResult` object.
         """
@@ -102,7 +103,7 @@ class QuickFit:
         return fit(self._obj, PolynomialModel(degree=degree), params, independent_var)
 
     def _peak_model(self, peak, independent_var, **kwargs):
-        """Quick fit to a Gaussian model"""
+        """Quick fit to a Gaussian model."""
         from .models import LinearModel
 
         if peak == "gaussian":
@@ -124,13 +125,13 @@ class QuickFit:
         return fit(self._obj, model, params, independent_var)
 
     def gaussian(self, independent_var=None, **kwargs):
-        """Quick fit to a Gaussian model"""
+        """Quick fit to a Gaussian model."""
         return self._peak_model("gaussian", independent_var, **kwargs)
 
     gaussian.__doc__ = gaussian.__doc__ + QUICK_FIT_COMMON_DOC
 
     def lorentzian(self, independent_var=None, **kwargs):
-        """Quick fit to a Lorentzian model"""
+        """Quick fit to a Lorentzian model."""
         return self._peak_model("lorentzian", independent_var, **kwargs)
 
     lorentzian.__doc__ = lorentzian.__doc__ + QUICK_FIT_COMMON_DOC

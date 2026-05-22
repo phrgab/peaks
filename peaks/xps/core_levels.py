@@ -161,7 +161,6 @@ class CoreLevels:
         max_order : int, optional
             Maximum order of the light to consider. Default is 1.
         """
-
         df = pd.DataFrame.from_dict(cls.BE, orient="index")
         if hv is not None:
             df = cls._get_KE_df(df, hv, max_order)
@@ -207,7 +206,6 @@ class CoreLevels:
             Additional keyword arguments passed to `matplotlib.pyplot.plot`.
 
         """
-
         import matplotlib.pyplot as plt
 
         if eV is None:

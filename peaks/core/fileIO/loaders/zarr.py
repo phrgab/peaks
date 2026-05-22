@@ -36,7 +36,6 @@ class ZarrLoader(NetCDFLoader):
         data : xarray.DataTree
             The loaded data.
         """
-
         # Load Zarr file as xarray.DataArray or xarray.Dataset
         data = open_datatree(fpath, engine="zarr", chunks={})
 

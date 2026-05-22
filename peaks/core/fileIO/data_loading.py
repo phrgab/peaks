@@ -26,7 +26,7 @@ def load(
     """Load one or more files into :mod:`xarray` objects using the registered loaders.
 
     Parameters
-    ------------
+    ----------
     fpath : str, list
         Either the full file path(s), or the remainder of the file name(s) not already
         specified in the file global options (see Notes).
@@ -66,14 +66,14 @@ def load(
         Additional keyword arguments to pass to the data loader.
 
     Returns
-    ------------
+    -------
     loaded_data : xarray.DataArray, xarray.Dataset, xarray.DataTree
         The loaded object. A single file usually returns a :class:`xarray.DataArray`
         or :class:`xarray.Dataset`; multiple files are combined into a
         :class:`xarray.DataTree`.
 
     Notes
-    ------------
+    -----
     Much of file path can be set by :class:`peaks.core.options.FileIO` global options:
 
         opts.FileIO.path : :class:`str`, :class:`list`
@@ -92,7 +92,7 @@ def load(
             Defaults to 1 GB.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         import peaks as pks
@@ -157,7 +157,6 @@ def load(
             disp2 = pks.load('disp2')
             FM2 = pks.load('FM2')
     """
-
     load_opts = {
         "lazy": lazy,
         "loc": loc,
@@ -250,16 +249,15 @@ def _load_data(fpath, lazy, loc, metadata, parallel, names, quiet, **kwargs):
     """Function to handle loading of single or multiple data files into the xarray DataArray format.
 
     Returns
-    ------------
+    -------
     loaded_data : xarray.DataArray, xarray.Dataset, list
         The loaded data.
 
     See Also
-    ------------
+    --------
     load : Public function to load data, which sets much of the fpath and defines the options to pass to `_load_data`.
 
     """
-
     load_opts = {"lazy": lazy, "loc": loc, "metadata": metadata, "quiet": quiet}
     load_opts.update(kwargs)
 

@@ -20,7 +20,7 @@ class CASIOPEEArpesLoader(SESDataLoader):
     """Data loader for Casiopee ARPES system at Soleil.
 
     Notes
-    ------------
+    -----
     Not thoroughly tested yet
 
     """
@@ -46,7 +46,6 @@ class CASIOPEEArpesLoader(SESDataLoader):
     @classmethod
     def _load_data(cls, fpath, lazy):
         """Load SOLEIL Casiopee data."""
-
         if os.path.splitext(fpath)[1] in [".txt", ".zip", ".ibw"]:
             # Then should be standard SES format
             return super()._load_data(fpath, lazy)
@@ -171,7 +170,7 @@ class CASIOPEEArpesLoader(SESDataLoader):
         CASSIOPEE beamline at SOLEIL.
 
         Parameters
-        ------------
+        ----------
         folder : str
             Path to the folder of the 3D data that a data slice will be loaded from.
 
@@ -182,12 +181,12 @@ class CASIOPEEArpesLoader(SESDataLoader):
             Shape of the numpy.ndarray data slice to be extracted.
 
         Returns
-        ------------
+        -------
         slice_data : numpy.ndarray
             A single 2D data slice of the 3D data stored in folder.
 
         Examples
-        ------------
+        --------
         Example usage is as follows::
 
             from peaks.core.fileIO.loaders.CASSIOPEE import _load_CASSIOPEE_slice
@@ -198,7 +197,6 @@ class CASIOPEEArpesLoader(SESDataLoader):
             data_slice = _load_CASSIOPEE_slice(folder, 'FS1_1_ROI6_.txt')
 
         """
-
         # Open the file within the folder of the 3D data corresponding to the data slice to be loaded, loop through the
         # lines, and stop when the scan data is reached
         with open(folder + "/" + file) as f:
@@ -219,7 +217,6 @@ class CASIOPEEArpesLoader(SESDataLoader):
     @classmethod
     def _load_metadata(cls, fpath, return_in_SES_format=False):
         """Load SOLEIL Casiopee metadata."""
-
         if os.path.splitext(fpath)[1] in [".txt", ".zip", ".ibw"]:
             # Then should be standard SES format
             return super()._load_metadata(fpath, return_in_SES_format)

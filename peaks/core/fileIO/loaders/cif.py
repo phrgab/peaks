@@ -11,7 +11,6 @@ class BaseStructureLoader(BaseDataLoader):
     @classmethod
     def _load(cls, fpath, lazy, metadata, quiet, **kwargs):
         """Load the structure data."""
-
         try:
             import ase.io
         except ImportError as e:

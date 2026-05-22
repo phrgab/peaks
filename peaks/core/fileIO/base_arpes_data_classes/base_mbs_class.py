@@ -106,7 +106,6 @@ class MBSDataLoader(BaseARPESDataLoader):
     @classmethod
     def _load_from_krx(cls, fpath, metadata_dict_MBS_keys):
         """Load data from krx format."""
-
         with open(fpath, "rb") as f:
             # Determine whether the file is 32-bit or 64-bit. The data type is little endian, so read initially as
             # 32 bit, but if either of the first 2 32-bit words are 0, then the file is 64-bit.
@@ -283,7 +282,7 @@ class MBSDataLoader(BaseARPESDataLoader):
         """Extract the lines containing metadata in an MBS format .txt file.
 
         Returns
-        ------------
+        -------
         metadata_lines : list
             Lines extracted from the file containing the metadata.
 
@@ -306,7 +305,7 @@ class MBSDataLoader(BaseARPESDataLoader):
         """Extract the lines containing metadata in an MBS format .krx file.
 
         Returns
-        ------------
+        -------
         metadata_lines : list
             Lines extracted from the file containing the metadata.
 
@@ -360,11 +359,10 @@ class MBSDataLoader(BaseARPESDataLoader):
         as they appear in the MBS metadata (i.e. not yet in :mod:`peaks` convention).
 
         Returns
-        ------------
+        -------
         dict
             Dictionary of metadata key-value pairs with keys in MBS format.
         """
-
         meta_dict = {
             line.split("\t", 1)[0]: line.split("\t", 1)[1]
             for line in metadata_lines
@@ -383,17 +381,17 @@ class MBSDataLoader(BaseARPESDataLoader):
         """Extract metadata values in peaks conventions and assign units where appropriate.
 
         Parameters
-        ------------
+        ----------
         metadata_dict_MBS_keys : dict
             Dictionary of metadata key-value pairs with keys in MBS format.
 
         Returns
-        ------------
+        -------
         metadata_dict : dict
             Dictionary of metadata key-value pairs with keys in peaks format.
 
         Notes
-        ------------
+        -----
         The extraction process is based on the mappings defined in the dictionaries `standard_keys` and
         `standard_units`. The entries of these dictionaries are updated from the class variables
         `_MBS_metadata_key_mappings` and `_MBS_metadata_units` respectively, and so subclasMBS can overwrite and

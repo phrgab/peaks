@@ -29,7 +29,7 @@ def _disp_3d(data, primary_dim, exclude_from_centering):
     """Display a 3D interactive display panel.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
          A single 3D :class:`xarray.DataArray`.
 
@@ -339,7 +339,7 @@ class _Disp3D(QtWidgets.QMainWindow):
         right_panel_layout.addStretch()
 
     def _build_menu(self):
-        """Add a menu"""
+        """Add a menu."""
         self.menu = self.menuBar().addMenu("Display Panel")
         self.shortcuts_action = QtGui.QAction("Help", self)
 
@@ -594,8 +594,7 @@ class _Disp3D(QtWidgets.QMainWindow):
     # Data / plot updates
     # ##############################
     def _set_data(self):
-        """Set the data in the plots"""
-
+        """Set the data in the plots."""
         self.images = [None, None, None]
 
         # Initialise crosshair positions and widths - default to centre of data and 1/200th of range
@@ -656,7 +655,7 @@ class _Disp3D(QtWidgets.QMainWindow):
         self._connect_key_press_signals()
 
     def _set_slice(self, dim_no):
-        """Set a data slice based on the xh positions and widths"""
+        """Set a data slice based on the xh positions and widths."""
         _pos = self.cursor_positions_selection[dim_no].value()
         _width = self.cursor_widths_selection[dim_no].value() / 2
         _range = slice(_pos - _width, _pos + _width)
@@ -840,7 +839,7 @@ class _Disp3D(QtWidgets.QMainWindow):
         self._update_DC(1)  # Update the mirror DCs
 
     def _align_data(self):
-        """Estimate symmetry points in the data"""
+        """Estimate symmetry points in the data."""
         # Get the current view range
         x_range, y_range = self.image_plots[1].getViewBox().viewRange()
         data_to_centre = self.images[1].sel(

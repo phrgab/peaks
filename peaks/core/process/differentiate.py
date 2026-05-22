@@ -10,7 +10,7 @@ def deriv(data, dims):
     """General function to perform differentiations along the specified dimensions of data.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         The data to differentiate.
 
@@ -19,12 +19,12 @@ def deriv(data, dims):
         for multiple differentiations.
 
     Returns
-    ------------
+    -------
     deriv_data : xarray.DataArray
         The differentiated data.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         from peaks import *
@@ -44,7 +44,6 @@ def deriv(data, dims):
         disp_deriv = disp.smooth(eV=0.05).deriv('eV')
 
     """
-
     # Copy the input data to prevent overwriting issues
     deriv_data = data.copy(deep=True)
 
@@ -88,17 +87,17 @@ def d2E(data):
     """Shortcut function to perform a double differentiation along the eV dimension of data.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         The data to differentiate.
 
     Returns
-    ------------
+    -------
     deriv_data : xarray.DataArray
         The differentiated data.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         from peaks import *
@@ -112,7 +111,6 @@ def d2E(data):
         disp_deriv = disp.smooth(eV=0.05).d2E()
 
     """
-
     # If eV is not a valid dimension, raise an error
     if "eV" not in data.dims:
         raise Exception("eV is not a valid dimension of the inputted DataArray.")
@@ -127,17 +125,17 @@ def d2k(data):
     """Shortcut function to perform a double differentiation along the momentum (or angle) dimension of data.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         The data to differentiate.
 
     Returns
-    ------------
+    -------
     deriv_data : xarray.DataArray
         The differentiated data.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         from peaks import *
@@ -151,7 +149,6 @@ def d2k(data):
         disp_deriv = disp.smooth(theta_par=0.5).d2k()
 
     """
-
     # Work out correct variable for differentiation direction (i.e. is data in angle or k-space)
     coords = list(data.dims)
     if "eV" in coords:
@@ -169,17 +166,17 @@ def dEdk(data):
     data.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         The data to differentiate.
 
     Returns
-    ------------
+    -------
     deriv_data : xarray.DataArray
         The differentiated data.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         from peaks import *
@@ -193,7 +190,6 @@ def dEdk(data):
         disp_deriv = disp.smooth(eV=0.05, theta_par=0.5).dEdk()
 
     """
-
     # Get inputted DataArray dimensions
     coords = list(data.dims)
 
@@ -220,17 +216,17 @@ def dkdE(data):
     data.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         The data to differentiate.
 
     Returns
-    ------------
+    -------
     deriv_data : xarray.DataArray
         The differentiated data.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         from peaks import *
@@ -244,7 +240,6 @@ def dkdE(data):
         disp_deriv = disp.smooth(theta_par=0.5, eV=0.05).dkdE()
 
     """
-
     # Get inputted DataArray dimensions
     coords = list(data.dims)
 
@@ -270,7 +265,7 @@ def curvature(data, **parameter_kwargs):
     """Perform 2D curvature analysis of data (see Rev. Sci. Instrum.  82, 043712 (2011) for analysis procedure).
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         The data to perform curvature analysis on.
 
@@ -280,12 +275,12 @@ def curvature(data, **parameter_kwargs):
         axis.
 
     Returns
-    ------------
+    -------
     curv_data : xarray.DataArray
         The data following curvature analysis.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         from peaks import *
@@ -300,7 +295,6 @@ def curvature(data, **parameter_kwargs):
         disp_curv = disp.smooth(eV=0.03, theta_par=0.3).curvature(theta_par=10, eV=1)
 
     """
-
     # Check data is 2D
     if len(data.dims) != 2:
         raise Exception("Function only acts on 2D data.")
@@ -358,7 +352,7 @@ def min_gradient(data, **smoothing_kwargs):
     analysis procedure).
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         The data to perform minimum gradient analysis on.
 
@@ -369,12 +363,12 @@ def min_gradient(data, **smoothing_kwargs):
         i.e. data.smooth(eV=0.01).min_grad(eV=0) != data.min_grad(eV=0.01).
 
     Returns
-    ------------
+    -------
     grad_data : xarray.DataArray
         The data following minimum gradient analysis.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         from peaks import *
@@ -392,7 +386,6 @@ def min_gradient(data, **smoothing_kwargs):
         FM_grad = FM.min_gradient(ana_polar=0.2, theta_par=0.5, eV=0.05)
 
     """
-
     # Check data is not 1D
     if len(data.dims) < 2:
         raise Exception("Function cannot act on 1D data.")

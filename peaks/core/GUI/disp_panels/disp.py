@@ -9,41 +9,44 @@ def disp(data, primary_dim=None, exclude_from_centering="eV"):
     passing the relevant parameters in the function call.
 
     Parameters
-    ------------
+    ----------
     data : list or xarray.DataArray
          Either a single 2D, 3D, or 4D :class:`xarray.DataArray` or a list of 2D :class:`xarray.DataArray` objects.
 
     primary_dim : str or tuple of str or list of str, optional
         The primary dimension for the viewer, should be a single dim for 2D and 3D plots or a tuple or list of two
         dims for a 4D plot. Primary dim will be shown:
+
         - on the y-axis for 2D plots
-        - as the central panel for 3D plots
-        - as the primary data explorer panel for 4D plots
+        - as the axis perpendicular to the central panel for 3D plots
+        - on the y- and x-axes of the primary data explorer panel (left) for 4D plots
+
         Default behaviour is based on the conventional peaks data structure for ARPES data.
 
     exclude_from_centering : str or tuple of str or list of str or None, optional
         The dimension to exclude from centering for 2D and 3D data. Default is 'eV'.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
-        import peaks as pks
-
         # To display a single dispersion
-        disp = load('disp.ibw')  # Load the dispersion
+        disp = pks.load('disp.ibw')  # Load the dispersion
         disp.disp()  # Display it in the UI
 
         # To display a set of 2D dispersions with theta_par axis on the vertical axis
-        disps_to_plot = [load(f"disp{i}.ibw") for i in range(1, 5)]  # Load dispersions
-        pks.disp(disps_to_plot, primary_dim='theta_par')  # Open dispersions in viewer
+        multiple_disp = pks.load(['disp1.nxs','disp2.nxs','disp3.nxs'],names=['1','2','3'])  # Load dispersions into a DataTree
+        multiple_disp.disp(primary_dim='theta_par')  # Open dispersions in viewer and show theta_par on y-axis
 
         # To display a Fermi surface map
-        FS_map = load('FS_map.nxs')
+        FS_map = pks.load('FS_map.nxs')
         FS_map.disp()
 
-    """
+        # To display a spatial map with x1 on the vertical axis
+        SM = pks.load('spatial_map.nxs')
+        SM.disp(primary_dim=('x1', 'x2'))  # Show x1 on y-axis and x2 on x-axis
 
+    """
     # If a DataTree instance is passed, try to parse into a form `.disp` can handle
     err_str = (
         "DataTree does not meet the required format to call `.disp`. It should either be a single leaf or a tree "

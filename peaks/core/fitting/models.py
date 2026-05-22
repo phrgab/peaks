@@ -197,7 +197,7 @@ def _shirley_bg(data, num_avg=1, offset_start=0, offset_end=0, max_iterations=10
     """Function to calculate the Shirley background of 1D data.
 
     Parameters
-    ------------
+    ----------
     data : numpy.ndarray, list, xarray.DataArray
         The 1D data (y values) to find the Shirley background of.
 
@@ -217,12 +217,12 @@ def _shirley_bg(data, num_avg=1, offset_start=0, offset_end=0, max_iterations=10
         The maximum number of iterations to allow for convergence of Shirley background. Defaults to 10.
 
     Returns
-    ------------
+    -------
     Shirley_bkg : numpy.ndarray
         The Shirley background of the 1D data.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         import peaks as pks
@@ -240,7 +240,6 @@ def _shirley_bg(data, num_avg=1, offset_start=0, offset_end=0, max_iterations=10
         S2p_XPS_Shirley_bkg = pks._Shirley(S2p_XPS, offset_start=0.3)
 
     """
-
     # Ensure data is of type numpy.ndarray
     if isinstance(data, np.ndarray):  # if data is a numpy array
         pass

@@ -112,7 +112,8 @@ class SESDataLoader(BaseARPESDataLoader):
         Adapted from the PESTO file loader by Craig Polley.
 
         Pass a `scan_no` to load a specific scan from the .zip file if multiple regions
-        have been scanned together in SES."""
+        have been scanned together in SES.
+        """
         # Open the file and load the data
         with zipfile.ZipFile(fpath) as z:
             files = z.namelist()
@@ -187,7 +188,6 @@ class SESDataLoader(BaseARPESDataLoader):
     @classmethod
     def _load_from_ibw(cls, fpath):
         """Load data from an Igor binary wave (ibw) file."""
-
         # Load the data from the ibw file using the default IBW loader
         data = BaseIBWDataLoader._load_data(fpath, lazy=False)
 
@@ -396,7 +396,7 @@ class SESDataLoader(BaseARPESDataLoader):
         """Extract the lines containing metadata in an SES format .txt file.
 
         Returns
-        ------------
+        -------
         metadata_lines : list
             Lines extracted from the file containing the metadata.
 
@@ -420,7 +420,7 @@ class SESDataLoader(BaseARPESDataLoader):
         """Extract the lines containing metadata in an SES format .zip file.
 
         Returns
-        ------------
+        -------
         metadata_lines : list
             Lines extracted from the file containing the metadata.
 
@@ -465,7 +465,6 @@ class SESDataLoader(BaseARPESDataLoader):
         the metadata entries as they appear in the SES metadata
         (i.e. not yet in :class:`peaks` convention).
         """
-
         return {
             line.split("=" if "=" in line else ":")[0].strip(): line.split(
                 "=" if "=" in line else ":"
@@ -479,17 +478,17 @@ class SESDataLoader(BaseARPESDataLoader):
         """Extract metadata in peaks conventions and assign units where appropriate.
 
         Parameters
-        ------------
+        ----------
         metadata_dict_SES_keys : dict
             Dictionary of metadata key-value pairs with keys in SES format.
 
         Returns
-        ------------
+        -------
         metadata_dict : dict
             Dictionary of metadata key-value pairs with keys in peaks format.
 
         Notes
-        ------------
+        -----
         The extraction process is based on the mappings defined in the dictionaries
         `standard_keys` and `standard_units`. The entries of these dictionaries are
         updated from the class variables `_SES_metadata_key_mappings` and
