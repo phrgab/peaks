@@ -366,7 +366,6 @@ class BaseDataLoader:
             coords : associated coords
             units : dict containing units for the data and dimensions
 
-        If metadata needs to be loaded
         """
         raise NotImplementedError("Subclasses should implement this method.")
 
