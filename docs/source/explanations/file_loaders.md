@@ -49,7 +49,7 @@ _SES_metadata_units = {
     }
 ```
 
-For data saved using a custom format, or for additional features not yet implemented in the existing classes, start from a lower-level base loaders:
+For data saved using a custom format, or for additional features not yet implemented in the existing classes, start from a lower-level base loader:
 
 - {py:class}`~peaks.core.fileIO.base_data_classes.base_data_class.BaseDataLoader`: the minimum class that can be used;
 - {py:class}`~peaks.core.fileIO.base_arpes_data_classes.base_arpes_data_class.BaseARPESDataLoader`: the default class for ARPES data, which defines analyser, manipulator, sample temperature, and photon source metadata;
@@ -67,7 +67,7 @@ A core feature of {py:mod}`peaks` is that it provides rich metadata, some of whi
 To abstract facility- and instrument-specific details away, we define a common set of metadata names and fields which are defined via {py:class}`pydantic.BaseModel` models in {py:mod}`~peaks.core.metadata.base_metadata_models` and by our
 [co-ordinate conventions](coordinate-conventions).
 These can be expanded if required, e.g. to handle custom metadata specific to a given facility or to add additional axes to an optical system, but in general we strongly encourage using a standardised metadata convention wherever possible to ensure interoperability and ease of use across different facilities.
-For some fields (e.g. manipulators, optics), reference names should be defined in the loader, mapping from the {py:mod}`peaks` [naming convention](coordinate-conventions)) to the local axis name to aid the experimenter during data acquisition.
+For some fields (e.g. manipulators, optics), reference names should be defined in the loader, mapping from the {py:mod}`peaks` [naming convention](coordinate-conventions) to the local axis name to aid the experimenter during data acquisition.
 
 To standardise loading of common metadata, additional mixins exist which data loaders can inherit from.
 For example, {py:class}`~peaks.core.fileIO.base_arpes_data_classes.base_arpes_data_class.BaseARPESDataLoader` already inherits from {py:class}`~peaks.core.fileIO.base_data_classes.base_photon_source_classes.BasePhotonSourceDataLoader`, {py:class}`~peaks.core.fileIO.base_data_classes.base_temperature_class.BaseTemperatureDataLoader`, and {py:class}`~peaks.core.fileIO.base_data_classes.base_manipulator_class.BaseManipulatorDataLoader` to orchestrate loading of this common metadata for all ARPES data, including defining the metadata parsing logic.
@@ -84,7 +84,7 @@ import peaks as pks
 pks.locs()
 ```
 
-To be used within {py:mod}`peaks`, a new loader must be registered using the {py:func}`register_loader <peaks.core.fileIO.loc_registry.register_loader>` accessor:
+To be used within {py:mod}`peaks`, a new loader must be registered using the {py:func}`register_loader <peaks.core.fileIO.loc_registry.register_loader>` decorator:
 
 ```python
 from peaks.core.fileIO.loc_registry import register_loader
