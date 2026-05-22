@@ -84,7 +84,7 @@ def load(
             Extension (or list of) of data, e.g. ``opts.FileIO.ext = ['ibw', 'zip']``.
 
         opts.FileIO.loc : :class:`str`
-            Location identifier for where data was acquired, e.g. ``opts.FileIO.loc = 'MAX IV Bloch'``.
+            Location identifier for where data was acquired, e.g. ``opts.FileIO.loc = 'MAXIV_Bloch_A'``.
             Current supported options can be obtained using :func:`peaks.locs`.
 
         opts.FileIO.lazy_size : :class:`int`
@@ -135,10 +135,10 @@ def load(
         disp1 = load('C:/User/Documents/Data/disp1.ibw', metadata=False)
 
         # Load data file for a defined location (use if automatic location ID fails)
-        disp1 = load('C:/User/Documents/Data/disp1.ibw', loc='MAX IV Bloch')
+        disp1 = load('C:/User/Documents/Data/disp1.ibw', loc='MAXIV_Bloch_A')
 
         # Alternatively could define location using global options.
-        # Here loc will be defined as 'MAX IV Bloch'
+        # Here loc will be defined as 'MAXIV_Bloch_A'
         pks.opts.FileIO.loc = 'MAXIV_Bloch_A'
         disp1 = load('C:/User/Documents/Data/disp1.ibw')
 
@@ -251,7 +251,7 @@ def _load_data(fpath, lazy, loc, metadata, parallel, names, quiet, **kwargs):
 
     Returns
     ------------
-    loaded_data : xarray.DataArray, xarray.DataSet, list
+    loaded_data : xarray.DataArray, xarray.Dataset, list
         The loaded data.
 
     See Also

@@ -3,7 +3,7 @@ from peaks.core.metadata.base_metadata_models import OpticsMetadataModel
 
 
 class BaseOpticsDataLoader(BaseDataLoader):
-    """Mixin providing focussing optics metadata and sign/name conventions.
+    """Mixin providing focussing optics metadata and name conventions.
 
     Provides metadata handling for optical components such as zone plates,
     cappilaries, order-sorting apertures and laser optics.

@@ -33,7 +33,7 @@ class ZarrLoader(NetCDFLoader):
 
         Returns
         -------
-        data : xarray.DataArray or xarray.DataSet
+        data : xarray.DataTree
             The loaded data.
         """
 

@@ -21,7 +21,7 @@ class NetCDFLoader(BaseDataLoader):
 
     Notes
     -----
-    If this is a NetCDF file, it should be a single DataArray or DataSet
+    If this is a NetCDF file, it should be a single :class:`xarray.DataArray` or :class:`xarray.Dataset`
     """
 
     _loc_name = "NetCDF"
@@ -43,7 +43,7 @@ class NetCDFLoader(BaseDataLoader):
 
         Returns
         -------
-        data : xarray.DataArray or xarray.DataSet
+        data : xarray.DataArray or xarray.Dataset
             The loaded data.
         """
 
