@@ -1991,3 +1991,146 @@ def drift_correction(reference_data, moving_data, orig_pos=None, **kwargs):
         new_pos = {dim: orig_pos[dim] - dim_shift[dim] for dim in orig_pos}
         return dim_shift, new_pos
     return dim_shift
+
+
+def _make_bad_pixel_mask(data, bad_pixels):
+    """
+    Build a boolean bad-pixel mask from a mask, raw indices, or coordinates.
+
+    Parameters
+    ----------
+    data : xarray.DataArray
+        Two-dimensional reference data.
+
+    bad_pixels : array-like or xarray.DataArray
+        Bad pixels to mask. May be one of:
+
+        - Boolean ``xarray.DataArray`` mask with the same dimensions as ``data``.
+        - Sequence of raw integer index pairs in ``data.dims`` order.
+        - Sequence of coordinate dictionaries.
+
+        Coordinate values are matched to the nearest available pixel.
+
+    Returns
+    -------
+    xarray.DataArray
+        Boolean mask with True values at bad pixels.
+    """
+    if data.ndim != 2:
+        raise ValueError("data must be 2-dimensional")
+
+    if isinstance(bad_pixels, xr.DataArray):
+        if bad_pixels.ndim != 2:
+            raise ValueError("bad_pixels mask must be 2-dimensional")
+
+        if data.dims != bad_pixels.dims:
+            raise ValueError("data and bad_pixels mask must have matching dimensions")
+
+        return bad_pixels.astype(bool)
+
+    bad = xr.zeros_like(data, dtype=bool)
+    dim0, dim1 = data.dims
+
+    for pixel in bad_pixels:
+        if isinstance(pixel, dict):
+            # Find the nearest integer index along each named coordinate.
+            idx = {
+                dim: int(np.argmin(np.abs(data[dim].data - value)))
+                for dim, value in pixel.items()
+            }
+
+            i0 = idx[dim0]
+            i1 = idx[dim1]
+
+        else:
+            # Raw integer indices are interpreted in data.dims order.
+            i0, i1 = pixel
+
+        bad.data[i0, i1] = True
+
+    return bad
+
+
+def correct_isolated_bad_pixels(data, bad_pixels):
+    """
+    Correct isolated bad pixels, up to 2 by 2.
+
+    Replacement values are computed from neighbouring good pixels only.
+
+    Parameters
+    ----------
+    data : xarray.DataArray
+        The data to be corrected.
+
+    bad_pixels : array-like or :class:`xarray.DataArray`
+        Bad pixels to mask. May be one of:
+
+        - Boolean :class:`xarray.DataArray` mask with the same dimensions
+          as ``data``.
+        - Sequence of raw integer index pairs in ``data.dims`` order.
+        - Sequence of coordinate dictionaries.
+
+        Coordinate values are matched to the nearest available pixel.
+
+    Returns
+    -------
+    corrected : xarray.DataArray
+        Corrected data with bad pixels replaced by neighbour averages.
+
+    Examples
+    --------
+    Example usage is as follows::
+
+        import peaks as pks
+
+        # Load data
+        disp = pks.load('disp.ibw')
+
+        # Correct pixels using integer indices
+        disp_corr, bad = pks.correct_bad_pixels_cross(
+            disp,
+            [(10, 20), (10, 21)],
+        )
+
+        # Correct pixels using approximate coordinates
+        disp_corr, bad = pks.correct_bad_pixels_cross(
+            disp,
+            [
+                {'eV': 20.791, 'theta_par': -8.875},
+                {'eV': 20.790, 'theta_par': -8.875},
+            ],
+        )
+
+    """
+
+    if data.ndim != 2:
+        raise ValueError("data must be 2-dimensional")
+
+    y_dim, x_dim = data.dims
+    bad = _make_bad_pixel_mask(data, bad_pixels)
+
+    corrected = data.copy()
+
+    for i, j in zip(*np.where(bad.data)):
+        values = []
+
+        # Above
+        if i > 0 and not bad.data[i - 1, j]:
+            values.append(data[{y_dim: i - 1, x_dim: j}])
+
+        # Below
+        if i < data.sizes[y_dim] - 1 and not bad.data[i + 1, j]:
+            values.append(data[{y_dim: i + 1, x_dim: j}])
+
+        # Left
+        if j > 0 and not bad.data[i, j - 1]:
+            values.append(data[{y_dim: i, x_dim: j - 1}])
+
+        # Right
+        if j < data.sizes[x_dim] - 1 and not bad.data[i, j + 1]:
+            values.append(data[{y_dim: i, x_dim: j + 1}])
+
+        if values:
+            corrected[{y_dim: i, x_dim: j}] = sum(values) / len(values)
+
+    return corrected
