@@ -129,18 +129,18 @@ def load(
         disp1 = pks.load('C:/User/Documents/Data/disp1.ibw')
 
         # Load data in a lazily evaluated dask format
-        disp1 = load('C:/User/Documents/Data/disp1.ibw', lazy=True)
+        disp1 = pks.load('C:/User/Documents/Data/disp1.ibw', lazy=True)
 
         # Load data without metadata
-        disp1 = load('C:/User/Documents/Data/disp1.ibw', metadata=False)
+        disp1 = pks.load('C:/User/Documents/Data/disp1.ibw', metadata=False)
 
         # Load data file for a defined location (use if automatic location ID fails)
-        disp1 = load('C:/User/Documents/Data/disp1.ibw', loc='MAXIV_Bloch_A')
+        disp1 = pks.load('C:/User/Documents/Data/disp1.ibw', loc='MAXIV_Bloch_A')
 
         # Alternatively could define location using global options.
         # Here loc will be defined as 'MAXIV_Bloch_A'
         pks.opts.FileIO.loc = 'MAXIV_Bloch_A'
-        disp1 = load('C:/User/Documents/Data/disp1.ibw')
+        disp1 = pks.load('C:/User/Documents/Data/disp1.ibw')
 
         # Set the data size to trigger lazy loading by default to 500 MB
         pks.opts.FileIO.lazy_size = 500000000
