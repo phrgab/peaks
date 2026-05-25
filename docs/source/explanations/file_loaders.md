@@ -3,12 +3,16 @@
 # File loaders
 
 :::{attention}
-If you develop a new data loader, please consider [contributing](#contributing) this to the `peaks` codebase. Please try and minimise the number of new dependencies required.
+If you develop a new data loader, please consider [contributing](#contributing) this to the {py:mod}`peaks` codebase. Please try and minimise the number of new dependencies required.
 :::
 
-A core set of file loaders are included within {py:mod}`peaks.core.fileIO.loaders`. To make a new loader, the general approach is to subclass the most relevant base loader(s), implementing only the required custom logic. For data saved using the default format of one of the main ARPES spectrometer manufacturers, this can make the entire loader rather compact, largely defining the mapping from `peaks` to local [axis names and co-ordinate system](coordinate-conventions).
+A core set of file loaders are included within {py:mod}`peaks.core.fileIO.loaders`.
+These take raw data files recorded in the spectrometer or facility-specific format, and return structured {py:mod}`xarray` objects with metadata parsed into the standard {py:mod}`peaks` [metadata conventions](#metadata-conventions).
 
-For example, for data collected in the SES data format at the A-branch of the [Bloch beamline](http://blochdocs.maxiv.lu.se), we can subclass the {py:class}`peaks.core.fileIO.base_arpes_data_classes.base_ses_class.SESDataLoader`, meaning the entire loader can be defined as:
+To make a new loader, subclass the most relevant base loader.
+Manufacturer-specific base classes are defined for most of the core ARPES spectrometer manufacturers ({py:mod}`~peaks.core.fileIO.base_arpes_data_classes`).
+This can make new system-specific data loaders rather compact, largely defining the mapping from {py:mod}`peaks` to local [axis names and co-ordinate system](coordinate-conventions).
+For example, for data collected in the SES data format at the A-branch of the [Bloch beamline](http://blochdocs.maxiv.lu.se) (as of 2025), we can subclass the {py:class}`~peaks.core.fileIO.base_arpes_data_classes.base_ses_class.SESDataLoader`, meaning the entire loader can be defined as:
 
 ```python
 class BlochArpesLoader(SESDataLoader):
@@ -39,17 +43,53 @@ class BlochArpesLoader(SESDataLoader):
     }
 
     # Additional mapping to give some specific metadata units
-    _SES_metadata_units = {
+_SES_metadata_units = {
         f"manipulator_{dim}": ("mm" if dim in ["x1", "x2", "x3"] else "deg")
         for dim in _manipulator_name_conventions.keys()
     }
 ```
 
-For data saved using a custom format, or for additional features not yet implemented in the `peaks` loader classes, a full loader function can be written, but this should still subclass e.g. the {py:class}`~peaks.core.fileIO.base_arpes_data_classes.base_arpes_data_class.BaseARPESDataLoader` class for ARPES data, or should subclass (a combination of) the {py:class}`~peaks.core.fileIO.base_data_classes.base_photon_source_classes.BasePhotonSourceDataLoader`, {py:class}`~peaks.core.fileIO.base_data_classes.base_temperature_class.BaseTemperatureDataLoader`, {py:class}`~peaks.core.fileIO.base_data_classes.base_manipulator_class.BaseManipulatorDataLoader`, {py:class}`~peaks.core.fileIO.base_data_classes.base_optics_class.BaseOpticsDataLoader` for other data types. For more examples, see the current loaders in {py:mod}`peaks.core.fileIO.loaders`.
+For data saved using a custom format, or for additional features not yet implemented in the existing classes, start from a lower-level base loader:
+
+- {py:class}`~peaks.core.fileIO.base_data_classes.base_data_class.BaseDataLoader`: the minimum class that can be used;
+- {py:class}`~peaks.core.fileIO.base_arpes_data_classes.base_arpes_data_class.BaseARPESDataLoader`: the default class for ARPES data, which defines analyser, manipulator, sample temperature, and photon source metadata;
+- {py:class}`~peaks.core.fileIO.base_data_classes.base_hdf5_class.BaseHDF5DataLoader` or {py:class}`~peaks.core.fileIO.base_data_classes.base_ibw_class.BaseIBWDataLoader`: helper mixins for specific data formats.
+
+:::{tip}
+For HDF5-type data, there is a helper function built into the {py:class}`~peaks.core.fileIO.base_data_classes.base_hdf5_class.BaseHDF5DataLoader` class to provide a nice view of the underlying tree structure, including some values and attributes.
+This can be helpful for use during loader development and debugging.
+Use as:
+
+```python
+from peaks.core.fileIO.base_data_classes.base_hdf5_class import BaseHDF5DataLoader
+
+# Explore the structure of an HDF5-type file
+BaseHDF5DataLoader.hdf5_explorer('path/to/file.nxs')
+```
+
+:::
+
+By default, the loader should implement `_load_data()` and `_load_metadata()` as class methods, letting {py:func}`~peaks.core.fileIO.base_data_classes.base_data_class.BaseDataLoader._load()` handle data loading, parsing, and metadata extraction.
+`_load_data()` should allow for lazy loading of data where possible.
+`_load_metadata()` should avoid a full data load if possible, to allow for quick parsing of metadata only for use, e.g., in logbook systems.
+Specific metadata parsers are also required to map the loaded metadata values to validated metadata models: {py:mod}`~peaks.core.metadata.base_metadata_models`.
+For examples, see the current loaders in {py:mod}`peaks.core.fileIO.loaders`.
+
+## Metadata conventions
+
+A core feature of {py:mod}`peaks` is that it provides rich metadata, some of which is specifically required in subsequent analysis (e.g. k-conversion).
+To abstract facility- and instrument-specific details away, we define a common set of metadata names and fields which are defined via {py:class}`pydantic.BaseModel` models in {py:mod}`~peaks.core.metadata.base_metadata_models` and by our
+[co-ordinate conventions](coordinate-conventions).
+These can be expanded if required, e.g. to handle custom metadata specific to a given facility or to add additional axes to an optical system, but in general we strongly encourage using a standardised metadata convention wherever possible to ensure interoperability and ease of use across different facilities.
+For some fields (e.g. manipulators, optics), reference names should be defined in the loader, mapping from the {py:mod}`peaks` [naming convention](coordinate-conventions) to the local axis name to aid the experimenter during data acquisition.
+
+To standardise loading of common metadata, additional mixins exist which data loaders can inherit from.
+For example, {py:class}`~peaks.core.fileIO.base_arpes_data_classes.base_arpes_data_class.BaseARPESDataLoader` already inherits from {py:class}`~peaks.core.fileIO.base_data_classes.base_photon_source_classes.BasePhotonSourceDataLoader`, {py:class}`~peaks.core.fileIO.base_data_classes.base_temperature_class.BaseTemperatureDataLoader`, and {py:class}`~peaks.core.fileIO.base_data_classes.base_manipulator_class.BaseManipulatorDataLoader` to orchestrate loading of this common metadata for all ARPES data, including defining the metadata parsing logic.
+Nano-ARPES loaders additionally inherit from the {py:class}`~peaks.core.fileIO.base_data_classes.base_optics_class.BaseOpticsDataLoader` mixin to define the focussing optics.
 
 ## Registering a new data loader
 
-Currently supported file loaders can be accessed as:
+Location identifiers for currently supported file loaders can be accessed as:
 
 ```python
 import peaks as pks
@@ -58,7 +98,7 @@ import peaks as pks
 pks.locs()
 ```
 
-To be used within `peaks`, a new loader must be registered using the {py:func}`register_loader <peaks.core.fileIO.loc_registry.register_loader>` accessor:
+To be used within {py:mod}`peaks`, a new loader must be registered using the {py:func}`register_loader <peaks.core.fileIO.loc_registry.register_loader>` decorator:
 
 ```python
 from peaks.core.fileIO.loc_registry import register_loader

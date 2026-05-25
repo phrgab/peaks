@@ -9,7 +9,13 @@ from peaks.core.fileIO.loc_registry import register_loader
 
 @register_loader
 class BaseIBWDataLoader(BaseDataLoader):
-    """Base class for data loaders for Igor Binary Wave files."""
+    """Generic loader for Igor Binary Wave (`.ibw`) files.
+
+    This loader reads the wave payload, reconstructs dimension coordinates from the
+    binary header, and exposes the embedded wave note as raw metadata. It is useful
+    directly for simple Igor waves and as a helper base for formats that store richer
+    metadata inside the wave note, such as SES exports.
+    """
 
     _loc_name = "ibw"
     _loc_description = "General loader for Igor Binary Wave files"

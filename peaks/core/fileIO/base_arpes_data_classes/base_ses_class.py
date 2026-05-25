@@ -16,20 +16,17 @@ ureg = pint_xarray.unit_registry
 
 @register_loader
 class SESDataLoader(BaseARPESDataLoader):
-    """Generic data loader for SES data.
+    """Generic ARPES loader for Scienta spectrometer data saved via SES.
 
-    Notes
-    -----
-    This class is intended to be subclassed to provide specific loaders for different
-    locs using SES data formats.
+    Supports the SES .txt, .zip, and Igor Binary Wave (.ibw) export formats.
+    This class is intended to be subclassed for specific instruments which should
+    then define local axis conventions and any metadata remapping required for
+    site-specific keys.
 
-    Subclasses should define the `_SES_metadata_key_mappings` class variable to map any
-    custom metadata fields or fixed values to the standard peaks metadata keys. See the
-    docstrings for `_SES_metadata_dict_keys_to_peaks_keys` for more information.
-
-    Subclasses should also define the `_SES_metadata_units` dictionary to map any fixed
-    units that are not determined as part of the metadata loader.
-
+    ``_SES_metadata_key_mappings`` maps SES metadata fields or fixed values onto the
+    standard :mod:`peaks` raw metadata keys consumed by ``_load_metadata()`` and the base
+    metadata parsers. ``_SES_metadata_units`` can be used to supply fixed units when
+    they are not recoverable from the file metadata contents.
     """
 
     _loc_name = "SES"
