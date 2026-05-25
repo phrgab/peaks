@@ -262,10 +262,10 @@ class BaseHDF5DataLoader:
         --------
         Example usage is as follows::
 
-            import peaks as pks
+            from peaks.core.fileIO.base_data_classes.base_hdf5_class import BaseHDF5DataLoader
 
-            # Explore the structure of an HDF5 file
-            pks.hdf5_explorer('data.h5')
+            # Explore the structure of an HDF5-type file
+            BaseHDF5DataLoader.hdf5_explorer('path/to/file.nxs')
 
         Notes
         -----

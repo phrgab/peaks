@@ -55,7 +55,21 @@ For data saved using a custom format, or for additional features not yet impleme
 - {py:class}`~peaks.core.fileIO.base_arpes_data_classes.base_arpes_data_class.BaseARPESDataLoader`: the default class for ARPES data, which defines analyser, manipulator, sample temperature, and photon source metadata;
 - {py:class}`~peaks.core.fileIO.base_data_classes.base_hdf5_class.BaseHDF5DataLoader` or {py:class}`~peaks.core.fileIO.base_data_classes.base_ibw_class.BaseIBWDataLoader`: helper mixins for specific data formats.
 
-By defaul, the loader should implement `_load_data()` and `_load_metadata()` as class methods, letting {py:func}`~peaks.core.fileIO.base_data_classes.base_data_class.BaseDataLoader._load()` handle data loading, parsing, and metadata extraction.
+:::{tip}
+For HDF5-type data, there is a helper function built into the {py:class}`~peaks.core.fileIO.base_data_classes.base_hdf5_class.BaseHDF5DataLoader` class to provide a nice view of the underlying tree structure, including some values and attributes.
+This can be helpful for use during loader development and debugging.
+Use as:
+
+```python
+from peaks.core.fileIO.base_data_classes.base_hdf5_class import BaseHDF5DataLoader
+
+# Explore the structure of an HDF5-type file
+BaseHDF5DataLoader.hdf5_explorer('path/to/file.nxs')
+```
+
+:::
+
+By default, the loader should implement `_load_data()` and `_load_metadata()` as class methods, letting {py:func}`~peaks.core.fileIO.base_data_classes.base_data_class.BaseDataLoader._load()` handle data loading, parsing, and metadata extraction.
 `_load_data()` should allow for lazy loading of data where possible.
 `_load_metadata()` should avoid a full data load if possible, to allow for quick parsing of metadata only for use, e.g., in logbook systems.
 Specific metadata parsers are also required to map the loaded metadata values to validated metadata models: {py:mod}`~peaks.core.metadata.base_metadata_models`.
