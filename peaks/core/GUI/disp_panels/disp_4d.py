@@ -16,6 +16,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from peaks.core.utils.misc import analysis_warning
+
 from ..GUI_utils import (
     Crosshair,
     KeyPressGraphicsLayoutWidget,
@@ -40,9 +42,41 @@ def _disp_4d(data, primary_dim):
     if app is None:
         app = QApplication(sys.argv)
 
+    if not hasattr(app, "_peaks_active_viewers"):
+        app._peaks_active_viewers = []
+    active_viewers = app._peaks_active_viewers
+
     viewer = _Disp4D(data, primary_dim)
+    active_viewers.append(viewer)
+
+    # fire a warning if there are already 3 or more disp panels open
+    if len(active_viewers) >= 3:
+        analysis_warning(
+            f"There are currently {len(active_viewers)} active display panels. "
+            "This may cause performance issues.",
+            warn_type="warning",
+            title="Multiple display panels open",
+        )
+
+    viewer.destroyed.connect(
+        lambda *_: active_viewers.remove(viewer) if viewer in active_viewers else None
+    )
     viewer.show()
-    app.exec()
+
+    # to support multiple display panels
+    try:
+        from IPython import get_ipython
+
+        ip = get_ipython()
+        if ip is not None:
+            if getattr(ip, "active_eventloop", None) == "qt6":
+                return
+    except Exception:
+        pass
+
+    # fallback to Qt event loop if not in IPython or if IPYthon does not have an active event loop
+    if not any(v.isVisible() for v in active_viewers if v is not viewer):
+        app.exec()
 
 
 class _Disp4D(QtWidgets.QMainWindow):
@@ -59,6 +93,10 @@ class _Disp4D(QtWidgets.QMainWindow):
 
         # Set up the GUI
         self._init_UI()  # Initialize the layout
+
+        # Clean up the widget on close, but don't quit the global app.
+        self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose)
+        self.closeEvent = lambda event: event.accept()
 
     # ##############################
     # GUI layout
