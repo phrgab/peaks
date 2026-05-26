@@ -3,21 +3,22 @@ from peaks.core.metadata.base_metadata_models import TemperatureMetadataModel
 
 
 class BaseTemperatureDataLoader(BaseDataLoader):
-    """Base class for data loaders for systems with sample temperature control.
+    """Mixin providing sample temperature metadata.
 
-    Subclasses should define the `_load_temperature_metadata` method to return a dictionary of relevant metadata
-    values with keys of the form `temperature_item` where `item` is the names in the `_temperature_attributes` list,
-    i.e. is given in :class:`peaks` convention. This method should return values as :class:`pint.Quantity` objects
-    where possible to ensure units are appropriately captured and propagated. Alternatively, the main `_load_metadata`
-    method can be overwritten to return the full metadata dictionary, including manipulator metadata.
+    Provides metadata handling for sample temperature information, e.g. from
+    cryostats or sample heaters. Designed to be used as a mixin alongside other
+    base loader classes, see for example
+    :class:`~peaks.core.fileIO.base_arpes_data_classes.base_arpes_data_class.BaseARPESDataLoader`.
 
-    Subclasses should add any additional temperature attributes via the `_add_temperature_attributes` class variable,
-     providing a list of additional attributes.
+    Concrete loaders should expose raw values through ``_load_metadata()`` using keys
+    such as ``temperature_sample``, ``temperature_cryostat``, or
+    ``temperature_heater_power``. ``_parse_temperature_metadata()`` then maps those
+    values onto the :mod:`peaks`
+    :class:`~peaks.core.metadata.base_metadata_models.TemperatureMetadataModel`.
 
-    See Also
-    --------
-    BaseDataLoader
-    BaseDataLoader._load_metadata
+    ``_temperature_attributes`` lists the recognised temperature-related fields.
+    ``_temperature_exclude_from_metadata_warn`` controls which missing fields should be
+    ignored when warning about incomplete metadata extraction.
     """
 
     # Define class variables
@@ -49,7 +50,8 @@ class BaseTemperatureDataLoader(BaseDataLoader):
 
     @classmethod
     def _parse_temperature_metadata(cls, metadata_dict):
-        """Parse metadata specific to the temperature data."""
+        """Build the structured temperature metadata model from raw metadata."""
+
         # Build and populate the temperature metadata model
         temperature_metadata = TemperatureMetadataModel(
             sample=metadata_dict.get("temperature_sample"),

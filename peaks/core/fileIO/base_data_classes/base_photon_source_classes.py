@@ -6,21 +6,21 @@ from peaks.core.metadata.base_metadata_models import (
 
 
 class BasePhotonSourceDataLoader(BaseDataLoader):
-    """Base class for data loaders for experiments involving photon sources.
+    """Mixin providing photon source metadata.
 
-    Subclasses should define the `_load_photon_metadata` method to return a dictionary of relevant metadata
-    values with keys of the form `photon_item` where `item` is the names in the `_photon_attributes` list,
-    i.e. is given in :class:`peaks` convention. This method should return values as :class:`pint.Quantity` objects
-    where possible to ensure units are appropriately captured and propagated. Alternatively, the main `_load_metadata`
-    method can be overwritten to return the full metadata dictionary, including manipulator metadata.
+    Provides metadata handling for photon beam information for synchrotron or
+    lab-based light sources. Designed to be used as a mixin alongside other
+    base loader classes, see for example
+    :class:`~peaks.core.fileIO.base_arpes_data_classes.base_arpes_data_class.BaseARPESDataLoader`.
 
-    Subclasses should add any additional photon attributes via the `_add_photon_attributes` class variable,
-     providing a list of additional attributes.
+    Concrete loaders should expose raw values through ``_load_metadata()`` using keys
+    such as ``photon_hv``, ``photon_polarisation``, and ``photon_exit_slit``.
+    ``_parse_photon_metadata()`` then maps those values onto the :mod:`peaks`
+    :class:`~peaks.core.metadata.base_metadata_models.PhotonMetadataModel`.
 
-    See Also
-    --------
-    BaseDataLoader
-    BaseDataLoader._load_metadata
+    ``_photon_attributes`` lists the recognised photon-source fields.
+    ``_photon_exclude_from_metadata_warn`` controls which of them may be omitted
+    without warning.
     """
 
     _loc_name = "Default Photon Source"
@@ -34,12 +34,13 @@ class BasePhotonSourceDataLoader(BaseDataLoader):
     # Properties to access class variables
     @property
     def photon_attributes(self):
-        """Return the photon attributes."""
+        """Return the photon beam attributes."""
         return self._photon_attributes
 
     @classmethod
     def _parse_photon_metadata(cls, metadata_dict):
-        """Parse metadata specific to the photon data."""
+        """Build the structured photon-source metadata model from raw metadata."""
+
         # Build and populate the photon metadata model
         photon_metadata = PhotonMetadataModel(
             hv=metadata_dict.get("photon_hv"),
@@ -58,7 +59,10 @@ class BasePhotonSourceDataLoader(BaseDataLoader):
 
 
 class BasePumpProbeClass(BasePhotonSourceDataLoader):
-    """Mix-in adding pump-photon metadata (hv, polarisation, delay, power, to) to a loader."""
+    """Mixin adding metadata support for an optical pump in pump-probe experiments.
+
+    Usage follows :class:`peaks.core.fileIO.base_data_classes.base_photon_source_classes.BasePhotonSourceDataLoader`.
+    """
 
     _pump_photon_attributes = ["hv", "polarisation", "delay", "power"]
     _pump_photon_exclude_from_metadata_warn = _pump_photon_attributes
@@ -66,11 +70,12 @@ class BasePumpProbeClass(BasePhotonSourceDataLoader):
 
     @property
     def pump_photon_attributes(self):
-        """Return the pump photon attributes."""
+        """Return the pump-photon metadata fields expected by this loader."""
         return self._pump_photon_attributes
 
     @classmethod
     def _parse_pump_photon_metadata(cls, metadata_dict):
+        """Build the structured pump-photon metadata model from raw metadata."""
         pump_photon_metadata = PumpPhotonMetadataModel(
             hv=metadata_dict.get("pump_hv"),
             polarisation=metadata_dict.get("pump_polarisation"),

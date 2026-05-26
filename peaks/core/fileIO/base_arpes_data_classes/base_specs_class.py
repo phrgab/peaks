@@ -17,10 +17,20 @@ ureg = pint_xarray.unit_registry
 
 @register_loader
 class SpecsDataLoader(BaseARPESDataLoader):
-    """Data loader for Specs ARPES data measured using Specs Prodigy.
+    """Generic ARPES loader for SPECS spectrometer data acquired using Prodigy.
 
-    Define _scan_axis_resolution_order to define preferences for the primary dimension of
-    a 3D scan where more than one user axis varies.
+    Supports the `.xy` and `.sp2` formats written by SPECS systems.
+    This class is intended to be subclassed for specific instruments which should
+    then define local axis conventions and any metadata remapping required for
+    site-specific keys.
+
+    ``_SPECS_metadata_key_mappings`` maps SPECS metadata fields or fixed values onto the
+    standard :mod:`peaks` raw metadata keys consumed by ``_load_metadata()`` and the base
+    metadata parsers. ``_SPECS_metadata_units`` can be used to supply fixed units when
+    they are not recoverable from the file metadata contents.
+    These can be updated by subclasses as required.
+    Subclasses may also set ``_scan_axis_resolution_order`` to control which varying user
+    axis becomes the primary dimension when a scan encodes more than one varying parameter.
     """
 
     _loc_name = "Specs"

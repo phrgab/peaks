@@ -64,6 +64,8 @@ intersphinx_mapping = {
     "dask": ("https://docs.dask.org/en/stable/", None),
     "matplotlib": ("https://matplotlib.org/stable/", None),
     "lmfit": ("https://lmfit.github.io/lmfit-py/", None),
+    "pydantic": ("https://docs.pydantic.dev/latest", None),
+    "pint": ("https://pint.readthedocs.io/en/stable/", None),
 }
 
 source_suffix = [".rst", ".md"]
