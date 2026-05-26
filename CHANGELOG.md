@@ -29,10 +29,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Installation instructions now cover `uv`, conda-forge and the traditional Python venv approach ([PR#28](https://github.com/phrgab/peaks/pull/28))
 - `plot_tutorial_example_figure` now renders videos ([PR#30](https://github.com/phrgab/peaks/pull/30))
 - Figure aspect ratios in output cells are preserved on docs build ([PR#30](https://github.com/phrgab/peaks/pull/30))
+- Installation instructions and contributing guide because the `dev` branch has been deprecated ([PR#?](https://github.com/phrgab/peaks/pull/?))
 
 ### Removed
 
 - `peaks/core/GUI/disp_panels/degrid_panel.py` - redundant legacy file ([PR#30](https://github.com/phrgab/peaks/pull/30))
+- The `dev` branch ([Discussion#27](https://github.com/phrgab/peaks/discussions/27), [PR#?](https://github.com/phrgab/peaks/pull/?))
+
+:::{note}
+The `dev` branch was removed as of `v0.5.1`. Development now happens on `main`.
+:::
 
 ## [0.5.0] - 2026-04-23
 

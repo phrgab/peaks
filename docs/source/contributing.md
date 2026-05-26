@@ -34,17 +34,13 @@ Suggestions for new features or improvements are welcome. We suggest to first st
 If you are actively developing the package, we recommend cloning or forking the repository and installing an editable version from source, including with the optional development (and any other desired) dependencies:
 
 ```bash
-conda create -n peaks-dev python=3.12
+conda create -n peaks-dev python=3.13
 conda activate peaks-dev
 # From the project root
 pip install -e ".[dev]"
 ```
 
 ## Making changes
-
-:::{tip}
-The `main` branch tracks the latest stable release on PyPI. It is highly recommended to branch off from `dev` and open pull requests back into `dev`.
-:::
 
 Guidelines:
 
@@ -54,7 +50,7 @@ Guidelines:
 - Ensure the code is formatted following our [conventions](#linting-and-formatting).
 - Document new features and changes in the [changelog](#changelog).
 - Ensure the [documentation is updated](#documentation).
-- Open a pull request to merge onto the `dev` branch.
+- Open a pull request to merge onto the `main` branch.
 
 (testing)=
 
@@ -137,7 +133,7 @@ We use the [NumPy docstring format](https://numpydoc.readthedocs.io/en/latest/fo
 We are using `intersphinx` to make links to other documentation, which can be quite helpful. But this only works if we put in the full name not the abbreviation for the other package. so use e.g. `xarray.DataArray` and not `xr.DataArray` in type annotations in the docstring. This works out of the box if this is given as the type for a parameter or returns. If you want to include this within part of the general text, need to do ``{py:class}`xarray.DataArray` ``. See other modules for examples.
 :::
 
-The hosted documentation is automatically built by Gitlab CI, and updated on each merge to the `dev` branch and on the release of a new tagged version. It is important that all of the tutorials can run without any local data files. If specific example data is required which is not already avaialble in the {py:mod}`peaks.core.utils.sample_data` module, raise an Issue to discuss adding a new example dataset there.
+The hosted documentation is automatically built by Gitlab CI, and updated on each merge to the `main` branch and on the release of a new tagged version. It is important that all of the tutorials can run without any local data files. If specific example data is required which is not already available in the {py:mod}`peaks.core.utils.sample_data` module, raise an Issue to discuss adding a new example dataset there.
 
 :::{tip}
 To make a local build of the documentation, install `peaks` including the optional `[docs]` dependency. To build the documentation, navigate to the `docs` directory and run one of the following commands:
