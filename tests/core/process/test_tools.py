@@ -6,6 +6,8 @@ import xarray as xr
 
 from peaks.core.process.tools import (
     _sum_or_subtract_data,
+    correct_isolated_bad_pixels,
+    correct_swept_scan_bad_pixels,
     drift_correction,
     estimate_sym_point,
     merge_data,
@@ -414,6 +416,117 @@ class TestDegrid:
         assert fake_disp.shape == result.shape
 
 
+class TestCorrectSweptBadPixels:
+    def _simple_dispersion(self):
+        eV = np.linspace(16.3, 16.8, 6)
+        theta_par = np.linspace(-2.5, 2.5, 7)
+        values = 3 * eV[:, None] + 2 * theta_par[None, :]
+        return _simulate_fake_scan(values, y=eV, x=theta_par)
+
+    def test_corrects_single_swept_line_from_coordinate(self):
+        da = self._simple_dispersion()
+        damaged = da.copy(deep=True)
+        damaged.data.magnitude[:, 3] = -999.0
+
+        corrected = correct_swept_scan_bad_pixels(
+            damaged, theta_par=float(da.theta_par[3])
+        )
+        xr.testing.assert_allclose(corrected, da)
+        assert (
+            corrected.attrs["_analysis_history"].records[-1].record
+            == "Swept bad pixels corrected by interpolation along theta_par, defined from "
+            f"single theta_par value {float(da.theta_par[3])}"
+        )
+
+    def test_corrects_swept_stripe_from_two_anchors(self):
+        da = self._simple_dispersion()
+        damaged = da.copy(deep=True)
+        damaged.data.magnitude[0, 1:3] = -999.0
+        damaged.data.magnitude[1, 2:4] = -999.0
+        damaged.data.magnitude[2, 2:4] = -999.0
+        damaged.data.magnitude[3, 3:5] = -999.0
+        damaged.data.magnitude[4, 3:5] = -999.0
+        damaged.data.magnitude[5, 4:6] = -999.0
+
+        corrected = correct_swept_scan_bad_pixels(
+            damaged,
+            theta_par=[
+                (float(da.eV[0]), float(da.theta_par[1]), float(da.theta_par[2])),
+                (float(da.eV[-1]), float(da.theta_par[4]), float(da.theta_par[5])),
+            ],
+        )
+        xr.testing.assert_allclose(corrected, da)
+
+    def test_requires_eV_dimension(self):
+        da = _simulate_fake_scan(np.ones((5, 5)), dims=("ky", "kx"))
+        with pytest.raises(
+            ValueError, match="requires a 2D DataArray with an 'eV' dimension"
+        ):
+            correct_swept_scan_bad_pixels(da, kx=0.0)
+
+    def test_rejects_unbounded_swept_region(self):
+        da = self._simple_dispersion()
+        damaged = da.copy(deep=True)
+        damaged.data.magnitude[:, :2] = -999.0
+
+        with pytest.raises(
+            ValueError,
+            match="Swept bad pixels must be bounded by good pixels within each eV slice",
+        ):
+            correct_swept_scan_bad_pixels(damaged, theta_par=float(da.theta_par[0]))
+
+
+class TestCorrectIsolatedBadPixels:
+    def _simple_grid(self):
+        values = np.arange(25, dtype=float).reshape(5, 5)
+        return _simulate_fake_scan(
+            values, y=np.arange(5, dtype=float), x=np.arange(5, dtype=float)
+        )
+
+    def test_corrects_single_pixel_from_raw_indices(self):
+        da = self._simple_grid()
+        damaged = da.copy(deep=True)
+        damaged.data.magnitude[2, 2] = -999.0
+
+        corrected = correct_isolated_bad_pixels(damaged, [(2, 2)])
+
+        expected = da.copy(deep=True)
+        expected.data.magnitude[2, 2] = np.mean([7.0, 17.0, 11.0, 13.0])
+        xr.testing.assert_allclose(corrected, expected)
+
+    def test_corrects_single_pixel_from_coordinates(self):
+        da = self._simple_grid()
+        damaged = da.copy(deep=True)
+        damaged.data.magnitude[1, 3] = -999.0
+
+        corrected = correct_isolated_bad_pixels(damaged, [{"eV": 1.0, "theta_par": 3.0}])
+
+        expected = da.copy(deep=True)
+        expected.data.magnitude[1, 3] = np.mean([3.0, 13.0, 7.0, 9.0])
+        xr.testing.assert_allclose(corrected, expected)
+
+    def test_accepts_boolean_mask(self):
+        da = self._simple_grid()
+        damaged = da.copy(deep=True)
+        damaged.data.magnitude[3, 1] = -999.0
+        mask = xr.zeros_like(da, dtype=bool)
+        mask.data[3, 1] = True
+
+        corrected = correct_isolated_bad_pixels(damaged, mask)
+
+        expected = da.copy(deep=True)
+        expected.data.magnitude[3, 1] = np.mean([11.0, 21.0, 15.0, 17.0])
+        xr.testing.assert_allclose(corrected, expected)
+
+    def test_adds_history_entry(self):
+        da = self._simple_grid()
+        result = correct_isolated_bad_pixels(da, [(1, 2)])
+        assert (
+            result.attrs["_analysis_history"].records[-1].record
+            == "Isolated bad pixels corrected from 1 raw pixel indices"
+        )
+
+
 class TestSumSubtractData:
     def test_sum_two_arrays(self, fake_disp):
         result = _sum_or_subtract_data([fake_disp, fake_disp], _sum=True, quiet=False)
@@ -634,6 +747,14 @@ class TestToolsPreserveUnits:
 
     def test_degrid_preserves_units(self, fake_disp):
         result = fake_disp.degrid()
+        assert result.data.units == fake_disp.data.units
+
+    def test_correct_swept_scan_bad_pixels_preserves_units(self, fake_disp):
+        damaged = fake_disp.copy(deep=True)
+        damaged.data.magnitude[:, 10] = -999.0
+        result = correct_swept_scan_bad_pixels(
+            damaged, theta_par=float(fake_disp.theta_par[10])
+        )
         assert result.data.units == fake_disp.data.units
 
     def test_sum_subtract_preserves_units(self, fake_disp):
