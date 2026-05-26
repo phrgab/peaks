@@ -14,14 +14,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - conda-forge package publishing
 - Demo video showing how to use the ROI panel in the 4D GUI ([PR#30](https://github.com/phrgab/peaks/pull/30))
 - D101, D102, D103 and D104 to `ruff` linting rules to enforce docstrings on public classes, methods, functions and packages ([PR#30](https://github.com/phrgab/peaks/pull/30))
-- numpy convention to `ruff` linting ([PR#30](https://github.com/phrgab/peaks/pull/30))
-- support for opening multiple `disp` panels simultaneously in Jupyter environments when `%gui qt6` is enabled ([PR#34](https://github.com/phrgab/peaks/pull/34))
+- NumPy convention to `ruff` linting ([PR#30](https://github.com/phrgab/peaks/pull/30))
+- Support for opening multiple `disp` panels simultaneously in Jupyter environments when `%gui qt6` is enabled ([PR#34](https://github.com/phrgab/peaks/pull/34))
+- `_repr_html_` methods in the `Metadata` and `MetadataItem` classes, providing proper colour-coded HTML display of `da.metadata` and `da.metadata.<key>` in IPython-compatible environments ([PR#35](https://github.com/phrgab/peaks/pull/35))
+- More unit tests for colour-encoded metadata display `core/metadata`: `metadata_method` ([PR#35](https://github.com/phrgab/peaks/pull/35))
 
 ### Fixed
 
 - Errors when loading NetCDF files and processing Zarr files saved by `peaks` with `metadata=False` ([PR#20](https://github.com/phrgab/peaks/pull/20))
 - Error when calling `plot_tutorial_example_figure` locally ([PR#28](https://github.com/phrgab/peaks/pull/28))
 - Empty inline interactive `iplot` when using the `groupby` argument in static CI docs builds ([PR#30](https://github.com/phrgab/peaks/pull/30))
+- Colour-coded metadata rendering in docs ([PR#35](https://github.com/phrgab/peaks/pull/35))
 
 ### Changed
 
@@ -29,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Installation instructions now cover `uv`, conda-forge and the traditional Python venv approach ([PR#28](https://github.com/phrgab/peaks/pull/28))
 - `plot_tutorial_example_figure` now renders videos ([PR#30](https://github.com/phrgab/peaks/pull/30))
 - Figure aspect ratios in output cells are preserved on docs build ([PR#30](https://github.com/phrgab/peaks/pull/30))
+- `display_metadata` now takes an optional `palette` argument and the default `mode` is now `"HTML"` (was `"ANSI"`) ([PR#35](https://github.com/phrgab/peaks/pull/35))
 
 ### Removed
 
