@@ -21,7 +21,7 @@ from peaks.core.GUI.GUI_utils import (
     KeyPressGraphicsLayoutWidget,
 )
 from peaks.core.GUI.GUI_utils.cursor_stats import _parse_norm_emission_cursor_stats
-from peaks.core.metadata.metadata_methods import display_metadata
+from peaks.core.metadata.metadata_methods import DARK_BG_PALETTE, display_metadata
 from peaks.core.process.tools import estimate_sym_point, sym
 from peaks.core.utils.misc import analysis_warning
 
@@ -101,7 +101,7 @@ class _Disp3D(QtWidgets.QMainWindow):
 
         # Read scan metadata
         self.metadata_text = "<span style='color:white'>"
-        self.metadata_text += display_metadata(self.data, "html")
+        self.metadata_text += display_metadata(self.data, DARK_BG_PALETTE)
         self.metadata_text += "</span><br>"
 
         # Crosshair options
@@ -437,7 +437,7 @@ class _Disp3D(QtWidgets.QMainWindow):
 
         # Attempt to read some metadata
         self.metadata_text = "<span style='color:white'>"
-        self.metadata_text += display_metadata(self.data, "html")
+        self.metadata_text += display_metadata(self.data, DARK_BG_PALETTE)
         self.metadata_text += "</span><br>"
 
     def _set_main_plots(self):

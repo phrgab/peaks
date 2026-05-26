@@ -14,50 +14,90 @@ from peaks.core.utils.datatree_utils import _map_over_dt_containing_single_das
 
 ureg = pint_xarray.unit_registry
 
+# Paul Tol's muted colour scheme; good for black/dark backgrounds
+# https://sronpersonalpages.nl/~pault/
+# Used in GUI
+DARK_BG_PALETTE = [
+    "#DDCC77",  # sand
+    "#88CCEE",  # cyan
+    "#CC6677",  # rose
+    "#44AA99",  # teal
+]
 
-def display_metadata(da_or_model, mode="ANSI"):
-    """Recursive function to display dictionary with coloured keys."""
-    # Paul Tol's colour scheme
-    colours = [
-        "\x1b[38;2;187;85;0m",  # orange
-        "\x1b[38;2;0;90;181m",  # blue
-        "\x1b[38;2;212;17;89m",  # magenta
-        "\x1b[38;2;0;133;119m",  # green
-    ]
-    RESET = "\x1b[0m"
+# Custom colour scheme. Optimised for white/light backgrounds
+# but still legible on dark backgrounds
+# Used in notebooks
+LIGHT_BG_PALETTE = [
+    "#BB5500",  # orange
+    "#005AB5",  # blue
+    "#D41159",  # magenta
+    "#008577",  # green
+]
 
-    # Recursive function to display dictionary with cycling colors for each indent level
-    def display_colored_dict(d, indent_level=0, col_cycle=0):
-        indent = "    " * indent_level
-        current_color = colours[col_cycle % len(colours)]  # Cycle through colors
+
+def display_metadata(da_or_model, palette=None, mode="HTML"):
+    """Render metadata as a colour-coded nested structure.
+
+    Parameters
+    ----------
+    da_or_model : xarray.DataArray or pydantic.BaseModel or dict
+        The object whose metadata is to be displayed.
+    palette : list of str, optional
+        Hex colour codes to cycle through, one per nesting level.
+        Default to :data:`LIGHT_BG_PALETTE`.
+    mode : {"HTML", "ANSI"}, optional
+        Output format. ``"HTML"`` for notebooks/docs; ``"ANSI"`` for terminal output.
+        Defaults to ``"HTML"``.
+
+    Returns
+    -------
+    str
+        The formatted metadata.
+    """
+
+    if palette is None:
+        palette = LIGHT_BG_PALETTE
+
+    # Recursive function to display dictionary with cycling colours for each indent level
+    def display_coloured_dict_html(d, indent_level=0, col_cycle=0):
+        indent = "&nbsp;" * 4 * indent_level
+        current_colour = palette[col_cycle % len(palette)]  # Cycle through colors
         lines = []
         for key, value in d.items():
             if isinstance(value, dict):  # Nested dictionary (recursive case)
-                lines.append(f"{indent}{current_color}{key}{RESET}:")
+                lines.append(
+                    f"{indent}<span style='color:{current_colour}'>{key}:</span>"
+                )
                 lines.extend(
-                    display_colored_dict(value, indent_level + 1, col_cycle + 1)
+                    display_coloured_dict_html(value, indent_level + 1, col_cycle + 1)
                 )
             else:  # Base case (simple value)
-                lines.append(f"{indent}{current_color}{key}{RESET}: {value}")
+                lines.append(
+                    f"{indent}<span style='color:{current_colour}'>{key}:</span> {value}"
+                )
         return lines
 
-    def display_colored_dict_html(d, indent_level=0, col_cycle=0):
-        indent = "&nbsp;" * 4 * indent_level
-        colours = ["#DDCC77", "#88CCEE", "#CC6677", "#44AA99"]
-        current_color = colours[col_cycle % len(colours)]  # Cycle through colors
+    def _hex_to_rgb(hex_col):
+        hex_col = hex_col.lstrip("#")
+        return tuple(int(hex_col[i : i + 2], 16) for i in (0, 2, 4))
+
+    ansi_colours = [f"\x1b[38;2;{r};{g};{b}m" for (r, g, b) in map(_hex_to_rgb, palette)]
+    RESET = "\x1b[0m"
+
+    def display_coloured_dict_ansi(d, indent_level=0, col_cycle=0):
+        indent = "    " * indent_level
+        current_colour = ansi_colours[
+            col_cycle % len(ansi_colours)
+        ]  # Cycle through colors
         lines = []
         for key, value in d.items():
             if isinstance(value, dict):  # Nested dictionary (recursive case)
-                lines.append(
-                    f"{indent}<span style='color:{current_color}'>{key}:</span>"
-                )
+                lines.append(f"{indent}{current_colour}{key}{RESET}:")
                 lines.extend(
-                    display_colored_dict_html(value, indent_level + 1, col_cycle + 1)
+                    display_coloured_dict_ansi(value, indent_level + 1, col_cycle + 1)
                 )
             else:  # Base case (simple value)
-                lines.append(
-                    f"{indent}<span style='color:{current_color}'>{key}:</span> {value}"
-                )
+                lines.append(f"{indent}{current_colour}{key}{RESET}: {value}")
         return lines
 
     # Display the model with colored keys
@@ -70,9 +110,11 @@ def display_metadata(da_or_model, mode="ANSI"):
     except AttributeError:
         metadata = da_or_model if isinstance(da_or_model, dict) else da_or_model.dict()
     if mode.upper() == "ANSI":
-        return "\n".join(display_colored_dict(metadata))
+        return "\n".join(display_coloured_dict_ansi(metadata))
     elif mode.upper() == "HTML":
-        return "<br>".join(display_colored_dict_html(metadata))
+        return "<br>".join(display_coloured_dict_html(metadata))
+    else:
+        raise ValueError("mode must be 'HTML' or 'ANSI'.")
 
 
 def compare_metadata(da_or_model1, da_or_model2):
@@ -171,6 +213,9 @@ class Metadata:
         self._obj = xarray_obj
 
     def __repr__(self):
+        return display_metadata(self._obj, palette=DARK_BG_PALETTE, mode="ANSI")
+
+    def _repr_html_(self):
         return display_metadata(self._obj)
 
     def __getattr__(self, name):
@@ -559,6 +604,9 @@ class MetadataItem:
         self._obj = obj  # Reference to the parent object
 
     def __repr__(self):
+        return display_metadata(self._data, palette=DARK_BG_PALETTE, mode="ANSI")
+
+    def _repr_html_(self):
         return display_metadata(self._data)
 
     def __getattr__(self, name):
