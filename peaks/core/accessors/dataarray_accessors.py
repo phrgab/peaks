@@ -49,6 +49,8 @@ functions_to_register = {
         "sym_nfold",
         "degrid",
         "estimate_sym_point",
+        "correct_isolated_bad_pixels",
+        "correct_swept_scan_bad_pixels",
     ],
 }
 
