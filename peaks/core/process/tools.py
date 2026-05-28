@@ -2275,8 +2275,7 @@ def correct_isolated_bad_pixels(data, bad_pixels):
         disp = pks.load('disp.ibw')
 
         # Correct pixels using integer indices
-        disp_corr, bad = pks.correct_bad_pixels_cross(
-            disp,
+        disp_corr = disp.correct_isolated_bad_pixels(
             [(10, 20), (10, 21)],
         )
 
