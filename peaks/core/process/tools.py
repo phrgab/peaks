@@ -2339,13 +2339,13 @@ def correct_swept_scan_bad_pixels(data, bad_pixels=None, **kwargs):
 
     bad_pixels : array-like or :class:`xarray.DataArray`, optional
         Explicit bad-pixel mask, or explicit bad-pixel positions.
+
     **kwargs
         Swept bad-pixel definition along the non-``eV`` dimension. Supply
         exactly one keyword matching that dimension, with either:
 
-        - A single coordinate value, e.g. ``theta_par=5.25``.
-        - Two explicit anchor triples, e.g.
-          ``theta_par=[(16.8, 5.2, 5.4), (16.3, 5.3, 5.5)]``.
+        - A single coordinate value to mark a single straight column, e.g. ``theta_par=5.25``.
+        - Two explicit anchor triples (``(eV_value, theta_par_value1, theta_par_value2)``) to mark a slanted stripe/trapezium, e.g. ``theta_par=[(16.8, 5.2, 5.4), (16.3, 5.3, 5.5)]``.
 
     Returns
     -------
