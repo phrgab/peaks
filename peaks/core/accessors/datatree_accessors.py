@@ -46,6 +46,8 @@ functions_to_register_for_iterable_accessor = {
         "sym",
         "sym_nfold",
         "degrid",
+        "correct_isolated_bad_pixels",
+        "correct_swept_scan_bad_pixels",
     ],
 }
 

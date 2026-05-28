@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - D101, D102, D103 and D104 to `ruff` linting rules to enforce docstrings on public classes, methods, functions and packages ([PR#30](https://github.com/phrgab/peaks/pull/30))
 - NumPy convention to `ruff` linting ([PR#30](https://github.com/phrgab/peaks/pull/30))
 - Support for opening multiple `disp` panels simultaneously in Jupyter environments when `%gui qt6` is enabled ([PR#34](https://github.com/phrgab/peaks/pull/34))
+- Helper methods to correct dead or hot pixels in dispersions ([PR#36](https://github.com/phrgab/peaks/pull/36))
 - `_repr_html_` methods in the `Metadata` and `MetadataItem` classes, providing proper colour-coded HTML display of `da.metadata` and `da.metadata.<key>` in IPython-compatible environments ([PR#35](https://github.com/phrgab/peaks/pull/35))
 - More unit tests for colour-encoded metadata display `core/metadata`: `metadata_method` ([PR#35](https://github.com/phrgab/peaks/pull/35))
 
