@@ -2254,9 +2254,9 @@ def correct_isolated_bad_pixels(data, bad_pixels):
         Bad pixels to mask. May be one of:
 
         - Boolean :class:`xarray.DataArray` mask with the same dimensions
-          as ``data``.
-        - Sequence of raw integer index pairs in ``data.dims`` order.
-        - Sequence of coordinate dictionaries.
+          as ``data``, ``True`` at bad pixels.
+        - Sequence of raw integer index pairs in ``data.dims`` order, e.g. ``[(eV_index, theta_par_index)]``.
+        - Sequence of coordinate dictionaries, e.g. ``[{'eV': value, 'theta_par': value}]``.
 
         Coordinate values are matched to the nearest available pixel.
 
