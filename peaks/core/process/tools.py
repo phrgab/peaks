@@ -2239,11 +2239,42 @@ def _make_swept_bad_pixel_mask(data, bad_pixels=None, **kwargs):
     return bad.transpose(*data.dims)
 
 
+def _larger_than_2x(mask) -> bool:
+    """
+    Check whether a 2D boolean mask contains any connected regions larger than 2 pixels.
+
+    Tests for the presence of any contiguous ``1×3`` or ``3×1`` all-``True`` blocks.
+
+    Parameters
+    ----------
+    mask : xarray.DataArray
+        Two-dimensional boolean mask.
+
+    Returns
+    -------
+    bool
+        ``True`` if the mask contains at least one region larger
+        than 2 pixels, otherwise ``False``.
+    """
+
+    m = mask.data.astype(bool, copy=False)
+    if np.any(m[:, :-2] & m[:, 1:-1] & m[:, 2:]):
+        return True
+
+    if np.any(m[:-2, :] & m[1:-1, :] & m[2:, :]):
+        return True
+
+    return False
+
+
 def correct_isolated_bad_pixels(data, bad_pixels):
     """
     Correct isolated bad pixels by averaging their immediate neighbours, up to 2 by 2.
 
-    Replacement values are computed from neighbouring good pixels only. Use this when the bad pixels are scattered single pixels or small blobs (up to 2x2); for stripes that extend across the energy axis in swept dispersions, use :func:`correct_swept_scan_bad_pixels` instead.
+    Replacement values are computed from neighbouring good pixels only.
+    Use this when the bad pixels are scattered single pixels or small blobs
+    (up to 2x2); for stripes that extend across the energy axis in swept
+    dispersions, use :func:`correct_swept_scan_bad_pixels` instead.
 
     Parameters
     ----------
@@ -2294,6 +2325,11 @@ def correct_isolated_bad_pixels(data, bad_pixels):
 
     y_dim, x_dim = data.dims
     bad = _make_bad_pixel_mask(data, bad_pixels)
+
+    if _larger_than_2x(bad):
+        raise ValueError(
+            "Mask must not have continuous True regions larger than 2 pixels"
+        )
 
     corrected = data.copy()
 
