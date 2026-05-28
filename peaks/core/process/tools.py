@@ -2241,7 +2241,7 @@ def _make_swept_bad_pixel_mask(data, bad_pixels=None, **kwargs):
 
 def correct_isolated_bad_pixels(data, bad_pixels):
     """
-    Correct isolated bad pixels, up to 2 by 2.
+    Correct isolated bad pixels by averaging their immediate neighbours, up to 2 by 2.
 
     Replacement values are computed from neighbouring good pixels only.
 
