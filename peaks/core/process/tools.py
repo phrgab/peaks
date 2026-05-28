@@ -2362,7 +2362,7 @@ def correct_swept_scan_bad_pixels(data, bad_pixels=None, **kwargs):
         disp = pks.load("disp.ibw")
 
         # Correct a single swept bad-pixel line
-        disp_corr = pks.correct_swept_bad_pixels(disp, theta_par=-8.95)
+        disp_corr = disp.correct_swept_scan_bad_pixels(theta_par=-8.95)
 
         # Correct a slanted swept bad-pixel stripe using two eV anchors
         disp_corr = pks.correct_swept_bad_pixels(
