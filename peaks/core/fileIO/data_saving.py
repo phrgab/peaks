@@ -23,7 +23,6 @@ def _serialise_attrs(attrs):
     dict
         The serialised attributes dictionary.
     """
-
     # Keep track of the metadata models for de-serialisation on loading again
     metadata_models = {}
 
@@ -69,7 +68,6 @@ def _enforce_extension(fpath, required_extension):
     ------
     ValueError : If the file path has an incorrect extension.
     """
-
     f_ext = os.path.splitext(fpath)[1]
     if not f_ext:
         return f"{fpath}{required_extension}"
@@ -130,12 +128,13 @@ def _save_dt(data, fpath):
 
     def _serialise_da_in_dt(data):
         """Serialises the attributes of a :class:`xarray.DataArray` or similar for saving
-        in NetCDF/Zarr files."""
+        in NetCDF/Zarr files.
+        """
         data.attrs.update(_serialise_attrs(data.attrs))
         return data
 
     def _parse_nodes_in_dt(ds):
-        """Parse the attributes of the current datatree node
+        """Parse the attributes of the current datatree node.
 
         Parameters
         ----------
@@ -189,7 +188,7 @@ def save(data, fpath):
     loaded with the same version of `peaks`, there may be some loss of metadata.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray or xarray.DataSet or xarray.DataTree
         The data to be saved
 
@@ -198,7 +197,7 @@ def save(data, fpath):
         as .nc for a :class:`xarray.DataArray` or :class:`xarray.DataSet` and .zarr for a :class:`xarray.DataTree`.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         import peaks as pks
@@ -210,7 +209,6 @@ def save(data, fpath):
         pks.save(data, 'my_file.nc')
 
     """
-
     if isinstance(data, (xr.DataArray, xr.Dataset)):
         _save_da(data, fpath)
     elif isinstance(data, xr.DataTree):

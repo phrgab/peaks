@@ -21,15 +21,16 @@ from peaks.core.GUI.GUI_utils import (
     KeyPressGraphicsLayoutWidget,
 )
 from peaks.core.GUI.GUI_utils.cursor_stats import _parse_norm_emission_cursor_stats
-from peaks.core.metadata.metadata_methods import display_metadata
+from peaks.core.metadata.metadata_methods import DARK_BG_PALETTE, display_metadata
 from peaks.core.process.tools import estimate_sym_point, sym
+from peaks.core.utils.misc import analysis_warning
 
 
 def _disp_3d(data, primary_dim, exclude_from_centering):
     """Display a 3D interactive display panel.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
          A single 3D :class:`xarray.DataArray`.
 
@@ -45,9 +46,43 @@ def _disp_3d(data, primary_dim, exclude_from_centering):
     if app is None:
         app = QApplication(sys.argv)
 
+    if not hasattr(app, "_peaks_active_viewers"):
+        app._peaks_active_viewers = []
+    active_viewers = app._peaks_active_viewers
+
     viewer = _Disp3D(data, primary_dim, exclude_from_centering)
+    active_viewers.append(viewer)
+
+    # fire a warning if there are already 3 or more disp panels open
+    if len(active_viewers) >= 3:
+        analysis_warning(
+            f"There are currently {len(active_viewers)} active display panels. "
+            "This may cause performance issues.",
+            warn_type="warning",
+            title="Multiple display panels open",
+        )
+
+    viewer.destroyed.connect(
+        lambda *_: (
+            active_viewers.remove(viewer) if viewer in active_viewers else None
+        )  # Remove viewer from active viewers list when it is closed
+    )
     viewer.show()
-    app.exec()
+
+    # to support multiple display panels
+    try:
+        from IPython import get_ipython
+
+        ip = get_ipython()
+        if ip is not None:
+            if getattr(ip, "active_eventloop", None) == "qt6":
+                return
+    except Exception:
+        pass
+
+    # fallback to Qt event loop if not in IPython or if IPYthon does not have an active event loop
+    if not any(v.isVisible() for v in active_viewers if v is not viewer):
+        app.exec()
 
 
 class _Disp3D(QtWidgets.QMainWindow):
@@ -66,7 +101,7 @@ class _Disp3D(QtWidgets.QMainWindow):
 
         # Read scan metadata
         self.metadata_text = "<span style='color:white'>"
-        self.metadata_text += display_metadata(self.data, "html")
+        self.metadata_text += display_metadata(self.data, DARK_BG_PALETTE)
         self.metadata_text += "</span><br>"
 
         # Crosshair options
@@ -114,9 +149,9 @@ class _Disp3D(QtWidgets.QMainWindow):
         self.closeEvent = self._close_application
 
     def _close_application(self, event):
-        """Close the application when the window is closed."""
+        """Close the application when the window is closed without shutting down the event loop."""
         self.graphics_layout.close()
-        app.quit()
+        event.accept()
 
     # ##############################
     # GUI layout
@@ -339,7 +374,7 @@ class _Disp3D(QtWidgets.QMainWindow):
         right_panel_layout.addStretch()
 
     def _build_menu(self):
-        """Add a menu"""
+        """Add a menu."""
         self.menu = self.menuBar().addMenu("Display Panel")
         self.shortcuts_action = QtGui.QAction("Help", self)
 
@@ -402,7 +437,7 @@ class _Disp3D(QtWidgets.QMainWindow):
 
         # Attempt to read some metadata
         self.metadata_text = "<span style='color:white'>"
-        self.metadata_text += display_metadata(self.data, "html")
+        self.metadata_text += display_metadata(self.data, DARK_BG_PALETTE)
         self.metadata_text += "</span><br>"
 
     def _set_main_plots(self):
@@ -594,8 +629,7 @@ class _Disp3D(QtWidgets.QMainWindow):
     # Data / plot updates
     # ##############################
     def _set_data(self):
-        """Set the data in the plots"""
-
+        """Set the data in the plots."""
         self.images = [None, None, None]
 
         # Initialise crosshair positions and widths - default to centre of data and 1/200th of range
@@ -656,7 +690,7 @@ class _Disp3D(QtWidgets.QMainWindow):
         self._connect_key_press_signals()
 
     def _set_slice(self, dim_no):
-        """Set a data slice based on the xh positions and widths"""
+        """Set a data slice based on the xh positions and widths."""
         _pos = self.cursor_positions_selection[dim_no].value()
         _width = self.cursor_widths_selection[dim_no].value() / 2
         _range = slice(_pos - _width, _pos + _width)
@@ -840,7 +874,7 @@ class _Disp3D(QtWidgets.QMainWindow):
         self._update_DC(1)  # Update the mirror DCs
 
     def _align_data(self):
-        """Estimate symmetry points in the data"""
+        """Estimate symmetry points in the data."""
         # Get the current view range
         x_range, y_range = self.image_plots[1].getViewBox().viewRange()
         data_to_centre = self.images[1].sel(

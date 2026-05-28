@@ -13,17 +13,17 @@ def make_hv_scan(data):
     """Function to combine multiple dispersions (measured at different hv values) into a single hv scan DataArray.
 
     Parameters
-    ------------
+    ----------
     data : list
         Any number of :class:`xarray.DataArray` dispersions (measured at different hv values) to combine into an hv scan.
 
     Returns
-    ------------
+    -------
     hv_scan : xarray.DataArray
         The resulting hv scan DataArray.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         from peaks import *
@@ -40,7 +40,6 @@ def make_hv_scan(data):
 
 
     """
-
     # Define the new scan type
     scan_type = "hv scan"
 

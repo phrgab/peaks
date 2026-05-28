@@ -6,38 +6,51 @@ We welcome contributions to the advancement of `peaks` and hope for it to develo
 
 - implementing new [file loaders](#file_loaders)
 - testing functionality and bug-checking
-- developing a proper suite of unit tests
+- developing a more extensive suite of unit tests
 - enhancing and correcting the project documentation, including relevant doc-strings
 - contributing feature enhancements.
 
-If you wish to discuss a contribution or to report a bug, please open an issue on our [GitHub repository](https://github.com/phrgab/peaks/issues).
+## Support
+
+### Questions and usage
+
+For general questions about contributing to the development of `peaks`, or of its usage, please use our [GitHub Discussions](https://github.com/phrgab/peaks/discussions) page. If that is not possible, please e-mail [Phil](mailto:pdk6@st-andrews.ac.uk).
+
+### Bug reports
+
+If you believe you have found a bug, please open an issue in our [GitHub repository](https://github.com/phrgab/peaks/issues). When reporting a bug, please include:
+
+- A clear description of the problem
+- Steps to reproduce
+- Expected vs actual behaviour
+- Version information and environment details (Python version, OS, key dependency versions)
+
+### Feature requests
+
+Suggestions for new features or improvements are welcome. We suggest to first start a discussion in the “Ideas” category of our [GitHub Discussions](https://github.com/phrgab/peaks/discussions) page.
 
 ## Installation
 
 If you are actively developing the package, we recommend cloning or forking the repository and installing an editable version from source, including with the optional development (and any other desired) dependencies:
 
 ```bash
-conda create -n peaks-dev python=3.12
+conda create -n peaks-dev python=3.13
 conda activate peaks-dev
 # From the project root
-pip install -e .\[dev\]
+pip install -e ".[dev]"
 ```
 
 ## Making changes
 
-:::{tip}
-The `main` branch tracks the latest stable release on PyPI. It is highly recommended to branch off from `dev` and open pull requests back into `dev`.
-:::
-
 Guidelines:
 
-- Open an issue to discuss the change.
+- Open an issue or Discussion item to discuss the bug/change.
 - Make changes in a new branch/fork.
 - Thoroughly [test](#testing) the changes before making a pull request.
-- Ensure the code is formatted following our [conventions](#linting-and-formatting-with-ruff).
+- Ensure the code is formatted following our [conventions](#linting-and-formatting).
 - Document new features and changes in the [changelog](#changelog).
 - Ensure the [documentation is updated](#documentation).
-- Open a pull request to merge onto the `dev` branch.
+- Open a pull request to merge your changes into the code base.
 
 (testing)=
 
@@ -64,7 +77,7 @@ ruff format .                    # Format code (like Black)
 
 ### Stripping tutorial notebooks
 
-The output and metadata of the tutorial notebooks should be stripped using `nbstripout`. This is isntalled as part of the developer optional dependencies, and can be run on the code base manually:
+The output and metadata of the tutorial notebooks should be stripped using `nbstripout`. This is installed as part of the developer optional dependencies, and can be run on the code base manually:
 
 ```bash
 nbstripout tutorials/**/*.ipynb
@@ -72,7 +85,7 @@ nbstripout tutorials/**/*.ipynb
 
 ### Pre-commit hook
 
-A pre-commit hook is avaialble for automating the above formatting operations upon commits. From the project root, to register the hook:
+A pre-commit hook is available for automating the above formatting operations upon commits. From the project root, to register the hook:
 
 ```bash
 pre-commit install
@@ -117,10 +130,10 @@ The core user documentation comes from a combination of the tutorials (Jupyter n
 :::{tip}
 We use the [NumPy docstring format](https://numpydoc.readthedocs.io/en/latest/format.html). Specify Parameters and give relevant code examples. To make a code block, insert `::` at the end of the line before, and then leave a space and indent the text.
 
-We are using `intersphinx` to make links to other documentation, which can be quite helpful. But this only works if we put in the full name not the abbreviation for the other package. so use e.g. `xarray.DataArray` and not `xr.DataArray` in type annotations in the docstring. This works out of the box if this is given as the type for a parameter or returns. If you want to include this within part of the general text, need to do `:class:xarray.DataArray`. See other modules for examples.
+We are using `intersphinx` to make links to other documentation, which can be quite helpful. But this only works if we put in the full name not the abbreviation for the other package. so use e.g. `xarray.DataArray` and not `xr.DataArray` in type annotations in the docstring. This works out of the box if this is given as the type for a parameter or returns. If you want to include this within part of the general text, need to do ``{py:class}`xarray.DataArray` ``. See other modules for examples.
 :::
 
-The hosted documentation is automatically built by Gitlab CI, and updated on each merge to the main branch and on the release of a new tagged version. It is important that all of the tutorials can run without any local data files. If specific example data is required which is not already avaialble in the `peaks.core.utils.sample_data` module, raise an Issue to discuss adding a new example dataset there.
+The hosted documentation is automatically built by Gitlab CI, and updated on each merge to the `main` branch and on the release of a new tagged version. It is important that all of the tutorials can run without any local data files. If specific example data is required which is not already available in the {py:mod}`peaks.core.utils.sample_data` module, raise an Issue to discuss adding a new example dataset there.
 
 :::{tip}
 To make a local build of the documentation, install `peaks` including the optional `[docs]` dependency. To build the documentation, navigate to the `docs` directory and run one of the following commands:

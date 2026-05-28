@@ -1,6 +1,4 @@
-"""
-Helper functions and xarray accessors for providing the user interface to metadata
-"""
+"""Helper functions and xarray accessors for providing the user interface to metadata."""
 
 import copy
 import pprint
@@ -16,50 +14,90 @@ from peaks.core.utils.datatree_utils import _map_over_dt_containing_single_das
 
 ureg = pint_xarray.unit_registry
 
+# Paul Tol's muted colour scheme; good for black/dark backgrounds
+# https://sronpersonalpages.nl/~pault/
+# Used in GUI
+DARK_BG_PALETTE = [
+    "#DDCC77",  # sand
+    "#88CCEE",  # cyan
+    "#CC6677",  # rose
+    "#44AA99",  # teal
+]
 
-def display_metadata(da_or_model, mode="ANSI"):
-    # Recursive function to display dictionary with colored keys
-    # Paul Tol's colour scheme
-    colours = [
-        "\x1b[38;2;187;85;0m",  # orange
-        "\x1b[38;2;0;90;181m",  # blue
-        "\x1b[38;2;212;17;89m",  # magenta
-        "\x1b[38;2;0;133;119m",  # green
-    ]
-    RESET = "\x1b[0m"
+# Custom colour scheme. Optimised for white/light backgrounds
+# but still legible on dark backgrounds
+# Used in notebooks
+LIGHT_BG_PALETTE = [
+    "#BB5500",  # orange
+    "#005AB5",  # blue
+    "#D41159",  # magenta
+    "#008577",  # green
+]
 
-    # Recursive function to display dictionary with cycling colors for each indent level
-    def display_colored_dict(d, indent_level=0, col_cycle=0):
-        indent = "    " * indent_level
-        current_color = colours[col_cycle % len(colours)]  # Cycle through colors
+
+def display_metadata(da_or_model, palette=None, mode="HTML"):
+    """Render metadata as a colour-coded nested structure.
+
+    Parameters
+    ----------
+    da_or_model : xarray.DataArray or pydantic.BaseModel or dict
+        The object whose metadata is to be displayed.
+    palette : list of str, optional
+        Hex colour codes to cycle through, one per nesting level.
+        Default to :data:`LIGHT_BG_PALETTE`.
+    mode : {"HTML", "ANSI"}, optional
+        Output format. ``"HTML"`` for notebooks/docs; ``"ANSI"`` for terminal output.
+        Defaults to ``"HTML"``.
+
+    Returns
+    -------
+    str
+        The formatted metadata.
+    """
+
+    if palette is None:
+        palette = LIGHT_BG_PALETTE
+
+    # Recursive function to display dictionary with cycling colours for each indent level
+    def display_coloured_dict_html(d, indent_level=0, col_cycle=0):
+        indent = "&nbsp;" * 4 * indent_level
+        current_colour = palette[col_cycle % len(palette)]  # Cycle through colors
         lines = []
         for key, value in d.items():
             if isinstance(value, dict):  # Nested dictionary (recursive case)
-                lines.append(f"{indent}{current_color}{key}{RESET}:")
+                lines.append(
+                    f"{indent}<span style='color:{current_colour}'>{key}:</span>"
+                )
                 lines.extend(
-                    display_colored_dict(value, indent_level + 1, col_cycle + 1)
+                    display_coloured_dict_html(value, indent_level + 1, col_cycle + 1)
                 )
             else:  # Base case (simple value)
-                lines.append(f"{indent}{current_color}{key}{RESET}: {value}")
+                lines.append(
+                    f"{indent}<span style='color:{current_colour}'>{key}:</span> {value}"
+                )
         return lines
 
-    def display_colored_dict_html(d, indent_level=0, col_cycle=0):
-        indent = "&nbsp;" * 4 * indent_level
-        colours = ["#DDCC77", "#88CCEE", "#CC6677", "#44AA99"]
-        current_color = colours[col_cycle % len(colours)]  # Cycle through colors
+    def _hex_to_rgb(hex_col):
+        hex_col = hex_col.lstrip("#")
+        return tuple(int(hex_col[i : i + 2], 16) for i in (0, 2, 4))
+
+    ansi_colours = [f"\x1b[38;2;{r};{g};{b}m" for (r, g, b) in map(_hex_to_rgb, palette)]
+    RESET = "\x1b[0m"
+
+    def display_coloured_dict_ansi(d, indent_level=0, col_cycle=0):
+        indent = "    " * indent_level
+        current_colour = ansi_colours[
+            col_cycle % len(ansi_colours)
+        ]  # Cycle through colors
         lines = []
         for key, value in d.items():
             if isinstance(value, dict):  # Nested dictionary (recursive case)
-                lines.append(
-                    f"{indent}<span style='color:{current_color}'>{key}:</span>"
-                )
+                lines.append(f"{indent}{current_colour}{key}{RESET}:")
                 lines.extend(
-                    display_colored_dict_html(value, indent_level + 1, col_cycle + 1)
+                    display_coloured_dict_ansi(value, indent_level + 1, col_cycle + 1)
                 )
             else:  # Base case (simple value)
-                lines.append(
-                    f"{indent}<span style='color:{current_color}'>{key}:</span> {value}"
-                )
+                lines.append(f"{indent}{current_colour}{key}{RESET}: {value}")
         return lines
 
     # Display the model with colored keys
@@ -72,13 +110,16 @@ def display_metadata(da_or_model, mode="ANSI"):
     except AttributeError:
         metadata = da_or_model if isinstance(da_or_model, dict) else da_or_model.dict()
     if mode.upper() == "ANSI":
-        return "\n".join(display_colored_dict(metadata))
+        return "\n".join(display_coloured_dict_ansi(metadata))
     elif mode.upper() == "HTML":
-        return "<br>".join(display_colored_dict_html(metadata))
+        return "<br>".join(display_coloured_dict_html(metadata))
+    else:
+        raise ValueError("mode must be 'HTML' or 'ANSI'.")
 
 
 def compare_metadata(da_or_model1, da_or_model2):
-    # Function to extract metadata dictionary
+    """Compare metadata between two DataArrays (or Pydantic metadata models)."""
+
     def get_metadata(da_or_model):
         try:
             metadata = {
@@ -172,6 +213,9 @@ class Metadata:
         self._obj = xarray_obj
 
     def __repr__(self):
+        return display_metadata(self._obj, palette=DARK_BG_PALETTE, mode="ANSI")
+
+    def _repr_html_(self):
         return display_metadata(self._obj)
 
     def __getattr__(self, name):
@@ -188,6 +232,11 @@ class Metadata:
         return super().__dir__() + list(self.keys()) + ["history"]
 
     def keys(self):
+        """Return the names of the metadata attributes.
+
+        These are the leading-underscore-prefixed entries in ``self._obj.attrs``
+        with the prefix stripped; ``_analysis_history`` is excluded.
+        """
         return {
             k.lstrip("_"): v
             for k, v in self._obj.attrs.items()
@@ -232,7 +281,6 @@ class Metadata:
 
 
         """
-
         # Get loc and loader class
         loc = self._obj.metadata.scan.loc
         loader = BaseDataLoader.get_loader(loc)
@@ -309,6 +357,10 @@ class Metadata:
         return normal_emission
 
     def assign_normal_emission(self, norm_values, **kwargs):
+        """Return a copy of the data with the normal emission angles applied.
+
+        .. note:: Not yet implemented; raises :class:`NotImplementedError`.
+        """
         raise NotImplementedError("This method is not yet implemented.")
 
     def set_normal_emission_like(self, da):
@@ -319,7 +371,6 @@ class Metadata:
         da : xarray.DataArray
             The data array to match the normal emission angles to.
         """
-
         # Get any set reference data in da
         current_reference_data = self._get_normal_emission_dict(da)
         # Apply the new reference data to the current dataarray
@@ -392,12 +443,11 @@ class Metadata:
             - a float or int, this will be taken as a constant shift in energy.
             - an xarray.Dataset containing the fit_result as returned by the `peaks` `.fit_gold` method
 
-          Returns
-         -------
+        Returns
+        -------
          None
              Adds the Fermi level correction to the data attributes.
         """
-
         # Do some checks on the EF_correction format
         if isinstance(EF_correction, xr.Dataset):
             EF_correction = copy.deepcopy(EF_correction.attrs.get("EF_correction"))
@@ -474,6 +524,7 @@ class MetadataDT:
         self._obj = xarray_obj
 
     def __call__(self, metadata_dict=None, **kwargs):
+        """Apply metadata updates to all scans in the DataTree."""
         if metadata_dict is None:
             metadata_dict = {}
         metadata_dict.update(kwargs)
@@ -502,9 +553,14 @@ class MetadataDT:
         return self
 
     def set_normal_emission(self):
+        """Set the normal emission angles for each scan in the DataTree.
+
+        .. note:: Not yet implemented; raises :class:`NotImplementedError`.
+        """
         raise NotImplementedError("This method is not yet implemented.")
 
     def set_normal_emission_like(self, da):
+        """Set the normal emission angles for each scan in the DataTree to match another scan."""
         # Get any set reference data in da
         current_reference_data = Metadata._get_normal_emission_dict(da)
 
@@ -524,11 +580,13 @@ class MetadataDT:
         self._obj.map_over_datasets(apply_normal_to_ds)
 
     def set_EF_correction(self, EF_correction):
+        """Set the Fermi level correction for each scan in the DataTree."""
         _map_over_dt_containing_single_das(
             self._obj, lambda da: da.metadata.set_EF_correction(EF_correction)
         )
 
     def set_EF_correction_like(self, da_to_set_like):
+        """Set the Fermi level correction for each scan in the DataTree to the same as another DataArray."""
         _map_over_dt_containing_single_das(
             self._obj, lambda da: da.metadata.set_EF_correction_like(da_to_set_like)
         )
@@ -546,6 +604,9 @@ class MetadataItem:
         self._obj = obj  # Reference to the parent object
 
     def __repr__(self):
+        return display_metadata(self._data, palette=DARK_BG_PALETTE, mode="ANSI")
+
+    def _repr_html_(self):
         return display_metadata(self._data)
 
     def __getattr__(self, name):
@@ -597,6 +658,18 @@ class MetadataItem:
             self.set(name, value)
 
     def set(self, name, value, add_history=True):
+        """Set the value of a metadata attribute with optional history logging.
+
+        Parameters
+        ----------
+        name : str
+            Attribute name to set on the underlying metadata model or dict.
+        value : Any
+            New value. If the existing value is a ``pint.Quantity`` and ``value`` is not,
+            the existing units are reapplied.
+        add_history : bool, default True
+            Whether to append an entry to the analysis history.
+        """
         data = self._data
         full_path = f"{self._path}.{name}" if self._path else name
         if isinstance(data, BaseModel):
@@ -636,6 +709,19 @@ class MetadataItem:
             raise AttributeError(f"Cannot set attribute '{name}' on type {type(data)}")
 
     def __call__(self, value=None):
+        """Update the underlying metadata model or dict from a dictionary.
+
+        Parameters
+        ----------
+        value : dict, optional
+            Mapping of attribute names to new values. Nested mappings are applied
+            recursively to nested models/dicts. If ``None``, no update is performed.
+
+        Returns
+        -------
+        MetadataItem
+            ``self``
+        """
         if value is not None:
             data = self._data
             path = self._path

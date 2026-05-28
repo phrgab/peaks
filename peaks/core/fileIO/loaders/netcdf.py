@@ -11,6 +11,7 @@ from peaks.core.fileIO.base_data_classes.base_data_class import BaseDataLoader
 from peaks.core.fileIO.loc_registry import register_loader
 from peaks.core.metadata.base_metadata_models import AxisMetadataModelWithReference
 from peaks.core.options import opts
+from peaks.core.utils.misc import analysis_warning
 
 
 # Classes for data loaders
@@ -20,7 +21,7 @@ class NetCDFLoader(BaseDataLoader):
 
     Notes
     -----
-    If this is a NetCDF file, it should be a single DataArray or DataSet
+    If this is a NetCDF file, it should be a single :class:`xarray.DataArray` or :class:`xarray.Dataset`
     """
 
     _loc_name = "NetCDF"
@@ -42,19 +43,25 @@ class NetCDFLoader(BaseDataLoader):
 
         Returns
         -------
-        data : xarray.DataArray or xarray.DataSet
+        data : xarray.DataArray or xarray.Dataset
             The loaded data.
         """
-
         # Open NetCDF file as xarray.DataArray or xarray.Dataset
         try:
             data = xr.open_dataarray(fpath)
         except ValueError:
             data = xr.open_dataset(fpath)
 
-        # Parse the metadata if requested
-        if metadata:
-            cls._parse_metadata(data)
+        # Parse the metadata
+        cls._parse_metadata(data)
+
+        if metadata is False and not quiet:
+            analysis_warning(
+                "`metadata=False` option has no effect when loading NetCDF files. "
+                "Metadata are always parsed from saved files.",
+                title="Loading info",
+                warn_type="info",
+            )
 
         # Actually load the data
         if (lazy is False) or (lazy is None and data.nbytes > opts.FileIO.lazy_size):
@@ -73,7 +80,6 @@ class NetCDFLoader(BaseDataLoader):
     @classmethod
     def _parse_metadata(cls, data):
         """Parse the metadata from the loaded data, returning to `peaks` format."""
-
         if data.attrs.get("metadata_models"):
             # Try to parse the loc
             loc = None
@@ -110,7 +116,7 @@ class NetCDFLoader(BaseDataLoader):
 
     @classmethod
     def _get_metadata_model(cls, class_path):
-        """Dynamically load the relevant metadata class from the fully qualified class name
+        """Dynamically load the relevant metadata class from the fully qualified class name.
 
         Parameters
         ----------
@@ -122,7 +128,6 @@ class NetCDFLoader(BaseDataLoader):
         class
             The class object
         """
-
         # Split the class_path into module and class parts
         module_name, class_name = class_path.rsplit(".", 1)
 

@@ -1,4 +1,6 @@
-"""Thin wrapper around hvplot to set some defaults and automate handling pint dequantify"""
+"""Thin wrapper around hvplot to set some defaults and automate handling pint dequantify."""
+
+import os
 
 import xarray as xr
 
@@ -13,6 +15,12 @@ class HVPlotAccessor:
         self._obj = xarray_obj
 
     def __call__(self, *args, **kwargs):
-        # Generate the plot
+        """Dequantify the underlying object and return an interactive hvplot."""
+        if (
+            os.getenv("FORCE_NB_EXECUTION") == "1"
+        ):  # 1: in a docs build see build_docs.sh
+            kwargs.setdefault(
+                "dynamic", False
+            )  # force static plot to avoid issues with dynamic plots but locally keep dynamic=True (default) for performance
         plot = self._obj.pint.dequantify().hvplot(*args, **kwargs)
         return plot

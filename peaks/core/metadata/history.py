@@ -14,8 +14,9 @@ from pydantic import BaseModel, Field
 from peaks import __version__
 
 
-# Define the structure of a single analysis history record
 class AnalysisHistoryRecord(BaseModel):
+    """Define the structure of a single analysis history record."""
+
     time: datetime
     peaks_version: str = Field(..., alias="peaks version")
     record: Union[str, dict]
@@ -27,12 +28,13 @@ class AnalysisHistoryRecord(BaseModel):
         )
 
 
-# A model to hold the list of records
 class AnalysisHistoryRecordCollection(BaseModel):
+    """A model to hold the list of records."""
+
     records: List[AnalysisHistoryRecord] = []
 
-    # Method to append new records
     def add_record(self, new_record: dict):
+        """Append a new analysis record to the history."""
         record = AnalysisHistoryRecord(**new_record)
         self.records.append(record)
 
@@ -44,7 +46,7 @@ def _update_hist(data, record_text, fn_name=None, update_in_place=True):
     the updated history.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         The :class:`xarray.DataArray` for which the analysis history is to be updated.
 
@@ -60,12 +62,12 @@ def _update_hist(data, record_text, fn_name=None, update_in_place=True):
 
 
     Returns
-    ------------
+    -------
     xarray.DataArray, optional
         The DataArray with the updated analysis history metadata. If `update_in_place` is set `True`, returns None.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         import peaks as pks
@@ -94,7 +96,6 @@ def _update_hist(data, record_text, fn_name=None, update_in_place=True):
             _update_hist(data, 'Data incremented by 1', fn_name='add_one', update_in_place=True)
             return data
     """
-
     # Get current analysis history metadata list, creating if it doesn't exist
     if "_analysis_history" not in data.attrs:
         data.attrs["_analysis_history"] = AnalysisHistoryRecordCollection()
@@ -135,12 +136,12 @@ def update_history_decorator(record_text):
     the function is to act, and that the function returns a modified :class:`xarray.DataArray` object.
 
     Parameters
-    ------------
+    ----------
     record_text : string
         Descriptive string to append to the DataArray's history metadata record.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         import peaks as pks
@@ -226,7 +227,6 @@ class History:
             disp_k.history()
 
         """
-
         record = (
             self._obj.attrs.get("_analysis_history")
             .records[index if index is not None else -1]
@@ -284,7 +284,6 @@ class History:
         list or dict
             The relevant history metadata item(s)
         """
-
         return (
             self._obj.attrs.get("_analysis_history")
             .dict(by_alias=True)

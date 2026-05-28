@@ -7,37 +7,34 @@ from peaks.core.metadata.base_metadata_models import AxisMetadataModelWithRefere
 
 
 class BaseManipulatorDataLoader(BaseDataLoader):
-    """Base class for data loaders for systems with manipulators.
+    """Mixin providing manipulator-axis metadata and sign/name conventions.
+
+    Provides metadata handling for sample manipulators.
+    Designed to be used as a mixin alongside other base loader classes, see
+    for example
+    :class:`~peaks.core.fileIO.base_arpes_data_classes.base_arpes_data_class.BaseARPESDataLoader`.
+
+    Concrete loaders should expose manipulator values through ``_load_metadata()``
+    using keys of the form  ``manipulator_<axis>``,  where ``<axis>`` is taken from
+    ``_manipulator_axes``, for example ``manipulator_polar`` or ``manipulator_x1``.
+    Those raw values are then converted into a structured ``ManipulatorMetadataModel``
+    comprised of :class:`~peaks.core.metadata.base_metadata_models.AxisMetadataModelWithReference`
+    entries by ``_parse_manipulator_metadata()``.
 
     Notes
     -----
-    THIS NEEDS UPDATING...
-    Subclasses should define the `_load_manipulator_metadata` method to return a dictionary of relevant axis
-    values with keys of the form `manipulator_axis` where `axis` is the names in the `_manipulator_axes` list,
-    i.e. is given in :class:`peaks` convention. This method should return values as :class:`pint.Quantity` objects
-    where possible to ensure units are appropriately captured and propagated. Alternatively, the main `_load_metadata`
-    method can be overwritten to return the full metadata dictionary, including manipulator metadata.
 
-    In general, subclasses will always include the 6 base axes, with a name of `None` if an axis cannot be moved.
-    Then the reference positions of that axis can still be captured. Subclasses should add any additional axes
-    desired via the `_add_manipulator_axes` class variable, providing a list of additional axes. Subclasses should
-    also add `_update_manipulator_sign_conventions` and `_update_manipulator_name_conventions` dictionaries to update
-    any sign conventions and name conventions from the default values (all axes positive and named `None`).
+    ``_manipulator_axes`` defines the axes supported by the loader. Loaders
+    generally keep the six core axes ``polar``, ``tilt``, ``azi``, ``x1``, ``x2``, and ``x3``,
+    as defined by :mod:`peaks` metadata conventions
+    (https://research.st-andrews.ac.uk/kinggroup/peaks/latest/explanations/angle_conventions.html)
+    and may append additional instrument-specific axes as required.
 
-    `_manipulator_sign_conventions` should be a dictionary mapping the sign conventions required to get from the raw
-    dimension values to standard conventions used for `peaks`. The `peaks` convention is that values of dimensions of
-    the data are left matching the same sign as the experiment to make comparison with the live data more obvious,
-    with any sign conversions required for data processing (e.g. $$k$$-conversion) happening under the hood. Default
-    behaviour is that all axes are positive.
-
-    `_manipulator_name_conventions` should be a dictionary mapping the `peaks` axis names to physical axis names
-    on the manipulator. Default behaviour is that all axes are named as `None`, and so each physical axis should be
-    added here.
-
-    See Also
-    --------
-    BaseDataLoader
-    BaseDataLoader._load_metadata
+    ``_manipulator_name_conventions`` maps :mod:`peaks` axis names to the local motor names
+    used at the instrument. ``_manipulator_sign_conventions`` records how those local
+    axes relate to the shared :mod:`peaks` convention. The raw data coordinates are
+    left in the experimental sign convention; these sign mappings are used later by
+    downstream operations such as reference-angle handling and k-conversion.
     """
 
     # Define class variables
@@ -59,17 +56,17 @@ class BaseManipulatorDataLoader(BaseDataLoader):
 
     @property
     def manipulator_sign_conventions(self):
-        """Return the manipulator sign conventions to map to `peaks` convention."""
+        """Return the manipulator sign conventions to map to :mod:`peaks` convention."""
         return self._manipulator_sign_conventions
 
     @property
     def manipulator_name_conventions(self):
-        """Return the `peaks` --> physical manipulator name mapping."""
+        """Return the :mod:`peaks` --> physical manipulator name mapping."""
         return self._manipulator_name_conventions
 
     @classmethod
     def _parse_manipulator_metadata(cls, metadata_dict):
-        """Parse metadata specific to the manipulator."""
+        """Build the structured manipulator metadata model from raw metadata."""
 
         # Build manipulator metadata model
         fields = {
@@ -102,5 +99,5 @@ class BaseManipulatorDataLoader(BaseDataLoader):
 
     @classmethod
     def _parse_manipulator_references(cls, da, specified_values):
-        """Methods to parse the reference values for the manipulator based on input from the user."""
+        """Parse user-specified manipulator reference values for ``da``."""
         raise NotImplementedError("Subclasses should implement this method.")

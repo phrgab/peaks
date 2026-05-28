@@ -106,6 +106,16 @@ class PeaksDataTreeIteratorAccessor(PeaksDirectCallAccessor):
         super().__init__(data_tree, module_name, func_name)
         self.data_tree = data_tree  # Overwrite data_array with data_tree
 
+    @staticmethod
+    def _apply_to_single_dataarray_dataset(node, func, *args, **kwargs):
+        """Apply a DataArray-returning function to a single-variable Dataset leaf.
+
+        Rebuild the Dataset from the function output, preserving updated metadata.
+        """
+        data_var_name = next(iter(node.data_vars))
+        updated_da = func(node[data_var_name], *args, **kwargs)
+        return updated_da.to_dataset(name=data_var_name).assign_attrs(node.attrs)
+
     def __call__(self, *args, **kwargs):
         """Iterates over DataTree nodes and applies the function."""
         func = self.func  # Ensure the function is loaded
@@ -115,8 +125,10 @@ class PeaksDataTreeIteratorAccessor(PeaksDirectCallAccessor):
                 # Apply the function to the node directly
                 return func(node, *args, **kwargs)
             elif hasattr(node, "data") and len(node) == 1:
-                # Map over the Dataset which contains only a single DataArray
-                return node.map(lambda da: func(da, *args, **kwargs))
+                # Apply fn to ds which contains a single da and rebuild the ds
+                return self._apply_to_single_dataarray_dataset(
+                    node, func, *args, **kwargs
+                )
             elif len(node) == 0:
                 pass
             else:
@@ -169,7 +181,6 @@ def register_lazy_accessor(
     func_name, module_name, cls, accessor_class=PeaksDirectCallAccessor
 ):
     """Register a lazy-loading accessor as a descriptor on the class."""
-
     # Check if the accessor already exists on cls and issue a warning if so
     if hasattr(cls, func_name):
         analysis_warning(
@@ -189,13 +200,13 @@ def register_accessor(cls):
     """Decorator (function wrapper) used to allow a function to be used as an object-oriented programming method.
 
     Parameters
-    ------------
+    ----------
     cls : object
         Here, this will be an:class:`xarray.DataArray` or similar. This allows a function to be applied to that
         class as a method.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         import peaks as pks

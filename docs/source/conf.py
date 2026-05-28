@@ -5,7 +5,9 @@
 
 import os
 import re
+import sys
 from datetime import date
+from pathlib import Path
 
 __name__ = "peaks"
 
@@ -25,6 +27,10 @@ copyright = f"{date.today().year}, {author}"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
+
+# add the extension directory to the path for custom extensions
+sys.path.append(str(Path("_ext").resolve()))
+
 extensions = [
     "autoapi.extension",
     "sphinx.ext.viewcode",
@@ -36,6 +42,7 @@ extensions = [
     "sphinx_togglebutton",
     "sphinx_inline_tabs",
     "myst_nb",
+    "list_peaks_accessors",  # custom
 ]
 autoapi_dirs = ["../../peaks"]
 autoapi_options = [
@@ -54,10 +61,11 @@ intersphinx_mapping = {
     "pyserial": ("https://pyserial.readthedocs.io/en/latest/", None),
     "xarray": ("https://docs.xarray.dev/en/stable/", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
-    "dask": ("https://docs.dask.org/en/latest/", None),
+    "dask": ("https://docs.dask.org/en/stable/", None),
     "matplotlib": ("https://matplotlib.org/stable/", None),
     "lmfit": ("https://lmfit.github.io/lmfit-py/", None),
-    "peaks": ("../build/html", "../build/html/objects.inv"),
+    "pydantic": ("https://docs.pydantic.dev/latest", None),
+    "pint": ("https://pint.readthedocs.io/en/stable/", None),
 }
 
 source_suffix = [".rst", ".md"]
@@ -104,10 +112,12 @@ myst_substitutions = {
     "date": date.today().strftime("%d.%m.%Y"),
 }
 
+html_static_path = ["_static"]  # for custom CSS used below
 html_css_files = [
     "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/fontawesome.min.css",
     "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/solid.min.css",
     "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/brands.min.css",
+    "ensure_ratio.css",
 ]
 
 html_sidebars = {

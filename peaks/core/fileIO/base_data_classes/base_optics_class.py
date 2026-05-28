@@ -3,25 +3,35 @@ from peaks.core.metadata.base_metadata_models import OpticsMetadataModel
 
 
 class BaseOpticsDataLoader(BaseDataLoader):
-    """Base class for data loaders for systems with focussing optics.
+    """Mixin providing focussing optics metadata and name conventions.
 
-    Provides metadata handling for optical components such as zone plates, order sortign apertures, etc.
-    Designed to be used as a mixin alongside other base loader classes, e.g. ``BaseARPESDataLoader``.
+    Provides metadata handling for optical components such as zone plates,
+    cappilaries, order-sorting apertures and laser optics.
+    Designed to be used as a mixin alongside other base loader classes, see
+    for example
+    :class:`~peaks.core.fileIO.base_arpes_data_classes.base_arpes_data_class.BaseARPESDataLoader`.
 
-    Subclasses should define class variables describing their motor naming conventions:
+    Concrete loaders should expose raw optics values through ``_load_metadata()``
+    using keys such as ``optics_x1`` or ``optics_OSA_x2``. Subclasses should define
+    class variables describing their motor naming conventions:
 
-    - ``_optics_name_conventions``: a dictionary mapping the three primary axes ``x1``, ``x2`` and ``x3`` to
-      the local motor names used in the metadata, e.g. ``ZPx``, ``ZPy``, ``ZPz``.
-    - ``_optics_additional_name_conventions``: (optional) a dictionary mapping any extra axes (e.g. coarse/fine splits)
-      to their local motor names, e.g. ``OSA_x2`` --> ``OSAy``.
+    - ``_optics_name_conventions``: a dictionary mapping the three primary axes
+      ``x1``, ``x2`` and ``x3`` to the local motor names used in the metadata,
+      e.g. ``ZPx``, ``ZPy``, ``ZPz``.
+    - ``_optics_additional_name_conventions``: (optional) a dictionary mapping
+      any extra axes (e.g. coarse/fine splits) to their local motor names,
+      e.g. ``OSA_x2`` --> ``OSAy``.
 
-    The class provides a ``_parse_optics_metadata`` method that reads motor positions from the metadata dictionary
-    and populates the model. ``_parse_optics_metadata`` should also be added to the ``_metadata_parsers`` list in subclasses.
+    ``_parse_optics_metadata()`` reads those values from the raw metadata dictionary
+    and populates the :mod:`peaks` :class:`~peaks.core.metadata.base_metadata_models.OpticsMetadataModel`.
+    Subclasses that include this mixin should ensure ``_parse_optics_metadata`` is
+    present in ``_metadata_parsers``.
 
     Examples
     --------
-    See :class:`peaks.core.fileIO.loaders.diamond.I05NanoARPESLoader` for a working example using zone plate axes
-    as the primary optics and order sorting aperture axes as additional optics.
+    See :class:`peaks.core.fileIO.loaders.diamond.I05NanoARPESLoader` for a working
+    example using zone plate axes as the primary optics and order sorting aperture
+    axes as additional optics.
 
     See Also
     --------
@@ -45,12 +55,12 @@ class BaseOpticsDataLoader(BaseDataLoader):
 
     @property
     def optics_name_conventions(self):
-        """Return the `peaks` --> local optics axis name mapping."""
+        """Return the :mod:`peaks` --> local optics axis name mapping."""
         return self._optics_name_conventions
 
     @classmethod
     def _parse_optics_metadata(cls, metadata_dict):
-        """Parse metadata specific to the optics data."""
+        """Build the structured optics metadata model from raw metadata."""
 
         optics_metadata_dict = {}
 

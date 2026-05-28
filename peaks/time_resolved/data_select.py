@@ -27,7 +27,7 @@ def static(da, t_static=None):
     Assumes that all data points recorded for a time < t_static are equilibrium.
 
     Parameters
-    -----------
+    ----------
     da : xarray.DataArray
         time-resolved data, with a time axis with dimension "t".
 
@@ -50,7 +50,7 @@ def diff(da, t_select=None, t_static=None):
     """Calculate the difference spectrum of the data at some time point or time window and the static data.
 
     Parameters
-    -----------
+    ----------
     da : xarray.DataArray
         time-resolved data, with a time axis with dimension "t".
 

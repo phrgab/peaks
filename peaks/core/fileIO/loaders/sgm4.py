@@ -33,6 +33,8 @@ class SGM4KeithleyMetadataModel(BaseMetadataModel):
 
 @register_loader
 class SGM4NanoARPESLoader(BaseHDF5DataLoader, BaseARPESDataLoader, BaseOpticsDataLoader):
+    """Loader for ASTRID2 SGM4 micro-ARPES HDF5 files."""
+
     _loc_name = "ASTRID2_SGM4"
     _loc_description = (
         "SGM4 endstation at the ASTRID2 synchrotron at Aarhus University, Denmark."

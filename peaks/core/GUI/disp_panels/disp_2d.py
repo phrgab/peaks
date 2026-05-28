@@ -22,15 +22,16 @@ from peaks.core.GUI.GUI_utils import (
     KeyPressGraphicsLayoutWidget,
 )
 from peaks.core.GUI.GUI_utils.cursor_stats import _parse_norm_emission_cursor_stats
-from peaks.core.metadata.metadata_methods import display_metadata
+from peaks.core.metadata.metadata_methods import DARK_BG_PALETTE, display_metadata
 from peaks.core.process.tools import estimate_sym_point, sym
+from peaks.core.utils.misc import analysis_warning
 
 
 def _disp_2d(data, primary_dim, exclude_from_centering):
     """Display a 2D interactive display panel.
 
     Parameters
-    ------------
+    ----------
     data : list or xarray.DataArray
          Either a single 2D :class:`xarray.DataArray` or a list of 2D :class:`xarray.DataArray` objects.
 
@@ -46,9 +47,43 @@ def _disp_2d(data, primary_dim, exclude_from_centering):
     if app is None:
         app = QApplication(sys.argv)
 
+    if not hasattr(app, "_peaks_active_viewers"):
+        app._peaks_active_viewers = []
+    active_viewers = app._peaks_active_viewers
+
     viewer = _Disp2D(data, primary_dim, exclude_from_centering)
+    active_viewers.append(viewer)  # add the viewer to active viewers list
+
+    # fire a warning if there are already 3 or more disp panels open
+    if len(active_viewers) >= 3:
+        analysis_warning(
+            f"There are currently {len(active_viewers)} active display panels. "
+            "This may cause performance issues.",
+            warn_type="warning",
+            title="Multiple display panels open",
+        )
+
+    viewer.destroyed.connect(
+        lambda *_: (
+            active_viewers.remove(viewer) if viewer in active_viewers else None
+        )  # Remove viewer from active viewers list when it is closed
+    )
     viewer.show()
-    app.exec()
+
+    # to support multiple display panels
+    try:
+        from IPython import get_ipython
+
+        ip = get_ipython()
+        if ip is not None:
+            if getattr(ip, "active_eventloop", None) == "qt6":
+                return
+    except Exception:
+        pass
+
+    # fallback to Qt event loop if not in IPython or if IPYthon does not have an active event loop
+    if not any(v.isVisible() for v in active_viewers if v is not viewer):
+        app.exec()
 
 
 class _Disp2D(QtWidgets.QMainWindow):
@@ -121,9 +156,9 @@ class _Disp2D(QtWidgets.QMainWindow):
         self.closeEvent = self._close_application
 
     def _close_application(self, event):
-        """Close the application when the window is closed."""
+        """Close the application when the window is closed without shutting down the event loop."""
         self.graphics_layout.close()
-        app.quit()
+        event.accept()
 
     # ##############################
     # GUI layout
@@ -270,7 +305,7 @@ class _Disp2D(QtWidgets.QMainWindow):
         bottom_panel_layout_right.addStretch()
 
     def _build_menu(self):
-        """Add a menu"""
+        """Add a menu."""
         self.menu = self.menuBar().addMenu("Display Panel")
         self.shortcuts_action = QtGui.QAction("Help", self)
 
@@ -348,7 +383,7 @@ class _Disp2D(QtWidgets.QMainWindow):
 
         # Read scan metadata
         self.metadata_text = "<span style='color:white'>"
-        self.metadata_text += display_metadata(self.current_data, "html")
+        self.metadata_text += display_metadata(self.current_data, DARK_BG_PALETTE)
         self.metadata_text += "</span><br>"
 
     def _set_main_plot(self, cmap, c_range, xh_pos):
@@ -766,7 +801,7 @@ class _Disp2D(QtWidgets.QMainWindow):
             self._show_hide_DCs(i)
 
     def _align_data(self):
-        """Estimate symmetry points in the data"""
+        """Estimate symmetry points in the data."""
         # Get the current view range
         x_range, y_range = self.image_plot.getViewBox().viewRange()
         data_to_centre = self.current_data.sel(
@@ -788,7 +823,6 @@ class _Disp2D(QtWidgets.QMainWindow):
 
     def _update_cursor_stats_text(self):
         """Update the cursor stats."""
-
         cursor_colors = [f"#{r:02x}{g:02x}{b:02x}" for r, g, b in self.DC_pens]
         cursor_text = ""
 
@@ -1014,7 +1048,7 @@ class _Disp2D(QtWidgets.QMainWindow):
         )
 
     def _check_crosshair_in_range(self, pos):
-        """Check if crosshair pos is within the coordinate range"""
+        """Check if crosshair pos is within the coordinate range."""
         return (min(self.ranges[0]) <= pos[0] <= max(self.ranges[0])) and (
             min(self.ranges[1]) <= pos[1] <= max(self.ranges[1])
         )

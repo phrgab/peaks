@@ -37,7 +37,7 @@ class IdentifyLoc:
 
     @staticmethod
     def _no_extension(fname):
-        """Handle case for no extension (normally folder supplied)"""
+        """Handle case for no extension (normally folder supplied)."""
         # If there is no extension, the data is in a folder. This is consistent with SOLEIL CASSIOPEE Fermi maps or
         # CLF Artemis data
 

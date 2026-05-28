@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1.dev]
+
+### Added
+
+- Cross-references to the API documentation throughout the user guide ([PR#26](https://github.com/phrgab/peaks/pull/26))
+- List of accessors that `peaks` adds on top of `xarray` on the explanations page ([PR#26](https://github.com/phrgab/peaks/pull/26))
+- conda-forge package publishing
+- Demo video showing how to use the ROI panel in the 4D GUI ([PR#30](https://github.com/phrgab/peaks/pull/30))
+- D101, D102, D103 and D104 to `ruff` linting rules to enforce docstrings on public classes, methods, functions and packages ([PR#30](https://github.com/phrgab/peaks/pull/30))
+- NumPy convention to `ruff` linting ([PR#30](https://github.com/phrgab/peaks/pull/30))
+- Support for opening multiple `disp` panels simultaneously in Jupyter environments when `%gui qt6` is enabled ([PR#34](https://github.com/phrgab/peaks/pull/34))
+- Helper methods to correct dead or hot pixels in dispersions ([PR#36](https://github.com/phrgab/peaks/pull/36))
+- `_repr_html_` methods in the `Metadata` and `MetadataItem` classes, providing proper colour-coded HTML display of `da.metadata` and `da.metadata.<key>` in IPython-compatible environments ([PR#35](https://github.com/phrgab/peaks/pull/35))
+- More unit tests for colour-encoded metadata display `core/metadata`: `metadata_method` ([PR#35](https://github.com/phrgab/peaks/pull/35))
+
+### Fixed
+
+- Errors when loading NetCDF files and processing Zarr files saved by `peaks` with `metadata=False` ([PR#20](https://github.com/phrgab/peaks/pull/20))
+- Error when calling `plot_tutorial_example_figure` locally ([PR#28](https://github.com/phrgab/peaks/pull/28))
+- Empty inline interactive `iplot` when using the `groupby` argument in static CI docs builds ([PR#30](https://github.com/phrgab/peaks/pull/30))
+- Colour-coded metadata rendering in docs ([PR#35](https://github.com/phrgab/peaks/pull/35))
+- Bug where analysis history was not updated when iterating accessor methods over a `DataTree` ([PR#39](https://github.com/phrgab/peaks/pull/39))
+
+### Changed
+
+- Minor documentation improvements and plenty of cosmetic auto-fixes required by numpy-style docstring format ([PR#23](https://github.com/phrgab/peaks/pull/23), [PR#30](https://github.com/phrgab/peaks/pull/30), [PR#33](https://github.com/phrgab/peaks/pull/33))
+- Installation instructions now cover `uv`, conda-forge and the traditional Python venv approach ([PR#28](https://github.com/phrgab/peaks/pull/28))
+- `plot_tutorial_example_figure` now renders videos ([PR#30](https://github.com/phrgab/peaks/pull/30))
+- Figure aspect ratios in output cells are preserved on docs build ([PR#30](https://github.com/phrgab/peaks/pull/30))
+- Installation instructions and contributing guide because the `dev` branch has been deprecated ([PR#40](https://github.com/phrgab/peaks/pull/40))
+- `display_metadata` now takes an optional `palette` argument and the default `mode` is now `"HTML"` (was `"ANSI"`) ([PR#35](https://github.com/phrgab/peaks/pull/35))
+
+### Removed
+
+- `peaks/core/GUI/disp_panels/degrid_panel.py` - redundant legacy file ([PR#30](https://github.com/phrgab/peaks/pull/30))
+- The `dev` branch ([Discussion#27](https://github.com/phrgab/peaks/discussions/27), [PR#40](https://github.com/phrgab/peaks/pull/40))
+
+:::{note}
+The `dev` branch was removed as of `v0.5.1`. Development now happens on `main`.
+:::
+
 ## [0.5.0] - 2026-04-23
 
 ### Added

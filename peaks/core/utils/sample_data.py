@@ -1,13 +1,15 @@
+import mimetypes
 import os
 import shutil
 import tempfile
 import time
 import zipfile
+from base64 import b64encode
 from copy import deepcopy
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import requests
+from IPython.display import HTML, Video
 from requests.adapters import HTTPAdapter
 from tqdm.notebook import tqdm
 from urllib3.util.retry import Retry
@@ -25,7 +27,8 @@ class ZenodoDownloader:
     from the environment variable `ZENODO_TOKEN` if not explicitly provided.
 
     If `LOCAL_MIRROR_PATH` is set, files will be copied from this local directory
-    with Zenodo serving as the fallback (used in CI)."""
+    with Zenodo serving as the fallback (used in CI).
+    """
 
     def __init__(self, file_list, token=None):
         self.root_url = ROOT_URL.rstrip("/")
@@ -49,6 +52,7 @@ class ZenodoDownloader:
         return {}
 
     def _download_with_progress(self, url, dest_path):
+        """Download a file from *url* to *dest_path* with a live progress bar."""
         headers = self._make_headers_if_needed(url)
 
         session = requests.Session()
@@ -100,6 +104,13 @@ class ZenodoDownloader:
                     bar.update(len(chunk))
 
     def download(self):
+        """Download the specified files to a temporary directory and return a dict of local paths.
+
+        Returns
+        -------
+        dict[str, str]
+        Mapping of filename to its local path inside the temporary directory.
+        """
         if self._tempdir_context is not None:
             return self.downloaded_files
 
@@ -134,6 +145,13 @@ class ZenodoDownloader:
         return self._tempdir_context.name
 
     def cleanup(self, quiet=False):
+        """Delete the temporary directory and all downloaded files and reset download state.
+
+        Parameters
+        ----------
+        quiet : bool, optional
+        If ``True``, suppress the success notice. Defaults to ``False``.
+        """
         if self._tempdir_context is not None:
             self._tempdir_context.cleanup()
             self._tempdir_context = None
@@ -176,16 +194,20 @@ def get_tutorial1_data():
 
 
 class ExampleData:
-    """Class to access example data files for the Peaks package. The data is
-    downloaded from Zenodo and cached for subsequent access.
-    The files are available as class methods, e.g., `ExampleData.dispersion()`."""
+    """Class to access example data files for the Peaks package.
+
+    The data is downloaded from Zenodo and cached for subsequent access.
+    The files are available as class methods, e.g., `ExampleData.dispersion()`.
+    """
 
     _cache = {}
 
     @classmethod
     def _get_and_load(cls, fname, **kwargs):
         """Load data from a file, downloading it if not already cached.
-        kwargs are passed to the `load` function."""
+
+        kwargs are passed to the `load` function.
+        """
         data = cls._cache.get(fname)
         if data is None:
             with ZenodoDownloader([fname]) as downloader:
@@ -197,9 +219,11 @@ class ExampleData:
 
     @classmethod
     def _get_and_load_from_zip(cls, fname, **kwargs):
-        """Load data from a file inside a zip archive, downloading it if not already
-        cached. The zip file is downloaded, extracted, and the specified file is loaded.
-        kwargs are passed to the `load` function."""
+        """Load data from a file inside a zip archive, downloading it if not already cached.
+
+        The zip file is downloaded, extracted, and the specified file is loaded.
+        kwargs are passed to the `load` function.
+        """
         data = cls._cache.get(fname)
         if data is None:
             with ZenodoDownloader([fname]) as downloader:
@@ -216,71 +240,88 @@ class ExampleData:
 
     @classmethod
     def dispersion(cls):
+        """Download sample dispersion data *dispersion* and load it."""
         return cls._get_and_load("i05-59819.nxs")
 
     @classmethod
     def dispersion2a(cls):
+        """Download sample dispersion data *dispersion2a* and load it."""
         return cls._get_and_load("210326_GM2-667_GK_1.xy")
 
     @classmethod
     def dispersion2b(cls):
+        """Download sample dispersion data *dispersion2b* and load it."""
         return cls._get_and_load("210326_GM2-667_GK_2.xy")
 
     @classmethod
     def dispersion2c(cls):
+        """Download sample dispersion data *dispersion2c* and load it."""
         return cls._get_and_load("210326_GM2-667_GK_3.xy")
 
     @classmethod
     def dispersion3(cls):
+        """Download sample dispersion data *dispersion3* and load it."""
         return cls._get_and_load("i05-1-34301.nxs")
 
     @classmethod
     def gold_reference(cls):
+        """Download sample Au reference data *gold_reference* and load it."""
         return cls._get_and_load("i05-59853.nxs")
 
     @classmethod
     def gold_reference2(cls):
+        """Download sample Au reference data *gold_reference2* and load it."""
         return cls._get_and_load("Gold.xy")
 
     @classmethod
     def gold_reference3(cls):
+        """Download sample Au reference data *gold_reference3* and load it."""
         return cls._get_and_load("i05-70214.nxs")
 
     @classmethod
     def gold_reference4(cls):
+        """Download sample Au reference data *gold_reference4* and load it."""
         return cls._get_and_load("Ep20eV.xy")
 
     @classmethod
     def FS(cls):
+        """Download sample Fermi surface map *FS* and load it."""
         return cls._get_and_load("i05-59818.nxs")
 
     @classmethod
     def hv_map(cls):
+        """Download sample photon energy scan *hv_map* and load it."""
         return cls._get_and_load("i05-69294.nxs")
 
     @classmethod
     def SM(cls):
+        """Download sample spatial map *SM* and load it."""
         return cls._get_and_load("i05-1-24270_sm.nc")
 
     @classmethod
     def nano_focus(cls):
+        """Download sample data *nano_focus* and load it."""
         return cls._get_and_load("i05-1-49292.nxs")
 
     @classmethod
     def nano_focus_w_I0norm(cls):
+        """Download sample data *nano_focus_w_I0norm* and load it normalised by I0 (photon flux)."""
         return cls._get_and_load("i05-1-49292.nxs", norm_by_I0=True)
 
     @classmethod
     def tr_arpes(cls):
+        """Download sample time-resolved data *tr_arpes* and load it."""
         # Need to download and unzip the file to simulate the original data structure
         return cls._get_and_load_from_zip("029 Gr.zip")
 
     @classmethod
     def tr_arpes2(cls):
+        """Download sample time-resolved data *tr_arpes2* and load it."""
         return cls._get_and_load_from_zip("028 Gr.zip")
 
     @classmethod
     def xps(cls):
+        """Download sample XPS data *xps* and load it."""
         return cls._get_and_load("i05-1-49260.nxs")
 
     @classmethod
@@ -313,16 +354,36 @@ class ExampleData:
 
     @classmethod
     def cleanup(cls):
+        """Clear the cached data."""
         cls._cache.clear()
 
 
-def plot_tutorial_example_figure(fname, figsize=(16, 8)):
-    """Plot an example figure in the tutorial notebooks."""
+def plot_tutorial_example_figure(fname, max_width="100%"):
+    """Plot an example figure/video in the tutorial notebooks."""
     tutorial_dir = os.path.join(
         Path(__file__).resolve().parent.parent.parent.parent, "tutorials", "figs"
     )
     fig_path = os.path.join(tutorial_dir, fname)
-    plt.figure(figsize=figsize)
-    plt.imshow(plt.imread(fig_path))
-    plt.axis("off")
-    plt.show()
+    if not os.path.exists(fig_path):
+        analysis_warning(
+            f"See <code>{fname}</code> in <code>tutorials/figs/</code> in the <a href='https://github.com/phrgab/peaks'>peaks repo</a>. "
+            "This cell only plots the figure inline during the docs build. "
+            "To run this interactively, call <code>.disp()</code> on the loaded data.",
+            title="Tutorial figure not shown inline",
+            warn_type="info",
+        )
+        return
+
+    style = f"max-width:{max_width}; height:auto"
+
+    if Path(fname).suffix.lower() == ".mp4":
+        return Video(
+            fig_path,
+            embed=True,
+            html_attributes=f'controls muted playsinline style="{style}"',
+        )
+
+    mime, _ = mimetypes.guess_type(fig_path)
+    with open(fig_path, "rb") as f:
+        encoded = b64encode(f.read()).decode("ascii")
+    return HTML(f'<img src="data:{mime};base64,{encoded}" style="{style}" />')

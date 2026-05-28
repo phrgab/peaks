@@ -16,6 +16,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from peaks.core.utils.misc import analysis_warning
+
 from ..GUI_utils import (
     Crosshair,
     KeyPressGraphicsLayoutWidget,
@@ -27,7 +29,7 @@ def _disp_4d(data, primary_dim):
     """Display a 4D interactive display panel.
 
     Parameters
-    ------------
+    ----------
     data : list or xarray.DataArray
          Either a single 2D :class:`xarray.DataArray` or a list of 2D :class:`xarray.DataArray` objects.
 
@@ -40,9 +42,41 @@ def _disp_4d(data, primary_dim):
     if app is None:
         app = QApplication(sys.argv)
 
+    if not hasattr(app, "_peaks_active_viewers"):
+        app._peaks_active_viewers = []
+    active_viewers = app._peaks_active_viewers
+
     viewer = _Disp4D(data, primary_dim)
+    active_viewers.append(viewer)
+
+    # fire a warning if there are already 3 or more disp panels open
+    if len(active_viewers) >= 3:
+        analysis_warning(
+            f"There are currently {len(active_viewers)} active display panels. "
+            "This may cause performance issues.",
+            warn_type="warning",
+            title="Multiple display panels open",
+        )
+
+    viewer.destroyed.connect(
+        lambda *_: active_viewers.remove(viewer) if viewer in active_viewers else None
+    )
     viewer.show()
-    app.exec()
+
+    # to support multiple display panels
+    try:
+        from IPython import get_ipython
+
+        ip = get_ipython()
+        if ip is not None:
+            if getattr(ip, "active_eventloop", None) == "qt6":
+                return
+    except Exception:
+        pass
+
+    # fallback to Qt event loop if not in IPython or if IPYthon does not have an active event loop
+    if not any(v.isVisible() for v in active_viewers if v is not viewer):
+        app.exec()
 
 
 class _Disp4D(QtWidgets.QMainWindow):
@@ -59,6 +93,10 @@ class _Disp4D(QtWidgets.QMainWindow):
 
         # Set up the GUI
         self._init_UI()  # Initialize the layout
+
+        # Clean up the widget on close, but don't quit the global app.
+        self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose)
+        self.closeEvent = lambda event: event.accept()
 
     # ##############################
     # GUI layout
@@ -106,7 +144,7 @@ class _Disp4D(QtWidgets.QMainWindow):
         self._add_ROI_to_disp2d()
 
     def _build_primary_dims_explorer_column(self, layout):
-        """Build left column - primary dims explorer"""
+        """Build left column - primary dims explorer."""
         left_column_container = QWidget()
         layout.addWidget(left_column_container)
         left_column_container.setMaximumWidth(500)
@@ -120,7 +158,7 @@ class _Disp4D(QtWidgets.QMainWindow):
         left_column_layout.addStretch()
 
     def _build_primary_dims_roi_column(self, layout):
-        """Build left column - primary dims ROI"""
+        """Build left column - primary dims ROI."""
         left_column_container = QWidget()
         layout.addWidget(left_column_container)
         left_column_container.setMaximumWidth(500)
@@ -340,7 +378,7 @@ class _Disp4D(QtWidgets.QMainWindow):
         button_layout.addStretch()
 
     def _build_data_explorer_2D_column(self, layout, data_to_plot):
-        """Right column - data explorer utilising the disp2d panel"""
+        """Right column - data explorer utilising the disp2d panel."""
         right_column_container = QWidget()
         layout.addWidget(right_column_container)
         right_column = QVBoxLayout()
@@ -432,7 +470,6 @@ class _Disp4D(QtWidgets.QMainWindow):
 
     def _update_primary_dim_cursor_stats(self):
         """Update the cursor stats display."""
-
         r, g, b = self.xh_brush[:3]
         cursor_text = f"<span style='color:#{r:02x}{g:02x}{b:02x}; font-size:15px'>"
         for i, pos in enumerate(self.primary_dims_xh.get_pos()):
@@ -575,7 +612,7 @@ class _Disp4D(QtWidgets.QMainWindow):
             self._set_ROI_outline(1, ROI_dict)
 
     def _set_ROI_from_list(self):
-        """Apply the ROI to the data and plots based on list selection"""
+        """Apply the ROI to the data and plots based on list selection."""
         selected_items = self.roi_list_box.selectedItems()
         if len(selected_items) == 0:
             return
@@ -654,11 +691,15 @@ class _Disp4D(QtWidgets.QMainWindow):
             dimB_data.extend([dimB_data[0]])
 
             if plot_no == 0:
-                line_plot = pg.PlotDataItem(dimB_data, dimA_data, pen="g")
+                line_plot = pg.PlotDataItem(
+                    dimB_data, dimA_data, pen=pg.mkPen((204, 51, 153, 85), width=3)
+                )
                 self.primary_dims_roi_plot.addItem(line_plot)
                 self.display_ROIs_01.append(line_plot)
             else:
-                line_plot = pg.PlotDataItem(dimB_data, dimA_data, pen="g")
+                line_plot = pg.PlotDataItem(
+                    dimB_data, dimA_data, pen=pg.mkPen((204, 51, 153, 85), width=3)
+                )
                 self.roi_disp2d.image_plot.addItem(line_plot)
                 self.display_ROIs_23.append(line_plot)
 
@@ -666,7 +707,7 @@ class _Disp4D(QtWidgets.QMainWindow):
         """Update the primary dims ROI plot.
 
         Parameters
-        ------------
+        ----------
         data : np.ndarray
             The data to display.
         """
@@ -692,7 +733,7 @@ class _Disp4D(QtWidgets.QMainWindow):
         """Update the secondary dims ROI plot.
 
         Parameters
-        ------------
+        ----------
         data : np.ndarray
             The data to display.
         """
@@ -710,7 +751,6 @@ class _Disp4D(QtWidgets.QMainWindow):
 
     def _add_ROI_to_list(self):
         """Add the current ROI to the list."""
-
         name = self.ROI_name_box.text()
         # Ensure name unique
         names = [
@@ -780,14 +820,14 @@ class _Disp4D(QtWidgets.QMainWindow):
         """Find the index of the nearest point to a given value in an ordered NumPy array.
 
         Parameters
-        ------------
+        ----------
         array : np.ndarray
             The input ordered array.
         value : float
             The value to find the nearest neighbor to.
 
         Returns
-        ------------
+        -------
         int
             The index of the nearest point to the given value.
         """

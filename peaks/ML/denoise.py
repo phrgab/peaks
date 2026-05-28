@@ -16,7 +16,7 @@ def SM_PCA(data, PCs=10):
     The effect becomes more apparent for lower numbers of principal components, but too low will oversimplify data.
 
     Parameters
-    ------------
+    ----------
     data : xarray.DataArray
         The spatial mapping data to perform a principal component analysis on.
 
@@ -24,12 +24,12 @@ def SM_PCA(data, PCs=10):
         The number of principal components used to perform PCA. Defaults to 10.
 
     Returns
-    ------------
+    -------
     Reconstructed_SM : xarray.DataArray
         The reconstructed spatial map.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         from peaks import *
@@ -43,7 +43,6 @@ def SM_PCA(data, PCs=10):
         reconstructed_SM2 = SM.SM_PCA(PCs=30)
 
     """
-
     # Prevent unwanted overwriting of original data
     data = data.copy(deep=True)
 

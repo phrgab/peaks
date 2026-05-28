@@ -32,27 +32,17 @@ class BaseARPESDataLoader(
     BaseTemperatureDataLoader,
     BaseManipulatorDataLoader,
 ):
-    """Base class for data loaders for ARPES systems. Assume a cryo-manipulator and photon source
+    """Base loader for ARPES data with analyser, manipulator, temperature, and photon metadata.
 
-    Subclasses should define the `_load_analyser_metadata` method to return a dictionary of relevant metadata
-    values with keys of the form in `analyser_item` where `item` is the names in the `_analyser_attributes` list,
-    i.e. is given in :class:`peaks` convention. This method should return values as :class:`pint.Quantity` objects
-    where possible to ensure units are appropriately captured and propagated. Alternatively, the main `_load_metadata`
-    method can be overwritten to return the full metadata dictionary, including manipulator metadata.
+    This mixin extends :class:`~peaks.core.fileIO.base_data_classes.base_data_class.BaseDataLoader`
+    with the metadata conventions needed for ARPES workflows, including defining analyser geometry,
+    deflectors, and manipulator axes, temperatures, and photon-source metadata.
+    Subclasses normally supply analyser metadata via ``_load_metadata()`` using :mod:`peaks` keys
+    such as ``analyser_eV``, ``analyser_PE``, and ``analyser_deflector_parallel``.
 
-    Subclasses should add any additional analyser attributes via the `_add_analyser_attributes` class variable,
-    providing a list of additional attributes.
-
-    Subclasses should also define the `_analyser_slit_angle` class variable if this is fixed. If custom logic is
-    required, this should be left as None and the logic handled within the metadata loading.
-
-    See Also
-    --------
-    BaseDataLoader
-    BaseDataLoader._load_metadata
-    BasePhotonSourceDataLoader
-    BaseTemperatureDataLoader
-    BaseManipulatorDataLoader
+    Concrete loaders should also define ``_analyser_slit_angle`` when it is fixed for
+    the instrument, plus any name/sign convention mappings required to translate from
+    local beamline terminology into the shared :mod:`peaks` coordinate system.
     """
 
     # Define class variables
@@ -134,6 +124,7 @@ class BaseARPESDataLoader(
 
     @property
     def analyser_attributes(self):
+        """Return the list of analyser attribute names recognised by the loader."""
         return self._analyser_attributes
 
     @classmethod
@@ -175,7 +166,6 @@ class BaseARPESDataLoader(
     @classmethod
     def _parse_analyser_metadata(cls, metadata_dict):
         """Parse metadata specific to the analyser."""
-
         # Get the analyser slit angle from default option for loader if specified and not already in metadata dict
         if not metadata_dict.get("analyser_azi"):
             metadata_dict["analyser_azi"] = cls._analyser_slit_angle
@@ -225,9 +215,7 @@ class BaseARPESDataLoader(
     # Methods to parse manipulator reference values (normal emissions etc.)
     @classmethod
     def _get_sign_convention(cls, axis_key):
-        """
-        Retrieve the sign convention for a given axis.
-        """
+        """Retrieve the sign convention for a given axis."""
         if "deflector" in axis_key or "theta_par" in axis_key or "ana_" in axis_key:
             return cls._analyser_sign_conventions.get(axis_key, 1)
         else:
@@ -235,9 +223,7 @@ class BaseARPESDataLoader(
 
     @classmethod
     def _group_axes(cls, da):
-        """
-        Group axes based on the slit orientation.
-        """
+        """Group axes based on the slit orientation."""
         if da.metadata.analyser.angles.azi == 0:
             # Slit angle 0, along the polar axis
             polar_group = {"polar", "deflector_perp", "ana_polar"}
@@ -254,7 +240,7 @@ class BaseARPESDataLoader(
     def _get_relative_sign_conventions(cls, da, axis_key, axis_group):
         """
         Get the relative sign convention for a given axis to its physical manipulator axis
-        axis_group is either an axis group or a string
+        axis_group is either an axis group or a string.
         """
         if isinstance(axis_group, str):
             # Handle analyser angle to manipulator angle sign conventions used in get
@@ -321,10 +307,7 @@ class BaseARPESDataLoader(
 
     @classmethod
     def _parse_reference_value(cls, da, axis_key, value, axis_group):
-        """
-        Parse the manipulator reference value for a given axis.
-        """
-
+        """Parse the manipulator reference value for a given axis."""
         if axis_key in ["polar", "tilt", "azi"] and axis_key not in da.dims:
             # The axis is a core manipulator axis and is not a scannable, so this should be the actual normal emission
             return value
@@ -356,9 +339,7 @@ class BaseARPESDataLoader(
 
     @classmethod
     def _get_axis_value(cls, da, axis):
-        """
-        Retrieve the value of an axis from the data array or metadata.
-        """
+        """Retrieve the value of an axis from the data array or metadata."""
         if hasattr(da, axis):
             data = getattr(da, axis).pint.to("deg")
             return (
@@ -380,9 +361,7 @@ class BaseARPESDataLoader(
 
     @classmethod
     def _sum_angles(cls, angles, signs):
-        """
-        Sum angles with appropriate sign conventions.
-        """
+        """Sum angles with appropriate sign conventions."""
         total_angle = 0.0 * ureg("deg")
         for angle, sign in zip(angles, signs, strict=True):
             try:
@@ -394,9 +373,7 @@ class BaseARPESDataLoader(
 
     @classmethod
     def _parse_manipulator_references(cls, da, specified_values):
-        """
-        Parse manipulator reference values based on specified parameters.
-        """
+        """Parse manipulator reference values based on specified parameters."""
         axis_groups = cls._group_axes(da)
         reference_values = {}
 
@@ -431,10 +408,7 @@ class BaseARPESDataLoader(
 
     @classmethod
     def _get_angles_Ishida_Shin(cls, da, quiet=False):
-        """
-        Convert angles to the conventions of Ishida and Shin.
-        """
-
+        """Convert angles to the conventions of Ishida and Shin."""
         missing_values = {}
         missing_references = {}
 

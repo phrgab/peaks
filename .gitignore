@@ -4,6 +4,7 @@
 # IDEs and editors
 .idea/
 .vscode/
+.zed/
 
 # Python cache and tools
 __pycache__/
@@ -14,6 +15,7 @@ __pycache__/
 /docs/source/_apidoc/
 /docs/source/autoapi/
 /docs/source/_tutorials/
+/docs/source/explanations/peaks_accessors.md
 
 # Jupyter and analysis artifacts
 /tutorials/.ipynb_checkpoints/
@@ -25,6 +27,7 @@ __pycache__/
 
 # Testing and intermediate analysis
 /testing/
+/scratch/
 
 # pytest cache and coverage reports
 .pytest_cache/

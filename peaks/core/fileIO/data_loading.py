@@ -23,10 +23,10 @@ def load(
     quiet=False,
     **kwargs,
 ):
-    """Core function to load data.
+    """Load one or more files into :mod:`xarray` objects using the registered loaders.
 
     Parameters
-    ------------
+    ----------
     fpath : str, list
         Either the full file path(s), or the remainder of the file name(s) not already
         specified in the file global options (see Notes).
@@ -66,31 +66,33 @@ def load(
         Additional keyword arguments to pass to the data loader.
 
     Returns
-    ------------
-    loaded_data : xarray.DataArray, xarray.DataSet, xarray.DataTree
-        The loaded data.
+    -------
+    loaded_data : xarray.DataArray, xarray.Dataset, xarray.DataTree
+        The loaded object. A single file usually returns a :class:`xarray.DataArray`
+        or :class:`xarray.Dataset`; multiple files are combined into a
+        :class:`xarray.DataTree`.
 
     Notes
-    ------------
+    -----
     Much of file path can be set by :class:`peaks.core.options.FileIO` global options:
 
-        opts.FileIO.path : str, list
+        opts.FileIO.path : :class:`str`, :class:`list`
             Path (or list of paths) to folder(s) where data is stored,
-            e.g. `opts.FileIO.path = 'C:/User/Documents/i05-1-123'`.
+            e.g. ``opts.FileIO.path = 'C:/User/Documents/i05-1-123'``.
 
-        opts.FileIO.ext : str, list
-            Extension (or list of) of data, e.g. `opts.FileIO.ext = ['ibw', 'zip']`.
+        opts.FileIO.ext : :class:`str`, :class:`list`
+            Extension (or list of) of data, e.g. ``opts.FileIO.ext = ['ibw', 'zip']``.
 
-        opts.FileIO.loc : str
-            Location identifier for where data was acquired, e.g. `opts.FileIO.loc = 'MAX IV Bloch'`.
-            Current supported options can be obtained using `pks.locs()`.
+        opts.FileIO.loc : :class:`str`
+            Location identifier for where data was acquired, e.g. ``opts.FileIO.loc = 'MAXIV_Bloch_A'``.
+            Current supported options can be obtained using :func:`peaks.locs`.
 
-        opts.FileIO.lazy_size : int
+        opts.FileIO.lazy_size : :class:`int`
             Size in bytes above which data is loaded in a lazily evaluated dask format.
             Defaults to 1 GB.
 
     Examples
-    ------------
+    --------
     Example usage is as follows::
 
         import peaks as pks
@@ -113,32 +115,32 @@ def load(
 
         # Load data without needing to define data path or extension, nor the repeated
         # part of the scan name
-        disp3 = load(456)
-        disp4 = load(457)
+        disp3 = pks.load(456)
+        disp4 = pks.load(457)
 
         # Provide part of the scan name using a glob character
-        disps = load('45*')
+        disps = pks.load('45*')
 
         # Load multiple files at once
-        disps = load([456, 457, 458])
+        disps = pks.load([456, 457, 458])
 
         # Still can load data using a complete data path
         # global options defined in `pks.opts.FileIO` will be ignored
-        disp1 = load('C:/User/Documents/Data/disp1.ibw')
+        disp1 = pks.load('C:/User/Documents/Data/disp1.ibw')
 
         # Load data in a lazily evaluated dask format
-        disp1 = load('C:/User/Documents/Data/disp1.ibw', lazy=True)
+        disp1 = pks.load('C:/User/Documents/Data/disp1.ibw', lazy=True)
 
         # Load data without metadata
-        disp1 = load('C:/User/Documents/Data/disp1.ibw', metadata=False)
+        disp1 = pks.load('C:/User/Documents/Data/disp1.ibw', metadata=False)
 
         # Load data file for a defined location (use if automatic location ID fails)
-        disp1 = load('C:/User/Documents/Data/disp1.ibw', loc='MAX IV Bloch')
+        disp1 = pks.load('C:/User/Documents/Data/disp1.ibw', loc='MAXIV_Bloch_A')
 
         # Alternatively could define location using global options.
-        # Here loc will be defined as 'MAX IV Bloch'
+        # Here loc will be defined as 'MAXIV_Bloch_A'
         pks.opts.FileIO.loc = 'MAXIV_Bloch_A'
-        disp1 = load('C:/User/Documents/Data/disp1.ibw')
+        disp1 = pks.load('C:/User/Documents/Data/disp1.ibw')
 
         # Set the data size to trigger lazy loading by default to 500 MB
         pks.opts.FileIO.lazy_size = 500000000
@@ -155,7 +157,6 @@ def load(
             disp2 = pks.load('disp2')
             FM2 = pks.load('FM2')
     """
-
     load_opts = {
         "lazy": lazy,
         "loc": loc,
@@ -248,16 +249,15 @@ def _load_data(fpath, lazy, loc, metadata, parallel, names, quiet, **kwargs):
     """Function to handle loading of single or multiple data files into the xarray DataArray format.
 
     Returns
-    ------------
-    loaded_data : xarray.DataArray, xarray.DataSet, list
+    -------
+    loaded_data : xarray.DataArray, xarray.Dataset, list
         The loaded data.
 
     See Also
-    ------------
+    --------
     load : Public function to load data, which sets much of the fpath and defines the options to pass to `_load_data`.
 
     """
-
     load_opts = {"lazy": lazy, "loc": loc, "metadata": metadata, "quiet": quiet}
     load_opts.update(kwargs)
 

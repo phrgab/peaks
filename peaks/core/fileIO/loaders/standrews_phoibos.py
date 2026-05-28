@@ -11,7 +11,8 @@ class StAndrewsSpecs(SpecsDataLoader):
     """Data loader for St Andrews Specs ARPES system, measured using Specs Prodigy.
 
     Define _scan_axis_resolution_order to define preferences for the primary dimension of a
-    3D scan where more than one user axis varies."""
+    3D scan where more than one user axis varies.
+    """
 
     _loc_name = "StA_Phoibos"
     _loc_description = "SPECS Phoibos 225 in King Group at St Andrews"

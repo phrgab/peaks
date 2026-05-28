@@ -15,19 +15,16 @@ ureg = pint_xarray.unit_registry
 
 @register_loader
 class MBSDataLoader(BaseARPESDataLoader):
-    """Generic data loader for MBS data.
+    """Generic ARPES loader for MBS A1 spectrometers.
 
-    Notes
-    ------------
-    This class is intended to be subclassed to provide specific loaders for different locs using MBS data formats.
+    Supports the .txt and .krx formats used by MBS systems. This class is intended
+    to be subclassed for specific instruments which should then define local axis
+    conventions and any metadata remapping required for site-specific keys.
 
-    Subclasses should define the `_MBS_metadata_key_mappings` class variable to map any custom metadata fields or
-    fixed values to the standard peaks metadata keys. See the docstrings for `_MBS_metadata_dict_keys_to_peaks_keys`
-    for more information.
-
-    Subclasses should also define the `_MBS_metadata_units` dictionary to map any fixed units that are not determined
-    as part of the metadata loader.
-
+    ``_MBS_metadata_key_mappings`` maps MBS metadata fields or fixed values onto the
+    standard :mod:`peaks` raw metadata keys consumed by ``_load_metadata()`` and the base
+    metadata parsers. ``_MBS_metadata_units`` can be used to supply fixed units when
+    they are not recoverable from the file metadata contents.
     """
 
     _loc_name = "MBS"
@@ -109,7 +106,6 @@ class MBSDataLoader(BaseARPESDataLoader):
     @classmethod
     def _load_from_krx(cls, fpath, metadata_dict_MBS_keys):
         """Load data from krx format."""
-
         with open(fpath, "rb") as f:
             # Determine whether the file is 32-bit or 64-bit. The data type is little endian, so read initially as
             # 32 bit, but if either of the first 2 32-bit words are 0, then the file is 64-bit.
@@ -286,7 +282,7 @@ class MBSDataLoader(BaseARPESDataLoader):
         """Extract the lines containing metadata in an MBS format .txt file.
 
         Returns
-        ------------
+        -------
         metadata_lines : list
             Lines extracted from the file containing the metadata.
 
@@ -309,7 +305,7 @@ class MBSDataLoader(BaseARPESDataLoader):
         """Extract the lines containing metadata in an MBS format .krx file.
 
         Returns
-        ------------
+        -------
         metadata_lines : list
             Lines extracted from the file containing the metadata.
 
@@ -360,14 +356,13 @@ class MBSDataLoader(BaseARPESDataLoader):
     @staticmethod
     def _MBS_metadata_to_dict_w_MBS_keys(metadata_lines):
         """Convert metadata lines to a dictionary of key-value pairs with the keys being the metadata entries
-        as they appear in the MBS metadata (i.e. not yet in :class:`peaks` convention).
+        as they appear in the MBS metadata (i.e. not yet in :mod:`peaks` convention).
 
         Returns
-        ------------
+        -------
         dict
             Dictionary of metadata key-value pairs with keys in MBS format.
         """
-
         meta_dict = {
             line.split("\t", 1)[0]: line.split("\t", 1)[1]
             for line in metadata_lines
@@ -386,17 +381,17 @@ class MBSDataLoader(BaseARPESDataLoader):
         """Extract metadata values in peaks conventions and assign units where appropriate.
 
         Parameters
-        ------------
+        ----------
         metadata_dict_MBS_keys : dict
             Dictionary of metadata key-value pairs with keys in MBS format.
 
         Returns
-        ------------
+        -------
         metadata_dict : dict
             Dictionary of metadata key-value pairs with keys in peaks format.
 
         Notes
-        ------------
+        -----
         The extraction process is based on the mappings defined in the dictionaries `standard_keys` and
         `standard_units`. The entries of these dictionaries are updated from the class variables
         `_MBS_metadata_key_mappings` and `_MBS_metadata_units` respectively, and so subclasMBS can overwrite and

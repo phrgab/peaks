@@ -7,40 +7,42 @@ from peaks.core.fileIO.base_data_classes.base_data_class import BaseDataLoader, 
 
 
 class BaseHDF5DataLoader:
-    """Helper class for automating parsing data and metadata from hdf5 files.
+    """Helper mixin for extracting metadata and values from HDF5-based formats.
 
     Notes
     -----
-    Subclasses should define the _hdf5_metadata_key_mappings and
-    _hdf5_metadata_fixed_units class attributes.
+    Subclasses should define the ``_hdf5_metadata_key_mappings`` and
+    ``_hdf5_metadata_fixed_units`` class attributes.
+
     The extraction process supports different types of keys:
-        - If a single key is given, the value is attempted to be extracted directly
-        using that key.
-        - If a `list` or `tuple` of keys is given, the function tries to extract values
-        for each key in turn, returning
-        the first value which returns a result.
-        - If a callable is given, the function is passed the h5py file object. It should
-        return either a key (string)
-        or directly return a value (float, int etc.).
-        - A constant value (:class:`pint.Quantity`, `float`, `int`) can be provided by
-        giving that value directly.
-        - A constant string can be given by passing a string that starts with
-        "FIXED_VALUE:", e.g. "FIXED_VALUE:LH".
+
+    - If a single key is given, the value is attempted to be extracted directly
+      using that key.
+    - If a :class:`list` or :class:`tuple` of keys is given, the function tries to extract values
+      for each key in turn, returning
+      the first value which returns a result.
+    - If a callable is given, the function is passed the h5py file object. It should
+      return either a key (:class:`str`)
+      or directly return a value (:class:`float`, :class:`int` etc.).
+    - A constant value (:class:`pint.Quantity`, :class:`float`, :class:`int`) can be provided by
+      giving that value directly.
+    - A constant string can be given by passing a string that starts with
+      "FIXED_VALUE:", e.g. "FIXED_VALUE:LH".
 
     Note, if a key is passed as a string, units will attempt to be parsed from the
-    relevant hdf5 dataset attributes. If units are present in the file, this takes
-    precedence over any fixed units defined in the `_hdf5_metadata_fixed_units` class
+    relevant HDF5 dataset attributes. If units are present in the file, this takes
+    precedence over any fixed units defined in the ``_hdf5_metadata_fixed_units`` class
     attribute. If units are not present in the file, the fixed units will be used if
     supplied. If passing a callable in the metadata mapping, the recommended approach is
     to use the function to parse the relevant key to call, and then finally pass the key
-    to the `_extract_hdf5_value` method to extract the value from the hdf5 file.
+    to the ``_extract_hdf5_value`` method to extract the value from the HDF5 file.
     In this way, consistent handling of units is ensured.
     """
 
-    # mappings from desired metadata keys to hdf5 field addresses
+    # mappings from desired metadata keys to HDF5 field addresses
     _hdf5_metadata_key_mappings = {}
     # mappings from metadata keys to fixed units,
-    # otherwise these will be attempted to be determined from the hdf5 field attributes
+    # otherwise these will be attempted to be determined from the HDF5 field attributes
     _hdf5_metadata_fixed_units = {}
 
     @classmethod
@@ -59,7 +61,7 @@ class BaseHDF5DataLoader:
 
     @classmethod
     def _load_metadata(cls, fpath):
-        """Load metadata from a Diamond hdf5 file.
+        """Load raw metadata from an HDF5 file using `_hdf5_metadata_key_mappings`.
 
         Parameters
         ----------
@@ -260,10 +262,10 @@ class BaseHDF5DataLoader:
         --------
         Example usage is as follows::
 
-            import peaks as pks
+            from peaks.core.fileIO.base_data_classes.base_hdf5_class import BaseHDF5DataLoader
 
-            # Explore the structure of an HDF5 file
-            pks.hdf5_explorer('data.h5')
+            # Explore the structure of an HDF5-type file
+            BaseHDF5DataLoader.hdf5_explorer('path/to/file.nxs')
 
         Notes
         -----

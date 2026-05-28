@@ -16,20 +16,17 @@ ureg = pint_xarray.unit_registry
 
 @register_loader
 class SESDataLoader(BaseARPESDataLoader):
-    """Generic data loader for SES data.
+    """Generic ARPES loader for Scienta spectrometer data saved via SES.
 
-    Notes
-    ------------
-    This class is intended to be subclassed to provide specific loaders for different
-    locs using SES data formats.
+    Supports the SES .txt, .zip, and Igor Binary Wave (.ibw) export formats.
+    This class is intended to be subclassed for specific instruments which should
+    then define local axis conventions and any metadata remapping required for
+    site-specific keys.
 
-    Subclasses should define the `_SES_metadata_key_mappings` class variable to map any
-    custom metadata fields or fixed values to the standard peaks metadata keys. See the
-    docstrings for `_SES_metadata_dict_keys_to_peaks_keys` for more information.
-
-    Subclasses should also define the `_SES_metadata_units` dictionary to map any fixed
-    units that are not determined as part of the metadata loader.
-
+    ``_SES_metadata_key_mappings`` maps SES metadata fields or fixed values onto the
+    standard :mod:`peaks` raw metadata keys consumed by ``_load_metadata()`` and the base
+    metadata parsers. ``_SES_metadata_units`` can be used to supply fixed units when
+    they are not recoverable from the file metadata contents.
     """
 
     _loc_name = "SES"
@@ -115,7 +112,8 @@ class SESDataLoader(BaseARPESDataLoader):
         Adapted from the PESTO file loader by Craig Polley.
 
         Pass a `scan_no` to load a specific scan from the .zip file if multiple regions
-        have been scanned together in SES."""
+        have been scanned together in SES.
+        """
         # Open the file and load the data
         with zipfile.ZipFile(fpath) as z:
             files = z.namelist()
@@ -190,7 +188,6 @@ class SESDataLoader(BaseARPESDataLoader):
     @classmethod
     def _load_from_ibw(cls, fpath):
         """Load data from an Igor binary wave (ibw) file."""
-
         # Load the data from the ibw file using the default IBW loader
         data = BaseIBWDataLoader._load_data(fpath, lazy=False)
 
@@ -399,7 +396,7 @@ class SESDataLoader(BaseARPESDataLoader):
         """Extract the lines containing metadata in an SES format .txt file.
 
         Returns
-        ------------
+        -------
         metadata_lines : list
             Lines extracted from the file containing the metadata.
 
@@ -423,7 +420,7 @@ class SESDataLoader(BaseARPESDataLoader):
         """Extract the lines containing metadata in an SES format .zip file.
 
         Returns
-        ------------
+        -------
         metadata_lines : list
             Lines extracted from the file containing the metadata.
 
@@ -468,7 +465,6 @@ class SESDataLoader(BaseARPESDataLoader):
         the metadata entries as they appear in the SES metadata
         (i.e. not yet in :class:`peaks` convention).
         """
-
         return {
             line.split("=" if "=" in line else ":")[0].strip(): line.split(
                 "=" if "=" in line else ":"
@@ -482,17 +478,17 @@ class SESDataLoader(BaseARPESDataLoader):
         """Extract metadata in peaks conventions and assign units where appropriate.
 
         Parameters
-        ------------
+        ----------
         metadata_dict_SES_keys : dict
             Dictionary of metadata key-value pairs with keys in SES format.
 
         Returns
-        ------------
+        -------
         metadata_dict : dict
             Dictionary of metadata key-value pairs with keys in peaks format.
 
         Notes
-        ------------
+        -----
         The extraction process is based on the mappings defined in the dictionaries
         `standard_keys` and `standard_units`. The entries of these dictionaries are
         updated from the class variables `_SES_metadata_key_mappings` and
