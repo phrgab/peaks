@@ -2084,7 +2084,7 @@ def _coord_to_pixel_index(coords, value):
         )
         idx = int(
             np.clip(
-                np.searchsorted(edges, value, side="left") - 1,
+                np.searchsorted(edges, value, side="right") - 1,
                 0,
                 ascending_coords.size - 1,
             )
