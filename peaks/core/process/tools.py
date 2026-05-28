@@ -2280,9 +2280,8 @@ def correct_isolated_bad_pixels(data, bad_pixels):
             [(10, 20), (10, 21)],
         )
 
-        # Correct pixels using approximate coordinates
-        disp_corr, bad = pks.correct_bad_pixels_cross(
-            disp,
+        # Correct two pixels using approximate coordinates
+        disp_corr = disp.correct_isolated_bad_pixels(
             [
                 {'eV': 20.791, 'theta_par': -8.875},
                 {'eV': 20.790, 'theta_par': -8.875},
