@@ -26,10 +26,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Error when calling `plot_tutorial_example_figure` locally ([PR#28](https://github.com/phrgab/peaks/pull/28))
 - Empty inline interactive `iplot` when using the `groupby` argument in static CI docs builds ([PR#30](https://github.com/phrgab/peaks/pull/30))
 - Colour-coded metadata rendering in docs ([PR#35](https://github.com/phrgab/peaks/pull/35))
+- Bug where analysis history was not updated when iterating accessor methods over a `DataTree` ([PR#39](https://github.com/phrgab/peaks/pull/39))
 
 ### Changed
 
-- Minor documentation improvements and plenty of cosmetic auto-fixes required by numpy-style docstring format ([PR#23](https://github.com/phrgab/peaks/pull/23), [PR#30](https://github.com/phrgab/peaks/pull/30))
+- Minor documentation improvements and plenty of cosmetic auto-fixes required by numpy-style docstring format ([PR#23](https://github.com/phrgab/peaks/pull/23), [PR#30](https://github.com/phrgab/peaks/pull/30), [PR#33](https://github.com/phrgab/peaks/pull/33))
 - Installation instructions now cover `uv`, conda-forge and the traditional Python venv approach ([PR#28](https://github.com/phrgab/peaks/pull/28))
 - `plot_tutorial_example_figure` now renders videos ([PR#30](https://github.com/phrgab/peaks/pull/30))
 - Figure aspect ratios in output cells are preserved on docs build ([PR#30](https://github.com/phrgab/peaks/pull/30))
