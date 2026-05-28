@@ -14,7 +14,12 @@ from peaks.core.fitting.models import _shirley_bg
 from peaks.core.metadata.metadata_methods import compare_metadata
 from peaks.core.process.fermi_level_correction import _flatten_EF
 from peaks.core.utils.datatree_utils import get_list_of_DataArrays_from_DataTree
-from peaks.core.utils.interpolation import _fast_bilinear_interpolate_rectilinear
+from peaks.core.utils.interpolation import (
+    _fast_bilinear_interpolate_rectilinear,
+    _fast_linear_interpolate,
+    _fast_linear_interpolate_rectilinear,
+    _is_linearly_spaced,
+)
 from peaks.core.utils.misc import analysis_warning, dequantify_quantify_wrapper
 
 ureg = pint_xarray.unit_registry
@@ -1991,3 +1996,466 @@ def drift_correction(reference_data, moving_data, orig_pos=None, **kwargs):
         new_pos = {dim: orig_pos[dim] - dim_shift[dim] for dim in orig_pos}
         return dim_shift, new_pos
     return dim_shift
+
+
+def _make_bad_pixel_mask(data, bad_pixels):
+    """
+    Build a boolean bad-pixel mask from a mask, raw indices, or coordinates.
+
+    Parameters
+    ----------
+    data : xarray.DataArray
+        Two-dimensional reference data.
+
+    bad_pixels : array-like or xarray.DataArray
+        Bad pixels to mask. May be one of:
+
+        - Boolean ``xarray.DataArray`` mask with the same dimensions as ``data``.
+        - Sequence of raw integer index pairs in ``data.dims`` order.
+        - Sequence of coordinate dictionaries.
+
+        Coordinate values are matched using pixel boundaries, treating the
+        stored coordinates as pixel centres.
+
+    Returns
+    -------
+    xarray.DataArray
+        Boolean mask with True values at bad pixels.
+    """
+    if data.ndim != 2:
+        raise ValueError("data must be 2-dimensional")
+
+    if isinstance(bad_pixels, xr.DataArray):
+        if bad_pixels.ndim != 2:
+            raise ValueError("bad_pixels mask must be 2-dimensional")
+
+        if data.dims != bad_pixels.dims:
+            raise ValueError("data and bad_pixels mask must have matching dimensions")
+
+        return bad_pixels.astype(bool)
+
+    bad = xr.zeros_like(data, dtype=bool)
+    dim0, dim1 = data.dims
+
+    for pixel in bad_pixels:
+        if isinstance(pixel, dict):
+            # Map each coordinate value to the pixel whose centre interval contains it.
+            idx = {
+                dim: _coord_to_pixel_index(data[dim].data, value)
+                for dim, value in pixel.items()
+            }
+
+            i0 = idx[dim0]
+            i1 = idx[dim1]
+
+        else:
+            # Raw integer indices are interpreted in data.dims order.
+            i0, i1 = pixel
+
+        bad.data[i0, i1] = True
+
+    return bad
+
+
+def _coord_to_pixel_index(coords, value):
+    """
+    Convert a coordinate value to a pixel index using pixel boundaries.
+
+    The coordinates are interpreted as pixel centres to match display panel,
+    so the selected pixel is the one whose half-step interval contains ``value``.
+    """
+    coords = np.asarray(coords)
+
+    if coords.ndim != 1:
+        raise ValueError("coords must be 1-dimensional")
+
+    if coords.size == 1:
+        return 0
+
+    if coords[0] > coords[-1]:
+        ascending_coords = coords[::-1]
+        edges = np.empty(ascending_coords.size + 1, dtype=float)
+        edges[1:-1] = 0.5 * (ascending_coords[:-1] + ascending_coords[1:])
+        edges[0] = ascending_coords[0] - 0.5 * (
+            ascending_coords[1] - ascending_coords[0]
+        )
+        edges[-1] = ascending_coords[-1] + 0.5 * (
+            ascending_coords[-1] - ascending_coords[-2]
+        )
+        idx = int(
+            np.clip(
+                np.searchsorted(edges, value, side="right") - 1,
+                0,
+                ascending_coords.size - 1,
+            )
+        )
+        return coords.size - 1 - idx
+
+    edges = np.empty(coords.size + 1, dtype=float)
+    edges[1:-1] = 0.5 * (coords[:-1] + coords[1:])
+    edges[0] = coords[0] - 0.5 * (coords[1] - coords[0])
+    edges[-1] = coords[-1] + 0.5 * (coords[-1] - coords[-2])
+
+    return int(
+        np.clip(np.searchsorted(edges, value, side="right") - 1, 0, coords.size - 1)
+    )
+
+
+def _round_half_up(value):
+    """Round half-integers up for positive pixel-index values."""
+    return int(np.floor(value + 0.5 + 1e-12))
+
+
+def _describe_bad_pixel_definition(bad_pixels=None, **kwargs):
+    """Return a compact description of how bad pixels were defined."""
+    if bad_pixels is not None:
+        if isinstance(bad_pixels, xr.DataArray):
+            return (
+                "boolean mask DataArray "
+                f"with {int(np.count_nonzero(bad_pixels.astype(bool).data))} masked pixels"
+            )
+
+        bad_pixels = list(bad_pixels)
+        if not bad_pixels:
+            return "empty bad-pixel definition"
+
+        if isinstance(bad_pixels[0], dict):
+            return f"{len(bad_pixels)} coordinate dictionaries"
+
+        return f"{len(bad_pixels)} raw pixel indices"
+
+    if kwargs:
+        sweep_dim, sweep_spec = next(iter(kwargs.items()))
+        if np.isscalar(sweep_spec):
+            return f"single {sweep_dim} value {sweep_spec}"
+
+        return f"two explicit (eV, left, right) anchors along {sweep_dim}: {sweep_spec}"
+
+    return "unspecified bad-pixel definition"
+
+
+def _make_swept_bad_pixel_mask(data, bad_pixels=None, **kwargs):
+    """
+    Build a boolean bad-pixel mask for a swept bad-pixel stripe.
+
+    Parameters
+    ----------
+    data : xarray.DataArray
+        Two-dimensional reference data containing an ``eV`` dimension.
+
+    bad_pixels : xarray.DataArray or array-like, optional
+        Explicit bad-pixel mask, or explicit pixel positions passed through to
+        :func:`_make_bad_pixel_mask`.
+
+    **kwargs
+        Swept bad-pixel definition along the non-``eV`` dimension. Supply
+        exactly one keyword matching that dimension, with either:
+
+        - A single value, e.g. ``theta_par=5.25``, to mask one swept line.
+        - Two explicit anchor triples ``[(eV0, left0, right0), (eV1, left1, right1)]``
+          to define the edges of a line of band pixels from their position at two
+          ``eV`` values.
+
+    Returns
+    -------
+    xarray.DataArray
+        Boolean mask with True values at bad pixels.
+    """
+    if data.ndim != 2:
+        raise ValueError("data must be 2-dimensional")
+
+    if "eV" not in data.dims:
+        raise ValueError(
+            "Swept bad pixels can only be defined for 2D data with an 'eV' dimension."
+        )
+
+    if bad_pixels is not None and kwargs:
+        raise ValueError(
+            "Provide either bad_pixels or swept bad-pixel coordinates, not both."
+        )
+
+    if bad_pixels is not None:
+        return _make_bad_pixel_mask(data, bad_pixels)
+
+    if len(kwargs) != 1:
+        raise ValueError(
+            "Swept bad pixels must be defined by exactly one keyword for the non-'eV' dimension."
+        )
+
+    sweep_dim, sweep_spec = next(iter(kwargs.items()))
+    if sweep_dim not in data.dims:
+        raise ValueError(
+            f"{sweep_dim} is not a valid dimension of the inputted DataArray."
+        )
+    if sweep_dim == "eV":
+        raise ValueError(
+            "Swept bad pixels must be defined along the non-'eV' dimension."
+        )
+
+    bad = xr.zeros_like(data.transpose("eV", sweep_dim), dtype=bool)
+    sweep_coords = bad[sweep_dim].data
+
+    if np.isscalar(sweep_spec):
+        sweep_idx = _coord_to_pixel_index(sweep_coords, sweep_spec)
+        bad.data[:, sweep_idx] = True
+        return bad.transpose(*data.dims)
+
+    eV_coords = bad["eV"].data.astype(float)
+    sweep_bounds = np.asarray(sweep_spec, dtype=float)
+    if sweep_bounds.shape == (2, 3):
+        (anchor_eV0, first_left, first_right), (anchor_eV1, last_left, last_right) = (
+            sweep_bounds
+        )
+    else:
+        raise ValueError(
+            "Swept bad pixels must be defined by a single value or two explicit "
+            "(eV, left, right) anchor triples."
+        )
+
+    if anchor_eV0 == anchor_eV1:
+        raise ValueError(
+            "Swept bad pixel anchors must be defined at two different eV values."
+        )
+
+    first_left_idx = _coord_to_pixel_index(sweep_coords, first_left)
+    first_right_idx = _coord_to_pixel_index(sweep_coords, first_right)
+    last_left_idx = _coord_to_pixel_index(sweep_coords, last_left)
+    last_right_idx = _coord_to_pixel_index(sweep_coords, last_right)
+
+    for i, eV in enumerate(eV_coords):
+        frac = (eV - anchor_eV0) / (anchor_eV1 - anchor_eV0)
+        left_idx = first_left_idx + frac * (last_left_idx - first_left_idx)
+        right_idx = first_right_idx + frac * (last_right_idx - first_right_idx)
+        start, stop = sorted(
+            (
+                _round_half_up(left_idx),
+                _round_half_up(right_idx),
+            )
+        )
+        start = int(np.clip(start, 0, bad.sizes[sweep_dim] - 1))
+        stop = int(np.clip(stop, 0, bad.sizes[sweep_dim] - 1))
+        bad.data[i, start : stop + 1] = True
+
+    return bad.transpose(*data.dims)
+
+
+def _larger_than_2x(mask) -> bool:
+    """
+    Check whether a 2D boolean mask contains any connected regions larger than 2 pixels.
+
+    Tests for the presence of any contiguous ``1×3`` or ``3×1`` all-``True`` blocks.
+
+    Parameters
+    ----------
+    mask : xarray.DataArray
+        Two-dimensional boolean mask.
+
+    Returns
+    -------
+    bool
+        ``True`` if the mask contains at least one region larger
+        than 2 pixels, otherwise ``False``.
+    """
+
+    m = mask.data.astype(bool, copy=False)
+    if np.any(m[:, :-2] & m[:, 1:-1] & m[:, 2:]):
+        return True
+
+    if np.any(m[:-2, :] & m[1:-1, :] & m[2:, :]):
+        return True
+
+    return False
+
+
+def correct_isolated_bad_pixels(data, bad_pixels):
+    """
+    Correct isolated bad pixels by averaging their immediate neighbours, up to 2 by 2.
+
+    Replacement values are computed from neighbouring good pixels only.
+    Use this when the bad pixels are scattered single pixels or small blobs
+    (up to 2x2); for stripes that extend across the energy axis in swept
+    dispersions, use :func:`correct_swept_scan_bad_pixels` instead.
+
+    Parameters
+    ----------
+    data : xarray.DataArray
+        The data to be corrected.
+
+    bad_pixels : array-like or :class:`xarray.DataArray`
+        Bad pixels to mask. May be one of:
+
+        - Boolean :class:`xarray.DataArray` mask with the same dimensions
+          as ``data``, ``True`` at bad pixels.
+        - Sequence of raw integer index pairs in ``data.dims`` order, e.g. ``[(eV_index, theta_par_index)]``.
+        - Sequence of coordinate dictionaries, e.g. ``[{'eV': value, 'theta_par': value}]``.
+
+        Coordinate values are matched to the nearest available pixel.
+
+    Returns
+    -------
+    corrected : xarray.DataArray
+        Corrected data with bad pixels replaced by neighbour averages.
+
+    Examples
+    --------
+    Example usage is as follows::
+
+        import peaks as pks
+
+        # Load data
+        disp = pks.load('disp.ibw')
+
+        # Correct pixels using integer indices
+        disp_corr = disp.correct_isolated_bad_pixels(
+            [(10, 20), (10, 21)],
+        )
+
+        # Correct two pixels using approximate coordinates
+        disp_corr = disp.correct_isolated_bad_pixels(
+            [
+                {'eV': 20.791, 'theta_par': -8.875},
+                {'eV': 20.790, 'theta_par': -8.875},
+            ],
+        )
+
+    """
+
+    if data.ndim != 2:
+        raise ValueError("data must be 2-dimensional")
+
+    y_dim, x_dim = data.dims
+    bad = _make_bad_pixel_mask(data, bad_pixels)
+
+    if _larger_than_2x(bad):
+        raise ValueError(
+            "Mask must not have continuous True regions larger than 2 pixels"
+        )
+
+    corrected = data.copy()
+
+    for i, j in zip(*np.where(bad.data), strict=True):
+        values = []
+
+        # Above
+        if i > 0 and not bad.data[i - 1, j]:
+            values.append(data[{y_dim: i - 1, x_dim: j}])
+
+        # Below
+        if i < data.sizes[y_dim] - 1 and not bad.data[i + 1, j]:
+            values.append(data[{y_dim: i + 1, x_dim: j}])
+
+        # Left
+        if j > 0 and not bad.data[i, j - 1]:
+            values.append(data[{y_dim: i, x_dim: j - 1}])
+
+        # Right
+        if j < data.sizes[x_dim] - 1 and not bad.data[i, j + 1]:
+            values.append(data[{y_dim: i, x_dim: j + 1}])
+
+        if values:
+            corrected[{y_dim: i, x_dim: j}] = sum(values) / len(values)
+
+    corrected.history.add(
+        "Isolated bad pixels corrected from "
+        f"{_describe_bad_pixel_definition(bad_pixels=bad_pixels)}"
+    )
+
+    return corrected
+
+
+@dequantify_quantify_wrapper
+def correct_swept_scan_bad_pixels(data, bad_pixels=None, **kwargs):
+    """
+    Correct a swept line of bad pixels by interpolating along the non-``eV`` axis.
+
+    Parameters
+    ----------
+    data : xarray.DataArray
+        The 2D data to be corrected. One dimension must be ``eV``.
+
+    bad_pixels : array-like or :class:`xarray.DataArray`, optional
+        Explicit bad-pixel mask, or explicit bad-pixel positions.
+
+    **kwargs
+        Swept bad-pixel definition along the non-``eV`` dimension. Supply
+        exactly one keyword matching that dimension, with either:
+
+        - A single coordinate value to mark a single straight column, e.g. ``theta_par=5.25``.
+        - Two explicit anchor triples (``(eV_value, theta_par_value1, theta_par_value2)``) to mark a slanted stripe/trapezium, e.g. ``theta_par=[(16.8, 5.2, 5.4), (16.3, 5.3, 5.5)]``.
+
+    Returns
+    -------
+    corrected : xarray.DataArray
+        Corrected data with the swept bad pixels replaced by interpolation
+        along the non-``eV`` axis.
+
+    Examples
+    --------
+    Example usage is as follows::
+
+        import peaks as pks
+
+        disp = pks.load("disp.ibw")
+
+        # Correct a single swept bad-pixel line
+        disp_corr = disp.correct_swept_scan_bad_pixels(theta_par=-8.95)
+
+        # Correct a slanted swept bad-pixel stripe using two eV anchors
+        disp_corr = disp.correct_swept_scan_bad_pixels(
+            theta_par=[
+                (float(disp.eV[0]), -9.007, -8.968),
+                (float(disp.eV[-1]), -9.052, -9.002),
+            ],
+        )
+    """
+    if data.ndim != 2:
+        raise ValueError("data must be 2-dimensional")
+
+    if "eV" not in data.dims:
+        raise ValueError(
+            "correct_swept_bad_pixels requires a 2D DataArray with an 'eV' dimension."
+        )
+
+    sweep_dim = next(dim for dim in data.dims if dim != "eV")
+    working_data = data.transpose("eV", sweep_dim)
+    bad = _make_swept_bad_pixel_mask(data, bad_pixels=bad_pixels, **kwargs).transpose(
+        "eV", sweep_dim
+    )
+    corrected = working_data.copy()
+
+    sweep_coords = working_data[sweep_dim].data
+    if _is_linearly_spaced(sweep_coords):
+        interpolation_fn = _fast_linear_interpolate_rectilinear
+    else:
+        interpolation_fn = _fast_linear_interpolate
+
+    for i in np.where(bad.data.any(axis=1))[0]:
+        row_bad = bad.data[i]
+        row_values = working_data.data[i]
+        row_good = (~row_bad) & np.isfinite(row_values)
+
+        if row_good.sum() < 2:
+            raise ValueError(
+                "Each eV slice must contain at least two good pixels along the non-'eV' dimension."
+            )
+
+        interpolated_values = interpolation_fn(
+            sweep_coords[row_bad],
+            sweep_coords[row_good],
+            row_values[row_good],
+        )
+
+        if np.isnan(interpolated_values).any():
+            raise ValueError(
+                "Swept bad pixels must be bounded by good pixels within each eV slice."
+            )
+
+        corrected.data[i, row_bad] = interpolated_values
+
+    corrected = corrected.transpose(*data.dims)
+    corrected.history.add(
+        f"Swept bad pixels corrected by interpolation along {sweep_dim}, defined from "
+        f"{_describe_bad_pixel_definition(bad_pixels=bad_pixels, **kwargs)}"
+    )
+
+    return corrected
