@@ -110,7 +110,7 @@ The full list of optional dependency groups and their packages is defined under 
 pip install git+https://github.com/phrgab/peaks.git
 ```
 
-This usually installs the latest development version of `peaks`. To install a stable release from source, append `@<tag>` to the end of the git link where `<tag>` is the tag name of [the release](https://github.com/phrgab/peaks/releases).
+By default, this installs the latest development version of `peaks`. To install a stable release from source, append `@<tag>` to the end of the git link where `<tag>` is the tag name of [the release](https://github.com/phrgab/peaks/releases).
 
 <!-- source-installation-end -->
 

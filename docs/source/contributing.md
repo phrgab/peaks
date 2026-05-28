@@ -50,7 +50,7 @@ Guidelines:
 - Ensure the code is formatted following our [conventions](#linting-and-formatting).
 - Document new features and changes in the [changelog](#changelog).
 - Ensure the [documentation is updated](#documentation).
-- Open a pull request to merge onto the `main` branch.
+- Open a pull request to merge your changes into the code base.
 
 (testing)=
 
