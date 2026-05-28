@@ -2243,7 +2243,7 @@ def correct_isolated_bad_pixels(data, bad_pixels):
     """
     Correct isolated bad pixels by averaging their immediate neighbours, up to 2 by 2.
 
-    Replacement values are computed from neighbouring good pixels only.
+    Replacement values are computed from neighbouring good pixels only. Use this when the bad pixels are scattered single pixels or small blobs (up to 2x2); for stripes that extend across the energy axis in swept dispersions, use :func:`correct_swept_scan_bad_pixels` instead.
 
     Parameters
     ----------
