@@ -104,13 +104,13 @@ The full list of optional dependency groups and their packages is defined under 
 
 ### Installing from source
 
-The latest release of `peaks` can be installed directly from source:
+`peaks` can be installed directly from source:
 
 ```bash
 pip install git+https://github.com/phrgab/peaks.git
 ```
 
-To install a specific tagged version, append `@<tag>` to the end of the git link where `<tag>` is the tag name. Use `@dev` to install the latest development version.
+By default, this installs the latest development version of `peaks`. To install a stable release from source, append `@<tag>` to the end of the git link where `<tag>` is the tag name of [the release](https://github.com/phrgab/peaks/releases).
 
 <!-- source-installation-end -->
 
