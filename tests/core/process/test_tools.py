@@ -416,7 +416,7 @@ class TestDegrid:
         assert fake_disp.shape == result.shape
 
 
-class TestCorrectSweptBadPixels:
+class TestCorrectSweptScanBadPixels:
     def _simple_dispersion(self):
         eV = np.linspace(16.3, 16.8, 6)
         theta_par = np.linspace(-2.5, 2.5, 7)
