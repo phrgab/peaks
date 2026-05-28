@@ -2365,8 +2365,7 @@ def correct_swept_scan_bad_pixels(data, bad_pixels=None, **kwargs):
         disp_corr = disp.correct_swept_scan_bad_pixels(theta_par=-8.95)
 
         # Correct a slanted swept bad-pixel stripe using two eV anchors
-        disp_corr = pks.correct_swept_bad_pixels(
-            disp,
+        disp_corr = disp.correct_swept_scan_bad_pixels(
             theta_par=[
                 (float(disp.eV[0]), -9.007, -8.968),
                 (float(disp.eV[-1]), -9.052, -9.002),
