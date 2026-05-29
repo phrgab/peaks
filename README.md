@@ -1,7 +1,8 @@
 # peaks
 
 [![git](https://img.shields.io/badge/repo-github-blue?logo=github)](https://github.com/phrgab/peaks)
-[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/phrgab/peaks/test-installs.yml?logo=github-actions&logoColor=white&label=install%20tests)](https://github.com/phrgab/peaks/actions/workflows/test-installs.yml)
+[![GitHub Actions Workflow Status - CI](https://img.shields.io/github/actions/workflow/status/phrgab/peaks/ci.yml?logo=github-actions&logoColor=white&label=CI)](https://github.com/phrgab/peaks/actions/workflows/ci.yml)
+[![GitHub Actions Workflow Status - install tests](https://img.shields.io/github/actions/workflow/status/phrgab/peaks/test-installs.yml?logo=github-actions&logoColor=white&label=install%20tests)](https://github.com/phrgab/peaks/actions/workflows/test-installs.yml)
 [![Latest version on pypi](https://img.shields.io/pypi/v/peaks-arpes?logo=pypi&logoColor=white&color=green)](https://pypi.org/project/peaks-arpes/)
 [![Latest version on conda-forge](https://img.shields.io/conda/vn/conda-forge/peaks-arpes?logo=conda-forge&logoColor=white&color=green)](https://anaconda.org/channels/conda-forge/packages/peaks-arpes/overview)
 [![Supported Python versions](https://img.shields.io/pypi/pyversions/peaks-arpes?logo=python&logoColor=white)](https://www.python.org)
