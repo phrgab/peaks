@@ -16,7 +16,13 @@ class Quantity(pint.Quantity):
     @classmethod
     def __get_pydantic_core_schema__(cls, source_type, handler):
         # Use with_info_plain_validator_function to handle both value and info
-        return core_schema.with_info_plain_validator_function(cls.validate)
+        return core_schema.with_info_plain_validator_function(
+            cls.validate,
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                _quantity_encoder,
+                when_used="json",  # https://pydantic.dev/docs/validation/latest/concepts/json_schema#implementing-__get_pydantic_core_schema__
+            ),
+        )
 
     @classmethod
     def validate(cls, v, info):
@@ -68,9 +74,7 @@ def _quantity_encoder(quantity: pint.Quantity):
 class BaseMetadataModel(BaseModel):
     """Generalized model to store metadata, allowing serialising pint.Quantity objects."""
 
-    model_config = ConfigDict(
-        json_encoders={pint.Quantity: _quantity_encoder}, validate_assignment=True
-    )
+    model_config = ConfigDict(validate_assignment=True)
 
 
 class BaseScanMetadataModel(BaseMetadataModel):
