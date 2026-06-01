@@ -136,8 +136,6 @@ class IdentifyLoc:
         metadata = BaseDataLoader.load_metadata(
             fname, loc="SES", return_as_dict=True, quiet=True
         )
-        print(f"keys are {sorted(metadata.keys())}")
-        print(f"local loc identifier is {metadata.get('local_location_identifier')}")
         location_identifier = metadata.get("local_location_identifier")
         if (
             "bloch" in location_identifier.lower()
