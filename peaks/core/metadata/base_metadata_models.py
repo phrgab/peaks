@@ -20,7 +20,7 @@ class Quantity(pint.Quantity):
             cls.validate,
             serialization=core_schema.plain_serializer_function_ser_schema(
                 _quantity_encoder,
-                when_used="json",  # https://pydantic.dev/docs/validation/latest/concepts/json_schema#implementing-__get_pydantic_core_schema__
+                when_used="json",
             ),
         )
 
