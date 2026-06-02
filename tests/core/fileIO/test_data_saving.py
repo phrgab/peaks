@@ -19,3 +19,7 @@ class TestSave:
 
         assert set(result.metadata.keys()) == set(original_data.metadata.keys())
         assert display_metadata(result) == display_metadata(original_data)
+
+    def test_save_with_wrong_extension_raises(self, disp, tmp_path):
+        with pytest.raises(ValueError, match="File path must have a .nc extension"):
+            disp.save(str(tmp_path / "disp.zarr"))
