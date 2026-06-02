@@ -103,12 +103,14 @@ def display_metadata(da_or_model, palette=None, mode="HTML"):
     # Display the model with colored keys
     try:
         metadata = {
-            key.lstrip("_"): value.dict()
+            key.lstrip("_"): value.model_dump()
             for key, value in da_or_model.attrs.items()
             if key.startswith("_") and key not in ["_analysis_history"]
         }
     except AttributeError:
-        metadata = da_or_model if isinstance(da_or_model, dict) else da_or_model.dict()
+        metadata = (
+            da_or_model if isinstance(da_or_model, dict) else da_or_model.model_dump()
+        )
     if mode.upper() == "ANSI":
         return "\n".join(display_coloured_dict_ansi(metadata))
     elif mode.upper() == "HTML":
@@ -123,12 +125,12 @@ def compare_metadata(da_or_model1, da_or_model2):
     def get_metadata(da_or_model):
         try:
             metadata = {
-                key.lstrip("_"): value.dict()
+                key.lstrip("_"): value.model_dump()
                 for key, value in da_or_model.attrs.items()
                 if key.startswith("_") and key not in ["_analysis_history"]
             }
         except AttributeError:
-            metadata = da_or_model.dict()
+            metadata = da_or_model.model_dump()
         return metadata
 
     metadata1 = get_metadata(da_or_model1)
@@ -418,7 +420,7 @@ class Metadata:
             A dictionary of the normal emission angles and also scan name.
         """
         # Get the axis names in da
-        axes = list(da._manipulator.dict().keys())
+        axes = list(da._manipulator.model_dump().keys())
         # Get any set reference data in da
         current_reference_data = {
             axis: {

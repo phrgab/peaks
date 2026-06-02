@@ -109,10 +109,12 @@ class NetCDFLoader(BaseDataLoader):
                     ManipulatorMetadataModel = create_model(
                         "ManipulatorMetadataModel", **fields
                     )
-                    data.attrs[attr_name] = ManipulatorMetadataModel.parse_raw(attr)
+                    data.attrs[attr_name] = ManipulatorMetadataModel.model_validate_json(
+                        attr
+                    )
                 elif model:
                     model_class = cls._get_metadata_model(model)
-                    data.attrs[attr_name] = model_class.parse_raw(attr)
+                    data.attrs[attr_name] = model_class.model_validate_json(attr)
 
     @classmethod
     def _get_metadata_model(cls, class_path):

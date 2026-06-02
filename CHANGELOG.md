@@ -11,7 +11,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Data loading bug for SES `zip` files where the loc identification handler reads metadata in the parsed pydantic-model format rather than the flat raw dictionary it requires ([PR#47](https://github.com/phrgab/peaks/pull/47))
 
+### Added
+
+- Unit tests for `core/fileIO`: `data_saving` ([PR#48](https://github.com/phrgab/peaks/pull/48))
+
+### Changed
+
+- Pydantic v1 methods to their v2 equivalents ([PR#48](https://github.com/phrgab/peaks/pull/48))
+
 ## [0.5.1] - 2026-05-29
+
+:::{important}
+This version introduced a bug affecting the loading of SES-acquired zip files. Please install a later version if you work with this type of data.
+:::
 
 ### Added
 
