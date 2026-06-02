@@ -916,7 +916,7 @@ class _Disp2D(QtWidgets.QMainWindow):
         # Current norm values
         norm_values = self._get_norm_values()
         norm_values_to_return = {
-            k: str(v) if isinstance(v, pint.Quantity) else v
+            k: f"{v:~D}" if isinstance(v, pint.Quantity) else v
             for k, v in norm_values.items()
         }
         pyperclip.copy(f".metadata.set_normal_emission({norm_values_to_return})")
