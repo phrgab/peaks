@@ -330,10 +330,6 @@ class BaseDataLoader:
         da = cls._make_dataarray(data)  # Convert to DataArray
         # Add a name to the DataArray
         da.name = os.path.splitext(os.path.basename(fpath))[0]
-        print(
-            f"Get the final component: os.path.basename(fpath) is {os.path.basename(fpath)}"
-        )
-        print(f"Chuck the extension: da.name is {da.name}")
         parsed_metadata = cls.load_metadata(
             fpath,
             loc=cls._loc_name,
