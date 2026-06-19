@@ -153,7 +153,32 @@ class ZenodoDownloader:
         If ``True``, suppress the success notice. Defaults to ``False``.
         """
         if self._tempdir_context is not None:
-            self._tempdir_context.cleanup()
+            import gc
+
+            import h5py
+
+            tmpdir = self._tempdir_context.name
+            for obj in gc.get_objects():  # handle win error 32 when data can't be deleted because of open file handles
+                try:
+                    if isinstance(obj, h5py.File) and obj.id.valid:
+                        if obj.filename.startswith(tmpdir):
+                            obj.close()
+                except Exception:
+                    continue
+            gc.collect()
+
+            try:
+                self._tempdir_context.cleanup()
+            except (PermissionError, OSError) as e:
+                analysis_warning(
+                    f"Some temporary files could not be deleted: {e}",
+                    f"Clean them up manually at <code>{tmpdir}</code>.",
+                    title="Cleanup incomplete",
+                    warn_type="warning",
+                )
+                return
+
+            # self._tempdir_context.cleanup()
             self._tempdir_context = None
             self.downloaded_files = {}
             analysis_warning(
