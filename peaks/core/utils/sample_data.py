@@ -354,7 +354,7 @@ class ExampleData:
         with the database sever as the fallback (used in CI)."""
         data = cls._cache.get("structure")
         if data is None:
-            local_mirror = os.getenv("LOCAL_MIRROR_PATHo")
+            local_mirror = os.getenv("LOCAL_MIRROR_PATH")
             if local_mirror:
                 local_path = os.path.join(local_mirror, "4515175.cif")
                 if os.path.exists(local_path):
@@ -367,11 +367,9 @@ class ExampleData:
                     try:
                         tmp.write(response.text)
                         tmp.close()
-                        print("closed the tmp file")
                         data = load(tmp.name)
                     finally:
                         os.unlink(tmp.name)
-                        print("deleted the tmp file")
                 else:
                     raise ValueError(
                         f"Failed to download CIF. HTTP status code: {response.status_code}"
