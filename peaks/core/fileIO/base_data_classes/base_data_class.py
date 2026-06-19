@@ -329,7 +329,11 @@ class BaseDataLoader:
         data = cls._load_data(fpath, lazy, **kwargs)
         da = cls._make_dataarray(data)  # Convert to DataArray
         # Add a name to the DataArray
-        da.name = fpath.split("/")[-1].split(".")[0]
+        da.name = os.path.splitext(os.path.basename(fpath))[0]
+        print(
+            f"Get the final component: os.path.basename(fpath) is {os.path.basename(fpath)}"
+        )
+        print(f"Chuck the extension: da.name is {da.name}")
         parsed_metadata = cls.load_metadata(
             fpath,
             loc=cls._loc_name,
@@ -390,7 +394,7 @@ class BaseDataLoader:
         """Apply general metadata to the DataArray - implemented irrespective of the loader."""
         fpath = metadata_dict.get("fpath")
         general_scan_metadata = BaseScanMetadataModel(
-            name=fpath.split("/")[-1].split(".")[0],
+            name=os.path.splitext(os.path.basename(fpath))[0],
             filepath=fpath,
             loc=cls._loc_name,
             timestamp=metadata_dict.get("timestamp"),

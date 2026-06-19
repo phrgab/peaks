@@ -178,7 +178,6 @@ class ZenodoDownloader:
                 )
                 return
 
-            # self._tempdir_context.cleanup()
             self._tempdir_context = None
             self.downloaded_files = {}
             analysis_warning(

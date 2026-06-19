@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Data loading bug for SES `zip` files where the loc identification handler reads metadata in the parsed pydantic-model format rather than the flat raw dictionary it requires ([PR#47](https://github.com/phrgab/peaks/pull/47))
+- Error on Windows when clearing up lazily loaded sample data ([PR#50](https://github.com/phrgab/peaks/pull/50))
+- Cross-platform filename parsing in loader
 
 ### Added
 
