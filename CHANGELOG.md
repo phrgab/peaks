@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Unit tests for `core/fileIO`: `data_saving` ([PR#48](https://github.com/phrgab/peaks/pull/48))
+- Minimum version cap for `numba` (`>=0.61.0`) to fix a dependency resolution issue when installing with uv ([PR#52](https://github.com/phrgab/peaks/pull/52))
 
 ### Changed
 
