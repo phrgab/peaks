@@ -506,8 +506,7 @@ class I05NanoARPESLoader(I05ARPESLoader, BaseOpticsDataLoader):
     }
 
     _analyser_sign_conventions = {
-        "theta_par": -1,
-        "deflector_parallel": -1,  # consistent with theta_par
+        # overriden when loading data to take account of analyser upgrade see below
     }
 
     _desired_dim_order = [
@@ -530,8 +529,7 @@ class I05NanoARPESLoader(I05ARPESLoader, BaseOpticsDataLoader):
     ]
 
     _analyser_name_conventions = {
-        "deflector_perp": "ThetaY",
-        "deflector_parallel": "ThetaX",
+        # deflector conventions overridden when loading data to take account of analyser upgrade see below
         "eV": ["energies", "kinetic_energy_center"],
         "theta_par": "angles",
         "hv": ["energy", "value"],
@@ -558,14 +556,61 @@ class I05NanoARPESLoader(I05ARPESLoader, BaseOpticsDataLoader):
         "manipulator_x2": "entry1/instrument/manipulator/smy",
         "manipulator_x3": "entry1/instrument/manipulator/smz",
         "manipulator_defocus": "entry1/instrument/manipulator/smdefocus",
-        "analyser_model": "FIXED_VALUE:Scienta DA30",
-        "analyser_slit_width": [
-            "entry1/instrument/analyser/entrance_slit_size",
-            "entry1/instrument/analyser_total/entrance_slit_size",
+        "analyser_model": lambda f: (
+            (
+                "FIXED_VALUE:MBS A1"
+                if parse(
+                    (
+                        (f["entry1/start_time"][()]).decode()
+                        if isinstance(f["entry1/start_time"][()], bytes)
+                        else f["entry1/start_time"][()]
+                    )
+                )
+                > datetime(2026, 4, 1, tzinfo=timezone.utc)
+                else "FIXED_VALUE:Scienta DA30"
+            )
+            if "entry1/start_time" in f
+            else None
+        ),
+        "analyser_slit_width": [  # If the slit size is 0, assume it's not set and return None, otherwise return the value.
+            lambda f: (
+                None
+                if (
+                    v := BaseHDF5DataLoader._extract_hdf5_value(
+                        f, "entry1/instrument/analyser/entrance_slit_size"
+                    )
+                )
+                == 0
+                else v
+            ),
+            lambda f: (
+                None
+                if (
+                    v := BaseHDF5DataLoader._extract_hdf5_value(
+                        f, "entry1/instrument/analyser_total/entrance_slit_size"
+                    )
+                )
+                == 0
+                else v
+            ),
         ],
         "analyser_slit_width_identifier": [
-            "entry1/instrument/analyser/entrance_slit_setting",
-            "entry1/instrument/analyser_total/entrance_slit_setting",
+            lambda f: (
+                None  # If the slit size is 0 which is physcially impossible, assume it's not set and return None
+                if BaseHDF5DataLoader._extract_hdf5_value(
+                    f, "entry1/instrument/analyser/entrance_slit_size"
+                )
+                == 0
+                else "entry1/instrument/analyser/entrance_slit_setting"  # otherwise return it
+            ),
+            lambda f: (
+                None
+                if BaseHDF5DataLoader._extract_hdf5_value(
+                    f, "entry1/instrument/analyser_total/entrance_slit_size"
+                )
+                == 0
+                else "entry1/instrument/analyser_total/entrance_slit_setting"
+            ),
         ],
         "analyser_eV": [
             "entry1/instrument/analyser/energies",
@@ -619,8 +664,38 @@ class I05NanoARPESLoader(I05ARPESLoader, BaseOpticsDataLoader):
             "entry1/instrument/analyser_total/acquisition_mode",
         ],
         "analyser_eV_type": "FIXED_VALUE:kinetic",
-        "analyser_deflector_parallel": None,
-        "analyser_deflector_perp": None,
+        "analyser_deflector_parallel": lambda f: (
+            (
+                "entry1/instrument/analyser/deflector_y"
+                if parse(
+                    (
+                        (f["entry1/start_time"][()]).decode()
+                        if isinstance(f["entry1/start_time"][()], bytes)
+                        else f["entry1/start_time"][()]
+                    )
+                )
+                > datetime(2026, 4, 1, tzinfo=timezone.utc)
+                else None
+            )
+            if "entry1/start_time" in f
+            else None
+        ),
+        "analyser_deflector_perp": lambda f: (
+            (
+                "entry1/instrument/analyser/deflector_x"
+                if parse(
+                    (
+                        (f["entry1/start_time"][()]).decode()
+                        if isinstance(f["entry1/start_time"][()], bytes)
+                        else f["entry1/start_time"][()]
+                    )
+                )
+                > datetime(2026, 4, 1, tzinfo=timezone.utc)
+                else None
+            )
+            if "entry1/start_time" in f
+            else None
+        ),
         "analyser_polar": [
             "entry1/instrument/analyser/analyser_polar_angle",
             "entry1/instrument/analyser_total/analyser_polar_angle",
@@ -666,6 +741,36 @@ class I05NanoARPESLoader(I05ARPESLoader, BaseOpticsDataLoader):
         if fpath.split(".")[-1] == "zip":
             # Load the data using the SES loader for .zip files
             return cls.load(fpath, loc="SES", lazy=lazy, metadata=metadata)
+
+        # Choose analyser sign and name conventions for deflector based on acquisition date i.e. the analyser used at the time
+        with h5py.File(fpath, "r") as f:
+            if "entry1/start_time" in f:
+                _raw_start_time = f["entry1/start_time"][()]
+                _raw_start_time = (
+                    _raw_start_time.decode()
+                    if isinstance(_raw_start_time, bytes)
+                    else str(_raw_start_time)
+                )
+                _after_analyser_upgrade = parse(_raw_start_time) > datetime(
+                    2026, 4, 1, tzinfo=timezone.utc
+                )
+            else:
+                _after_analyser_upgrade = False
+        cls._analyser_sign_conventions["theta_par"] = (
+            1 if _after_analyser_upgrade else -1
+        )
+        cls._analyser_sign_conventions["deflector_parallel"] = (
+            1 if _after_analyser_upgrade else -1
+        )
+        cls._analyser_sign_conventions["deflector_perp"] = (
+            -1 if _after_analyser_upgrade else 1
+        )
+        cls._analyser_name_conventions["deflector_perp"] = (
+            "deflector_x" if _after_analyser_upgrade else "ThetaY"
+        )
+        cls._analyser_name_conventions["deflector_parallel"] = (
+            "deflector_y" if _after_analyser_upgrade else "ThetaX"
+        )
 
         # Load the data
         data = super()._load(fpath, lazy, metadata, quiet, **kwargs)
