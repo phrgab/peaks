@@ -225,7 +225,6 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
             if "entry1/start_time" in f
             else None
         ),
-        # "analyser_slit_width": "entry1/instrument/analyser/entrance_slit_size",
         "analyser_slit_width": lambda f: (  # If the slit size is 0, assume it's not set and return None, otherwise return the value.
             None
             if (
@@ -236,7 +235,6 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
             == 0
             else v
         ),
-        # "analyser_slit_width_identifier": "entry1/instrument/analyser_total/entrance_slit_setting",
         "analyser_slit_width_identifier": [
             lambda f: (
                 None  # If the slit size is 0 which is physcially impossible, assume it's not set and return None
@@ -616,20 +614,13 @@ class I05NanoARPESLoader(I05ARPESLoader, BaseOpticsDataLoader):
         "manipulator_x3": "entry1/instrument/manipulator/smz",
         "manipulator_defocus": "entry1/instrument/manipulator/smdefocus",
         "analyser_model": lambda f: (
-            (
+            None
+            if (ac_date := I05NanoARPESLoader._parse_start_time(f)) is None
+            else (
                 "FIXED_VALUE:MBS A1"
-                if parse(
-                    (
-                        (f["entry1/start_time"][()]).decode()
-                        if isinstance(f["entry1/start_time"][()], bytes)
-                        else f["entry1/start_time"][()]
-                    )
-                )
-                > datetime(2026, 4, 1, tzinfo=timezone.utc)
+                if ac_date > I05NanoARPESLoader._analyser_upgrade_date
                 else "FIXED_VALUE:Scienta DA30"
             )
-            if "entry1/start_time" in f
-            else None
         ),
         "analyser_slit_width": [  # If the slit size is 0, assume it's not set and return None, otherwise return the value.
             lambda f: (
@@ -724,35 +715,15 @@ class I05NanoARPESLoader(I05ARPESLoader, BaseOpticsDataLoader):
         ],
         "analyser_eV_type": "FIXED_VALUE:kinetic",
         "analyser_deflector_parallel": lambda f: (
-            (
-                "entry1/instrument/analyser/deflector_y"
-                if parse(
-                    (
-                        (f["entry1/start_time"][()]).decode()
-                        if isinstance(f["entry1/start_time"][()], bytes)
-                        else f["entry1/start_time"][()]
-                    )
-                )
-                > datetime(2026, 4, 1, tzinfo=timezone.utc)
-                else None
-            )
-            if "entry1/start_time" in f
+            "entry1/instrument/analyser/deflector_y"
+            if (ac_date := I05NanoARPESLoader._parse_start_time(f))
+            and ac_date > I05NanoARPESLoader._analyser_upgrade_date
             else None
         ),
         "analyser_deflector_perp": lambda f: (
-            (
-                "entry1/instrument/analyser/deflector_x"
-                if parse(
-                    (
-                        (f["entry1/start_time"][()]).decode()
-                        if isinstance(f["entry1/start_time"][()], bytes)
-                        else f["entry1/start_time"][()]
-                    )
-                )
-                > datetime(2026, 4, 1, tzinfo=timezone.utc)
-                else None
-            )
-            if "entry1/start_time" in f
+            "entry1/instrument/analyser/deflector_x"
+            if (ac_date := I05NanoARPESLoader._parse_start_time(f))
+            and ac_date > I05NanoARPESLoader._analyser_upgrade_date
             else None
         ),
         "analyser_polar": [
@@ -797,23 +768,27 @@ class I05NanoARPESLoader(I05ARPESLoader, BaseOpticsDataLoader):
     # Handle nano analyser upgrade
     _analyser_upgrade_date = datetime(2026, 4, 1, tzinfo=timezone.utc)  # DA30 --> A1
 
-    @classmethod
-    def _get_start_time(cls, fpath):
-        """Parse the acquisition start time from the file, as a tz-aware datetime."""
-        with h5py.File(fpath, "r") as f:
-            if "entry1/start_time" not in f:
-                return None
-            _raw_start_time = f["entry1/start_time"][()]
-            _raw_start_time = (
-                _raw_start_time.decode()
-                if isinstance(_raw_start_time, bytes)
-                else str(_raw_start_time)
-            )
+    @staticmethod
+    def _parse_start_time(f):
+        """Return the tz-aware acquisition start time."""
+        if "entry1/start_time" not in f:
+            return None
+        _raw_start_time = f["entry1/start_time"][()]
+        _raw_start_time = (
+            _raw_start_time.decode()
+            if isinstance(_raw_start_time, bytes)
+            else str(_raw_start_time)
+        )
         start_time = parse(_raw_start_time)
         if start_time.tzinfo is None:
             start_time = start_time.replace(tzinfo=timezone.utc)
-        print(f"data acquired at {start_time}")
         return start_time
+
+    @classmethod
+    def _get_start_time(cls, fpath):
+        """Parse the acquisition start time from the file at `fpath`."""
+        with h5py.File(fpath, "r") as f:
+            return cls._parse_start_time(f)
 
     @classmethod
     def _load(cls, fpath, lazy, metadata, quiet, **kwargs):
