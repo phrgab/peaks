@@ -29,7 +29,7 @@ def _serialise_attrs(attrs):
     # Make data attributes serialisable
     for attr_name, attr in attrs.copy().items():
         try:  # Attrs should generally define json method to convert to/from json string
-            attrs[attr_name] = attr.json(by_alias=True)
+            attrs[attr_name] = attr.model_dump_json(by_alias=True)
             metadata_models[attr_name] = (
                 f"{attr.__class__.__module__}.{attr.__class__.__name__}"
             )

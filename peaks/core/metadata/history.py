@@ -9,7 +9,7 @@ from typing import List, Union
 import pandas as pd
 import xarray as xr
 from IPython.display import display
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from peaks import __version__
 
@@ -21,11 +21,11 @@ class AnalysisHistoryRecord(BaseModel):
     peaks_version: str = Field(..., alias="peaks version")
     record: Union[str, dict]
     fn_name: str = Field(..., alias="function name")
-
-    class Config:
-        populate_by_name = (
+    model_config = ConfigDict(
+        populate_by_name=(
             True  # Allow aliases for both serialization and deserialization
         )
+    )
 
 
 class AnalysisHistoryRecordCollection(BaseModel):
@@ -194,7 +194,7 @@ class History:
         """Make a nice in-line display of the history metadata and return a timestamp string."""
         analysis_history = self._obj.attrs.get("_analysis_history")
         if analysis_history:
-            analysis_history = analysis_history.dict(by_alias=True)["records"]
+            analysis_history = analysis_history.model_dump(by_alias=True)["records"]
         df = pd.DataFrame(analysis_history)
         with pd.option_context(
             "display.max_colwidth", None, "display.colheader_justify", "left"
@@ -230,7 +230,7 @@ class History:
         record = (
             self._obj.attrs.get("_analysis_history")
             .records[index if index is not None else -1]
-            .dict(by_alias=True)
+            .model_dump(by_alias=True)
             .copy()
         )
         pprint(record)
@@ -286,7 +286,7 @@ class History:
         """
         return (
             self._obj.attrs.get("_analysis_history")
-            .dict(by_alias=True)
+            .model_dump(by_alias=True)
             .copy()["records"][index if index is not None else slice(None)]
         )
 
@@ -310,7 +310,7 @@ class History:
             # Get the history metadata as a JSON-formatted string
             disp_k.history.json()
         """
-        return self._obj.attrs.get("_analysis_history").json(by_alias=True)
+        return self._obj.attrs.get("_analysis_history").model_dump_json(by_alias=True)
 
     def save(self, fname):
         """Save the history metadata as a JSON-formatted string.
