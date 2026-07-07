@@ -7,21 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.5.2.dev]
 
+### Added
+
+- Unit tests for `core/fileIO`: `data_saving` ([PR#48](https://github.com/phrgab/peaks/pull/48))
+- Minimum version cap for `numba` (`>=0.61.0`) to fix a dependency resolution issue when installing with uv ([PR#52](https://github.com/phrgab/peaks/pull/52))
+
 ### Fixed
 
 - Data loading bug for SES `zip` files where the loc identification handler reads metadata in the parsed pydantic-model format rather than the flat raw dictionary it requires ([PR#47](https://github.com/phrgab/peaks/pull/47))
 - Error on Windows when clearing up lazily loaded sample data ([PR#50](https://github.com/phrgab/peaks/pull/50))
 - Cross-platform filename parsing in loader ([PR#50](https://github.com/phrgab/peaks/pull/50))
 - Windows `PermissionError` when loading example CIF structure ([PR#50](https://github.com/phrgab/peaks/pull/50))
-
-### Added
-
-- Unit tests for `core/fileIO`: `data_saving` ([PR#48](https://github.com/phrgab/peaks/pull/48))
-- Minimum version cap for `numba` (`>=0.61.0`) to fix a dependency resolution issue when installing with uv ([PR#52](https://github.com/phrgab/peaks/pull/52))
+- 'Pretty'-formatted normal emission values copied from the display panel that can't be parsed ([PR#53](https://github.com/phrgab/peaks/pull/53))
+- `plot_fit` doesn't render multiple fits and sliders during the docs build ([PR#53](https://github.com/phrgab/peaks/pull/53))
 
 ### Changed
 
 - Pydantic v1 methods to their v2 equivalents ([PR#48](https://github.com/phrgab/peaks/pull/48))
+- Diamond I05 data loader, following the analyser upgrade in 2026 ([PR#53](https://github.com/phrgab/peaks/pull/53))
 
 ## [0.5.1] - 2026-05-29
 

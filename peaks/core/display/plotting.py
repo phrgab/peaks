@@ -1,5 +1,8 @@
 """Static in-line plotting functions."""
 
+import os
+import textwrap
+
 import matplotlib.pyplot as plt
 import numpy as np
 import panel as pn
@@ -8,6 +11,7 @@ import xarray as xr
 from cycler import cycler
 from IPython.display import display
 from matplotlib import cm, colors
+from matplotlib.figure import Figure
 from numpy.fft import fft
 
 from peaks.core.utils.misc import analysis_warning
@@ -513,7 +517,9 @@ def plot_3d_stack(
     plt.show()
 
 
-def plot_fit(fit_results_ds, show_components=True, figsize=None, **kwargs):
+def plot_fit(
+    fit_results_ds, show_components=True, figsize=None, pane_height=450, **kwargs
+):
     """Plot fit results from a fit stored in an xarray.Dataset.
 
     Parameters
@@ -523,11 +529,16 @@ def plot_fit(fit_results_ds, show_components=True, figsize=None, **kwargs):
     show_components : bool, optional
         If True (default) overlay individual model components as dashed lines.
     figsize : tuple of float, optional
+        Figure size ``(width, height)`` in inches, passed to the underlying
+        matplotlib figure. If None, matplotlib's default is used.
+    pane_height : int, optional
+        Height in pixels of the matplotlib pane in the interactive dashboard
+        (multi-dimensional fits only). Defaults to 450.
     **kwargs : optional
     """
 
     def _plot_single_fit(fit_results, show_components, figsize, **kwargs):
-        fig = plt.figure(figsize=figsize)
+        fig = Figure(figsize=figsize)
         for dim in fit_results.dims:
             if dim in kwargs:
                 fit_results = fit_results.isel({dim: kwargs.pop(dim)})
@@ -536,8 +547,15 @@ def plot_fit(fit_results_ds, show_components=True, figsize=None, **kwargs):
 
         fit_model = fit_results["fit_model"].compute().item()
         fit_model.plot(fig=fig, **kwargs)
+        for a in fig.axes:
+            title = a.get_title()
+            if title:
+                a.set_title("\n".join(textwrap.wrap(title, width=65)))
         if show_components and len(fit_model.components) > 1:
-            ax = plt.gca()
+            ax = next(
+                (a for a in fig.axes if "residual" not in a.get_ylabel().lower()),
+                fig.axes[-1],
+            )
             components = fit_model.eval_components()
             for component_name, component_data in components.items():
                 if component_name != "_gauss_conv":
@@ -548,7 +566,6 @@ def plot_fit(fit_results_ds, show_components=True, figsize=None, **kwargs):
                         linestyle="--",
                     )
             ax.legend()
-        plt.close(fig)
         return fig
 
     # Check the data array contains fit results
@@ -585,8 +602,18 @@ def plot_fit(fit_results_ds, show_components=True, figsize=None, **kwargs):
 
         # Display the sliders and the plot in the notebook
         dashboard = pn.Column(
-            pn.Row(*sliders.values()), pn.pane.Matplotlib(interactive_plot)
+            pn.Row(*sliders.values()),
+            pn.pane.Matplotlib(
+                interactive_plot,
+                tight=True,
+                height=pane_height,
+                format="svg",
+                sizing_mode="stretch_width",
+            ),
         )
+
+        if os.getenv("FORCE_NB_EXECUTION") == "1":
+            return dashboard.embed(max_states=1000)  # for documentation purposes
 
         dashboard.servable()
         return dashboard
