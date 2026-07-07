@@ -613,7 +613,7 @@ def plot_fit(
         )
 
         if os.getenv("FORCE_NB_EXECUTION") == "1":
-            return dashboard.embed(max_states=1000)  # for documentation purposes
+            return dashboard.embed(max_states=20)  # for documentation purposes
 
         dashboard.servable()
         return dashboard
