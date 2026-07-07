@@ -1,6 +1,7 @@
 """Static in-line plotting functions."""
 
 import os
+import textwrap
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -516,7 +517,9 @@ def plot_3d_stack(
     plt.show()
 
 
-def plot_fit(fit_results_ds, show_components=True, figsize=None, **kwargs):
+def plot_fit(
+    fit_results_ds, show_components=True, figsize=None, pane_height=450, **kwargs
+):
     """Plot fit results from a fit stored in an xarray.Dataset.
 
     Parameters
@@ -526,6 +529,11 @@ def plot_fit(fit_results_ds, show_components=True, figsize=None, **kwargs):
     show_components : bool, optional
         If True (default) overlay individual model components as dashed lines.
     figsize : tuple of float, optional
+        Figure size ``(width, height)`` in inches, passed to the underlying
+        matplotlib figure. If None, matplotlib's default is used.
+    pane_height : int, optional
+        Height in pixels of the matplotlib pane in the interactive dashboard
+        (multi-dimensional fits only). Defaults to 450.
     **kwargs : optional
     """
 
@@ -539,6 +547,10 @@ def plot_fit(fit_results_ds, show_components=True, figsize=None, **kwargs):
 
         fit_model = fit_results["fit_model"].compute().item()
         fit_model.plot(fig=fig, **kwargs)
+        for a in fig.axes:
+            title = a.get_title()
+            if title:
+                a.set_title("\n".join(textwrap.wrap(title, width=65)))
         if show_components and len(fit_model.components) > 1:
             ax = next(
                 (a for a in fig.axes if "residual" not in a.get_ylabel().lower()),
@@ -591,8 +603,13 @@ def plot_fit(fit_results_ds, show_components=True, figsize=None, **kwargs):
         # Display the sliders and the plot in the notebook
         dashboard = pn.Column(
             pn.Row(*sliders.values()),
-            pn.pane.Matplotlib(interactive_plot),
-            sizing_mode="scale_width",
+            pn.pane.Matplotlib(
+                interactive_plot,
+                tight=True,
+                height=pane_height,
+                format="svg",
+                sizing_mode="stretch_width",
+            ),
         )
 
         if os.getenv("FORCE_NB_EXECUTION") == "1":
