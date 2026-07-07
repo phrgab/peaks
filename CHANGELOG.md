@@ -7,9 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.5.2.dev]
 
+### Fixed
+
+- 'Pretty'-formatted normal emission values copied from the display panel that can't be parsed ([PR#53](https://github.com/phrgab/peaks/pull/53))
+- `plot_fit` doesn't render multiple fits and sliders during the docs build ([PR#53](https://github.com/phrgab/peaks/pull/53))
+
 ### Changed
 
-- Diamond I05 data loader, following the analyser upgrade ([PR#XX](https://github.com/phrgab/peaks/pull/XX))
+- Diamond I05 data loader, following the analyser upgrade in 2026 ([PR#53](https://github.com/phrgab/peaks/pull/53))
 
 ## [0.5.1] - 2026-05-29
 

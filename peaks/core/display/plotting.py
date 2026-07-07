@@ -591,10 +591,8 @@ def plot_fit(fit_results_ds, show_components=True, figsize=None, **kwargs):
         # Display the sliders and the plot in the notebook
         dashboard = pn.Column(
             pn.Row(*sliders.values()),
-            pn.pane.Matplotlib(
-                interactive_plot, sizing_mode="stretch_width", fixed_aspect=True
-            ),
-            sizing_mode="stretch_width",
+            pn.pane.Matplotlib(interactive_plot),
+            sizing_mode="scale_width",
         )
 
         if os.getenv("FORCE_NB_EXECUTION") == "1":
