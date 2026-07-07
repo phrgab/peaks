@@ -1,5 +1,7 @@
 """Static in-line plotting functions."""
 
+import os
+
 import matplotlib.pyplot as plt
 import numpy as np
 import panel as pn
@@ -8,6 +10,7 @@ import xarray as xr
 from cycler import cycler
 from IPython.display import display
 from matplotlib import cm, colors
+from matplotlib.figure import Figure
 from numpy.fft import fft
 
 from peaks.core.utils.misc import analysis_warning
@@ -527,7 +530,7 @@ def plot_fit(fit_results_ds, show_components=True, figsize=None, **kwargs):
     """
 
     def _plot_single_fit(fit_results, show_components, figsize, **kwargs):
-        fig = plt.figure(figsize=figsize)
+        fig = Figure(figsize=figsize)
         for dim in fit_results.dims:
             if dim in kwargs:
                 fit_results = fit_results.isel({dim: kwargs.pop(dim)})
@@ -537,7 +540,10 @@ def plot_fit(fit_results_ds, show_components=True, figsize=None, **kwargs):
         fit_model = fit_results["fit_model"].compute().item()
         fit_model.plot(fig=fig, **kwargs)
         if show_components and len(fit_model.components) > 1:
-            ax = plt.gca()
+            ax = next(
+                (a for a in fig.axes if "residual" not in a.get_ylabel().lower()),
+                fig.axes[-1],
+            )
             components = fit_model.eval_components()
             for component_name, component_data in components.items():
                 if component_name != "_gauss_conv":
@@ -548,7 +554,6 @@ def plot_fit(fit_results_ds, show_components=True, figsize=None, **kwargs):
                         linestyle="--",
                     )
             ax.legend()
-        plt.close(fig)
         return fig
 
     # Check the data array contains fit results
@@ -585,8 +590,15 @@ def plot_fit(fit_results_ds, show_components=True, figsize=None, **kwargs):
 
         # Display the sliders and the plot in the notebook
         dashboard = pn.Column(
-            pn.Row(*sliders.values()), pn.pane.Matplotlib(interactive_plot)
+            pn.Row(*sliders.values()),
+            pn.pane.Matplotlib(
+                interactive_plot, sizing_mode="stretch_width", fixed_aspect=True
+            ),
+            sizing_mode="stretch_width",
         )
+
+        if os.getenv("FORCE_NB_EXECUTION") == "1":
+            return dashboard.embed(max_states=1000)  # for documentation purposes
 
         dashboard.servable()
         return dashboard
