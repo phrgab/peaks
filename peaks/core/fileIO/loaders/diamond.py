@@ -193,8 +193,8 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
     }
 
     _analyser_name_conventions = {
-        "deflector_perp": "deflector_x",
-        "deflector_parallel": "deflector_y",
+        "deflector_perp": "deflector_x",  # These two don't exist for R4000 but fine for now
+        "deflector_parallel": "detector_y",  # Should handle them properly when we do the refactor
         "eV": ["energies", "kinetic_energy_center"],
         "theta_par": "angles",
         "hv": ["energy", "value"],
@@ -225,8 +225,36 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
             if "entry1/start_time" in f
             else None
         ),
-        "analyser_slit_width": "entry1/instrument/analyser/entrance_slit_size",
-        "analyser_slit_width_identifier": "entry1/instrument/analyser_total/entrance_slit_setting",
+        # "analyser_slit_width": "entry1/instrument/analyser/entrance_slit_size",
+        "analyser_slit_width": lambda f: (  # If the slit size is 0, assume it's not set and return None, otherwise return the value.
+            None
+            if (
+                v := BaseHDF5DataLoader._extract_hdf5_value(
+                    f, "entry1/instrument/analyser/entrance_slit_size"
+                )
+            )
+            == 0
+            else v
+        ),
+        # "analyser_slit_width_identifier": "entry1/instrument/analyser_total/entrance_slit_setting",
+        "analyser_slit_width_identifier": [
+            lambda f: (
+                None  # If the slit size is 0 which is physcially impossible, assume it's not set and return None
+                if BaseHDF5DataLoader._extract_hdf5_value(
+                    f, "entry1/instrument/analyser/entrance_slit_size"
+                )
+                == 0
+                else "entry1/instrument/analyser/entrance_slit_setting"  # otherwise return it
+            ),
+            lambda f: (
+                None
+                if BaseHDF5DataLoader._extract_hdf5_value(
+                    f, "entry1/instrument/analyser_total/entrance_slit_size"
+                )
+                == 0
+                else "entry1/instrument/analyser_total/entrance_slit_setting"
+            ),
+        ],
         "analyser_eV": "entry1/instrument/analyser/energies",
         "analyser_step_size": lambda f: (
             np.ptp(f["entry1/instrument/analyser/energies"])
@@ -244,8 +272,37 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
         "analyser_lens_mode": "entry1/instrument/analyser/lens_mode",
         "analyser_acquisition_mode": "entry1/instrument/analyser/acquisition_mode",
         "analyser_eV_type": "FIXED_VALUE:kinetic",
-        "analyser_deflector_parallel": "entry1/instrument/deflector_y/deflector_y",
-        "analyser_deflector_perp": "entry1/instrument/deflector_x/deflector_x",
+        "analyser_deflector_parallel": lambda f: (
+            (
+                "entry1/instrument/analyser/detector_y"
+                if parse(
+                    (
+                        (f["entry1/start_time"][()]).decode()
+                        if isinstance(f["entry1/start_time"][()], bytes)
+                        else f["entry1/start_time"][()]
+                    )
+                )
+                > datetime(2021, 7, 1, tzinfo=timezone.utc)
+                else None
+            )
+            if "entry1/start_time" in f
+            else None
+        ),
+        "analyser_deflector_perp": lambda f: (
+            (
+                "entry1/instrument/deflector_x/deflector_x"
+                if "entry1/instrument/deflector_x/deflector_x" in f
+                else "entry1/instrument/analyser/deflector_x"
+            )
+            if "entry1/start_time" in f
+            and parse(
+                f["entry1/start_time"][()].decode()
+                if isinstance(f["entry1/start_time"][()], bytes)
+                else f["entry1/start_time"][()]
+            )
+            > datetime(2021, 7, 1, tzinfo=timezone.utc)
+            else None
+        ),
         "temperature_sample": "entry1/sample/temperature",
         "temperature_cryostat": "entry1/sample/cryostat_temperature",
         "temperature_shield": "entry1/sample/shield_temperature",
@@ -505,8 +562,9 @@ class I05NanoARPESLoader(I05ARPESLoader, BaseOpticsDataLoader):
         "x3": -1,
     }
 
-    _analyser_sign_conventions = {
-        # overriden when loading data to take account of analyser upgrade see below
+    _analyser_sign_conventions = {  # This will be overridden if the analyser upgrade is detected see class I05NanoNewARPESLoader
+        "theta_par": -1,
+        "deflector_parallel": -1,  # consistent with theta_par
     }
 
     _desired_dim_order = [
@@ -529,7 +587,8 @@ class I05NanoARPESLoader(I05ARPESLoader, BaseOpticsDataLoader):
     ]
 
     _analyser_name_conventions = {
-        # deflector conventions overridden when loading data to take account of analyser upgrade see below
+        "deflector_perp": "ThetaY",  # This one and the one below will be overridden if the analyser upgrade is detected
+        "deflector_parallel": "ThetaX",  # see class I05NanoNewARPESLoader
         "eV": ["energies", "kinetic_energy_center"],
         "theta_par": "angles",
         "hv": ["energy", "value"],
@@ -735,6 +794,27 @@ class I05NanoARPESLoader(I05ARPESLoader, BaseOpticsDataLoader):
         "_parse_optics_metadata",
     ]  # List of metadata parsers to apply
 
+    # Handle nano analyser upgrade
+    _analyser_upgrade_date = datetime(2026, 4, 1, tzinfo=timezone.utc)  # DA30 --> A1
+
+    @classmethod
+    def _get_start_time(cls, fpath):
+        """Parse the acquisition start time from the file, as a tz-aware datetime."""
+        with h5py.File(fpath, "r") as f:
+            if "entry1/start_time" not in f:
+                return None
+            _raw_start_time = f["entry1/start_time"][()]
+            _raw_start_time = (
+                _raw_start_time.decode()
+                if isinstance(_raw_start_time, bytes)
+                else str(_raw_start_time)
+            )
+        start_time = parse(_raw_start_time)
+        if start_time.tzinfo is None:
+            start_time = start_time.replace(tzinfo=timezone.utc)
+        print(f"data acquired at {start_time}")
+        return start_time
+
     @classmethod
     def _load(cls, fpath, lazy, metadata, quiet, **kwargs):
         """Load the data from Diamond I05 Nano ARPES."""
@@ -743,34 +823,17 @@ class I05NanoARPESLoader(I05ARPESLoader, BaseOpticsDataLoader):
             return cls.load(fpath, loc="SES", lazy=lazy, metadata=metadata)
 
         # Choose analyser sign and name conventions for deflector based on acquisition date i.e. the analyser used at the time
-        with h5py.File(fpath, "r") as f:
-            if "entry1/start_time" in f:
-                _raw_start_time = f["entry1/start_time"][()]
-                _raw_start_time = (
-                    _raw_start_time.decode()
-                    if isinstance(_raw_start_time, bytes)
-                    else str(_raw_start_time)
+        if cls is I05NanoARPESLoader:
+            start_time = cls._get_start_time(fpath)
+            if start_time is not None and start_time > cls._analyser_upgrade_date:
+                return cls.load(
+                    fpath,
+                    loc="Diamond_I05_Nano-ARPES_New",
+                    lazy=lazy,
+                    metadata=metadata,
+                    quiet=quiet,
+                    **kwargs,
                 )
-                _after_analyser_upgrade = parse(_raw_start_time) > datetime(
-                    2026, 4, 1, tzinfo=timezone.utc
-                )
-            else:
-                _after_analyser_upgrade = False
-        cls._analyser_sign_conventions["theta_par"] = (
-            1 if _after_analyser_upgrade else -1
-        )
-        cls._analyser_sign_conventions["deflector_parallel"] = (
-            1 if _after_analyser_upgrade else -1
-        )
-        cls._analyser_sign_conventions["deflector_perp"] = (
-            -1 if _after_analyser_upgrade else 1
-        )
-        cls._analyser_name_conventions["deflector_perp"] = (
-            "deflector_x" if _after_analyser_upgrade else "ThetaY"
-        )
-        cls._analyser_name_conventions["deflector_parallel"] = (
-            "deflector_y" if _after_analyser_upgrade else "ThetaX"
-        )
 
         # Load the data
         data = super()._load(fpath, lazy, metadata, quiet, **kwargs)
@@ -842,3 +905,20 @@ class I05NanoARPESLoader(I05ARPESLoader, BaseOpticsDataLoader):
         )
 
         return corrected_data
+
+
+@register_loader
+class I05NanoNewARPESLoader(I05NanoARPESLoader):
+    """Nano branch of I05 after the 2026 analyser upgrade."""
+
+    _loc_name = "Diamond_I05_Nano-ARPES_New"
+    _analyser_sign_conventions = {
+        "theta_par": 1,
+        "deflector_parallel": 1,  # consistent with theta_par
+        "deflector_perp": -1,
+    }
+    _analyser_name_conventions = {
+        **I05NanoARPESLoader._analyser_name_conventions,
+        "deflector_perp": "deflector_x",
+        "deflector_parallel": "deflector_y",
+    }
