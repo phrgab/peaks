@@ -5,7 +5,7 @@ import os
 
 import dask
 import pint
-from tqdm.notebook import tqdm
+from tqdm.auto import tqdm
 
 from peaks.core.fileIO.base_data_classes.base_data_class import BaseDataLoader
 from peaks.core.options import opts

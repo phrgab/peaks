@@ -7,7 +7,7 @@ from os.path import isfile, join
 import natsort
 import numpy as np
 import pint_xarray
-from tqdm.notebook import tqdm
+from tqdm.auto import tqdm
 
 from peaks.core.fileIO.base_arpes_data_classes.base_ses_class import SESDataLoader
 from peaks.core.fileIO.loc_registry import register_loader
