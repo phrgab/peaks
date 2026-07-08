@@ -1,11 +1,14 @@
+import sys
+import types
 import warnings
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pint
 import pytest
 import xarray as xr
 
 from peaks.core.utils.misc import (
+    _in_marimo,
     analysis_warning,
     dequantify_quantify_wrapper,
     format_colored_dict,
@@ -45,6 +48,17 @@ class TestFormatColouredDict:
         assert colored("sapolar", "green") in result
 
 
+class TestInMarimo:
+    def test_false_when_marimo_not_imported(self, monkeypatch):
+        monkeypatch.delitem(sys.modules, "marimo", raising=False)
+        assert _in_marimo() is False
+
+    def test_true_when_running_in_mo_nb(self, monkeypatch):
+        fake_mo = types.SimpleNamespace(running_in_notebook=lambda: True)
+        monkeypatch.setitem(sys.modules, "marimo", fake_mo)
+        assert _in_marimo() is True
+
+
 class TestAnalysisWarning:
     @patch("peaks.core.utils.misc.display")
     def test_displays(self, mock_display):
@@ -61,6 +75,18 @@ class TestAnalysisWarning:
         for warn_type in ("info", "warning", "success", "danger"):
             analysis_warning("a message", warn_type=warn_type)
         assert mock_display.call_count == 4
+
+    @patch("peaks.core.utils.misc._in_marimo", return_value=True)
+    def test_appends_mo_callout_not_jupyter_display(self, mock_in_marimo, monkeypatch):
+        fake_mo = MagicMock()
+        monkeypatch.setitem(sys.modules, "marimo", fake_mo)
+
+        with patch("peaks.core.utils.misc.display") as mock_jupyter_display:
+            analysis_warning("a message", warn_type="warning", title="Test")
+
+        fake_mo.output.append.assert_called_once()
+        assert fake_mo.callout.call_args.kwargs["kind"] == "warn"
+        mock_jupyter_display.assert_not_called()
 
 
 class TestPintDequantifyQuantifyWrapper:
