@@ -7,7 +7,7 @@ import pint
 import pint_xarray
 import xarray as xr
 from scipy.constants import angstrom, electron_volt, hbar, m_e
-from tqdm.notebook import tqdm
+from tqdm.auto import tqdm
 
 from peaks.core.fileIO.base_data_classes.base_data_class import BaseDataLoader
 from peaks.core.process.fermi_level_correction import (

@@ -5,7 +5,7 @@ import numpy as np
 import xarray as xr
 from scipy.ndimage import gaussian_filter1d
 from scipy.signal import find_peaks
-from tqdm.notebook import tqdm
+from tqdm.auto import tqdm
 
 from peaks.core.fitting.models import LinearDosFermiModel
 from peaks.core.utils.misc import analysis_warning

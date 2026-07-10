@@ -9,9 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Progress bar support for running in marimo notebooks. `analysis_warning`s now render as native marimo callouts when running inside marimo ([PR#56](https://github.com/phrgab/peaks/pull/56))
+
 ### Fixed
 
+- `plot_grid` renders with a distorted aspect ratio in marimo notebooks when the figure is wider than the notebook column ([PR#56](https://github.com/phrgab/peaks/pull/56))
+
 ### Changed
+
+- Limit font size and max lines of titles in `plot_fit` outputs ([PR#56](https://github.com/phrgab/peaks/pull/56))
 
 ### Removed
 

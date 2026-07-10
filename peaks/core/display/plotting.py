@@ -14,7 +14,7 @@ from matplotlib import cm, colors
 from matplotlib.figure import Figure
 from numpy.fft import fft
 
-from peaks.core.utils.misc import analysis_warning
+from peaks.core.utils.misc import _in_marimo, analysis_warning
 
 
 def plot_grid(
@@ -194,6 +194,21 @@ def plot_grid(
 
     # Tidy up the layout
     plt.tight_layout()
+
+    if _in_marimo():
+        fig_width_px = fig.get_figwidth() * fig.dpi
+        if fig_width_px > 1100:  # roughly the max width of the marimo pane
+            import io
+
+            import marimo as mo
+
+            buf = io.BytesIO()
+            fig.savefig(buf, format="png", dpi=fig.dpi, bbox_inches="tight")
+            buf.seek(
+                0
+            )  # Rewind the buffer to the beginning so it can be read from the start
+            plt.close(fig)
+            return mo.image(buf, width=1100)
 
 
 def plot_DCs(
@@ -550,7 +565,12 @@ def plot_fit(
         for a in fig.axes:
             title = a.get_title()
             if title:
-                a.set_title("\n".join(textwrap.wrap(title, width=65)))
+                a.set_title(
+                    "\n".join(
+                        textwrap.wrap(title, width=75, max_lines=4, placeholder=" …")
+                    ),
+                    fontsize="small",
+                )
         if show_components and len(fit_model.components) > 1:
             ax = next(
                 (a for a in fig.axes if "residual" not in a.get_ylabel().lower()),

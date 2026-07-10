@@ -1,8 +1,10 @@
 """Miscellaneous helper functions."""
 
 import contextlib
+import sys
 import time
 import warnings
+from typing import Literal
 
 import xarray as xr
 from dask.callbacks import Callback
@@ -10,9 +12,20 @@ from IPython.display import Javascript, Markdown, display
 from termcolor import colored
 from tqdm.auto import tqdm
 
+_CalloutKind = Literal["neutral", "warn", "success", "info", "danger"]
+
+# Map peaks/bootstrap warning types to marimo callout kinds
+_MARIMO_CALLOUT_KINDS: dict[str, _CalloutKind] = {
+    "info": "info",
+    "warning": "warn",
+    "success": "success",
+    "danger": "danger",
+}
+
 
 def analysis_warning(text, warn_type="info", title="Analysis info", quiet=False):
     """Tool to display a string as a warning in a formatted box.
+    In marimo notebooks, renders as a ``marimo.callout`` instead.
 
     Parameters
     ----------
@@ -47,12 +60,18 @@ def analysis_warning(text, warn_type="info", title="Analysis info", quiet=False)
     """
     # Display warning
     if not quiet:
-        display(
-            Markdown(
-                '<div class="alert alert-block alert-%s"><b>%s: </b> %s </div>'
-                % (warn_type, title, text)
+        if _in_marimo():
+            import marimo as mo
+
+            w_kind = _MARIMO_CALLOUT_KINDS.get(warn_type, "info")
+            mo.output.append(mo.callout(mo.md(f"**{title}:** {text}"), kind=w_kind))
+        else:
+            display(
+                Markdown(
+                    '<div class="alert alert-block alert-%s"><b>%s: </b> %s </div>'
+                    % (warn_type, title, text)
+                )
             )
-        )
 
 
 def dequantify_quantify_wrapper(func):
@@ -239,3 +258,14 @@ class DaskTQDMProgressBar(Callback):
     def _finish(self, dsk, state, errored):
         if self._tqdm:
             self._tqdm.close()
+
+
+def _in_marimo():
+    """Return True if running inside a marimo notebook."""
+    mo = sys.modules.get("marimo")
+    if mo is None:
+        return False
+    try:
+        return bool(mo.running_in_notebook())
+    except AttributeError:
+        return False

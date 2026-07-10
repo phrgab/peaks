@@ -5,7 +5,7 @@ import numpy as np
 import pint_xarray
 import xarray as xr
 from scipy import constants
-from tqdm.notebook import tqdm
+from tqdm.auto import tqdm
 
 from peaks.core.fileIO.base_arpes_data_classes.base_arpes_data_class import (
     BaseARPESDataLoader,

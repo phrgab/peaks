@@ -11,7 +11,7 @@ from pathlib import Path
 import requests
 from IPython.display import HTML, Video
 from requests.adapters import HTTPAdapter
-from tqdm.notebook import tqdm
+from tqdm.auto import tqdm
 from urllib3.util.retry import Retry
 
 from peaks.core.fileIO.data_loading import load
