@@ -130,6 +130,7 @@ class _Disp4D(QtWidgets.QMainWindow):
         self.data_explorer_disp2d = self._build_data_explorer_2D_column(
             layout, self.data.isel({self.dims[0]: 0, self.dims[1]: 0})
         )
+        print(f"self.dims[0]: {self.dims[0]}")
 
     def _build_roi_tab(self, roi_tab):
         """Build the region of interest tab layout."""
