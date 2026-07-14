@@ -529,7 +529,6 @@ class _Disp3D(QtWidgets.QMainWindow):
             colorMapMenu=True,
             limits=(self.c_min, self.c_max),
             rounding=min(c_span / 2000, 1) if c_span > 0 else 1e-9,
-            # rounding=min(abs(self.c_max - self.c_min) / 2000, 1),
             interactive=True,
             orientation="h",
             values=(self.c_min, self.c_max),
