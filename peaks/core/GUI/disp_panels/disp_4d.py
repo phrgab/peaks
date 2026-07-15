@@ -419,6 +419,16 @@ class _Disp4D(QtWidgets.QMainWindow):
         # Set key press signals
         self.primary_dims_explorer_layout.keyPressed.connect(self._key_press_event)
 
+        # Connect signals for ROI tab
+        self.resetplots_button.clicked.connect(self._reset_roi_plots)
+        self.setROI_button.clicked.connect(self._set_ROI_from_plot)
+        self.addROI_button.clicked.connect(self._add_ROI_to_list)
+        self.removeROI_button.clicked.connect(self._remove_selected_ROI_from_list)
+        self.clear_ROI_store_button.clicked.connect(self._remove_all_ROIs_from_list)
+        self.setROI_from_list_button.clicked.connect(self._set_ROI_from_list)
+        self.roi_list_box.itemSelectionChanged.connect(self._select_ROI_from_list)
+        self.copy_ROI_store_button.clicked.connect(self._copy_ROI_store)
+
     def _copy_ROI_store(self):
         """Copy the ROI store to the clipboard."""
         text = f".attrs['ROI']={str(self.ROI_store)}"
@@ -429,16 +439,6 @@ class _Disp4D(QtWidgets.QMainWindow):
                 f"Could not access the system clipboard: {e}. "
                 f"Copy the following manually:\n{text}"
             )
-
-        # Connect signals for ROI tab
-        self.resetplots_button.clicked.connect(self._reset_roi_plots)
-        self.setROI_button.clicked.connect(self._set_ROI_from_plot)
-        self.addROI_button.clicked.connect(self._add_ROI_to_list)
-        self.removeROI_button.clicked.connect(self._remove_selected_ROI_from_list)
-        self.clear_ROI_store_button.clicked.connect(self._remove_all_ROIs_from_list)
-        self.setROI_from_list_button.clicked.connect(self._set_ROI_from_list)
-        self.roi_list_box.itemSelectionChanged.connect(self._select_ROI_from_list)
-        self.copy_ROI_store_button.clicked.connect(self._copy_ROI_store)
 
     # ##############################
     # Data handling
