@@ -937,7 +937,7 @@ def plot_kz_cut(
         )
 
 
-def plot_nanofocus(data, focus="defocus"):
+def plot_nanofocus(data, focus=None):
     """Function to determine the focus of a scan obtained at the nano branch of the I05 beamline at Diamond Light
     Source, and plot the results.
 
@@ -964,6 +964,23 @@ def plot_nanofocus(data, focus="defocus"):
         focus_scan.plot_nanofocus()
 
     """
+    # Check if the focus dimension is specified, and if not, try to guess it from the data
+    if not focus:
+        # If no focus dimension is specified, try to guess it from the data
+        if "defocus" in data.dims:
+            focus = "defocus"
+        elif "zpz" in data.dims:
+            focus = "zpz"
+        elif "smdefocus" in data.dims:
+            focus = "smdefocus"
+        elif "laserz" in data.dims:
+            focus = "laserz"
+        else:
+            raise ValueError(
+                "No focus dimension specified and could not be guessed from the data. Please specify the focus "
+                "dimension."
+            )
+
     # Ensure the data is a 2D DataArray by integrating in energy and angle space if required
     if len(data.dims) == 4:
         data = data.mean(["theta_par", "eV"], keep_attrs=True)
@@ -1007,7 +1024,7 @@ def plot_nanofocus(data, focus="defocus"):
     # along the spatial dimension
     mean_abs_deriv_smoothed = mean_abs_deriv.smooth(**{focus: 2 * focus_step})
     mean_abs_deriv_smoothed.plot(ax=axes[1, 0], c="black", alpha=0.2)
-    max_mean_abs_deriv = mean_abs_deriv_smoothed.argmax(dim="defocus")
+    max_mean_abs_deriv = mean_abs_deriv_smoothed.argmax(dim=focus)
     focal_point_mean_abs_deriv = mean_abs_deriv[focus].data[max_mean_abs_deriv]
     axes[1, 0].set_title(
         "Mean of the abs(deriv) estimate: {focal_point}".format(
@@ -1028,7 +1045,7 @@ def plot_nanofocus(data, focus="defocus"):
     # along the spatial dimension
     max_abs_deriv_smoothed = max_abs_deriv.smooth(**{focus: 2 * focus_step})
     max_abs_deriv_smoothed.plot(ax=axes[1, 1], c="black", alpha=0.2)
-    max_max_abs_deriv = max_abs_deriv_smoothed.argmax(dim="defocus")
+    max_max_abs_deriv = max_abs_deriv_smoothed.argmax(dim=focus)
     focal_point_max_abs_deriv = max_abs_deriv[focus].data[max_max_abs_deriv]
     axes[1, 1].set_title(
         "Max of the abs(deriv) estimate: {focal_point}".format(
@@ -1047,7 +1064,7 @@ def plot_nanofocus(data, focus="defocus"):
     # Estimate and plot the focal point from the focus-dependent variance along the spatial dimension
     variance_smoothed = variance.smooth(**{focus: 2 * focus_step})
     variance_smoothed.plot(ax=axes[2, 0], c="black", alpha=0.2)
-    max_variance = variance_smoothed.argmax(dim="defocus")
+    max_variance = variance_smoothed.argmax(dim=focus)
     focal_point_max_variance = variance[focus].data[max_variance]
     axes[2, 0].set_title(
         "Max of the variance estimate: {focal_point}".format(
@@ -1076,7 +1093,7 @@ def plot_nanofocus(data, focus="defocus"):
     # Estimate and plot the focal point from the FFT analysis
     FFT_data_out_smoothed = FFT_data_out.smooth(**{focus: 2 * focus_step})
     FFT_data_out_smoothed.plot(ax=axes[2, 1], c="black", alpha=0.2)
-    max_FFT = FFT_data_out_smoothed.argmax(dim="defocus")
+    max_FFT = FFT_data_out_smoothed.argmax(dim=focus)
     focal_point_max_FFT = FFT_data_out[focus].data[max_FFT]
     axes[2, 1].set_title(
         "Fast Fourier transform estimate: {focal_point}".format(
