@@ -521,13 +521,14 @@ class _Disp3D(QtWidgets.QMainWindow):
         self.image_plots[1].addItem(self.alignment_aid_shape)
 
         # Add colour bar to main image
+        c_span = abs(self.c_max - self.c_min)
         self.cmap = pg.colormap.get("Greys", source="matplotlib")
         self.colorbar = pg.ColorBarItem(
             label=self.data.name,
             colorMap=self.cmap,
             colorMapMenu=True,
             limits=(self.c_min, self.c_max),
-            rounding=min(abs(self.c_max - self.c_min) / 2000, 1),
+            rounding=min(c_span / 2000, 1) if c_span > 0 else 1e-9,
             interactive=True,
             orientation="h",
             values=(self.c_min, self.c_max),

@@ -135,7 +135,7 @@ class BaseHDF5DataLoader:
                         while isinstance(value, (np.ndarray, list)):
                             value = value[0]
                     elif return_extreme_values:
-                        value = np.array([np.min(value), np.max(value)])
+                        value = np.array([np.nanmin(value), np.nanmax(value)])
                         if value[0] == value[-1]:
                             value = value[0]
 

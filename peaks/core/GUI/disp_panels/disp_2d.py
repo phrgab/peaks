@@ -407,12 +407,13 @@ class _Disp2D(QtWidgets.QMainWindow):
         )
 
         # Add colour bar
+        c_span = abs(self.c_max - self.c_min)
         self.colorbar = pg.ColorBarItem(
             label=self.current_data.name,
             colorMap=cmap,
             colorMapMenu=True,
             limits=(self.c_min, self.c_max),
-            rounding=min(abs(self.c_max - self.c_min) / 2000, 1),
+            rounding=min(c_span / 2000, 1) if c_span > 0 else 1e-9,
             interactive=True,
             orientation="h",
             values=c_range,
