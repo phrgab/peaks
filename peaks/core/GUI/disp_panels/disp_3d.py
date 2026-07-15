@@ -926,7 +926,13 @@ class _Disp3D(QtWidgets.QMainWindow):
             k: f"{v:~D}" if isinstance(v, pint.Quantity) else v
             for k, v in norm_values.items()
         }
-        pyperclip.copy(f".metadata.set_normal_emission({norm_values_to_return})")
+        try:
+            pyperclip.copy(f".metadata.set_normal_emission({norm_values_to_return})")
+        except Exception as e:
+            print(
+                f"Could not access the system clipboard: {e}. "
+                f"Copy the following manually:\n.metadata.set_normal_emission({norm_values_to_return})"
+            )
 
     # ##############################
     # Signal connections

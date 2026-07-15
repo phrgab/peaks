@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Metadata reports `[nan, nan]` when a scan contains a few NaN readbacks ([PR#57](https://github.com/phrgab/peaks/pull/57))
 - Hard-coded `focus` dimension in `plot_nanofocus` ([PR#58](https://github.com/phrgab/peaks/pull/58))
 - Non-monotonic and repeated data at end of travel in i05 nano ana_polar maps ([PR#58](https://github.com/phrgab/peaks/pull/58))
+- Clicking _Copy_ in a `disp` panel raises `PyperclipException` on systems without a clipboard mechanism; text is now printed for manual copying instead ([PR#59](https://github.com/phrgab/peaks/pull/59))
 
 ### Changed
 
