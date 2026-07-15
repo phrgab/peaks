@@ -427,9 +427,18 @@ class _Disp4D(QtWidgets.QMainWindow):
         self.clear_ROI_store_button.clicked.connect(self._remove_all_ROIs_from_list)
         self.setROI_from_list_button.clicked.connect(self._set_ROI_from_list)
         self.roi_list_box.itemSelectionChanged.connect(self._select_ROI_from_list)
-        self.copy_ROI_store_button.clicked.connect(
-            lambda: pyperclip.copy(f".attrs['ROI']={str(self.ROI_store)}")
-        )
+        self.copy_ROI_store_button.clicked.connect(self._copy_ROI_store)
+
+    def _copy_ROI_store(self):
+        """Copy the ROI store to the clipboard."""
+        text = f".attrs['ROI']={str(self.ROI_store)}"
+        try:
+            pyperclip.copy(text)
+        except Exception as e:
+            print(
+                f"Could not access the system clipboard: {e}. "
+                f"Copy the following manually:\n{text}"
+            )
 
     # ##############################
     # Data handling
