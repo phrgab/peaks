@@ -937,7 +937,7 @@ def plot_kz_cut(
         )
 
 
-def plot_nanofocus(data, focus="zpz"):
+def plot_nanofocus(data, focus=None):
     """Function to determine the focus of a scan obtained at the nano branch of the I05 beamline at Diamond Light
     Source, and plot the results.
 
@@ -964,6 +964,23 @@ def plot_nanofocus(data, focus="zpz"):
         focus_scan.plot_nanofocus()
 
     """
+    # Check if the focus dimension is specified, and if not, try to guess it from the data
+    if not focus:
+        # If no focus dimension is specified, try to guess it from the data
+        if "defocus" in data.dims:
+            focus = "defocus"
+        elif "zpz" in data.dims:
+            focus = "zpz"
+        elif "smdefocus" in data.dims:
+            focus = "smdefocus"
+        elif "laserz" in data.dims:
+            focus = "laserz"
+        else:
+            raise ValueError(
+                "No focus dimension specified and could not be guessed from the data. Please specify the focus "
+                "dimension."
+            )
+
     # Ensure the data is a 2D DataArray by integrating in energy and angle space if required
     if len(data.dims) == 4:
         data = data.mean(["theta_par", "eV"], keep_attrs=True)
