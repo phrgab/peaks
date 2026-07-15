@@ -508,21 +508,27 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
                         break
         da = da.rename(dim_names_to_update)
 
-        # EDGE CASE - Handle problem with ana_polar data sometimes having non-monotonic points at end of range
+        # EDGE CASE - Handle problem with ana_polar data sometimes having non-monotonic/repeated points at end of range
+        # Trim back to the last point where the axis was genuinely moving.
         if "ana_polar" in da.dims:
-            trim = 0
-            while not (
-                da.indexes["ana_polar"].is_monotonic_increasing
-                or da.indexes["ana_polar"].is_monotonic_decreasing
-            ):
-                trim += 1
-                da = da.isel(ana_polar=slice(0, -1))
-            if trim:
-                analysis_warning(
-                    f"Non-monotonic angle values detected in ana_polar at end of travel. Trimmed {trim} data points.",
-                    "warning",
-                    "Removed non-monotonic data",
-                )
+            val = da["ana_polar"].values
+            steps = np.diff(val)
+            threshold = 0.1 * np.abs(np.median(steps))  # for motor noise
+            direction = np.sign(np.median(steps))
+            moving = np.flatnonzero(
+                (np.abs(steps) > threshold) & (np.sign(steps) == direction)
+            )
+            if moving.size:
+                last_good = int(moving[-1]) + 1
+                trim = val.size - last_good - 1
+                if trim:
+                    da = da.isel(ana_polar=slice(0, last_good + 1))
+                    analysis_warning(
+                        f"Non-monotonic angle values detected in ana_polar at end of travel. "
+                        f"Trimmed {trim} data point(s).",
+                        "warning",
+                        "Removed non-monotonic data",
+                    )
 
         # Load array into memory if lazy loading not required
         if not (lazy or (lazy is None and da.size > opts.FileIO.lazy_size)):
