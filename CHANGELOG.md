@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Non-monotonic and repeated data at end of travel in i05 nano ana_polar maps ([PR#58](https://github.com/phrgab/peaks/pull/58))
 - Clicking _Copy_ in a `disp` panel raises `PyperclipException` on systems without a clipboard mechanism; text is now printed for manual copying instead ([PR#59](https://github.com/phrgab/peaks/pull/59))
 - Minor doc fixes ([PR#61](https://github.com/phrgab/peaks/pull/61))
-- Metadata readings of sax and saz are swapped in Diamond i05 HR loader ([PR#64](https://github.com/phrgab/peaks/pull/64))
+- Metadata readings of say and saz are swapped in Diamond i05 HR loader ([PR#64](https://github.com/phrgab/peaks/pull/64))
 
 ### Changed
 
