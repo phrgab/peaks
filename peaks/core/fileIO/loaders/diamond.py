@@ -228,8 +228,8 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
         "manipulator_tilt": "entry1/instrument/manipulator/satilt",
         "manipulator_azi": "entry1/instrument/manipulator/saazimuth",
         "manipulator_x1": "entry1/instrument/manipulator/sax",
-        "manipulator_x2": "entry1/instrument/manipulator/say",
-        "manipulator_x3": "entry1/instrument/manipulator/saz",
+        "manipulator_x2": "entry1/instrument/manipulator/saz",
+        "manipulator_x3": "entry1/instrument/manipulator/say",
         "manipulator_salong": "entry1/instrument/manipulator/salong",
         "analyser_model": lambda f: (
             None
