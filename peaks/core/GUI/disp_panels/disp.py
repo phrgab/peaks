@@ -68,7 +68,7 @@ def disp(data, primary_dim=None, exclude_from_centering="eV"):
                 ]
             except AttributeError as e:
                 raise ValueError(err_str) from e
-            if not data:
+            if not data:  # If a datatree with no 2D leaves is passed
                 raise ValueError(err_str)
 
     if isinstance(data, list):
