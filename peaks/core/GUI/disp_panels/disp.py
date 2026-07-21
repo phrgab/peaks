@@ -69,9 +69,7 @@ def disp(data, primary_dim=None, exclude_from_centering="eV"):
             except AttributeError as e:
                 raise ValueError(err_str) from e
             if not data:
-                raise ValueError(
-                    "No 2D DataArrays found in the DataTree to pass to `.disp`. "
-                )
+                raise ValueError(err_str)
 
     if isinstance(data, list):
         for array in data:
