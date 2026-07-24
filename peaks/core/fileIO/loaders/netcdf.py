@@ -48,10 +48,9 @@ class NetCDFLoader(BaseDataLoader):
         """
         # Open NetCDF file as xarray.DataArray or xarray.Dataset
         try:
-            data = xr.open_dataarray(fpath)
+            data = xr.open_dataarray(fpath, chunks="auto")
         except ValueError:
-            data = xr.open_dataset(fpath)
-
+            data = xr.open_dataset(fpath, chunks="auto")
         # Parse the metadata
         cls._parse_metadata(data)
 
@@ -64,7 +63,7 @@ class NetCDFLoader(BaseDataLoader):
             )
 
         # Actually load the data
-        if (lazy is False) or (lazy is None and data.nbytes > opts.FileIO.lazy_size):
+        if (lazy is False) or (lazy is None and data.nbytes <= opts.FileIO.lazy_size):
             data = data.compute()
 
         # Quantify the data if it has units
