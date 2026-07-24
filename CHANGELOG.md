@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Clicking _Copy_ in a `disp` panel raises `PyperclipException` on systems without a clipboard mechanism; text is now printed for manual copying instead ([PR#59](https://github.com/phrgab/peaks/pull/59))
 - Minor doc fixes ([PR#61](https://github.com/phrgab/peaks/pull/61))
 - Metadata readings of say and saz are swapped in Diamond i05 HR loader ([PR#64](https://github.com/phrgab/peaks/pull/64))
+- Documented that `.pint.chunk()` should be used when chunking quantified in-memory data ([PR#66](https://github.com/phrgab/peaks/pull/66))
 
 ### Changed
 
