@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Minor doc fixes ([PR#61](https://github.com/phrgab/peaks/pull/61))
 - Metadata readings of say and saz are swapped in Diamond i05 HR loader ([PR#64](https://github.com/phrgab/peaks/pull/64))
 - Documented that `.pint.chunk()` should be used when chunking quantified in-memory data ([PR#66](https://github.com/phrgab/peaks/pull/66))
+- Inverted lazy-loading threshold and missing dask chunking in `NetCDFLoader` ([PR#66](https://github.com/phrgab/peaks/pull/66))
 
 ### Changed
 
