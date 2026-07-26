@@ -17,9 +17,13 @@ For example, for data collected in the SES data format at the A-branch of the [B
 ```python
 class BlochArpesLoader(SESDataLoader):
     _loc_name = "MAXIV_Bloch_A"  # Unique identifier of the loader
-    _loc_description = "A branch (ARPES) of Bloch beamline at Max-IV"  # One-line description
+    _loc_description = (
+        "A branch (ARPES) of Bloch beamline at Max-IV"  # One-line description
+    )
     _loc_url = "https://www.maxiv.lu.se/beamlines-accelerators/beamlines/bloch/"  # Link to the facility
-    _analyser_slit_angle = 0 * ureg("deg")  # Angle of the entrance slit, crucial for determining k-space conversion functions
+    _analyser_slit_angle = 0 * ureg(
+        "deg"
+    )  # Angle of the entrance slit, crucial for determining k-space conversion functions
 
     # Manipulator name conventions, mapping `peaks` to local names
     _manipulator_name_conventions = {
@@ -43,10 +47,12 @@ class BlochArpesLoader(SESDataLoader):
     }
 
     # Additional mapping to give some specific metadata units
+
+
 _SES_metadata_units = {
-        f"manipulator_{dim}": ("mm" if dim in ["x1", "x2", "x3"] else "deg")
-        for dim in _manipulator_name_conventions.keys()
-    }
+    f"manipulator_{dim}": ("mm" if dim in ["x1", "x2", "x3"] else "deg")
+    for dim in _manipulator_name_conventions.keys()
+}
 ```
 
 For data saved using a custom format, or for additional features not yet implemented in the existing classes, start from a lower-level base loader:
@@ -64,7 +70,7 @@ Use as:
 from peaks.core.fileIO.base_data_classes.base_hdf5_class import BaseHDF5DataLoader
 
 # Explore the structure of an HDF5-type file
-BaseHDF5DataLoader.hdf5_explorer('path/to/file.nxs')
+BaseHDF5DataLoader.hdf5_explorer("path/to/file.nxs")
 ```
 
 :::
@@ -103,9 +109,9 @@ To be used within {py:mod}`peaks`, a new loader must be registered using the {py
 ```python
 from peaks.core.fileIO.loc_registry import register_loader
 
+
 @register_loader
-class NewLoader(...):
-    ...
+class NewLoader(...): ...
 ```
 
 It will now become visible in the {py:func}`pks.locs() <peaks.locs>` listing. To use this loader, call {py:func}`pks.load <peaks.core.fileIO.data_loading.load>` passing `loc=<_loc_name>` as an argument. To be able to use automatic data source determination for calling this loader, the {py:class}`peaks.core.fileIO.loc_registry.IdentifyLoc` class must be updated.
