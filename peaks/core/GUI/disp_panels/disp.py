@@ -87,7 +87,7 @@ def disp(data, primary_dim=None, exclude_from_centering="eV"):
 
         from peaks.core.GUI.disp_panels.disp_2d import _disp_2d
 
-        _disp_2d(
+        return _disp_2d(
             data, primary_dim=primary_dim, exclude_from_centering=exclude_from_centering
         )
 
@@ -98,7 +98,7 @@ def disp(data, primary_dim=None, exclude_from_centering="eV"):
         if ndim == 2:
             from peaks.core.GUI.disp_panels.disp_2d import _disp_2d
 
-            _disp_2d(
+            return _disp_2d(
                 [data],
                 primary_dim=primary_dim,
                 exclude_from_centering=exclude_from_centering,
@@ -106,7 +106,7 @@ def disp(data, primary_dim=None, exclude_from_centering="eV"):
         elif ndim == 3:
             from peaks.core.GUI.disp_panels.disp_3d import _disp_3d
 
-            _disp_3d(
+            return _disp_3d(
                 data.pint.dequantify(),
                 primary_dim=primary_dim,
                 exclude_from_centering=exclude_from_centering,
@@ -114,7 +114,7 @@ def disp(data, primary_dim=None, exclude_from_centering="eV"):
         elif ndim == 4:
             from peaks.core.GUI.disp_panels.disp_4d import _disp_4d
 
-            _disp_4d(data.pint.dequantify(), primary_dim=primary_dim)
+            return _disp_4d(data.pint.dequantify(), primary_dim=primary_dim)
         else:
             raise ValueError(
                 "Number of dimensions not supported for interactive display. "
