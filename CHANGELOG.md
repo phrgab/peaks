@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `.disp` now raises a clear error when a multi-leaf `DataTree` contains no suitable data ([PR#65](https://github.com/phrgab/peaks/pull/65))
 - Documented that `.pint.chunk()` should be used when chunking quantified in-memory data ([PR#66](https://github.com/phrgab/peaks/pull/66))
 - Inverted lazy-loading threshold and missing dask chunking in `NetCDFLoader` ([PR#66](https://github.com/phrgab/peaks/pull/66))
+- Intermittent bug where interactive fit plots (`plot_fit`) would fail to render in the built docs ([PR#67](https://github.com/phrgab/peaks/pull/67))
+- Cap embedded slider states in docs builds ([PR#67](https://github.com/phrgab/peaks/pull/67))
 
 ### Changed
 
