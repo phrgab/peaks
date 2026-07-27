@@ -66,6 +66,7 @@ intersphinx_mapping = {
     "lmfit": ("https://lmfit.github.io/lmfit-py/", None),
     "pydantic": ("https://docs.pydantic.dev/latest", None),
     "pint": ("https://pint.readthedocs.io/en/stable/", None),
+    "pint-xarray": ("https://pint-xarray.readthedocs.io/en/stable/", None),
 }
 
 source_suffix = [".rst", ".md"]
