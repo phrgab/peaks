@@ -91,6 +91,7 @@ napoleon_attr_annotations = True
 nb_execution_mode = "force" if os.getenv("FORCE_NB_EXECUTION") == "1" else "off"
 nb_execution_timeout = 300
 
+mathjax_path = "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
