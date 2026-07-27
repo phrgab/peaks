@@ -169,6 +169,88 @@ class FileIOOptions:
         return {k.lstrip("_"): raw_dict[k] for k in raw_dict}
 
 
+_DEFAULT_MAX_VIEWERS = 1
+
+
+class GuiOptions:
+    """Options controlling interactive display panel GUIs.
+
+    This class allows setting the maximum number of display panels or other GUIs
+    that may be open simultaneously. Setting ``max_viewers`` to ``None`` disables
+    the limit. The reset method restores the default display options.
+
+    Examples
+    --------
+    Example usage is as follows::
+
+        import peaks as pks
+
+        # Set the maximum number of simultaneously open display panels
+        pks.opts.gui.max_viewers = 5
+
+        # Disable the display panel limit
+        pks.opts.gui.max_viewers = None
+
+        # Show display options
+        pks.opts.gui
+
+        # Reset all Gui options
+        pks.opts.gui.reset()
+
+        # Reset all options
+        pks.opts.reset()
+    """
+
+    def __init__(self):
+        self._max_viewers = _DEFAULT_MAX_VIEWERS
+
+    @property
+    def max_viewers(self):
+        """Return the maximum number of simultaneously open display panels."""
+        return self._max_viewers
+
+    @max_viewers.setter
+    def max_viewers(self, value):
+        if value is None:
+            self._max_viewers = None
+        elif isinstance(value, bool):
+            raise TypeError("Maximum viewers must be a positive integer or None.")
+        elif isinstance(value, int):
+            if value < 1:
+                raise ValueError("Maximum viewers must be greater than or equal to 1.")
+            self._max_viewers = value
+        else:
+            raise TypeError("Maximum viewers must be a positive integer or None.")
+
+    @max_viewers.deleter
+    def max_viewers(self):
+        self._max_viewers = _DEFAULT_MAX_VIEWERS
+
+    def reset(self):
+        """Reset display options to their defaults."""
+        self._max_viewers = _DEFAULT_MAX_VIEWERS
+
+    def __repr__(self):
+        """Return a string representation of the display options."""
+        return format_colored_dict(self.dict())
+
+    def set(self, **kwargs):
+        """Set display options."""
+        if "max_viewers" in kwargs:
+            self.max_viewers = kwargs.pop("max_viewers")
+
+        if kwargs:
+            raise ValueError(
+                f"Invalid keyword argument(s): {set(kwargs.keys())}. "
+                f"Expected options from {set(self.dict().keys())}"
+            )
+
+    def dict(self):
+        """Return a dictionary representation of the display options."""
+        raw_dict = vars(self)
+        return {k.lstrip("_"): raw_dict[k] for k in raw_dict}
+
+
 class Options:
     """
     Singleton class to hold all fixed option groups, such as FileIO.
@@ -180,6 +262,9 @@ class Options:
     ----------
     FileIO : FileIOOptions
         An instance of the FileIOOptions class to manage file input/output settings.
+
+    gui : GuiOptions
+        Options controlling interactive display panels.
 
     Methods
     -------
@@ -197,6 +282,16 @@ class Options:
         pks.opts.FileIO.ext = ['nxs', 'zip']  # Default extensions
         pks.opts.FileIO.loc = 'Diamond_I05_nano-ARPES'  # loc to use
         pks.opts.FileIO.lazy_size = 500000000  # Set lazy size to 500 Mb
+
+        # Allow a fixed number of display panels to be open simultaneously
+        pks.opts.gui.max_viewers = 3
+
+        # Disable the display-panel limit
+        pks.opts.gui.max_viewers = None
+
+        # Reset display options
+        pks.opts.gui.reset()  # Disables multiple panels by defualt
+
 
         # Display all the current options
         pks.opts
@@ -217,6 +312,8 @@ class Options:
                 opts.FileIO.ext = ['nxs', 'zip']
                 opts.FileIO.lazy_size = 500000000
 
+                opts.gui.max_viewers = 3
+
                 # Display all the current options
                 print(pks.opts)
 
@@ -225,18 +322,20 @@ class Options:
     """
 
     _instance = None
-    _fileio_old_opts = None
+    _old_opts = None
 
     def __new__(cls):
         """Return the singleton ``Options`` instance, creating it on first call."""
         if cls._instance is None:
             cls._instance = super(Options, cls).__new__(cls)
-            cls._instance.FileIO = FileIOOptions()  # Initialize FileIO options here
+            cls._instance.FileIO = FileIOOptions()  # Initialize FileIO options
+            cls._instance.gui = GuiOptions()  # Initialize GUI options
         return cls._instance
 
     def reset(self):
         """Reset all option groups."""
         self.FileIO.reset()
+        self.gui.reset()
 
     def dict(self):
         """Return a dictionary representation of the current options."""
@@ -244,14 +343,20 @@ class Options:
 
     def __enter__(self):
         """Enter the context manager, storing the current state."""
-        self._fileio_old_opts = self.FileIO.dict().copy()
+        self._old_opts = {
+            name: option_group.dict().copy()
+            for name, option_group in vars(self).items()
+            if not name.startswith("_")
+        }
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        """Exit the context manager, resetting the state to the stored state."""
-        if self._fileio_old_opts is not None:
-            self.FileIO.set(**self._fileio_old_opts)
-        self._fileio_old_opts = None
+        """Exit the context manager, restoring the previous state."""
+        if self._old_opts is not None:
+            for name, values in self._old_opts.items():
+                getattr(self, name).set(**values)
+
+        self._old_opts = None
 
     def __repr__(self):
         return format_colored_dict(self.dict())

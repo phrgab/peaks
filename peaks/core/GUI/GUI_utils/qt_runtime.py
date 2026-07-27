@@ -6,10 +6,15 @@ from functools import partial
 import pyqtgraph as pg
 from PyQt6 import QtCore
 
+from peaks.core.options import opts
 from peaks.core.utils.misc import analysis_warning
 
 _STATE_ATTRIBUTE = "_peaks_qt_runtime_state"
 _WARNING_THRESHOLD = 3
+
+
+class TooManyDisplayPanelsError(RuntimeError):
+    """Raised when the maximum number of active display panels is reached."""
 
 
 def _get_ipython_shell():
@@ -81,6 +86,22 @@ def _remove_viewer(app, viewer_id, *_):
         state["viewers"].pop(viewer_id, None)
 
 
+def _check_viewer_limit(viewer_count):
+    max_viewers = opts.gui.max_viewers
+
+    if max_viewers is None:
+        return
+
+    if viewer_count >= max_viewers:
+        raise TooManyDisplayPanelsError(
+            f"Cannot open another display panel: {viewer_count} viewers "
+            f"are already open, and the limit is {max_viewers}.\n\n "
+            "To open more display panels simultaneously, increase the "
+            "`opts.gui.max_viewers` limit, e.g. "
+            f"`pks.opts.gui.max_viewers = {max_viewers + 1}`."
+        )
+
+
 def _warn_if_many_viewers(viewer_count):
     """Warn when many top-level viewer windows are open."""
     if viewer_count < _WARNING_THRESHOLD:
@@ -118,6 +139,9 @@ def show_viewer(viewer_factory, *args, **kwargs):
             "`peaks` viewers must be created from the Qt application thread."
         )
 
+    viewer_count = len(state["viewers"])
+    _check_viewer_limit(viewer_count)  # Check if viewer limit is exceeded
+
     viewer = viewer_factory(*args, **kwargs)
     viewer.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, True)
 
@@ -133,7 +157,7 @@ def show_viewer(viewer_factory, *args, **kwargs):
     viewer.raise_()
     viewer.activateWindow()
 
-    _warn_if_many_viewers(len(state["viewers"]))
+    _warn_if_many_viewers(viewer_count + 1)  # Warn if too many viewers
 
     _run_event_loop_if_needed(
         app,
@@ -144,25 +168,34 @@ def show_viewer(viewer_factory, *args, **kwargs):
 
 @contextmanager
 def viewer_session():
-    """Defer app.exec() while several viewer windows are constructed.
+    """Defer the Qt event loop while several viewers are constructed.
 
     Examples
     --------
+    import peaks as pks
+
+    from peaks.core.GUI.GUI_utils.qt_runtime import viewer_session
+
+    # Set options to allow mutliple viewers to open (defaults to limit of 1)
+    pks.opts.gui.max_viewers = 2
+
     with viewer_session():
-        data_2d.disp()
-        data_3d.disp()
+        data1.disp()
+        data2.disp()
     """
     ipython_manages_qt = _enable_ipython_qt()
     app, state = _get_runtime()
 
     state["defer_exec"] += 1
+    completed = False
 
     try:
         yield
+        completed = True
     finally:
         state["defer_exec"] -= 1
 
-        if state["defer_exec"] == 0 and state["viewers"]:
+        if completed and state["defer_exec"] == 0 and state["viewers"]:
             _run_event_loop_if_needed(
                 app,
                 state,
