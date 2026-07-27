@@ -6,6 +6,9 @@
 .vscode/
 .zed/
 
+# UV files
+uv.lock
+
 # Python cache and tools
 __pycache__/
 .ruff_cache/
@@ -39,4 +42,3 @@ __pycache__/
 /paper/paper.pdf
 /paper/*.tex
 /paper/local_compile.md
-uv.lock
