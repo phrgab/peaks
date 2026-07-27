@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Minor doc fixes ([PR#61](https://github.com/phrgab/peaks/pull/61))
 - Metadata readings of say and saz are swapped in Diamond i05 HR loader ([PR#64](https://github.com/phrgab/peaks/pull/64))
 - `.disp` now raises a clear error when a multi-leaf `DataTree` contains no suitable data ([PR#65](https://github.com/phrgab/peaks/pull/65))
+- Intermittent bug where interactive fit plots (`plot_fit`) would fail to render in the built docs ([PR#67](https://github.com/phrgab/peaks/pull/67))
+- Cap embedded slider states in docs builds ([PR#67](https://github.com/phrgab/peaks/pull/67))
 
 ### Changed
 
