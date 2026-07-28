@@ -315,6 +315,10 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
 
     _hdf5_metadata_fixed_units = {
         "entry1/sample/heater_percent": "%",
+        "entry1/instrument/analyser/deflector_x": "deg",
+        "entry1/instrument/deflector_x/deflector_x": "deg",
+        "entry1/instrument/analyser/detector_y": "deg",
+        "entry1/instrument/analyser/deflector_y": "deg",
     }
 
     _data_group_key_resolution_order = ["analyser"]
@@ -872,4 +876,10 @@ class I05NanoNewARPESLoader(I05NanoARPESLoader):
         "analyser_model": "FIXED_VALUE:MBS A1",
         "analyser_deflector_parallel": "entry1/instrument/analyser/deflector_y",
         "analyser_deflector_perp": "entry1/instrument/analyser/deflector_x",
+    }
+
+    _hdf5_metadata_fixed_units = {
+        **I05NanoARPESLoader._hdf5_metadata_fixed_units,
+        "entry1/instrument/analyser/deflector_x": "deg",
+        "entry1/instrument/analyser/deflector_y": "deg",
     }
