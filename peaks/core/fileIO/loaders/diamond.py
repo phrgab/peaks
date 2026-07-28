@@ -187,6 +187,37 @@ class DiamondNXSLoader(BaseHDF5DataLoader):
         with h5py.File(fpath, "r") as f:
             return cls._parse_start_time(f)
 
+    @staticmethod
+    def _trim_sweep_artefacts(da, dim):
+        """Trim points at either end of a fly-scan axis where the motor was still
+        accelerating or decelerating, leaving non-monotonic/repeated coordinate values."""
+        val = np.asarray(da[dim].values, dtype=float)
+        if val.size < 3:
+            return da
+        steps = np.diff(val)
+        median_step = np.median(steps)
+        if not np.isfinite(median_step) or median_step == 0:
+            return da
+        threshold = 0.1 * np.abs(median_step)  # for motor noise
+        direction = np.sign(median_step)
+        moving = np.flatnonzero(
+            (np.abs(steps) > threshold) & (np.sign(steps) == direction)
+        )
+        if not moving.size:
+            return da
+        first_good = int(moving[0])
+        last_good = int(moving[-1]) + 1
+        n_trim = val.size - (last_good - first_good + 1)
+        if n_trim:
+            da = da.isel({dim: slice(first_good, last_good + 1)})
+            analysis_warning(
+                f"Non-monotonic values detected in `{dim}` at the start and/or end of "
+                f"travel. Trimmed {n_trim} data point(s).",
+                "warning",
+                "Removed non-monotonic data",
+            )
+        return da
+
 
 @register_loader
 class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
@@ -216,7 +247,7 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
 
     _analyser_name_conventions = {
         "deflector_perp": "deflector_x",  # These two don't exist for R4000 but fine for now
-        "deflector_parallel": "detector_y",  # Should handle them properly when we do the refactor
+        "deflector_parallel": "deflector_y",  # Should handle them properly when we do the refactor. This was called detector_y at least before July 2026
         "eV": ["energies", "kinetic_energy_center"],
         "theta_par": "angles",
         "hv": ["energy", "value"],
@@ -228,7 +259,10 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
         "manipulator_tilt": "entry1/instrument/manipulator/satilt",
         "manipulator_azi": "entry1/instrument/manipulator/saazimuth",
         "manipulator_x1": "entry1/instrument/manipulator/sax",
-        "manipulator_x2": "entry1/instrument/manipulator/saz",
+        "manipulator_x2": [
+            "entry1/instrument/saz_fly/value",  # fly-scan path must come first
+            "entry1/instrument/manipulator/saz",
+        ],
         "manipulator_x3": "entry1/instrument/manipulator/say",
         "manipulator_salong": "entry1/instrument/manipulator/salong",
         "analyser_model": lambda f: (
@@ -284,7 +318,9 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
         "analyser_acquisition_mode": "entry1/instrument/analyser/acquisition_mode",
         "analyser_eV_type": "FIXED_VALUE:kinetic",
         "analyser_deflector_parallel": lambda f: (
-            "entry1/instrument/analyser/detector_y"
+            "entry1/instrument/analyser/deflector_y"
+            if "entry1/instrument/analyser/deflector_y" in f
+            else "entry1/instrument/analyser/detector_y"
             if (ac_date := DiamondNXSLoader._parse_start_time(f))
             and ac_date > I05ARPESLoader._hr_analyser_upgrade_date
             else None
@@ -383,6 +419,18 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
                             "sapolar",
                             other_dim[0],
                         ]
+                # Fly scan - both motors carry primary=1 with axis '1,2'; fly should be axis 2
+                dims_here = axis_to_dim_name_mapping_sorted[axis]
+                if len(dims_here) == 2:
+                    fly = [
+                        d
+                        for d in dims_here
+                        if "_fly"
+                        in str(f[f"{data_group_addr}/{d}"].attrs.get("target", b""))
+                    ]
+                    if len(fly) == 1:
+                        step = next(d for d in dims_here if d != fly[0])
+                        axis_to_dim_name_mapping_sorted[axis] = [step, fly[0]]
                 # hv scan
                 if "energy" in axis_to_dim_name_mapping_sorted[axis]:
                     other_dim = list(
@@ -422,6 +470,49 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
             units = {
                 key: (cls._parse_nxs_axis_attr(value)) for key, value in units.items()
             }
+
+            # July 2026: Both hv scans and fast fly-scan spatial maps
+            # now expose a dataset called 'value'. Renaming.
+            fly_motor = None
+            if "value" in dims:
+                target = cls._parse_nxs_axis_attr(
+                    f[f"{data_group_addr}/value"].attrs.get("target", b"")
+                )
+                parts = target.strip("/").split("/")
+                motor = parts[-2] if len(parts) >= 2 and "_fly" in parts[-2] else ""
+
+                known_motors = set(cls._manipulator_name_conventions.values())
+                known_motors.discard(None)  # No tilt on nano
+
+                true_name = motor.removesuffix("_fly")
+                if (
+                    true_name in known_motors
+                ):  # should be a spatial map rather than a hv scan
+                    fly_motor = true_name
+
+                    dims = [true_name if d == "value" else d for d in dims]
+                    if "value" in coords:
+                        coords[true_name] = coords.pop("value")
+                    if "value" in units:
+                        units[true_name] = units.pop("value")
+                        if units.get(true_name) is None:
+                            root_data_group = data_group_addr.split("/")[0]
+                            true_motor_addr = (
+                                f"{root_data_group}/instrument/manipulator/{true_name}"
+                            )
+                            if (
+                                true_motor_addr in f
+                                and "units" in f[true_motor_addr].attrs
+                            ):
+                                units[true_name] = cls._parse_nxs_axis_attr(
+                                    f[true_motor_addr].attrs["units"]
+                                )
+                elif motor:
+                    analysis_warning(
+                        f"This fly scan cannot be recognised due to an unknown axis: `{motor}`.",
+                        "warning",
+                        "Unrecognised fly scan",
+                    )
 
         # Load the core data in a way that supports lazy loading
         ds = xr.open_dataset(
@@ -511,24 +602,12 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
         # EDGE CASE - Handle problem with ana_polar data sometimes having non-monotonic/repeated points at end of range
         # Trim back to the last point where the axis was genuinely moving.
         if "ana_polar" in da.dims:
-            val = da["ana_polar"].values
-            steps = np.diff(val)
-            threshold = 0.1 * np.abs(np.median(steps))  # for motor noise
-            direction = np.sign(np.median(steps))
-            moving = np.flatnonzero(
-                (np.abs(steps) > threshold) & (np.sign(steps) == direction)
-            )
-            if moving.size:
-                last_good = int(moving[-1]) + 1
-                trim = val.size - last_good - 1
-                if trim:
-                    da = da.isel(ana_polar=slice(0, last_good + 1))
-                    analysis_warning(
-                        f"Non-monotonic angle values detected in ana_polar at end of travel. "
-                        f"Trimmed {trim} data point(s).",
-                        "warning",
-                        "Removed non-monotonic data",
-                    )
+            da = cls._trim_sweep_artefacts(da, "ana_polar")
+
+        # Edge case for manipulator translation motors in fly spatial mapping
+        fly_dim = dim_names_to_update.get(fly_motor, fly_motor)
+        if fly_dim in da.dims:
+            da = cls._trim_sweep_artefacts(da, fly_dim)
 
         # Load array into memory if lazy loading not required
         if not (lazy or (lazy is None and da.size > opts.FileIO.lazy_size)):
@@ -616,7 +695,10 @@ class I05NanoARPESLoader(I05ARPESLoader, BaseOpticsDataLoader):
         "manipulator_tilt": "entry1/instrument/manipulator/smtilt",
         "manipulator_azi": "entry1/instrument/manipulator/smazimuth",
         "manipulator_x1": "entry1/instrument/manipulator/smx",
-        "manipulator_x2": "entry1/instrument/manipulator/smy",
+        "manipulator_x2": [
+            "entry1/instrument/smy_fly/value",  # fly-scan path must come first
+            "entry1/instrument/manipulator/smy",
+        ],
         "manipulator_x3": "entry1/instrument/manipulator/smz",
         "manipulator_defocus": "entry1/instrument/manipulator/smdefocus",
         "analyser_model": "FIXED_VALUE:Scienta DA30",  # Overridden in I05NanoNewARPESLoader to handle analyser upgrade

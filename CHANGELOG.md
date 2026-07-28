@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Progress bar support for running in marimo notebooks. `analysis_warning`s now render as native marimo callouts when running inside marimo ([PR#56](https://github.com/phrgab/peaks/pull/56))
+- Support fly-scan spatial maps for Diamond I05 data (both branches) ([PR#69](https://github.com/phrgab/peaks/pull/69))
 
 ### Fixed
 
