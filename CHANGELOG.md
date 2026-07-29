@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Limit font size and max lines of titles in `plot_fit` outputs ([PR#56](https://github.com/phrgab/peaks/pull/56))
+- Improve local mirror (for sample data) handling and add COD fallback URLs for `ExampleData.structure()` ([PR#72](https://github.com/phrgab/peaks/pull/72))
 
 ### Removed
 

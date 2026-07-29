@@ -437,7 +437,7 @@ class ExampleData:
                     break
                 else:
                     raise ValueError(
-                        "Failed to download CIF from any known mirror:\n  "
+                        "Failed to download CIF from any known mirrors:\n  "
                         + "\n  ".join(errors)
                     )
             cls._cache["structure"] = data
