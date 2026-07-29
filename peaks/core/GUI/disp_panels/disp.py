@@ -74,7 +74,7 @@ def disp(data, primary_dim=None, exclude_from_centering="eV"):
 
         import peaks as pks
 
-        from peaks.core.GUI.qt_runtime import viewer_session
+        from peaks.core.GUI.GUI_utils.qt_runtime import viewer_session
 
         pks.opts.gui.max_viewers = 2
 
