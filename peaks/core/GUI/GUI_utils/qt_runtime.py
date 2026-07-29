@@ -54,6 +54,9 @@ def _enable_ipython_qt():
 
     # Equivalent to running `%gui qt6` in the notebook
     ipython.run_line_magic("gui", "qt6")
+    active_eventloop = getattr(ipython, "active_eventloop", None)
+    if active_eventloop is None or not active_eventloop.startswith("qt"):
+        return False
     return True
 
 
@@ -172,16 +175,18 @@ def viewer_session():
 
     Examples
     --------
-    import peaks as pks
+    Example usage is as follows::
 
-    from peaks.core.GUI.GUI_utils.qt_runtime import viewer_session
+        import peaks as pks
 
-    # Set options to allow mutliple viewers to open (defaults to limit of 1)
-    pks.opts.gui.max_viewers = 2
+        from peaks.core.GUI.GUI_utils.qt_runtime import viewer_session
 
-    with viewer_session():
-        data1.disp()
-        data2.disp()
+        # Set options to allow mutliple viewers to open (defaults to limit of 1)
+        pks.opts.gui.max_viewers = 2
+
+        with viewer_session():
+            data1.disp()
+            data2.disp()
     """
     ipython_manages_qt = _enable_ipython_qt()
     app, state = _get_runtime()
