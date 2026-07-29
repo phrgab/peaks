@@ -6,6 +6,9 @@
 .vscode/
 .zed/
 
+# UV files
+uv.lock
+
 # Python cache and tools
 __pycache__/
 .ruff_cache/

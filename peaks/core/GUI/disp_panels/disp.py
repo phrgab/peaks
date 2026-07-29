@@ -46,6 +46,44 @@ def disp(data, primary_dim=None, exclude_from_centering="eV"):
         SM = pks.load('spatial_map.nxs')
         SM.disp(primary_dim=('x1', 'x2'))  # Show x1 on y-axis and x2 on x-axis
 
+    Notes
+    -----
+    In Jupyter or IPython, calling ``disp`` automatically enables the Qt6 GUI event loop when required.
+    The display window remains interactive and the notebook or IPython prompt remains available::
+
+        data.disp()
+
+    To open several display windows simultaneously, set the maximum allowed viewers option::
+
+
+        import peaks as pks
+        pks.opts.gui.max_viewers = 2
+
+        disp1.disp()
+
+        # In a new cell
+        disp2.disp()
+
+    In a regular Python script, ``disp`` starts the Qt event loop and blocks until the display window is closed::
+
+        if __name__ == "__main__":
+            data.disp()  # Blocks until panel is closed
+            print("Viewer closed")
+
+    To open several display windows, create them inside a viewer session::
+
+        import peaks as pks
+
+        from peaks.core.GUI.GUI_utils.qt_runtime import viewer_session
+
+        pks.opts.gui.max_viewers = 2
+
+        if __name__ == "__main__":
+            with viewer_session():
+                data1.disp()
+                data2.disp()
+
+
     """
     # If a DataTree instance is passed, try to parse into a form `.disp` can handle
     err_str = (
@@ -87,7 +125,7 @@ def disp(data, primary_dim=None, exclude_from_centering="eV"):
 
         from peaks.core.GUI.disp_panels.disp_2d import _disp_2d
 
-        _disp_2d(
+        return _disp_2d(
             data, primary_dim=primary_dim, exclude_from_centering=exclude_from_centering
         )
 
@@ -98,7 +136,7 @@ def disp(data, primary_dim=None, exclude_from_centering="eV"):
         if ndim == 2:
             from peaks.core.GUI.disp_panels.disp_2d import _disp_2d
 
-            _disp_2d(
+            return _disp_2d(
                 [data],
                 primary_dim=primary_dim,
                 exclude_from_centering=exclude_from_centering,
@@ -106,7 +144,7 @@ def disp(data, primary_dim=None, exclude_from_centering="eV"):
         elif ndim == 3:
             from peaks.core.GUI.disp_panels.disp_3d import _disp_3d
 
-            _disp_3d(
+            return _disp_3d(
                 data.pint.dequantify(),
                 primary_dim=primary_dim,
                 exclude_from_centering=exclude_from_centering,
@@ -114,7 +152,7 @@ def disp(data, primary_dim=None, exclude_from_centering="eV"):
         elif ndim == 4:
             from peaks.core.GUI.disp_panels.disp_4d import _disp_4d
 
-            _disp_4d(data.pint.dequantify(), primary_dim=primary_dim)
+            return _disp_4d(data.pint.dequantify(), primary_dim=primary_dim)
         else:
             raise ValueError(
                 "Number of dimensions not supported for interactive display. "

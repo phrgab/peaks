@@ -1,6 +1,5 @@
 """Functions for the 2D interactive display panel."""
 
-import sys
 from functools import partial
 
 import numpy as np
@@ -9,7 +8,6 @@ import pyperclip
 import pyqtgraph as pg
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtWidgets import (
-    QApplication,
     QHBoxLayout,
     QLabel,
     QVBoxLayout,
@@ -20,11 +18,11 @@ from peaks.core.GUI.GUI_utils import (
     CircularListWidget,
     Crosshair,
     KeyPressGraphicsLayoutWidget,
+    qt_runtime,
 )
 from peaks.core.GUI.GUI_utils.cursor_stats import _parse_norm_emission_cursor_stats
 from peaks.core.metadata.metadata_methods import DARK_BG_PALETTE, display_metadata
 from peaks.core.process.tools import estimate_sym_point, sym
-from peaks.core.utils.misc import analysis_warning
 
 
 def _disp_2d(data, primary_dim, exclude_from_centering):
@@ -42,48 +40,12 @@ def _disp_2d(data, primary_dim, exclude_from_centering):
         The dimension to exclude from centering. Default is 'eV'.
 
     """
-    global app  # Ensure the QApplication instance is not garbage collected
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication(sys.argv)
-
-    if not hasattr(app, "_peaks_active_viewers"):
-        app._peaks_active_viewers = []
-    active_viewers = app._peaks_active_viewers
-
-    viewer = _Disp2D(data, primary_dim, exclude_from_centering)
-    active_viewers.append(viewer)  # add the viewer to active viewers list
-
-    # fire a warning if there are already 3 or more disp panels open
-    if len(active_viewers) >= 3:
-        analysis_warning(
-            f"There are currently {len(active_viewers)} active display panels. "
-            "This may cause performance issues.",
-            warn_type="warning",
-            title="Multiple display panels open",
-        )
-
-    viewer.destroyed.connect(
-        lambda *_: (
-            active_viewers.remove(viewer) if viewer in active_viewers else None
-        )  # Remove viewer from active viewers list when it is closed
+    qt_runtime.show_viewer(
+        _Disp2D,
+        data,
+        primary_dim,
+        exclude_from_centering,
     )
-    viewer.show()
-
-    # to support multiple display panels
-    try:
-        from IPython import get_ipython
-
-        ip = get_ipython()
-        if ip is not None:
-            if getattr(ip, "active_eventloop", None) == "qt6":
-                return
-    except Exception:
-        pass
-
-    # fallback to Qt event loop if not in IPython or if IPYthon does not have an active event loop
-    if not any(v.isVisible() for v in active_viewers if v is not viewer):
-        app.exec()
 
 
 class _Disp2D(QtWidgets.QMainWindow):
@@ -150,15 +112,6 @@ class _Disp2D(QtWidgets.QMainWindow):
         self._change_data()  # Initialize with data
         # Connect file change signals
         self.scans_list.currentRowChanged.connect(self._change_data)
-
-        # Ensure the application quits when the window is closed
-        self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose)
-        self.closeEvent = self._close_application
-
-    def _close_application(self, event):
-        """Close the application when the window is closed without shutting down the event loop."""
-        self.graphics_layout.close()
-        event.accept()
 
     # ##############################
     # GUI layout
