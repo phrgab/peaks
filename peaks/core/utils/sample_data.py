@@ -19,6 +19,12 @@ from peaks.core.utils.misc import analysis_warning
 
 ROOT_URL = "https://zenodo.org/api/records/19336694/files"
 
+COD_URLS = (
+    "https://www.crystallography.net/cod/4515175.cif",
+    "https://qiserver.ugr.es/cod/4515175.cif",
+    "http://cod.ibt.lt/cod/4515175.cif",
+)
+
 
 class ZenodoDownloader:
     """Helper class to download files from Zenodo.
@@ -78,7 +84,7 @@ class ZenodoDownloader:
             self._ci_log(f"not in mirror      | {filename} -> Zenodo")
             if not self._in_ci:  # User sets LOCAL_MIRROR_PATH but file not found
                 analysis_warning(
-                    f"File <code>{filename}</code> was not found in local mirror at<code>{self.local_mirror}</code>. "
+                    f"File <code>{filename}</code> was not found in local mirror at <code>{self.local_mirror}</code>. "
                     "Downloading from Zenodo instead.",
                     title="Local mirror miss",
                     warn_type="info",
@@ -165,9 +171,6 @@ class ZenodoDownloader:
                 dest_path = os.path.join(tmpdir, filename)
                 if local_path:
                     shutil.copy(local_path, dest_path)
-                    print(
-                        f"[DEBUG] Copied {filename} from local mirror to temporary directory."
-                    )
                 else:
                     url = f"{self.root_url}/{filename}/content"
                     self._download_with_progress(url, dest_path)
@@ -402,13 +405,15 @@ class ExampleData:
                 local_path = os.path.join(local_mirror, "4515175.cif")
                 if os.path.exists(local_path):
                     data = load(local_path)
-                    print(
-                        f"[DEBUG] Loaded structure from local mirror: {local_path} data type is {type(data)}"
-                    )
             if data is None:
-                url = "https://qiserver.ugr.es/cod/4515175.cif"
-                response = requests.get(url)
-                if response.status_code == 200:
+                error = []
+                for url in COD_URLS:
+                    try:
+                        response = requests.get(url, timeout=(30, 300))
+                        response.raise_for_status()
+                    except requests.exceptions.RequestException as e:
+                        error.append(f"Failed to download from {url}: {e}")
+                        continue
                     tmp = tempfile.NamedTemporaryFile("w+", suffix=".cif", delete=False)
                     try:
                         tmp.write(response.text)
@@ -416,9 +421,11 @@ class ExampleData:
                         data = load(tmp.name)
                     finally:
                         os.unlink(tmp.name)
+                    break
                 else:
                     raise ValueError(
-                        f"Failed to download CIF. HTTP status code: {response.status_code}"
+                        "Failed to download CIF from any known mirror:\n  "
+                        + "\n".join(error)
                     )
             cls._cache["structure"] = data
         return deepcopy(data)
