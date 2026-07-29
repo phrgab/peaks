@@ -30,31 +30,60 @@ class ZenodoDownloader:
     with Zenodo serving as the fallback (used in CI).
     """
 
+    _mirro_warned = False
+
     def __init__(self, file_list, token=None):
         self.root_url = ROOT_URL.rstrip("/")
         self.file_list = file_list
         self.token = token or os.getenv("ZENODO_TOKEN")
-        self.local_mirror = os.getenv("LOCAL_MIRROR_PATH")
+        self.local_mirror = os.getenv("LOCAL_MIRROR_PATH") or ""
         self._in_ci = bool(os.getenv("CI"))
-        self._ci_log()
+        self._mirror_valid = bool(self.local_mirror) and os.path.isdir(self.local_mirror)
         self._tempdir_context = None
         self.downloaded_files = {}
 
-    # def _ci_log(self, message):
-    def _ci_log(self):
-        """Log plain messages in CI environment."""
-        # if self._in_ci:
-        print(
-            f"[DEBUG] CI env var is {os.getenv('CI')!r}, self._in_ci = {self._in_ci}",
-            flush=True,
-        )
+        if self.local_mirror and not self._mirror_valid:
+            self._warn_invalid_mirror()
+
+    def _warn_invalid_mirror(self):
+        if self._in_ci:  # in CI env
+            print(
+                f"[PEAKS WARNING] LOCAL_MIRROR_PATH={self.local_mirror!r} is not a valid directory. Falling back to Zenodo download.",
+                flush=True,
+            )
+        elif not ZenodoDownloader._mirro_warned:  # for users
+            analysis_warning(
+                f"<code>LOCAL_MIRROR_PATH</code> is set to <code>{self.local_mirror}</code>, "
+                f"but this is not a valid directory. Sample data will be downloaded from Zenodo instead.",
+                title="Invalid LOCAL_MIRROR_PATH",
+                warn_type="warning",
+            )
+            ZenodoDownloader._mirro_warned = True
+
+    def _ci_log(self, message):
+        """Log line, printed only in CI environment."""
+        if self._in_ci:
+            print(
+                f"[PEAKS INFO] {message}",
+                flush=True,
+            )
 
     def _get_local_path(self, filename):
         """Check if local mirror available and if files exist there."""
-        if self.local_mirror and os.path.isdir(self.local_mirror):
+        if self._mirror_valid:
             path = os.path.join(self.local_mirror, filename)
             if os.path.isfile(path):
+                self._ci_log(f"found in mirror    | {filename}")
                 return path
+            self._ci_log(f"not in mirror      | {filename} -> Zenodo")
+            if not self._in_ci:  # User sets LOCAL_MIRROR_PATH but file not found
+                analysis_warning(
+                    f"File <code>{filename}</code> was not found in local mirror at<code>{self.local_mirror}</code>. "
+                    "Downloading from Zenodo instead.",
+                    title="Local mirror miss",
+                    warn_type="info",
+                )
+        self._ci_log(f"no mirror set      | {filename} -> Zenodo")
         return None
 
     def _make_headers_if_needed(self, url):
