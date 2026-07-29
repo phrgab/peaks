@@ -36,7 +36,7 @@ class ZenodoDownloader:
     with Zenodo serving as the fallback (used in CI).
     """
 
-    _mirro_warned = False
+    _mirror_warned = False
 
     def __init__(self, file_list, token=None):
         self.root_url = ROOT_URL.rstrip("/")
@@ -57,14 +57,14 @@ class ZenodoDownloader:
                 f"[PEAKS WARNING] LOCAL_MIRROR_PATH={self.local_mirror!r} is not a valid directory. Falling back to Zenodo download.",
                 flush=True,
             )
-        elif not ZenodoDownloader._mirro_warned:  # for users
+        elif not ZenodoDownloader._mirror_warned:  # for users
             analysis_warning(
                 f"<code>LOCAL_MIRROR_PATH</code> is set to <code>{self.local_mirror}</code>, "
                 f"but this is not a valid directory. Sample data will be downloaded from Zenodo instead.",
                 title="Invalid LOCAL_MIRROR_PATH",
                 warn_type="warning",
             )
-            ZenodoDownloader._mirro_warned = True
+            ZenodoDownloader._mirror_warned = True
 
     def _ci_log(self, message):
         """Log line, printed only in CI environment."""
@@ -89,6 +89,7 @@ class ZenodoDownloader:
                     title="Local mirror miss",
                     warn_type="info",
                 )
+            return None
         self._ci_log(f"no mirror set      | {filename} -> Zenodo")
         return None
 
@@ -397,7 +398,7 @@ class ExampleData:
     @classmethod
     def structure(cls):
         """If `LOCAL_MIRROR_PATH` is set, files will be copied from this local directory
-        with the database sever as the fallback (used in CI)."""
+        with the database server as the fallback (used in CI)."""
         data = cls._cache.get("structure")
         if data is None:
             local_mirror = os.getenv("LOCAL_MIRROR_PATH")
@@ -405,14 +406,26 @@ class ExampleData:
                 local_path = os.path.join(local_mirror, "4515175.cif")
                 if os.path.exists(local_path):
                     data = load(local_path)
+                    if os.getenv("CI"):
+                        print(
+                            "[PEAKS INFO] found in mirror    | 4515175.cif", flush=True
+                        )
             if data is None:
-                error = []
+                if os.getenv("CI"):
+                    msg = (
+                        "not in mirror      " if local_mirror else "no mirror set      "
+                    )
+                    print(
+                        f"[PEAKS INFO] {msg} | 4515175.cif -> COD",
+                        flush=True,
+                    )
+                errors = []
                 for url in COD_URLS:
                     try:
-                        response = requests.get(url, timeout=(30, 300))
+                        response = requests.get(url, timeout=(30, 60))
                         response.raise_for_status()
                     except requests.exceptions.RequestException as e:
-                        error.append(f"Failed to download from {url}: {e}")
+                        errors.append(f"Failed to download from {url}: {e}")
                         continue
                     tmp = tempfile.NamedTemporaryFile("w+", suffix=".cif", delete=False)
                     try:
@@ -425,7 +438,7 @@ class ExampleData:
                 else:
                     raise ValueError(
                         "Failed to download CIF from any known mirror:\n  "
-                        + "\n".join(error)
+                        + "\n  ".join(errors)
                     )
             cls._cache["structure"] = data
         return deepcopy(data)
