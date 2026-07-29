@@ -44,6 +44,7 @@ class ZenodoDownloader:
         self.token = token or os.getenv("ZENODO_TOKEN")
         self.local_mirror = os.getenv("LOCAL_MIRROR_PATH") or ""
         self._in_ci = bool(os.getenv("CI"))
+        self._log_source = bool(os.getenv("PEAKS_LOG_SAMPLE_DATA_SOURCE"))
         self._mirror_valid = bool(self.local_mirror) and os.path.isdir(self.local_mirror)
         self._tempdir_context = None
         self.downloaded_files = {}
@@ -52,23 +53,24 @@ class ZenodoDownloader:
             self._warn_invalid_mirror()
 
     def _warn_invalid_mirror(self):
-        if self._in_ci:  # in CI env
+        if not self._in_ci:  # for users
+            if not ZenodoDownloader._mirror_warned:
+                analysis_warning(
+                    f"<code>LOCAL_MIRROR_PATH</code> is set to <code>{self.local_mirror}</code>, "
+                    f"but this is not a valid directory. Sample data will be downloaded from Zenodo instead.",
+                    title="Invalid LOCAL_MIRROR_PATH",
+                    warn_type="warning",
+                )
+                ZenodoDownloader._mirror_warned = True
+        elif self._log_source:  # in tutorial tests
             print(
                 f"[PEAKS WARNING] LOCAL_MIRROR_PATH={self.local_mirror!r} is not a valid directory. Falling back to Zenodo download.",
                 flush=True,
             )
-        elif not ZenodoDownloader._mirror_warned:  # for users
-            analysis_warning(
-                f"<code>LOCAL_MIRROR_PATH</code> is set to <code>{self.local_mirror}</code>, "
-                f"but this is not a valid directory. Sample data will be downloaded from Zenodo instead.",
-                title="Invalid LOCAL_MIRROR_PATH",
-                warn_type="warning",
-            )
-            ZenodoDownloader._mirror_warned = True
 
-    def _ci_log(self, message):
-        """Log line, printed only in CI environment."""
-        if self._in_ci:
+    def _log_sample_data_source(self, message):
+        """Log line, printed only when ``PEAKS_LOG_SAMPLE_DATA_SOURCE`` is set."""
+        if self._log_source:
             print(
                 f"[PEAKS INFO] {message}",
                 flush=True,
@@ -79,9 +81,9 @@ class ZenodoDownloader:
         if self._mirror_valid:
             path = os.path.join(self.local_mirror, filename)
             if os.path.isfile(path):
-                self._ci_log(f"found in mirror    | {filename}")
+                self._log_sample_data_source(f"found in mirror    | {filename}")
                 return path
-            self._ci_log(f"not in mirror      | {filename} -> Zenodo")
+            self._log_sample_data_source(f"not in mirror      | {filename} -> Zenodo")
             if not self._in_ci:  # User sets LOCAL_MIRROR_PATH but file not found
                 analysis_warning(
                     f"File <code>{filename}</code> was not found in local mirror at <code>{self.local_mirror}</code>. "
@@ -90,7 +92,7 @@ class ZenodoDownloader:
                     warn_type="info",
                 )
             return None
-        self._ci_log(f"no mirror set      | {filename} -> Zenodo")
+        self._log_sample_data_source(f"no mirror set      | {filename} -> Zenodo")
         return None
 
     def _make_headers_if_needed(self, url):
@@ -406,17 +408,17 @@ class ExampleData:
                 local_path = os.path.join(local_mirror, "4515175.cif")
                 if os.path.exists(local_path):
                     data = load(local_path)
-                    if os.getenv("CI"):
+                    if os.getenv("PEAKS_LOG_SAMPLE_DATA_SOURCE"):
                         print(
                             "[PEAKS INFO] found in mirror    | 4515175.cif", flush=True
                         )
             if data is None:
-                if os.getenv("CI"):
+                if os.getenv("PEAKS_LOG_SAMPLE_DATA_SOURCE"):
                     msg = (
                         "not in mirror      " if local_mirror else "no mirror set      "
                     )
                     print(
-                        f"[PEAKS INFO] {msg} | 4515175.cif -> COD",
+                        f"[PEAKS INFO] {msg}| 4515175.cif -> COD",
                         flush=True,
                     )
                 errors = []
