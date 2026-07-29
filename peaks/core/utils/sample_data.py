@@ -36,6 +36,7 @@ class ZenodoDownloader:
         self.token = token or os.getenv("ZENODO_TOKEN")
         self.local_mirror = os.getenv("LOCAL_MIRROR_PATH")
         self._in_ci = bool(os.getenv("CI"))
+        self._ci_log()
         self._tempdir_context = None
         self.downloaded_files = {}
 
