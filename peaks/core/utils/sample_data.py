@@ -35,6 +35,13 @@ class ZenodoDownloader:
         self.file_list = file_list
         self.token = token or os.getenv("ZENODO_TOKEN")
         self.local_mirror = os.getenv("LOCAL_MIRROR_PATH")
+        if self.local_mirror and not os.path.isdir(self.local_mirror):
+            analysis_warning(
+                f"LOCAL_MIRROR_PATH is set to <code>{self.local_mirror}</code>, but this directory does not exist. "
+                "Files will be downloaded from Zenodo instead.",
+                title="Invalid LOCAL_MIRROR_PATH",
+                warn_type="warning",
+            )
         self._tempdir_context = None
         self.downloaded_files = {}
 
