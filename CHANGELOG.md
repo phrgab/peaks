@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Inverted lazy-loading threshold and missing dask chunking in `NetCDFLoader` ([PR#66](https://github.com/phrgab/peaks/pull/66))
 - Intermittent bug where interactive fit plots (`plot_fit`) would fail to render in the built docs ([PR#67](https://github.com/phrgab/peaks/pull/67))
 - Cap embedded slider states in docs builds ([PR#67](https://github.com/phrgab/peaks/pull/67))
+- Missing units on the deflector metadata for I05 data that can break k-conversion ([PR#71](https://github.com/phrgab/peaks/pull/71))
 
 ### Changed
 

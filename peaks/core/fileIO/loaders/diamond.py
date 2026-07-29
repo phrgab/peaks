@@ -315,6 +315,10 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
 
     _hdf5_metadata_fixed_units = {
         "entry1/sample/heater_percent": "%",
+        "entry1/instrument/analyser/deflector_x": "deg",  # Had to pin this to deg to get the k conv working
+        "entry1/instrument/deflector_x/deflector_x": "deg",  # Note, the unit should be mm for a 2D transmission-mode scan but fine for now for metadata display
+        "entry1/instrument/analyser/detector_y": "deg",  # Need to revisit this during the refactor
+        "entry1/instrument/analyser/deflector_y": "deg",
     }
 
     _data_group_key_resolution_order = ["analyser"]
@@ -872,4 +876,10 @@ class I05NanoNewARPESLoader(I05NanoARPESLoader):
         "analyser_model": "FIXED_VALUE:MBS A1",
         "analyser_deflector_parallel": "entry1/instrument/analyser/deflector_y",
         "analyser_deflector_perp": "entry1/instrument/analyser/deflector_x",
+    }
+
+    _hdf5_metadata_fixed_units = {
+        **I05NanoARPESLoader._hdf5_metadata_fixed_units,
+        "entry1/instrument/analyser/deflector_x": "deg",  # Note, the unit should be mm for a 2D transmission-mode scan but fine for now for metadata display
+        "entry1/instrument/analyser/deflector_y": "deg",  # Need to revisit this during the refactor
     }
