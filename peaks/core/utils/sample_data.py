@@ -125,6 +125,9 @@ class ZenodoDownloader:
                 dest_path = os.path.join(tmpdir, filename)
                 if local_path:
                     shutil.copy(local_path, dest_path)
+                    print(
+                        f"[DEBUG] Copied {filename} from local mirror to temporary directory."
+                    )
                 else:
                     url = f"{self.root_url}/{filename}/content"
                     self._download_with_progress(url, dest_path)
@@ -359,6 +362,9 @@ class ExampleData:
                 local_path = os.path.join(local_mirror, "4515175.cif")
                 if os.path.exists(local_path):
                     data = load(local_path)
+                    print(
+                        f"[DEBUG] Loaded structure from local mirror: {local_path} data type is {type(data)}"
+                    )
             if data is None:
                 url = "https://qiserver.ugr.es/cod/4515175.cif"
                 response = requests.get(url)
