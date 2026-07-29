@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Intermittent bug where interactive fit plots (`plot_fit`) would fail to render in the built docs ([PR#67](https://github.com/phrgab/peaks/pull/67))
 - Cap embedded slider states in docs builds ([PR#67](https://github.com/phrgab/peaks/pull/67))
 - Missing units on the deflector metadata for I05 data that can break k-conversion ([PR#71](https://github.com/phrgab/peaks/pull/71))
+- Fix sample-data source logging leaking into built docs - gate it behind a separate opt-in env var ([PR#73](https://github.com/phrgab/peaks/pull/73))
 
 ### Changed
 
