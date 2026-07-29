@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Progress bar support for running in marimo notebooks. `analysis_warning`s now render as native marimo callouts when running inside marimo ([PR#56](https://github.com/phrgab/peaks/pull/56))
+- Support fly-scan spatial maps for Diamond I05 data (both branches) ([PR#69](https://github.com/phrgab/peaks/pull/69))
 
 ### Fixed
 
@@ -24,11 +25,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `.disp` now raises a clear error when a multi-leaf `DataTree` contains no suitable data ([PR#65](https://github.com/phrgab/peaks/pull/65))
 - Documented that `.pint.chunk()` should be used when chunking quantified in-memory data ([PR#66](https://github.com/phrgab/peaks/pull/66))
 - Inverted lazy-loading threshold and missing dask chunking in `NetCDFLoader` ([PR#66](https://github.com/phrgab/peaks/pull/66))
+- Intermittent bug where interactive fit plots (`plot_fit`) would fail to render in the built docs ([PR#67](https://github.com/phrgab/peaks/pull/67))
+- Cap embedded slider states in docs builds ([PR#67](https://github.com/phrgab/peaks/pull/67))
+- Missing units on the deflector metadata for I05 data that can break k-conversion ([PR#71](https://github.com/phrgab/peaks/pull/71))
 
 ### Changed
 
 - Limit font size and max lines of titles in `plot_fit` outputs ([PR#56](https://github.com/phrgab/peaks/pull/56))
 - Automatically enable Qt6 event-loop integration when running from Jupyter/IPython, with simultaneous viewer management handled by a `pks.opt` ([PR#68](https://github.com/phrgab/peaks/pull/68))
+- Improve local mirror (for sample data) handling and add COD fallback URLs for `ExampleData.structure()` ([PR#72](https://github.com/phrgab/peaks/pull/72))
 
 ### Removed
 

@@ -632,8 +632,24 @@ def plot_fit(
             ),
         )
 
+        # if on doc builds, limit the number of states and embed the dashboard with those states
         if os.getenv("FORCE_NB_EXECUTION") == "1":
-            return dashboard.embed(max_states=20)  # for documentation purposes
+            max_docs_states = 12
+            n_per_slider = max(2, int(max_docs_states ** (1 / len(sliders))))
+            docs_states = {
+                slider: sorted(
+                    {
+                        int(round(v))
+                        for v in np.linspace(
+                            slider.start,
+                            slider.end,
+                            min(n_per_slider, slider.end - slider.start + 1),
+                        )
+                    }
+                )
+                for slider in sliders.values()
+            }
+            return dashboard.embed(states=docs_states)
 
         dashboard.servable()
         return dashboard
