@@ -5,10 +5,18 @@ except ImportError as e:
         "The 'ase' module is required to use this module. Please install it using \
 'pip install ase'."
     ) from e
+
+try:
+    import trimesh
+except ImportError as e:
+    raise ImportError(
+        "The 'trimesh' module is required to use this module. Please install it using \
+'pip install trimesh'."
+    ) from e
+
 import ase.dft.bz
 import matplotlib.pyplot as plt
 import numpy as np
-import trimesh
 from ase.dft.bz import bz_vertices
 from scipy.spatial import ConvexHull
 from scipy.spatial.transform import Rotation
