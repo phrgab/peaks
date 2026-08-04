@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Progress bar support for running in marimo notebooks. `analysis_warning`s now render as native marimo callouts when running inside marimo ([PR#56](https://github.com/phrgab/peaks/pull/56))
 - Support fly-scan spatial maps for Diamond I05 data (both branches) ([PR#69](https://github.com/phrgab/peaks/pull/69))
+- Hardcode the CIF file (structure example data) into the git repo and use it in tutorials when available ([PR#76](https://github.com/phrgab/peaks/pull/76))
 
 ### Fixed
 
@@ -20,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Hard-coded `focus` dimension in `plot_nanofocus` ([PR#58](https://github.com/phrgab/peaks/pull/58))
 - Non-monotonic and repeated data at end of travel in i05 nano ana_polar maps ([PR#58](https://github.com/phrgab/peaks/pull/58))
 - Clicking _Copy_ in a `disp` panel raises `PyperclipException` on systems without a clipboard mechanism; text is now printed for manual copying instead ([PR#59](https://github.com/phrgab/peaks/pull/59))
-- Minor doc fixes ([PR#61](https://github.com/phrgab/peaks/pull/61))
+- Minor doc fixes ([PR#61](https://github.com/phrgab/peaks/pull/61), [PR#76](https://github.com/phrgab/peaks/pull/76))
 - Metadata readings of say and saz are swapped in Diamond i05 HR loader ([PR#64](https://github.com/phrgab/peaks/pull/64))
 - `.disp` now raises a clear error when a multi-leaf `DataTree` contains no suitable data ([PR#65](https://github.com/phrgab/peaks/pull/65))
 - Documented that `.pint.chunk()` should be used when chunking quantified in-memory data ([PR#66](https://github.com/phrgab/peaks/pull/66))
@@ -29,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cap embedded slider states in docs builds ([PR#67](https://github.com/phrgab/peaks/pull/67))
 - Missing units on the deflector metadata for I05 data that can break k-conversion ([PR#71](https://github.com/phrgab/peaks/pull/71))
 - Fix sample-data source logging leaking into built docs - gate it behind a separate opt-in env var ([PR#73](https://github.com/phrgab/peaks/pull/73))
+- Raises a clear error if `trimesh` is missing when importing the structure module ([PR#76](https://github.com/phrgab/peaks/pull/76))
+- Static inline interactive `iplot` in docs. Multi-dimensional `iplot`s now each have a few frames to animate over ([PR#76](https://github.com/phrgab/peaks/pull/76))
 
 ### Changed
 
