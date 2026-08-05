@@ -2,13 +2,23 @@ try:
     import ase
 except ImportError as e:
     raise ImportError(
-        "The 'ase' module is required to use this module. Please install it using \
-'pip install ase'."
+        "The 'ase' package is required to use this module. Please install peaks "
+        "with the optional structure flag as `pip install 'peaks-arpes[structure]'`, "
+        "or install ase directly with `pip install ase`."
     ) from e
+
+try:
+    import trimesh
+except ImportError as e:
+    raise ImportError(
+        "The 'trimesh' package is required to use this module. Please install peaks "
+        "with the optional structure flag as `pip install 'peaks-arpes[structure]'`, "
+        "or install trimesh directly with `pip install trimesh`."
+    ) from e
+
 import ase.dft.bz
 import matplotlib.pyplot as plt
 import numpy as np
-import trimesh
 from ase.dft.bz import bz_vertices
 from scipy.spatial import ConvexHull
 from scipy.spatial.transform import Rotation

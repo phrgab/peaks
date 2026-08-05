@@ -30,9 +30,9 @@ class ZenodoDownloader:
     """Helper class to download files from Zenodo.
 
     If the data is not public, a Zenodo token must be provided. This will be taken
-    from the environment variable `ZENODO_TOKEN` if not explicitly provided.
+    from the environment variable ``ZENODO_TOKEN`` if not explicitly provided.
 
-    If `LOCAL_MIRROR_PATH` is set, files will be copied from this local directory
+    If ``LOCAL_MIRROR_PATH`` is set, files will be copied from this local directory
     with Zenodo serving as the fallback (used in CI).
     """
 
@@ -399,12 +399,29 @@ class ExampleData:
 
     @classmethod
     def structure(cls):
-        """If `LOCAL_MIRROR_PATH` is set, files will be copied from this local directory
-        with the database server as the fallback (used in CI)."""
+        """Load the sample crystal structure.
+
+        A copy of the CIF file bundled at ``docs/source/files/`` is used if present.
+        Otherwise if ``LOCAL_MIRROR_PATH`` is set, it will be loaded from that directory
+        with the COD servers as the fallback."""
         data = cls._cache.get("structure")
         if data is None:
+            cif_file_dir = os.path.join(
+                Path(__file__).resolve().parent.parent.parent.parent,
+                "docs",
+                "source",
+                "files",
+            )
+            cif_path = os.path.join(cif_file_dir, "4515175.cif")
+            if os.path.exists(cif_path):
+                data = load(cif_path)
+                if os.getenv("PEAKS_LOG_SAMPLE_DATA_SOURCE"):
+                    print(
+                        "[PEAKS INFO] found in docs     | 4515175.cif",
+                        flush=True,
+                    )
             local_mirror = os.getenv("LOCAL_MIRROR_PATH")
-            if local_mirror:
+            if data is None and local_mirror:
                 local_path = os.path.join(local_mirror, "4515175.cif")
                 if os.path.exists(local_path):
                     data = load(local_path)

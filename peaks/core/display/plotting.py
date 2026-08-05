@@ -628,7 +628,8 @@ def plot_fit(
                 tight=True,
                 height=pane_height,
                 format="svg",
-                sizing_mode="stretch_width",
+                sizing_mode="fixed",
+                align="start",
             ),
         )
 
