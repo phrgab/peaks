@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.5.3.dev]
+## [0.5.3] - 2026-08-11
 
 ### Added
 
@@ -38,8 +38,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Limit font size and max lines of titles in `plot_fit` outputs ([PR#56](https://github.com/phrgab/peaks/pull/56))
 - Automatically enable Qt6 event-loop integration when running from Jupyter/IPython, with simultaneous viewer management handled by a `pks.opt` ([PR#68](https://github.com/phrgab/peaks/pull/68))
 - Improve local mirror (for sample data) handling and add COD fallback URLs for `ExampleData.structure()` ([PR#72](https://github.com/phrgab/peaks/pull/72))
-
-### Removed
 
 ## [0.5.2] - 2026-07-07
 
