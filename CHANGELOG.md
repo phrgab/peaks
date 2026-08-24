@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Minor doc fixes ([PR#80](https://github.com/phrgab/peaks/pull/80)
+
 ### Removed
 
 ## [0.5.3] - 2026-08-11
