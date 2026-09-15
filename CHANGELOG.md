@@ -11,9 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `ibw` co-ordinates were up to one step short at their upper end, clear in some spatial maps ([PR#84](https://github.com/phrgab/peaks/pull/84))
+- Arrow-key navigation in the 4D display panel updated the dispersion one step behind the crosshair ([PR#84](https://github.com/phrgab/peaks/pull/84))
+
 ### Changed
 
-- Minor doc fixes ([PR#80](https://github.com/phrgab/peaks/pull/80)
+- Minor doc fixes ([PR#80](https://github.com/phrgab/peaks/pull/80))
+- Crosshair readout precision in the 4D display panel in now derived from the axis step size. This was hard-coded to two decimal places ([PR#84](https://github.com/phrgab/peaks/pull/84))
 
 ### Removed
 
