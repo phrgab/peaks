@@ -409,6 +409,10 @@ class _Disp4D(QtWidgets.QMainWindow):
         self.step_sizes = [
             (coord[-1] - coord[0]) / (len(coord) - 1) for coord in self.coords
         ]
+        self.dim_precision = [
+            int(np.clip(np.ceil(-np.log10(abs(s))) + 1, 0, 6)) if s else 3
+            for s in self.step_sizes
+        ]
         self.ranges = [
             (min(coords) - self.step_sizes[i] / 2, max(coords) + self.step_sizes[i] / 2)
             for i, coords in enumerate(self.coords)
@@ -440,7 +444,7 @@ class _Disp4D(QtWidgets.QMainWindow):
         r, g, b = self.xh_brush[:3]
         cursor_text = f"<span style='color:#{r:02x}{g:02x}{b:02x}; font-size:15px'>"
         for i, pos in enumerate(self.primary_dims_xh.get_pos()):
-            cursor_text += f"&nbsp;&nbsp;{self.dim_labels[i]}:&nbsp;&nbsp; {pos:.2f}<br>"
+            cursor_text += f"&nbsp;&nbsp;{self.dim_labels[i]}:&nbsp;&nbsp; {pos:.{self.dim_precision[i]}f}<br>"
         cursor_text += "</span>"
         self.primary_dims_cursor_stats.setText(cursor_text)
 
