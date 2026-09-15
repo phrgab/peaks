@@ -39,7 +39,6 @@ class BaseIBWDataLoader(BaseDataLoader):
         dim_start = file_contents["wave"]["wave_header"]["sfB"]  # Initial value
         dim_step = file_contents["wave"]["wave_header"]["sfA"]  # Step size
         dim_points = file_contents["wave"]["wave_header"]["nDim"]  # Number of points
-        dim_end = dim_start + (dim_step * (dim_points - 1))
 
         # Loop through the dimensions, extract relevant dimension names and coordinates
         dims = []
