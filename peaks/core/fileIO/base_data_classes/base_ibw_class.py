@@ -48,9 +48,7 @@ class BaseIBWDataLoader(BaseDataLoader):
         for i in range(spectrum.ndim):
             dim = dim_units[counter : counter + dim_size[i]]
             dims.append(dim)
-            coords[dim] = np.linspace(
-                dim_start[i], dim_end[i], dim_points[i], endpoint=False
-            )
+            coords[dim] = dim_start[i] + dim_step[i] * np.arange(dim_points[i])
             counter += dim_size[i]
 
         return {"spectrum": spectrum, "dims": dims, "coords": coords, "units": {}}
