@@ -196,10 +196,20 @@ class IdentifyLoc:
 
         # Open the file (read only)
         with h5py.File(fname, "r") as f:
+            # Bloch nexus
+            bloch_definition = BaseHDF5DataLoader._extract_hdf5_value(
+                f, "entry/definition"
+            )
+            bloch_instrument = BaseHDF5DataLoader._extract_hdf5_value(
+                f, "entry/instrument/name"
+            )
             # .nxs files at Diamond and Alba contain approximately the same identifier format
             identifier = BaseHDF5DataLoader._extract_hdf5_value(
                 f, "entry1/instrument/name"
             )
+
+        if bloch_definition == "NXarpes" and bloch_instrument == "ARPES":
+            return "MAXIV_Bloch_A_New"
         # From the identifier, determine the location
         if "i05-1" in identifier:
             return "Diamond_I05_Nano-ARPES"
