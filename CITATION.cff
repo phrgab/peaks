@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+message: If you use this software, please cite it as below.
+title: '`peaks`: a Python package for analysis of angle-resolved photoemission and related spectroscopies'
+type: software
+authors:
+- given-names: Phil D.C.
+  family-names: King
+  orcid: https://orcid.org/0000-0002-6523-9034
+- given-names: Brendan
+  family-names: Edwards
+  orcid: https://orcid.org/0000-0002-7219-4241
+- given-names: Shu
+  family-names: Mo
+  orcid: https://orcid.org/0009-0009-1750-0363
+- given-names: Tommaso
+  family-names: Antonelli
+  orcid: https://orcid.org/0000-0002-4990-7813
+- given-names: Edgar Abarca
+  family-names: Morales
+  orcid: https://orcid.org/0000-0002-7714-8228
+- given-names: Lewis
+  family-names: Hart
+  orcid: https://orcid.org/0000-0002-8598-6272
+- given-names: Liam
+  family-names: Trzaska
+  orcid: https://orcid.org/0009-0002-1556-3378
+repository-code: https://github.com/phrgab/peaks
+license: Apache-2.0
