@@ -409,6 +409,10 @@ class _Disp4D(QtWidgets.QMainWindow):
         self.step_sizes = [
             (coord[-1] - coord[0]) / (len(coord) - 1) for coord in self.coords
         ]
+        self.dim_precision = [
+            int(np.clip(np.ceil(-np.log10(abs(s))) + 1, 0, 6)) if s else 3
+            for s in self.step_sizes
+        ]
         self.ranges = [
             (min(coords) - self.step_sizes[i] / 2, max(coords) + self.step_sizes[i] / 2)
             for i, coords in enumerate(self.coords)
@@ -440,7 +444,7 @@ class _Disp4D(QtWidgets.QMainWindow):
         r, g, b = self.xh_brush[:3]
         cursor_text = f"<span style='color:#{r:02x}{g:02x}{b:02x}; font-size:15px'>"
         for i, pos in enumerate(self.primary_dims_xh.get_pos()):
-            cursor_text += f"&nbsp;&nbsp;{self.dim_labels[i]}:&nbsp;&nbsp; {pos:.2f}<br>"
+            cursor_text += f"&nbsp;&nbsp;{self.dim_labels[i]}:&nbsp;&nbsp; {pos:.{self.dim_precision[i]}f}<br>"
         cursor_text += "</span>"
         self.primary_dims_cursor_stats.setText(cursor_text)
 
@@ -514,27 +518,25 @@ class _Disp4D(QtWidgets.QMainWindow):
         signal.connect(self._update_dim01_slider_position)
 
     def _key_press_event(self, event):
-        """Handle key press events."""
-        if event.key() in [
-            QtCore.Qt.Key.Key_Up,
-            QtCore.Qt.Key.Key_Down,
-            QtCore.Qt.Key.Key_Left,
-            QtCore.Qt.Key.Key_Right,
-        ]:
-            if event.key() == QtCore.Qt.Key.Key_Up:
-                self.dim01_sliders[0].setValue(self.dim01_sliders[0].value() + 1)
-            elif event.key() == QtCore.Qt.Key.Key_Down:
-                self.dim01_sliders[0].setValue(self.dim01_sliders[0].value() - 1)
-            elif event.key() == QtCore.Qt.Key.Key_Left:
-                self.dim01_sliders[1].setValue(self.dim01_sliders[1].value() - 1)
-            elif event.key() == QtCore.Qt.Key.Key_Right:
-                self.dim01_sliders[1].setValue(self.dim01_sliders[1].value() + 1)
-            pos = []
-            for i in range(2):
-                index = self.dim01_sliders[i].value()
-                pos.append(self.coarsened_coords[i][index])
-            self.primary_dims_xh.set_pos((pos[0], pos[1]))
-            self._update_primary_dim_cursor_stats()
+        """Move the primary-dims crosshair by one step with the arrow keys."""
+        key_map = {
+            QtCore.Qt.Key.Key_Up: (0, +1),
+            QtCore.Qt.Key.Key_Down: (0, -1),
+            QtCore.Qt.Key.Key_Left: (1, -1),
+            QtCore.Qt.Key.Key_Right: (1, +1),
+        }
+        if event.key() not in key_map:
+            return
+        dim_no, direction = key_map[event.key()]
+
+        index = self.dim01_sliders[dim_no].value() + direction
+        index = int(np.clip(index, 0, len(self.coarsened_coords[dim_no]) - 1))
+
+        # Move only the crosshair. sigPositionChanged will then update the slider
+        # NB this has to be ordered this way; see the mouse drag one
+        pos = list(self.primary_dims_xh.get_pos())
+        pos[dim_no] = self.coarsened_coords[dim_no][index]
+        self.primary_dims_xh.set_pos(tuple(pos))
 
     def _reset_roi_plots(self):
         """Reset the ROI plots to the default."""
