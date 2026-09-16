@@ -51,7 +51,9 @@ class BlochArpesLoader(SESDataLoader):
     }
 
 
-# -------------------- Alpha version nexus data loader --------------------
+# ------- The code below loads nexus data from the Scienta PEAK software -------
+# Alpha version, adapted from an initial implementation provided by Jacek Osiecki at Bloch, Max IV; see commit history
+# Data and metadata structure/schema is still being developed on the beamline.
 def _read_scalar(group, name, default=None):
     """Read a scalar dataset from an open h5py group/file, decoding bytes."""
     if name not in group:
@@ -191,7 +193,7 @@ def _scan_axis(nxdata, nframes):
     return None
 
 
-# For spatial map foling; from Jacek Osiecki at Bloch, Max IV
+# For spatial map folding
 @dataclass
 class _MapGeometry:
     """A spatial map folded back onto the raster it was acquired on.
@@ -414,7 +416,7 @@ class BlochNexusLoader(BaseHDF5DataLoader, BaseARPESDataLoader):
         "x2": "y",
         "x3": "z",
     }
-    # [SHU] CHEEEEEEECK!!
+
     _manipulator_sign_conventions = {
         "polar": -1,
         "tilt": -1,
