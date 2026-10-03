@@ -22,7 +22,7 @@ authors:
   given-names: Liam
   orcid: "https://orcid.org/0009-0002-1556-3378"
 doi: 10.5281/zenodo.21905722
-message: If you use this software, please cite our article in the
+message: If you use `peaks` in your work, please cite our paper in the
   Journal of Open Source Software.
 preferred-citation:
   authors:
