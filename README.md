@@ -7,6 +7,7 @@
 [![Latest version on conda-forge](https://img.shields.io/conda/vn/conda-forge/peaks-arpes?logo=conda-forge&logoColor=white&color=green)](https://anaconda.org/channels/conda-forge/packages/peaks-arpes/overview)
 [![Supported Python versions](https://img.shields.io/pypi/pyversions/peaks-arpes?logo=python&logoColor=white)](https://www.python.org)
 [![docs](https://img.shields.io/badge/docs-research.st--andrews-blueviolet)](https://research.st-andrews.ac.uk/kinggroup/peaks)
+[![DOI](https://joss.theoj.org/papers/10.21105/joss.10440/status.svg)](https://doi.org/10.21105/joss.10440)
 [![Code Style: Ruff (Black-compatible)](https://img.shields.io/badge/code%20style-ruff-black)](https://docs.astral.sh/ruff/formatter/)
 
 `peaks`: **P**ython **E**lectron Spectroscopy **A**nalysis by **K**ing Group **S**t Andrews.
@@ -28,7 +29,8 @@ If you use `peaks` in your work, please cite:
 _`peaks`: a Python package for analysis of angle-resolved photoemission and related spectroscopies_ \
 Phil D. C. King, Brendan Edwards, Shu Mo, Tommaso Antonelli,
 Edgar Abarca Morales, Lewis Hart, and Liam Trzaska \
-[arXiv:2508.04803](https://arxiv.org/abs/2508.04803) (2025)
+_Journal of Open Source Software_ **11**, 10440 (2026)\
+[https://doi.org/10.21105/joss.10440](https://doi.org/10.21105/joss.10440)
 
 <!-- citation-end -->
 
