@@ -1,0 +1,64 @@
+cff-version: "1.2.0"
+authors:
+- family-names: King
+  given-names: Phil D. C.
+  orcid: "https://orcid.org/0000-0002-6523-9034"
+- family-names: Edwards
+  given-names: Brendan
+  orcid: "https://orcid.org/0000-0002-7219-4241"
+- family-names: Mo
+  given-names: Shu
+  orcid: "https://orcid.org/0009-0009-1750-0363"
+- family-names: Antonelli
+  given-names: Tommaso
+  orcid: "https://orcid.org/0000-0002-4990-7813"
+- family-names: Morales
+  given-names: Edgar Abarca
+  orcid: "https://orcid.org/0000-0002-7714-8228"
+- family-names: Hart
+  given-names: Lewis
+  orcid: "https://orcid.org/0000-0002-8598-6272"
+- family-names: Trzaska
+  given-names: Liam
+  orcid: "https://orcid.org/0009-0002-1556-3378"
+doi: 10.5281/zenodo.21905722
+message: If you use this software, please cite our article in the
+  Journal of Open Source Software.
+preferred-citation:
+  authors:
+  - family-names: King
+    given-names: Phil D. C.
+    orcid: "https://orcid.org/0000-0002-6523-9034"
+  - family-names: Edwards
+    given-names: Brendan
+    orcid: "https://orcid.org/0000-0002-7219-4241"
+  - family-names: Mo
+    given-names: Shu
+    orcid: "https://orcid.org/0009-0009-1750-0363"
+  - family-names: Antonelli
+    given-names: Tommaso
+    orcid: "https://orcid.org/0000-0002-4990-7813"
+  - family-names: Morales
+    given-names: Edgar Abarca
+    orcid: "https://orcid.org/0000-0002-7714-8228"
+  - family-names: Hart
+    given-names: Lewis
+    orcid: "https://orcid.org/0000-0002-8598-6272"
+  - family-names: Trzaska
+    given-names: Liam
+    orcid: "https://orcid.org/0009-0002-1556-3378"
+  date-published: 2026-10-02
+  doi: 10.21105/joss.10440
+  issn: 2475-9066
+  issue: 126
+  journal: Journal of Open Source Software
+  publisher:
+    name: Open Journals
+  start: 10440
+  title: "peaks: a Python package for analysis of angle-resolved
+    photoemission and related spectroscopies"
+  type: article
+  url: "https://joss.theoj.org/papers/10.21105/joss.10440"
+  volume: 11
+title: "`peaks`: a Python package for analysis of angle-resolved
+  photoemission and related spectroscopies"
