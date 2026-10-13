@@ -3,7 +3,7 @@ from typing import Optional, Union
 import numpy as np
 import pint
 import pint_xarray
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic_core import core_schema
 
 # Define the appropriate unit registry
@@ -191,6 +191,13 @@ class ARPESSlitMetadataModel(BaseMetadataModel):
 
     width: Optional[Union[str, Quantity]] = None
     identifier: Optional[str] = None
+
+    @field_validator("identifier", mode="before")
+    @classmethod
+    def _num_to_str(cls, v):
+        if isinstance(v, (int, float, np.number)):
+            return str(v)
+        return v
 
 
 class ARPESAnalyserMetadataModel(BaseMetadataModel):
