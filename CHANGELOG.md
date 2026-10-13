@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Parsing analyser slit identifiers when numeric ([PR#89](https://github.com/phrgab/peaks/pull/89))
+
 ### Changed
 
 ### Removed
