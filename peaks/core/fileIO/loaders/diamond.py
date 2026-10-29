@@ -996,6 +996,34 @@ def _read_szip_chunk(fpath, dset_path, block_info=None):
     return chunk[tuple(slice(0, n) for n in block_info[None]["chunk-shape"])]
 
 
+def _i09_detector_addr(f):
+    """Address of the instrument group flagged with scan_role=detector (e.g. `dld` or `dld_total`), or None."""
+    return next(
+        (
+            f"entry/instrument/{key}"
+            for key, group in f["entry/instrument"].items()
+            if DiamondNXSLoader._parse_nxs_axis_attr(group.attrs.get("scan_role", ""))
+            == "detector"
+        ),
+        None,
+    )
+
+
+def _i09_accumulation_time(f):
+    """Total accumulation time per point, from the detector argument in the scan command (e.g. `dld 20`).
+
+    The detector's own `count_time` is the exposure per frame, not the accumulation time per point.
+    """
+    det_addr = _i09_detector_addr(f)
+    if not det_addr:
+        return None
+    scan_command = BaseHDF5DataLoader._extract_hdf5_value(
+        f, "entry/diamond_scan/scan_command"
+    )
+    m = re.search(rf"\b{det_addr.rsplit('/', 1)[1]}\s+([\d.eE+-]+)", str(scan_command))
+    return float(m.group(1)) * ureg.s if m else None
+
+
 @register_loader
 class I09MomentumMicroscopeLoader(DiamondNXSLoader, BaseARPESDataLoader):
     """Loader for Diamond I09-2 (J-branch) momentum microscope NeXus files.
@@ -1008,13 +1036,11 @@ class I09MomentumMicroscopeLoader(DiamondNXSLoader, BaseARPESDataLoader):
     _loc_description = "Momentum microscope on the J-branch (I09-2) of the I09 beamline at Diamond Light Source"
     _loc_url = "https://www.diamond.ac.uk/Instruments/Structures-and-Surfaces/I09.html"
 
-    _analyser_name_conventions = {"eV": "Kenergy"}
-    _desired_dim_order = [
-        *BaseARPESDataLoader._desired_dim_order,
-        "detector_y",
-        "detector_x",
-    ]
+    # Kenergy is the kinetic energy (= sample bias); jenergy is the J-branch photon energy, in keV
+    _analyser_name_conventions = {"eV": "Kenergy", "hv": "jenergy"}
+    _scannable_units = {"Kenergy": "eV", "jenergy": "keV"}
     _analyser_include_in_metadata_warn = ["eV", "step_size", "dwell"]
+    _hdf5_metadata_fixed_units = {"entry/instrument/Kenergy/value": "eV"}
 
     _hdf5_metadata_key_mappings = {
         "scan_command": "entry/diamond_scan/scan_command",
@@ -1045,14 +1071,7 @@ class I09MomentumMicroscopeLoader(DiamondNXSLoader, BaseARPESDataLoader):
             and f["entry/instrument/Kenergy/value"].size > 1
             else None
         ),
-        # The detector count_time is not reliable (dld records 0.2 s for a 20 s/point scan), so use the GDA estimate
-        "analyser_dwell": lambda f: (
-            f["entry/diamond_scan/scan_estimated_duration"][()]
-            / np.prod(f["entry/diamond_scan/scan_shape"][()])
-            * ureg.ms
-            if "entry/diamond_scan/scan_estimated_duration" in f
-            else None
-        ),
+        "analyser_dwell": lambda f: _i09_accumulation_time(f),
         "analyser_eV_type": "FIXED_VALUE:kinetic",
         "analyser_fourier_aperture": "entry/instrument/microscope/fourier_select",
         "analyser_fourier_aperture_x": "entry/instrument/microscope/x_fourier",
@@ -1067,8 +1086,20 @@ class I09MomentumMicroscopeLoader(DiamondNXSLoader, BaseARPESDataLoader):
             and f["entry/sample/temperature"].dtype.kind in "fiu"
             else None
         ),
-        "photon_hv": "entry/instrument/pgm/pgmenergy",
+        # jenergy holds the per-point values for an hv scan; pgmenergy is only recorded once per scan
+        "photon_hv": lambda f: (
+            (
+                BaseHDF5DataLoader._extract_hdf5_value(
+                    f, "entry/instrument/jenergy/value"
+                )
+                * ureg.keV
+            ).to("eV")
+            if "entry/instrument/jenergy/value" in f
+            else "entry/instrument/pgm/pgmenergy"
+        ),
         "photon_polarisation": "entry/instrument/polarisation/value",
+        # I09-2 exit slit; the vertical gap sets the energy resolution
+        "photon_exit_slit": "entry/instrument/ss7/ss7ygap",
         "timestamp": "entry/diamond_scan/start_time",
     }
 
@@ -1097,64 +1128,104 @@ class I09MomentumMicroscopeLoader(DiamondNXSLoader, BaseARPESDataLoader):
         )
         return parsed_metadata, warn_list
 
+    @staticmethod
+    def _is_live_view_image(fpath):
+        """Whether the file is an image saved from the live view (a .tif, or a snapshot .nxs without
+        `entry/instrument`) rather than a GDA scan. These carry no metadata or beamline identifier."""
+        if not h5py.is_hdf5(fpath):
+            return True
+        with h5py.File(fpath, "r") as f:
+            return "entry/instrument" not in f
+
+    @classmethod
+    def _load_metadata(cls, fpath):
+        """Load the metadata from a GDA scan file; live-view images have none."""
+        if cls._is_live_view_image(fpath):
+            return {}
+        return super()._load_metadata(fpath)
+
+    @classmethod
+    def _load_live_view_image(cls, fpath):
+        """Load a live-view image (e.g. a PEEM image or flat-field reference) as raw detector pixels.
+
+        Both the .tif and snapshot .nxs images share the (`detector_y`, `detector_x`) orientation of `dld/data`.
+        """
+        if h5py.is_hdf5(fpath):
+            with h5py.File(fpath, "r") as f:
+                nxdata = f["entry/data"]
+                image = nxdata[cls._parse_nxs_axis_attr(nxdata.attrs["signal"])][()]
+        else:
+            import imagecodecs
+
+            image = imagecodecs.imread(fpath)
+        da = xr.DataArray(
+            image,
+            dims=["detector_y", "detector_x"],
+            coords={
+                "detector_y": np.arange(image.shape[0]),
+                "detector_x": np.arange(image.shape[1]),
+            },
+            name="spectrum",
+        )
+        return da.pint.quantify({"spectrum": "counts"})
+
     @classmethod
     def _load_data(cls, fpath, lazy, **kwargs):
-        """Load the data from a Diamond I09-2 momentum microscope NeXus file."""
+        """Load the data from a Diamond I09-2 momentum microscope NeXus file, or a live-view image."""
+        if cls._is_live_view_image(fpath):
+            return cls._load_live_view_image(fpath)
         with h5py.File(fpath, "r") as f:
-            # The detector is the instrument group flagged with scan_role=detector (e.g. `dld` or `dld_total`)
-            det_addr = next(
-                f"entry/instrument/{key}"
-                for key, group in f["entry/instrument"].items()
-                if cls._parse_nxs_axis_attr(group.attrs.get("scan_role", ""))
-                == "detector"
-            )
-            # Full detector image if saved, otherwise the integrated ROI (`mcp_roi_total` for GDA < 9.42)
-            signal_key = next(
-                key
-                for key in ["data", "fixed_roi_total", "mcp_roi_total"]
-                if key in f[det_addr]
-            )
-            data_ndim = f[f"{det_addr}/{signal_key}"].ndim
-
-            # Scan axes from the default NXdata group, using the NeXus `<axis>_indices` attributes
             nxdata = f["entry"][cls._parse_nxs_axis_attr(f["entry"].attrs["default"])]
+            det_addr = _i09_detector_addr(f)
+            if det_addr:
+                # Full detector image if saved, otherwise the integrated ROI (`mcp_roi_total` for GDA < 9.42)
+                signal_addr = next(
+                    f"{det_addr}/{key}"
+                    for key in ["data", "fixed_roi_total", "mcp_roi_total"]
+                    if key in f[det_addr]
+                )
+            else:
+                # Scans without a detector (e.g. drain-current XAS, mirror scans): use the default NXdata signal
+                signal_addr = (
+                    f"{nxdata.name}/{cls._parse_nxs_axis_attr(nxdata.attrs['signal'])}"
+                )
+            dset = f[signal_addr]
+
+            # Scan axes from the default NXdata group: the position in `axes` is the dimension index
             scan_dims = {}
             coords = {}
             units = {}
-            for axis in np.atleast_1d(nxdata.attrs["axes"]):
+            for index, axis in enumerate(np.atleast_1d(nxdata.attrs["axes"])):
                 axis = axis.decode() if isinstance(axis, bytes) else str(axis)
                 if axis == "." or axis not in nxdata:
                     continue
-                index = int(np.atleast_1d(nxdata.attrs[f"{axis}_indices"])[0])
-                if index in scan_dims:
-                    continue
+                # Axis values are written on the full scan grid, so take them along their own dimension
                 values = nxdata[axis][()]
                 indexer = [0] * values.ndim
                 indexer[index] = slice(None)
                 scan_dims[index] = axis
                 coords[axis] = values[tuple(indexer)]
-                units[axis] = nxdata[axis].attrs.get("units")
+                units[axis] = nxdata[axis].attrs.get(
+                    "units", cls._scannable_units.get(axis)
+                )
 
             scan_rank = int(f["entry/diamond_scan/scan_rank"][()])
             dims = [scan_dims.get(i, f"dummy_{i}") for i in range(scan_rank)]
-            detector_dims = ["detector_y", "detector_x"][2 - (data_ndim - scan_rank) :]
-            for dim, size in zip(
-                detector_dims,
-                f[f"{det_addr}/{signal_key}"].shape[scan_rank:],
-                strict=True,
-            ):
+            detector_dims = ["detector_y", "detector_x"][2 - (dset.ndim - scan_rank) :]
+            for dim, size in zip(detector_dims, dset.shape[scan_rank:], strict=True):
                 coords[dim] = np.arange(size)
             dims += detector_dims
 
+            if not det_addr:
+                data = dset[()]
             # The DLD image is szip-compressed, but some h5py wheels (e.g. macOS) are built without szip
-            dset = f[f"{det_addr}/{signal_key}"]
-            if dset.compression == "szip" and not h5py.h5z.filter_avail(
+            elif dset.compression == "szip" and not h5py.h5z.filter_avail(
                 h5py.h5z.FILTER_SZIP
             ):
                 data = dask.array.map_blocks(
                     _read_szip_chunk,
                     fpath,
-                    f"{det_addr}/{signal_key}",
+                    signal_addr,
                     chunks=dask.array.core.normalize_chunks(dset.chunks, dset.shape),
                     dtype=dset.dtype,
                     meta=np.empty((0,) * dset.ndim, dtype=dset.dtype),
@@ -1166,9 +1237,10 @@ class I09MomentumMicroscopeLoader(DiamondNXSLoader, BaseARPESDataLoader):
             da = xr.DataArray(data, dims=dims)
         else:
             # Load the core data in a way that supports lazy loading (the image is an external link to the dld file)
+            group, signal_key = signal_addr.rsplit("/", 1)
             ds = xr.open_dataset(
                 fpath,
-                group=det_addr,
+                group=group,
                 engine="h5netcdf",
                 phony_dims="sort",
                 chunks="auto",
@@ -1191,7 +1263,8 @@ class I09MomentumMicroscopeLoader(DiamondNXSLoader, BaseARPESDataLoader):
             for key, value in units.items()
             if value is not None
         }
-        units["spectrum"] = "counts"
+        if det_addr:
+            units["spectrum"] = "counts"
 
         # Load array into memory if lazy loading not required
         if not (lazy or (lazy is None and da.size > opts.FileIO.lazy_size)):
@@ -1199,4 +1272,6 @@ class I09MomentumMicroscopeLoader(DiamondNXSLoader, BaseARPESDataLoader):
 
         da.name = "spectrum"
         da = da.pint.quantify(units)
+        if "hv" in da.dims:
+            da = da.pint.to(hv="eV")
         return da.squeeze()
