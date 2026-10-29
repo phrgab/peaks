@@ -10,6 +10,7 @@ from peaks.core.process.tools import (
     correct_swept_scan_bad_pixels,
     drift_correction,
     estimate_sym_point,
+    flat_field_correction,
     merge_data,
 )
 from peaks.core.utils.sample_data import ExampleData
@@ -767,3 +768,91 @@ class TestToolsPreserveUnits:
         fake_disp.attrs["_calibration"] = ARPESCalibrationModel(EF_correction=16.7)
         result = merge_data([fake_disp, fake_disp], offsets=[0, 12])
         assert result.data.units == fake_disp.data.units
+
+
+def _flat_field_reference():
+    # Vignetted gaussian sensitivity on a 1212x1212 detector, zero outside a disc
+    y, x = np.mgrid[:1212, :1212] - 605.5
+    sensitivity = np.exp(-(x**2 + y**2) / 600**2)
+    sensitivity[x**2 + y**2 > 500**2] = 0
+    sensitivity[600, 600] = 0  # dead pixel inside the illuminated region
+    return _simulate_fake_scan(
+        sensitivity * 1000, dims=("detector_y", "detector_x"), unit="count"
+    )
+
+
+def test_flat_field_correction_flattens_uniform_signal():
+    ref = _flat_field_reference()
+    data = _simulate_fake_scan(
+        3 * ref.pint.dequantify(), dims=("detector_y", "detector_x")
+    )
+    corrected = flat_field_correction(data, ref)
+
+    illuminated = ref.pint.dequantify() > 0.05 * float(ref.max().pint.dequantify())
+    values = corrected.pint.dequantify().values
+    assert np.ptp(values[illuminated]) < 1e-9
+    assert corrected.pint.units == data.pint.units
+    assert corrected.name == data.name
+    assert set(corrected.attrs) == set(data.attrs)
+    assert len(corrected.history.get()) == len(data.history.get()) + 1
+    assert corrected.history.get(-1)["record"]["threshold"] == 0.05
+
+
+@pytest.mark.parametrize("fill", [1, np.nan])
+def test_flat_field_correction_fill(fill):
+    ref = _flat_field_reference()
+    data = _simulate_fake_scan(np.ones((1212, 1212)), dims=("detector_y", "detector_x"))
+    values = flat_field_correction(data, ref, fill=fill).pint.dequantify().values
+    # Outside the disc and at the dead pixel
+    np.testing.assert_equal(values[0, 0], fill)
+    np.testing.assert_equal(values[600, 600], fill)
+
+
+def test_flat_field_correction_binned_data():
+    ref = _flat_field_reference()
+    raw = 3 * ref.pint.dequantify().values
+    full = flat_field_correction(
+        _simulate_fake_scan(raw, dims=("detector_y", "detector_x")), ref
+    )
+    binned = flat_field_correction(
+        _simulate_fake_scan(
+            raw.reshape(606, 2, 1212).mean(1), dims=("detector_y", "detector_x")
+        ),
+        ref,
+    )
+    # Only compare bins fully inside the illuminated region
+    inside = (raw > 0.05 * raw.max()).reshape(606, 2, 1212).all(1)
+    full_binned = full.pint.dequantify().coarsen(detector_y=2).mean().values
+    np.testing.assert_allclose(
+        binned.pint.dequantify().values[inside], full_binned[inside], rtol=1e-6
+    )
+
+
+def test_flat_field_correction_broadcasts_and_stays_lazy():
+    ref = _flat_field_reference()
+    raw = np.stack([ref.pint.dequantify().values * i for i in (1, 2, 3)])
+    data = _simulate_fake_scan(raw, dims=("eV", "detector_y", "detector_x")).chunk(
+        {"eV": 1}
+    )
+    corrected = flat_field_correction(data, ref)
+    assert corrected.dims == data.dims
+    assert corrected.chunks is not None
+    values = corrected.pint.dequantify().values
+    np.testing.assert_allclose(values[2, 605, 605] / values[0, 605, 605], 3)
+
+
+def test_flat_field_correction_custom_mask():
+    ref = _flat_field_reference()
+    data = _simulate_fake_scan(np.ones((1212, 1212)), dims=("detector_y", "detector_x"))
+    mask = xr.zeros_like(ref.pint.dequantify(), dtype=bool)
+    mask[500:700, 500:700] = True
+    corrected = flat_field_correction(data, ref, mask=mask)
+    assert corrected.pint.dequantify().values[100, 600] == 1
+    assert corrected.history.get(-1)["record"]["custom mask"]
+
+
+def test_flat_field_correction_bad_shape_raises():
+    ref = _flat_field_reference()
+    data = _simulate_fake_scan(np.ones((500, 1212)), dims=("detector_y", "detector_x"))
+    with pytest.raises(ValueError, match="integer fraction"):
+        flat_field_correction(data, ref)

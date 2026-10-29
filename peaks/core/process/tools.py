@@ -2459,3 +2459,102 @@ def correct_swept_scan_bad_pixels(data, bad_pixels=None, **kwargs):
     )
 
     return corrected
+
+
+def flat_field_correction(data, reference, threshold=0.05, mask=None, fill=1):
+    """Divide data by a normalised flat-field (detector sensitivity) reference.
+
+    The reference is normalised to the mean over its illuminated pixels, and the data divided by it, broadcasting
+    over any data dimensions not in the reference. If a data dimension is an integer fraction of the reference size
+    (e.g. detector binning), the reference is binned to match.
+
+    Parameters
+    ----------
+    data : xarray.DataArray
+        The data to be corrected.
+
+    reference : xarray.DataArray
+        The raw flat-field reference. Its dimensions must be a subset of those of ``data``.
+
+    threshold : float, optional
+        Pixels with ``reference > threshold * max(reference)`` are treated as illuminated. Ignored if ``mask`` is
+        given. Defaults to 0.05.
+
+    mask : xarray.DataArray, optional
+        Boolean mask of illuminated pixels, with the same dimensions and shape as ``reference``. Defaults to None,
+        where the mask is determined from ``threshold``.
+
+    fill : float, optional
+        Correction factor used outside the mask, and for pixels where the reference is <= 0. Defaults to 1 (leave
+        uncorrected); use ``np.nan`` to blank these pixels.
+
+    Returns
+    -------
+    corrected : xarray.DataArray
+        The flat-field corrected data, in the same units as ``data``.
+
+    Examples
+    --------
+    Example usage is as follows::
+
+        import peaks as pks
+
+        data = pks.load('i09-2-7262.nxs')
+        ref = pks.load('Flatfield_24062026.tif', loc='Diamond_I09_Momentum_Microscope')
+
+        corrected = data.flat_field_correction(ref)
+
+    """
+    if not set(reference.dims) <= set(data.dims):
+        raise ValueError(
+            f"Reference dimensions {reference.dims} must be a subset of the data dimensions {data.dims}."
+        )
+
+    # Bare values only: reference attrs would otherwise conflict with (and drop) the data's metadata on division
+    ref = reference.pint.dequantify().drop_attrs()
+    custom_mask = mask is not None
+    if not custom_mask:
+        mask = ref > threshold * ref.max()
+    mask = mask & (ref > 0)
+    # Normalise at full resolution so binned and unbinned data are scaled identically
+    ref = ref / ref.where(mask).mean()
+
+    # Bin the reference to match binned data; a bin is illuminated only if all its pixels are
+    binning = {}
+    for dim in ref.dims:
+        n_ref, n_data = ref.sizes[dim], data.sizes[dim]
+        if n_ref % n_data:
+            raise ValueError(
+                f"Data size along {dim} ({n_data}) is not an integer fraction of the reference size ({n_ref})."
+            )
+        if n_ref != n_data:
+            binning[dim] = n_ref // n_data
+    if binning:
+        ref = ref.coarsen(binning).mean()
+        mask = mask.coarsen(binning).all()
+
+    factors = ref.where(mask, fill)
+
+    # Divide by the bare Variable: broadcasts by dim name without aligning coords (binned data is re-indexed)
+    corrected = data / factors.variable
+
+    # assign (not add): the arithmetic result shares its history object with the input data
+    corrected = corrected.history.assign(
+        {
+            "record": "Flat-field correction applied",
+            "reference file": getattr(reference.attrs.get("_scan"), "filepath", None),
+            "reference history": (
+                reference.attrs["_analysis_history"].model_dump(
+                    mode="json", by_alias=True
+                )["records"]
+                if "_analysis_history" in reference.attrs
+                else None
+            ),
+            "threshold": None if custom_mask else threshold,
+            "custom mask": custom_mask,
+            "fill": fill,
+            "reference binning": binning,
+        }
+    )
+
+    return corrected

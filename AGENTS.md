@@ -435,6 +435,23 @@ functions and as accessor methods (e.g. `data.smooth(...)`).
 - strategy: fft_filtering
 - cost: low
 
+### flat_field_correction
+
+- description: Divide data by a normalised flat-field (detector sensitivity) reference. The reference is normalised to the mean over its illuminated pixels and broadcast over any data dimensions it lacks; if the data is binned along a detector dimension by an integer factor, the reference is binned to match.
+- function: xr.DataArray accessor .flat_field_correction()
+- parameters:
+  - reference: xr.DataArray (required) — raw flat-field reference; its dims must be a subset of the data dims
+  - threshold: float (optional, default=0.05) — pixels above threshold × max(reference) are treated as illuminated
+  - mask: xr.DataArray (optional, default=None) — boolean mask of illuminated pixels, same shape as reference; overrides threshold
+  - fill: float (optional, default=1) — correction factor outside the mask and where the reference is <= 0; 1 leaves those pixels uncorrected, np.nan blanks them
+- returns: xr.DataArray — corrected data in the original units
+- when_to_use: Momentum microscope / detector images with non-uniform detector sensitivity (e.g. I09 DLD data with a flat-field .tif); 1D transmission corrections
+- addresses: detector_nonuniformity
+- effects: removes_artefact
+- family: artefact_removal
+- strategy: flat_field_division
+- cost: low
+
 ### drop_nan_borders
 
 - description: Trim all-NaN rows/columns from the edges of each dimension of a DataArray or Dataset.

@@ -1030,6 +1030,10 @@ class I09MomentumMicroscopeLoader(DiamondNXSLoader, BaseARPESDataLoader):
 
     The delay-line detector (DLD) image is kept in raw detector pixels (`detector_y`, `detector_x`); no
     momentum calibration is stored in the file. The analyser slit angle is not meaningful for this detector.
+
+    Flat-field correction is typically required after loading data. Load the raw flat-field image, specifying
+    this loc, then apply it, e.g.
+    ``data.flat_field_correction(pks.load('Flatfield.tif', loc='Diamond_I09_Momentum_Microscope'))``.
     """
 
     _loc_name = "Diamond_I09_Momentum_Microscope"
