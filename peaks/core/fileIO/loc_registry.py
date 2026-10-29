@@ -213,10 +213,13 @@ class IdentifyLoc:
         if bloch_instrument == "i09-2":
             return "Diamond_I09_Momentum_Microscope"
         # From the identifier, determine the location
+        identifier = identifier or ""
         if "i05-1" in identifier:
             return "Diamond_I05_Nano-ARPES"
         elif "i05" in identifier:
             return "Diamond_I05_ARPES"
+        # Fallback if no relevant identifier is found
+        IdentifyLoc._default_handler(fname)
 
     @staticmethod
     def _handler_h5(fname):
