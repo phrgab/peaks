@@ -247,6 +247,36 @@ class ARPESMetadataModel(BaseMetadataModel):
     deflector: ARPESDeflectorMetadataModel = ARPESDeflectorMetadataModel()
 
 
+class MomentumMicroscopeApertureModel(BaseMetadataModel):
+    """Model to store a momentum microscope aperture: the selected aperture and its position."""
+
+    selected: Optional[str] = None
+    x: Optional[Union[str, Quantity]] = None
+    y: Optional[Union[str, Quantity]] = None
+
+
+class MomentumMicroscopeAperturesModel(BaseMetadataModel):
+    """Model to store the entrance-lens apertures: contrast aperture in the Fourier (momentum) plane and
+    field aperture in the Gaussian (real-space image) plane."""
+
+    fourier: MomentumMicroscopeApertureModel = MomentumMicroscopeApertureModel()
+    gaussian: MomentumMicroscopeApertureModel = MomentumMicroscopeApertureModel()
+
+
+class MomentumMicroscopeAnalyserMetadataModel(ARPESAnalyserMetadataModel):
+    """Model to store core analyser-linked metadata for a momentum microscope."""
+
+    apertures: MomentumMicroscopeAperturesModel = MomentumMicroscopeAperturesModel()
+
+
+class MomentumMicroscopeMetadataModel(ARPESMetadataModel):
+    """Model to store ARPES metadata for a momentum microscope."""
+
+    analyser: MomentumMicroscopeAnalyserMetadataModel = (
+        MomentumMicroscopeAnalyserMetadataModel()
+    )
+
+
 class ARPESCalibrationModel(BaseMetadataModel):
     """Model to store ARPES calibration metadata."""
 
