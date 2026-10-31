@@ -12,6 +12,7 @@ from peaks.core.process.tools import (
     estimate_sym_point,
     flat_field_correction,
     merge_data,
+    norm_by_I0,
 )
 from peaks.core.utils.sample_data import ExampleData
 
@@ -856,3 +857,30 @@ def test_flat_field_correction_bad_shape_raises():
     data = _simulate_fake_scan(np.ones((500, 1212)), dims=("detector_y", "detector_x"))
     with pytest.raises(ValueError, match="integer fraction"):
         flat_field_correction(data, ref)
+
+
+def test_norm_by_I0_broadcasts_over_higher_dims():
+    rng = np.random.default_rng(0)
+    values = rng.random((3, 4, 5, 6))
+    I0 = rng.random((3, 4)) + 1
+    data = xr.DataArray(
+        values, dims=("x1", "x2", "eV", "theta_par"), name="spectrum"
+    ).assign_coords(I0=(("x1", "x2"), I0))
+    data = data.pint.quantify("count")
+    normed = norm_by_I0(data)
+    np.testing.assert_allclose(
+        normed.pint.dequantify().values, values / I0[:, :, None, None]
+    )
+    assert normed.pint.units == data.pint.units
+    assert normed.history.get(-1)["record"] == "Data normalised by I0"
+    # I0 coordinate stays aligned when slicing before normalising
+    np.testing.assert_allclose(
+        norm_by_I0(data.isel(x1=1)).pint.dequantify().values,
+        values[1] / I0[1, :, None, None],
+    )
+
+
+def test_norm_by_I0_without_I0_raises():
+    data = xr.DataArray(np.ones((2, 2)), dims=("eV", "theta_par"))
+    with pytest.raises(ValueError, match="No I0 coordinate"):
+        norm_by_I0(data)
