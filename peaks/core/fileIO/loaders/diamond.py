@@ -997,6 +997,19 @@ def _i09_detector_addr(f):
     )
 
 
+def _i09_energy_addr(f):
+    """Address of the recorded energy: the kinetic energy set point (`Kenergy`) or readback (`kenergy`), else the
+    binding energy (`Benergy`, from a predefined work function), e.g. for hv scans at constant binding energy."""
+    return next(
+        (
+            f"entry/instrument/{name}/value"
+            for name in ["Kenergy", "kenergy", "Benergy"]
+            if f"entry/instrument/{name}/value" in f
+        ),
+        None,
+    )
+
+
 def _i09_accumulation_time(f):
     """Total accumulation time per point, from the detector argument in the scan command (e.g. `dld 20`).
 
@@ -1030,9 +1043,24 @@ class I09MomentumMicroscopeLoader(DiamondNXSLoader, BaseARPESDataLoader):
 
     # Kenergy is the kinetic energy (= sample bias); jenergy is the J-branch photon energy, in keV
     _analyser_name_conventions = {"eV": "Kenergy", "hv": "jenergy"}
-    _scannable_units = {"Kenergy": "eV", "jenergy": "keV"}
+    # Other energy scannables also loaded as eV: kenergy (kinetic readback), Benergy (binding energy, positive)
+    _eV_scannables = ["kenergy", "Benergy"]
+    _scannable_units = {
+        "Kenergy": "eV",
+        "kenergy": "eV",
+        "Benergy": "eV",
+        "jenergy": "keV",
+    }
+    # TODO: set units of the I0 monitor once confirmed (not recorded in the file, so currently unitless)
+    _I0_monitor = "sm6iamp27"  # SM6 mirror drain current
+    _drain_current_pattern = (
+        r"s[a-z]\d+iamp\d+"  # Femto amplifier channels, e.g. sd11iamp7
+    )
     _analyser_include_in_metadata_warn = ["eV", "step_size", "dwell"]
-    _hdf5_metadata_fixed_units = {"entry/instrument/Kenergy/value": "eV"}
+    _hdf5_metadata_fixed_units = {
+        f"entry/instrument/{name}/value": "eV"
+        for name in ["Kenergy", "kenergy", "Benergy"]
+    }
 
     _hdf5_metadata_key_mappings = {
         "scan_command": "entry/diamond_scan/scan_command",
@@ -1054,8 +1082,14 @@ class I09MomentumMicroscopeLoader(DiamondNXSLoader, BaseARPESDataLoader):
             else None
         ),
         "analyser_slit_width_identifier": "entry/instrument/analyser_slit/value",
-        # Kinetic energy, set by sweeping the (positive) sample bias
-        "analyser_eV": "entry/instrument/Kenergy/value",
+        # Kinetic energy, set by sweeping the (positive) sample bias, or the binding energy if only that is recorded
+        # Benergy is positive below EF, so flip to the peaks E-EF convention
+        "analyser_eV": lambda f: (
+            -I09MomentumMicroscopeLoader._extract_hdf5_value(f, addr)
+            if (addr := _i09_energy_addr(f)) and "Benergy" in addr
+            else addr
+        ),
+        # Only from the set point: the readbacks jitter even at fixed energy
         "analyser_step_size": lambda f: (
             np.ptp(f["entry/instrument/Kenergy/value"])
             / (f["entry/instrument/Kenergy/value"].size - 1)
@@ -1064,7 +1098,11 @@ class I09MomentumMicroscopeLoader(DiamondNXSLoader, BaseARPESDataLoader):
             else None
         ),
         "analyser_dwell": lambda f: _i09_accumulation_time(f),
-        "analyser_eV_type": "FIXED_VALUE:kinetic",
+        "analyser_eV_type": lambda f: (
+            "FIXED_VALUE:binding"
+            if (addr := _i09_energy_addr(f)) and "Benergy" in addr
+            else "FIXED_VALUE:kinetic"
+        ),
         "analyser_fourier_aperture": "entry/instrument/microscope/fourier_select",
         "analyser_fourier_aperture_x": "entry/instrument/microscope/x_fourier",
         "analyser_fourier_aperture_y": "entry/instrument/microscope/y_fourier",
@@ -1275,10 +1313,15 @@ class I09MomentumMicroscopeLoader(DiamondNXSLoader, BaseARPESDataLoader):
             {key: (dims[:scan_rank], values) for key, values in scan_streams.items()}
         )
 
-        # Rename to peaks conventions
+        # Rename to peaks conventions, with the binding energy in E-EF
+        if "Benergy" in da.dims:
+            da = da.assign_coords(Benergy=-da.Benergy)
         rename = {
             local: peaks_name
-            for peaks_name, local in cls._analyser_name_conventions.items()
+            for peaks_name, local in [
+                *cls._analyser_name_conventions.items(),
+                *(("eV", local) for local in cls._eV_scannables),
+            ]
             if local in da.dims
         }
         da = da.rename(rename)

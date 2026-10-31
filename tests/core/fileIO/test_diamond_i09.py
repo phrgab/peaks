@@ -3,7 +3,11 @@ import h5py
 import numpy as np
 import pytest
 
-from peaks.core.fileIO.loaders.diamond import _i09_accumulation_time, _read_szip_chunk
+from peaks.core.fileIO.loaders.diamond import (
+    _i09_accumulation_time,
+    _i09_energy_addr,
+    _read_szip_chunk,
+)
 
 
 @pytest.mark.skipif(
@@ -54,6 +58,23 @@ def test_i09_accumulation_time(tmp_path, detector, scan_command, expected):
     assert (result is None) if expected is None else result.m_as("s") == expected
 
 
+@pytest.mark.parametrize(
+    "recorded, expected",
+    [
+        (["Benergy", "kenergy", "Kenergy"], "Kenergy"),
+        (["Benergy", "kenergy"], "kenergy"),
+        (["Benergy"], "Benergy"),
+        ([], None),
+    ],
+)
+def test_i09_energy_addr(tmp_path, recorded, expected):
+    with h5py.File(tmp_path / "scan.nxs", "w") as f:
+        for name in recorded:
+            f[f"entry/instrument/{name}/value"] = np.ones(3)
+        result = _i09_energy_addr(f)
+    assert result == (expected and f"entry/instrument/{expected}/value")
+
+
 @pytest.mark.parametrize("fname", ["snapshot.nxs", "image.tif"])
 def test_i09_live_view_image_needs_loc(tmp_path, fname):
     import imagecodecs
@@ -74,3 +95,76 @@ def test_i09_live_view_image_needs_loc(tmp_path, fname):
     da = pks.load(str(fpath), loc="Diamond_I09_Momentum_Microscope")
     assert da.dims == ("detector_y", "detector_x")
     np.testing.assert_array_equal(da.pint.dequantify().values, image)
+
+
+@pytest.mark.parametrize("monitor_is_signal", [False, True])
+def test_i09_I0_coord(tmp_path, monitor_is_signal):
+    import peaks as pks
+
+    fpath = tmp_path / "scan.nxs"
+    monitor = np.linspace(1, 2, 5)
+    with h5py.File(fpath, "w") as f:
+        f["entry/diamond_scan/scan_rank"] = 1
+        if monitor_is_signal:
+            # Mirror scan: the monitor is the signal, with a copy in `instrument`
+            f["entry"].attrs["default"] = "sm6iamp27"
+            nxdata = f.create_group("entry/sm6iamp27")
+            nxdata.attrs.update(signal="sm6iamp27", axes=["sm3fpitch"])
+            nxdata["sm3fpitch"] = np.arange(5.0)
+            nxdata["sm6iamp27"] = monitor
+            f["entry/instrument/sm6iamp27/value"] = monitor
+        else:
+            f["entry"].attrs["default"] = "dld_total"
+            nxdata = f.create_group("entry/dld_total")
+            nxdata.attrs.update(signal="fixed_roi_total", axes=["Kenergy"])
+            nxdata["Kenergy"] = np.linspace(100, 101, 5)
+            nxdata["sm6iamp27"] = monitor
+            nxdata["sd11iamp7"] = monitor * 3
+            nxdata["checkbeam"] = np.ones(5)
+            detector = f.create_group("entry/instrument/dld_total")
+            detector.attrs["scan_role"] = "detector"
+            detector["fixed_roi_total"] = np.full(5, 10.0)
+
+    da = pks.load(str(fpath), loc="Diamond_I09_Momentum_Microscope", quiet=True)
+    if monitor_is_signal:
+        assert "I0" not in da.coords
+    else:
+        np.testing.assert_array_equal(da.I0.values, monitor)
+        np.testing.assert_array_equal(da.sd11iamp7.values, monitor * 3)
+        assert da.sd11iamp7.dims == ("eV",)
+        assert "checkbeam" not in da.coords
+        np.testing.assert_allclose(
+            da.norm_by_I0().pint.dequantify().values, 10 / monitor
+        )
+
+
+@pytest.mark.parametrize(
+    "axis, sign, eV_type", [("kenergy", 1, "kinetic"), ("Benergy", -1, "binding")]
+)
+def test_i09_energy_axis_to_eV(tmp_path, axis, sign, eV_type):
+    import peaks as pks
+
+    fpath = tmp_path / "scan.nxs"
+    energy = np.linspace(1, 2, 5)
+    with h5py.File(fpath, "w") as f:
+        f["entry/diamond_scan/scan_rank"] = 1
+        f["entry"].attrs["default"] = "dld_total"
+        nxdata = f.create_group("entry/dld_total")
+        nxdata.attrs.update(signal="fixed_roi_total", axes=[axis])
+        nxdata[axis] = energy
+        f[f"entry/instrument/{axis}/value"] = energy
+        detector = f.create_group("entry/instrument/dld_total")
+        detector.attrs["scan_role"] = "detector"
+        detector["fixed_roi_total"] = np.full(5, 10.0)
+
+    da = pks.load(str(fpath), loc="Diamond_I09_Momentum_Microscope", quiet=True)
+    assert da.dims == ("eV",)
+    np.testing.assert_allclose(
+        np.sort(da.eV.pint.dequantify().values), np.sort(sign * energy)
+    )
+    # Metadata holds the energy range
+    np.testing.assert_allclose(
+        np.sort(da.metadata.analyser.scan.eV.to("eV").magnitude),
+        sorted(sign * energy[[0, -1]]),
+    )
+    assert da.metadata.analyser.scan.eV_type == eV_type
