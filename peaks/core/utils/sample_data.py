@@ -17,7 +17,7 @@ from urllib3.util.retry import Retry
 from peaks.core.fileIO.data_loading import load
 from peaks.core.utils.misc import analysis_warning
 
-ROOT_URL = "https://zenodo.org/api/records/19336694/files"
+ROOT_URL = "https://zenodo.org/api/records/23835948/files"
 
 COD_URLS = (
     "https://www.crystallography.net/cod/4515175.cif",
@@ -377,11 +377,6 @@ class ExampleData:
         return cls._get_and_load("i05-1-49292.nxs")
 
     @classmethod
-    def nano_focus_w_I0norm(cls):
-        """Download sample data *nano_focus_w_I0norm* and load it normalised by I0 (photon flux)."""
-        return cls._get_and_load("i05-1-49292.nxs", norm_by_I0=True)
-
-    @classmethod
     def tr_arpes(cls):
         """Download sample time-resolved data *tr_arpes* and load it."""
         # Need to download and unzip the file to simulate the original data structure
@@ -391,6 +386,18 @@ class ExampleData:
     def tr_arpes2(cls):
         """Download sample time-resolved data *tr_arpes2* and load it."""
         return cls._get_and_load_from_zip("028 Gr.zip")
+
+    @classmethod
+    def mom_data(cls):
+        """Download sample momentum microscope data *mom_data* and load it."""
+        return cls._get_and_load("i09-2-7200.nc")
+
+    @classmethod
+    def mom_ff(cls):
+        """Download sample momentum microscope flat-field data *mom_ff* and load it."""
+        return cls._get_and_load(
+            "Flatfield_24062026.tif", loc="Diamond_I09_Momentum_Microscope"
+        )
 
     @classmethod
     def xps(cls):
