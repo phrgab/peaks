@@ -2558,3 +2558,43 @@ def flat_field_correction(data, reference, threshold=0.05, mask=None, fill=1):
     )
 
     return corrected
+
+
+def norm_by_I0(data):
+    """Normalise data by the I0 (photon flux) monitor recorded during the scan.
+
+    Requires an ``I0`` coordinate. Should be applied before any step that integrates over or interpolates
+    along the scan dimensions, as these drop the ``I0`` coordinate.
+
+    Parameters
+    ----------
+    data : xarray.DataArray
+        The data to be normalised, with an ``I0`` coordinate.
+
+    Returns
+    -------
+    norm_data : xarray.DataArray
+        The data divided by I0, broadcast over any dimensions I0 does not span.
+
+    Examples
+    --------
+    Example usage is as follows::
+
+        import peaks as pks
+
+        data = pks.load('i09-2-7200.nxs')
+        data_norm = data.norm_by_I0()
+
+    """
+    if "I0" not in data.coords:
+        raise ValueError(
+            "No I0 coordinate found. It is attached at load by selected loaders, but is dropped "
+            "by operations that integrate over or interpolate along the scan dimensions."
+        )
+
+    norm_data = data / data.coords["I0"]
+
+    # Update the history
+    norm_data = norm_data.history.assign("Data normalised by I0")
+
+    return norm_data

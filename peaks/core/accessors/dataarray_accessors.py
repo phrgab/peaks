@@ -52,6 +52,7 @@ functions_to_register = {
         "correct_isolated_bad_pixels",
         "correct_swept_scan_bad_pixels",
         "flat_field_correction",
+        "norm_by_I0",
     ],
 }
 

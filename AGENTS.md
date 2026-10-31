@@ -452,6 +452,18 @@ functions and as accessor methods (e.g. `data.smooth(...)`).
 - strategy: flat_field_division
 - cost: low
 
+### norm_by_I0
+
+- description: Normalise data by the I0 (photon flux) monitor recorded during the scan. Uses the `I0` coordinate attached at load where the beamline records an I0 monitor (Diamond I05 `current`, I09 `sm6iamp27`); I0 is broadcast over dimensions it does not span (e.g. a per-energy I0 over the detector image, or a per-position I0 over each spectrum of a spatial map).
+- function: xr.DataArray accessor .norm_by_I0()
+- returns: xr.DataArray divided by I0
+- when_to_use: Correcting for photon flux variation along a scan (energy, hv, spatial or focus scans); apply before integrating over or interpolating along the scan dimensions (e.g. DOS, k_convert), which drop the `I0` coordinate
+- addresses: intensity_variation
+- effects: normalises_intensity
+- family: normalization
+- strategy: monitor_division
+- cost: low
+
 ### drop_nan_borders
 
 - description: Trim all-NaN rows/columns from the edges of each dimension of a DataArray or Dataset.

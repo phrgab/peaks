@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `flat_field_correction` for dividing data by a normalised detector flat-field reference ([PR#..](https://github.com/phrgab/peaks/pull/))
 - (Alpha) Support for loading Momentum Microscope data from Diamond beamline I09 ([PR#..](https://github.com/phrgab/peaks/pull/))
+- `norm_by_I0` for normalising data by an I0 monitor, stored by the Diamond I05 and I09 loaders as an `I0` coordinate ([PR#..](https://github.com/phrgab/peaks/pull/))
 
 ### Fixed
 
@@ -18,7 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Small updates to tutorials ([PR#..](https://github.com/phrgab/peaks/pull/))
+
 ### Removed
+
+- `norm_by_I0` option of `load` for Diamond I05 data; use `data.norm_by_I0()` after loading instead ([PR#..](https://github.com/phrgab/peaks/pull/))
+- `ExampleData.nano_focus_w_I0norm`; use `ExampleData.nano_focus().norm_by_I0()` instead ([PR#..](https://github.com/phrgab/peaks/pull/))
 
 ## [0.5.4] - 2026-10-09
 

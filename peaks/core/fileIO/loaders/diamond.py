@@ -575,24 +575,12 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
                 coords_to_apply[dim] = coord[0]
         da = da.assign_coords(coords_to_apply)
 
-        # Normalise data by I0 if required
-        if kwargs.get("norm_by_I0", False):
-            if "current" in dim_name_to_axis_mapping:
-                beam_current = ds["current"]
-                beam_current_coords_to_apply = {
-                    k: v for k, v in coords_to_apply.items() if k in beam_current.dims
-                }
-                beam_current = beam_current.assign_coords(beam_current_coords_to_apply)
-                bc_units = beam_current.attrs.get("units", "mA")
-                beam_current.attrs = {}
-                da = da / beam_current
-                units["spectrum"] = units["spectrum"] + f"/{bc_units}"
-            else:
-                analysis_warning(
-                    "Could not determine the beam current to normalise data by",
-                    "warning",
-                    "Missing I0 data",
-                )
+        # Attach the I0 monitor as a coordinate, for normalisation with `norm_by_I0`
+        if "current" in dim_name_to_axis_mapping:
+            I0 = ds["current"]
+            # `current` is the storage ring current (links to /entry1/instrument/source/current, in mA)
+            units["I0"] = cls._parse_nxs_axis_attr(I0.attrs.get("units", "mA"))
+            da = da.assign_coords(I0=(I0.dims, I0.data))
 
         # Rename to peaks conventions using _manipulator_name_conventions and _analyser_name_conventions
         dim_names_to_update = {}
@@ -1220,6 +1208,34 @@ class I09MomentumMicroscopeLoader(DiamondNXSLoader, BaseARPESDataLoader):
                 coords[dim] = np.arange(size)
             dims += detector_dims
 
+            # I0 monitor recorded per scan point, unless it is itself the signal (e.g. mirror scans)
+            I0_addr = next(
+                (
+                    addr
+                    for addr in [
+                        f"{nxdata.name}/{cls._I0_monitor}",
+                        f"entry/instrument/{cls._I0_monitor}/value",
+                    ]
+                    if addr in f and f[addr].ndim > 0
+                ),
+                None,
+            )
+            if signal_addr.rsplit("/", 1)[1] == cls._I0_monitor:
+                I0_addr = None
+            I0 = f[I0_addr][()] if I0_addr else None
+            # Drain currents recorded per scan point (e.g. sd11iamp7, the sample drain current)
+            scan_streams = {
+                key: nxdata[key][()]
+                for key in nxdata
+                if re.fullmatch(cls._drain_current_pattern, key)
+                and key
+                not in [
+                    cls._I0_monitor,
+                    cls._parse_nxs_axis_attr(nxdata.attrs.get("signal")),
+                ]
+                and nxdata[key].shape == dset.shape[:scan_rank]
+            }
+
             if not det_addr:
                 data = dset[()]
             # The DLD image is szip-compressed, but some h5py wheels (e.g. macOS) are built without szip
@@ -1253,6 +1269,11 @@ class I09MomentumMicroscopeLoader(DiamondNXSLoader, BaseARPESDataLoader):
             da = da.rename(dict(zip(da.dims, dims, strict=True)))
             da.attrs = {}
         da = da.assign_coords({dim: coords[dim] for dim in dims if dim in coords})
+        if I0 is not None:
+            da = da.assign_coords(I0=(dims[:scan_rank], I0))
+        da = da.assign_coords(
+            {key: (dims[:scan_rank], values) for key, values in scan_streams.items()}
+        )
 
         # Rename to peaks conventions
         rename = {
