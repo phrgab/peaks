@@ -435,6 +435,37 @@ functions and as accessor methods (e.g. `data.smooth(...)`).
 - strategy: fft_filtering
 - cost: low
 
+### flat_field_correction
+
+- description: Divide data by a normalised flat-field (detector sensitivity) reference. The reference is normalised to the mean over its illuminated pixels and broadcast over any data dimensions it lacks; if the data is binned along a detector dimension by an integer factor, the reference is binned to match.
+- function: xr.DataArray accessor .flat_field_correction()
+- parameters:
+  - reference: xr.DataArray (required) — raw flat-field reference; its dims must be a subset of the data dims
+  - threshold: float (optional, default=0.05) — pixels above threshold × max(reference) are treated as illuminated
+  - mask: xr.DataArray (optional, default=None) — boolean mask of illuminated pixels, same shape as reference; overrides threshold
+  - fill: float (optional, default=1) — correction factor outside the mask and where the reference is <= 0; 1 leaves those pixels uncorrected, np.nan blanks them
+- returns: xr.DataArray — corrected data in the original units
+- when_to_use: Momentum microscope / detector images with non-uniform detector sensitivity (e.g. I09 DLD data with a flat-field .tif); 1D transmission corrections
+- addresses: detector_nonuniformity
+- effects: removes_artefact
+- family: artefact_removal
+- strategy: flat_field_division
+- cost: low
+
+### norm_by_I0
+
+- description: Normalise data by the I0 (photon flux) monitor recorded during the scan. Uses the `I0` coordinate attached at load where the beamline records an I0 monitor (Diamond I05 `current`, I09 `sm6iamp27`); I0 is broadcast over dimensions it does not span (e.g. a per-energy I0 over the detector image, or a per-position I0 over each spectrum of a spatial map).
+- function: xr.DataArray accessor .norm_by_I0()
+- parameters:
+  - I0_offset: float or pint.Quantity (optional, default=0) — I0 monitor zero offset subtracted before dividing, e.g. the mean I0 of a beam-off scan; floats are in I0 units. Raises if I0 − I0_offset ≤ 0 anywhere
+- returns: xr.DataArray divided by (I0 − I0_offset), in data units / I0 units (e.g. count/V for I09, where I0 is the amplifier output voltage; the gain is not recorded)
+- when_to_use: Correcting for photon flux variation along a scan (energy, hv, spatial or focus scans); apply before integrating over or interpolating along the scan dimensions (e.g. DOS, k_convert), which drop the `I0` coordinate
+- addresses: intensity_variation
+- effects: normalises_intensity
+- family: normalization
+- strategy: monitor_division
+- cost: low
+
 ### drop_nan_borders
 
 - description: Trim all-NaN rows/columns from the edges of each dimension of a DataArray or Dataset.

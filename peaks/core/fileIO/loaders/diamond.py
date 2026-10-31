@@ -1,5 +1,7 @@
+import re
 from datetime import datetime, timezone
 
+import dask.array
 import h5py
 import numpy as np
 import pint
@@ -14,6 +16,12 @@ from peaks.core.fileIO.base_arpes_data_classes.base_arpes_data_class import (
 from peaks.core.fileIO.base_data_classes.base_hdf5_class import BaseHDF5DataLoader
 from peaks.core.fileIO.base_data_classes.base_optics_class import BaseOpticsDataLoader
 from peaks.core.fileIO.loc_registry import register_loader
+from peaks.core.metadata.base_metadata_models import (
+    MomentumMicroscopeAnalyserMetadataModel,
+    MomentumMicroscopeApertureModel,
+    MomentumMicroscopeAperturesModel,
+    MomentumMicroscopeMetadataModel,
+)
 from peaks.core.options import opts
 from peaks.core.utils.misc import analysis_warning
 
@@ -567,24 +575,12 @@ class I05ARPESLoader(DiamondNXSLoader, BaseARPESDataLoader):
                 coords_to_apply[dim] = coord[0]
         da = da.assign_coords(coords_to_apply)
 
-        # Normalise data by I0 if required
-        if kwargs.get("norm_by_I0", False):
-            if "current" in dim_name_to_axis_mapping:
-                beam_current = ds["current"]
-                beam_current_coords_to_apply = {
-                    k: v for k, v in coords_to_apply.items() if k in beam_current.dims
-                }
-                beam_current = beam_current.assign_coords(beam_current_coords_to_apply)
-                bc_units = beam_current.attrs.get("units", "mA")
-                beam_current.attrs = {}
-                da = da / beam_current
-                units["spectrum"] = units["spectrum"] + f"/{bc_units}"
-            else:
-                analysis_warning(
-                    "Could not determine the beam current to normalise data by",
-                    "warning",
-                    "Missing I0 data",
-                )
+        # Attach the I0 monitor as a coordinate, for normalisation with `norm_by_I0`
+        if "current" in dim_name_to_axis_mapping:
+            I0 = ds["current"]
+            # `current` is the storage ring current (links to /entry1/instrument/source/current, in mA)
+            units["I0"] = cls._parse_nxs_axis_attr(I0.attrs.get("units", "mA"))
+            da = da.assign_coords(I0=(I0.dims, I0.data))
 
         # Rename to peaks conventions using _manipulator_name_conventions and _analyser_name_conventions
         dim_names_to_update = {}
@@ -965,3 +961,391 @@ class I05NanoNewARPESLoader(I05NanoARPESLoader):
         "entry1/instrument/analyser/deflector_x": "deg",  # Note, the unit should be mm for a 2D transmission-mode scan but fine for now for metadata display
         "entry1/instrument/analyser/deflector_y": "deg",  # Need to revisit this during the refactor
     }
+
+
+def _read_szip_chunk(fpath, dset_path, block_info=None):
+    """Read one szip-compressed HDF5 chunk and decode it with `imagecodecs`, for h5py builds without szip."""
+    import imagecodecs
+
+    with h5py.File(fpath, "r") as f:
+        dset = f[dset_path]
+        _, _, (mask, ppb, bpp, pps), _ = dset.id.get_create_plist().get_filter(0)
+        start = tuple(start for start, _ in block_info[None]["array-location"])
+        # Frames never written (e.g. an aborted scan) read as the fill value, matching h5py
+        if dset.id.get_chunk_info_by_coord(start).byte_offset is None:
+            return np.full(block_info[None]["chunk-shape"], dset.fillvalue, dset.dtype)
+        filter_mask, raw = dset.id.read_direct_chunk(start)
+        chunk_shape, dtype = dset.chunks, dset.dtype
+    # A set filter mask bit means HDF5 stored this chunk uncompressed
+    if not filter_mask:
+        raw = imagecodecs.szip_decode(raw, mask, ppb, bpp, pps, header=True)
+    chunk = np.frombuffer(raw, dtype).reshape(chunk_shape)
+    # Edge chunks are stored padded to the full chunk shape
+    return chunk[tuple(slice(0, n) for n in block_info[None]["chunk-shape"])]
+
+
+def _i09_detector_addr(f):
+    """Address of the instrument group flagged with scan_role=detector (e.g. `dld` or `dld_total`), or None."""
+    return next(
+        (
+            f"entry/instrument/{key}"
+            for key, group in f["entry/instrument"].items()
+            if DiamondNXSLoader._parse_nxs_axis_attr(group.attrs.get("scan_role", ""))
+            == "detector"
+        ),
+        None,
+    )
+
+
+def _i09_energy_addr(f):
+    """Address of the recorded energy: the kinetic energy set point (`Kenergy`) or readback (`kenergy`), else the
+    binding energy (`Benergy`, from a predefined work function), e.g. for hv scans at constant binding energy."""
+    return next(
+        (
+            f"entry/instrument/{name}/value"
+            for name in ["Kenergy", "kenergy", "Benergy"]
+            if f"entry/instrument/{name}/value" in f
+        ),
+        None,
+    )
+
+
+def _i09_accumulation_time(f):
+    """Total accumulation time per point, from the detector argument in the scan command (e.g. `dld 20`).
+
+    The detector's own `count_time` is the exposure per frame, not the accumulation time per point.
+    """
+    det_addr = _i09_detector_addr(f)
+    if not det_addr:
+        return None
+    scan_command = BaseHDF5DataLoader._extract_hdf5_value(
+        f, "entry/diamond_scan/scan_command"
+    )
+    m = re.search(rf"\b{det_addr.rsplit('/', 1)[1]}\s+([\d.eE+-]+)", str(scan_command))
+    return float(m.group(1)) * ureg.s if m else None
+
+
+@register_loader
+class I09MomentumMicroscopeLoader(DiamondNXSLoader, BaseARPESDataLoader):
+    """Loader for Diamond I09-2 (J-branch) momentum microscope NeXus files.
+
+    The delay-line detector (DLD) image is kept in raw detector pixels (`detector_y`, `detector_x`); no
+    momentum calibration is stored in the file. The analyser slit angle is not meaningful for this detector.
+
+    Flat-field correction is typically required after loading data. Load the raw flat-field image, specifying
+    this loc, then apply it, e.g.
+    ``data.flat_field_correction(pks.load('Flatfield.tif', loc='Diamond_I09_Momentum_Microscope'))``.
+    """
+
+    _loc_name = "Diamond_I09_Momentum_Microscope"
+    _loc_description = "Momentum microscope on the J-branch (I09-2) of the I09 beamline at Diamond Light Source"
+    _loc_url = "https://www.diamond.ac.uk/Instruments/Structures-and-Surfaces/I09.html"
+
+    # Kenergy is the kinetic energy (= sample bias); jenergy is the J-branch photon energy, in keV
+    _analyser_name_conventions = {"eV": "Kenergy", "hv": "jenergy"}
+    # Other energy scannables also loaded as eV: kenergy (kinetic readback), Benergy (binding energy, positive)
+    _eV_scannables = ["kenergy", "Benergy"]
+    _scannable_units = {
+        "Kenergy": "eV",
+        "kenergy": "eV",
+        "Benergy": "eV",
+        "jenergy": "keV",
+    }
+    # Drain currents (Femto amplifier channels, e.g. sd11iamp7) are read as the amplifier output voltage (no units
+    # in the file). The current is value / gain [V/A], but the gain is not recorded, so they are kept in V
+    # panda_scannable: PandA mean of the sample drain amplifier output over the counting window (matches sd11iamp7)
+    # assumes PandA is always wired to the sample drain amplifier
+    _drain_current_pattern = r"s[a-z]\d+iamp\d+|panda_scannable"
+    _drain_current_units = "V"
+    _I0_monitor = "sm6iamp27"  # SM6 mirror drain current
+    _analyser_include_in_metadata_warn = ["eV", "step_size", "dwell"]
+    _hdf5_metadata_fixed_units = {
+        f"entry/instrument/{name}/value": "eV"
+        for name in ["Kenergy", "kenergy", "Benergy"]
+    }
+
+    _hdf5_metadata_key_mappings = {
+        "scan_command": "entry/diamond_scan/scan_command",
+        # Schmitt et al., arXiv:2406.00771
+        "analyser_model": "FIXED_VALUE:SPECS Phoibos 225 hybrid (hemisphere + ToF) momentum microscope",
+        # Round hemisphere apertures, e.g. "D0.5" = 0.5 mm diameter
+        "analyser_slit_width": lambda f: (
+            float(m.group(1)) * ureg.mm
+            if (
+                m := re.fullmatch(
+                    r"D([\d.]+)",
+                    str(
+                        BaseHDF5DataLoader._extract_hdf5_value(
+                            f, "entry/instrument/analyser_slit/value"
+                        )
+                    ),
+                )
+            )
+            else None
+        ),
+        "analyser_slit_width_identifier": "entry/instrument/analyser_slit/value",
+        # Kinetic energy, set by sweeping the (positive) sample bias, or the binding energy if only that is recorded
+        # Benergy is positive below EF, so flip to the peaks E-EF convention
+        "analyser_eV": lambda f: (
+            -I09MomentumMicroscopeLoader._extract_hdf5_value(f, addr)
+            if (addr := _i09_energy_addr(f)) and "Benergy" in addr
+            else addr
+        ),
+        # Only from the set point: the readbacks jitter even at fixed energy
+        "analyser_step_size": lambda f: (
+            np.ptp(f["entry/instrument/Kenergy/value"])
+            / (f["entry/instrument/Kenergy/value"].size - 1)
+            if "entry/instrument/Kenergy/value" in f
+            and f["entry/instrument/Kenergy/value"].size > 1
+            else None
+        ),
+        "analyser_dwell": lambda f: _i09_accumulation_time(f),
+        "analyser_eV_type": lambda f: (
+            "FIXED_VALUE:binding"
+            if (addr := _i09_energy_addr(f)) and "Benergy" in addr
+            else "FIXED_VALUE:kinetic"
+        ),
+        "analyser_fourier_aperture": "entry/instrument/microscope/fourier_select",
+        "analyser_fourier_aperture_x": "entry/instrument/microscope/x_fourier",
+        "analyser_fourier_aperture_y": "entry/instrument/microscope/y_fourier",
+        "analyser_gaussian_aperture": "entry/instrument/microscope/gaussian_select",
+        "analyser_gaussian_aperture_x": "entry/instrument/microscope/x_gaussian",
+        "analyser_gaussian_aperture_y": "entry/instrument/microscope/y_gaussian",
+        # Written as a placeholder string when no temperature scannable is configured
+        "temperature_sample": lambda f: (
+            "entry/sample/temperature"
+            if "entry/sample/temperature" in f
+            and f["entry/sample/temperature"].dtype.kind in "fiu"
+            else None
+        ),
+        # jenergy holds the per-point values for an hv scan; pgmenergy is only recorded once per scan
+        "photon_hv": lambda f: (
+            (
+                BaseHDF5DataLoader._extract_hdf5_value(
+                    f, "entry/instrument/jenergy/value"
+                )
+                * ureg.keV
+            ).to("eV")
+            if "entry/instrument/jenergy/value" in f
+            else "entry/instrument/pgm/pgmenergy"
+        ),
+        "photon_polarisation": "entry/instrument/polarisation/value",
+        # I09-2 exit slit; the vertical gap sets the energy resolution
+        "photon_exit_slit": "entry/instrument/ss7/ss7ygap",
+        "timestamp": "entry/diamond_scan/start_time",
+    }
+
+    @classmethod
+    def _parse_analyser_metadata(cls, metadata_dict):
+        """Parse the standard analyser metadata, adding the microscope apertures."""
+        parsed_metadata, warn_list = super()._parse_analyser_metadata(metadata_dict)
+        arpes_metadata = parsed_metadata["_analyser"]
+        apertures = MomentumMicroscopeAperturesModel(
+            **{
+                plane: MomentumMicroscopeApertureModel(
+                    selected=metadata_dict.get(f"analyser_{plane}_aperture"),
+                    x=metadata_dict.get(f"analyser_{plane}_aperture_x"),
+                    y=metadata_dict.get(f"analyser_{plane}_aperture_y"),
+                )
+                for plane in ["fourier", "gaussian"]
+            }
+        )
+        parsed_metadata["_analyser"] = MomentumMicroscopeMetadataModel(
+            **{
+                **dict(arpes_metadata),
+                "analyser": MomentumMicroscopeAnalyserMetadataModel(
+                    **dict(arpes_metadata.analyser), apertures=apertures
+                ),
+            }
+        )
+        return parsed_metadata, warn_list
+
+    @staticmethod
+    def _is_live_view_image(fpath):
+        """Whether the file is an image saved from the live view (a .tif, or a snapshot .nxs without
+        `entry/instrument`) rather than a GDA scan. These carry no metadata or beamline identifier."""
+        if not h5py.is_hdf5(fpath):
+            return True
+        with h5py.File(fpath, "r") as f:
+            return "entry/instrument" not in f
+
+    @classmethod
+    def _load_metadata(cls, fpath):
+        """Load the metadata from a GDA scan file; live-view images have none."""
+        if cls._is_live_view_image(fpath):
+            return {}
+        return super()._load_metadata(fpath)
+
+    @classmethod
+    def _load_live_view_image(cls, fpath):
+        """Load a live-view image (e.g. a PEEM image or flat-field reference) as raw detector pixels.
+
+        Both the .tif and snapshot .nxs images share the (`detector_y`, `detector_x`) orientation of `dld/data`.
+        """
+        if h5py.is_hdf5(fpath):
+            with h5py.File(fpath, "r") as f:
+                nxdata = f["entry/data"]
+                image = nxdata[cls._parse_nxs_axis_attr(nxdata.attrs["signal"])][()]
+        else:
+            import imagecodecs
+
+            image = imagecodecs.imread(fpath)
+        da = xr.DataArray(
+            image,
+            dims=["detector_y", "detector_x"],
+            coords={
+                "detector_y": np.arange(image.shape[0]),
+                "detector_x": np.arange(image.shape[1]),
+            },
+            name="spectrum",
+        )
+        return da.pint.quantify({"spectrum": "counts"})
+
+    @classmethod
+    def _load_data(cls, fpath, lazy, **kwargs):
+        """Load the data from a Diamond I09-2 momentum microscope NeXus file, or a live-view image."""
+        if cls._is_live_view_image(fpath):
+            return cls._load_live_view_image(fpath)
+        with h5py.File(fpath, "r") as f:
+            nxdata = f["entry"][cls._parse_nxs_axis_attr(f["entry"].attrs["default"])]
+            det_addr = _i09_detector_addr(f)
+            if det_addr:
+                # Full detector image if saved, otherwise the integrated ROI (`mcp_roi_total` for GDA < 9.42)
+                signal_addr = next(
+                    f"{det_addr}/{key}"
+                    for key in ["data", "fixed_roi_total", "mcp_roi_total"]
+                    if key in f[det_addr]
+                )
+            else:
+                # Scans without a detector (e.g. drain-current XAS, mirror scans): use the default NXdata signal
+                signal_addr = (
+                    f"{nxdata.name}/{cls._parse_nxs_axis_attr(nxdata.attrs['signal'])}"
+                )
+            dset = f[signal_addr]
+
+            # Scan axes from the default NXdata group: the position in `axes` is the dimension index
+            scan_dims = {}
+            coords = {}
+            units = {}
+            for index, axis in enumerate(np.atleast_1d(nxdata.attrs["axes"])):
+                axis = axis.decode() if isinstance(axis, bytes) else str(axis)
+                if axis == "." or axis not in nxdata:
+                    continue
+                # Axis values are written on the full scan grid, so take them along their own dimension
+                values = nxdata[axis][()]
+                indexer = [0] * values.ndim
+                indexer[index] = slice(None)
+                scan_dims[index] = axis
+                coords[axis] = values[tuple(indexer)]
+                units[axis] = nxdata[axis].attrs.get(
+                    "units", cls._scannable_units.get(axis)
+                )
+
+            scan_rank = int(f["entry/diamond_scan/scan_rank"][()])
+            dims = [scan_dims.get(i, f"dummy_{i}") for i in range(scan_rank)]
+            detector_dims = ["detector_y", "detector_x"][2 - (dset.ndim - scan_rank) :]
+            for dim, size in zip(detector_dims, dset.shape[scan_rank:], strict=True):
+                coords[dim] = np.arange(size)
+            dims += detector_dims
+
+            # I0 monitor recorded per scan point, unless it is itself the signal (e.g. mirror scans)
+            I0_addr = next(
+                (
+                    addr
+                    for addr in [
+                        f"{nxdata.name}/{cls._I0_monitor}",
+                        f"entry/instrument/{cls._I0_monitor}/value",
+                    ]
+                    if addr in f and f[addr].ndim > 0
+                ),
+                None,
+            )
+            if signal_addr.rsplit("/", 1)[1] == cls._I0_monitor:
+                I0_addr = None
+            I0 = f[I0_addr][()] if I0_addr else None
+            # Drain currents recorded per scan point (e.g. sd11iamp7, the sample drain current)
+            scan_streams = {
+                key: nxdata[key][()]
+                for key in nxdata
+                if re.fullmatch(cls._drain_current_pattern, key)
+                and key
+                not in [
+                    cls._I0_monitor,
+                    cls._parse_nxs_axis_attr(nxdata.attrs.get("signal")),
+                ]
+                and nxdata[key].shape == dset.shape[:scan_rank]
+            }
+
+            if not det_addr:
+                data = dset[()]
+            # The DLD image is szip-compressed, but some h5py wheels (e.g. macOS) are built without szip
+            elif dset.compression == "szip" and not h5py.h5z.filter_avail(
+                h5py.h5z.FILTER_SZIP
+            ):
+                data = dask.array.map_blocks(
+                    _read_szip_chunk,
+                    fpath,
+                    signal_addr,
+                    chunks=dask.array.core.normalize_chunks(dset.chunks, dset.shape),
+                    dtype=dset.dtype,
+                    meta=np.empty((0,) * dset.ndim, dtype=dset.dtype),
+                )
+            else:
+                data = None
+
+        if data is not None:
+            da = xr.DataArray(data, dims=dims)
+        else:
+            # Load the core data in a way that supports lazy loading (the image is an external link to the dld file)
+            group, signal_key = signal_addr.rsplit("/", 1)
+            ds = xr.open_dataset(
+                fpath,
+                group=group,
+                engine="h5netcdf",
+                phony_dims="sort",
+                chunks="auto",
+            )
+            da = ds[signal_key]
+            da = da.rename(dict(zip(da.dims, dims, strict=True)))
+            da.attrs = {}
+        da = da.assign_coords({dim: coords[dim] for dim in dims if dim in coords})
+        if I0 is not None:
+            da = da.assign_coords(I0=(dims[:scan_rank], I0))
+            units["I0"] = cls._drain_current_units
+        da = da.assign_coords(
+            {key: (dims[:scan_rank], values) for key, values in scan_streams.items()}
+        )
+        units.update(dict.fromkeys(scan_streams, cls._drain_current_units))
+
+        # Rename to peaks conventions, with the binding energy in E-EF
+        if "Benergy" in da.dims:
+            da = da.assign_coords(Benergy=-da.Benergy)
+        rename = {
+            local: peaks_name
+            for peaks_name, local in [
+                *cls._analyser_name_conventions.items(),
+                *(("eV", local) for local in cls._eV_scannables),
+            ]
+            if local in da.dims
+        }
+        da = da.rename(rename)
+        units = {rename.get(dim, dim): unit for dim, unit in units.items()}
+        units = {
+            key: cls._parse_nxs_axis_attr(value)
+            for key, value in units.items()
+            if value is not None
+        }
+        if det_addr:
+            units["spectrum"] = "counts"
+        elif re.fullmatch(cls._drain_current_pattern, signal_addr.rsplit("/", 1)[1]):
+            units["spectrum"] = cls._drain_current_units
+
+        # Load array into memory if lazy loading not required
+        if not (lazy or (lazy is None and da.size > opts.FileIO.lazy_size)):
+            da = da.compute()
+
+        da.name = "spectrum"
+        da = da.pint.quantify(units)
+        if "hv" in da.dims:
+            da = da.pint.to(hv="eV")
+        return da.squeeze()

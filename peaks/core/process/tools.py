@@ -2459,3 +2459,173 @@ def correct_swept_scan_bad_pixels(data, bad_pixels=None, **kwargs):
     )
 
     return corrected
+
+
+def flat_field_correction(data, reference, threshold=0.05, mask=None, fill=1):
+    """Divide data by a normalised flat-field (detector sensitivity) reference.
+
+    The reference is normalised to the mean over its illuminated pixels, and the data divided by it, broadcasting
+    over any data dimensions not in the reference. If a data dimension is an integer fraction of the reference size
+    (e.g. detector binning), the reference is binned to match.
+
+    Parameters
+    ----------
+    data : xarray.DataArray
+        The data to be corrected.
+
+    reference : xarray.DataArray
+        The raw flat-field reference. Its dimensions must be a subset of those of ``data``.
+
+    threshold : float, optional
+        Pixels with ``reference > threshold * max(reference)`` are treated as illuminated. Ignored if ``mask`` is
+        given. Defaults to 0.05.
+
+    mask : xarray.DataArray, optional
+        Boolean mask of illuminated pixels, with the same dimensions and shape as ``reference``. Defaults to None,
+        where the mask is determined from ``threshold``.
+
+    fill : float, optional
+        Correction factor used outside the mask, and for pixels where the reference is <= 0. Defaults to 1 (leave
+        uncorrected); use ``np.nan`` to blank these pixels.
+
+    Returns
+    -------
+    corrected : xarray.DataArray
+        The flat-field corrected data, in the same units as ``data``.
+
+    Examples
+    --------
+    Example usage is as follows::
+
+        import peaks as pks
+
+        data = pks.load('i09-2-7262.nxs')
+        ref = pks.load('Flatfield_24062026.tif', loc='Diamond_I09_Momentum_Microscope')
+
+        corrected = data.flat_field_correction(ref)
+
+    """
+    if not set(reference.dims) <= set(data.dims):
+        raise ValueError(
+            f"Reference dimensions {reference.dims} must be a subset of the data dimensions {data.dims}."
+        )
+
+    # Bare values only: reference attrs would otherwise conflict with (and drop) the data's metadata on division
+    ref = reference.pint.dequantify().drop_attrs()
+    custom_mask = mask is not None
+    if not custom_mask:
+        mask = ref > threshold * ref.max()
+    mask = mask & (ref > 0)
+    # Normalise at full resolution so binned and unbinned data are scaled identically
+    ref = ref / ref.where(mask).mean()
+
+    # Bin the reference to match binned data; a bin is illuminated only if all its pixels are
+    binning = {}
+    for dim in ref.dims:
+        n_ref, n_data = ref.sizes[dim], data.sizes[dim]
+        if n_ref % n_data:
+            raise ValueError(
+                f"Data size along {dim} ({n_data}) is not an integer fraction of the reference size ({n_ref})."
+            )
+        if n_ref != n_data:
+            binning[dim] = n_ref // n_data
+    if binning:
+        ref = ref.coarsen(binning).mean()
+        mask = mask.coarsen(binning).all()
+
+    factors = ref.where(mask, fill)
+
+    # Divide by the bare Variable: broadcasts by dim name without aligning coords (binned data is re-indexed)
+    corrected = data / factors.variable
+
+    # assign (not add): the arithmetic result shares its history object with the input data
+    corrected = corrected.history.assign(
+        {
+            "record": "Flat-field correction applied",
+            "reference file": getattr(reference.attrs.get("_scan"), "filepath", None),
+            "reference history": (
+                reference.attrs["_analysis_history"].model_dump(
+                    mode="json", by_alias=True
+                )["records"]
+                if "_analysis_history" in reference.attrs
+                else None
+            ),
+            "threshold": None if custom_mask else threshold,
+            "custom mask": custom_mask,
+            "fill": fill,
+            "reference binning": binning,
+        }
+    )
+
+    return corrected
+
+
+def norm_by_I0(data, I0_offset=0):
+    """Normalise data by the I0 (photon flux) monitor recorded during the scan.
+
+    Requires an ``I0`` coordinate. Should be applied before any step that integrates over or interpolates
+    along the scan dimensions, as these drop the ``I0`` coordinate. The units of the result are those of the
+    data divided by those of I0 (e.g. ``count/V``), marking it as I0-normalised.
+
+    Parameters
+    ----------
+    data : xarray.DataArray
+        The data to be normalised, with an ``I0`` coordinate.
+    I0_offset : float or pint.Quantity, optional
+        Zero offset of the I0 monitor, subtracted from I0 before dividing, e.g. the mean I0 reading of a
+        beam-off (dark) scan recorded at the same amplifier gain. A float is taken to be in the units of I0.
+        Defaults to 0.
+
+    Returns
+    -------
+    norm_data : xarray.DataArray
+        The data divided by (I0 - I0_offset), broadcast over any dimensions I0 does not span.
+
+    Raises
+    ------
+    ValueError
+        If there is no ``I0`` coordinate, or if (I0 - I0_offset) is <= 0 anywhere, where normalising is
+        meaningless (e.g. beam off, or a signal below the monitor's zero offset).
+
+    Examples
+    --------
+    Example usage is as follows::
+
+        import peaks as pks
+
+        data = pks.load('i09-2-7200.nxs')
+        data_norm = data.norm_by_I0()
+
+        # Correct for the monitor zero offset, measured from a beam-off scan
+        dark = pks.load('i09-2-7262.nxs')
+        data_norm = data.norm_by_I0(I0_offset=dark.I0.mean())
+
+    """
+    if "I0" not in data.coords:
+        raise ValueError(
+            "No I0 coordinate found. It is attached at load by selected loaders, but is dropped "
+            "by operations that integrate over or interpolate along the scan dimensions."
+        )
+
+    I0 = data.coords["I0"]
+    if isinstance(I0_offset, xr.DataArray):
+        I0_offset = I0_offset.data
+    if isinstance(I0.data, pint.Quantity) and not isinstance(I0_offset, pint.Quantity):
+        I0_offset = I0_offset * I0.data.units
+    I0 = I0 - I0_offset
+    if np.any(getattr(I0.data, "magnitude", I0.data) <= 0):
+        raise ValueError(
+            f"I0 - I0_offset is <= 0 for some points (min I0 = {data.coords['I0'].min().data}), so "
+            "normalising by it is meaningless. Check the beam was on, and pass the monitor zero offset "
+            "(e.g. from a beam-off scan) as `I0_offset`."
+        )
+
+    norm_data = data / I0
+
+    # Update the history
+    record = "Data normalised by I0"
+    if np.any(I0_offset != 0):
+        record += f" after subtracting an I0 offset of {I0_offset}"
+    norm_data = norm_data.history.assign(record)
+
+    return norm_data

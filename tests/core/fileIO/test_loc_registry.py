@@ -16,6 +16,7 @@ class TestLocsRegistry:
             "CLF_Artemis",
             "Diamond_I05_ARPES",
             "Diamond_I05_Nano-ARPES",
+            "Diamond_I09_Momentum_Microscope",
             "Elettra_APE_LE",
             "FeSuMa",
             "MAXIV_Bloch_A",
