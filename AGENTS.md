@@ -456,7 +456,9 @@ functions and as accessor methods (e.g. `data.smooth(...)`).
 
 - description: Normalise data by the I0 (photon flux) monitor recorded during the scan. Uses the `I0` coordinate attached at load where the beamline records an I0 monitor (Diamond I05 `current`, I09 `sm6iamp27`); I0 is broadcast over dimensions it does not span (e.g. a per-energy I0 over the detector image, or a per-position I0 over each spectrum of a spatial map).
 - function: xr.DataArray accessor .norm_by_I0()
-- returns: xr.DataArray divided by I0
+- parameters:
+  - I0_offset: float or pint.Quantity (optional, default=0) — I0 monitor zero offset subtracted before dividing, e.g. the mean I0 of a beam-off scan; floats are in I0 units. Raises if I0 − I0_offset ≤ 0 anywhere
+- returns: xr.DataArray divided by (I0 − I0_offset), in data units / I0 units (e.g. count/V for I09, where I0 is the amplifier output voltage; the gain is not recorded)
 - when_to_use: Correcting for photon flux variation along a scan (energy, hv, spatial or focus scans); apply before integrating over or interpolating along the scan dimensions (e.g. DOS, k_convert), which drop the `I0` coordinate
 - addresses: intensity_variation
 - effects: normalises_intensity

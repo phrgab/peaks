@@ -120,6 +120,7 @@ def test_i09_I0_coord(tmp_path, monitor_is_signal):
             nxdata["Kenergy"] = np.linspace(100, 101, 5)
             nxdata["sm6iamp27"] = monitor
             nxdata["sd11iamp7"] = monitor * 3
+            nxdata["panda_scannable"] = monitor * 2
             nxdata["checkbeam"] = np.ones(5)
             detector = f.create_group("entry/instrument/dld_total")
             detector.attrs["scan_role"] = "detector"
@@ -128,14 +129,18 @@ def test_i09_I0_coord(tmp_path, monitor_is_signal):
     da = pks.load(str(fpath), loc="Diamond_I09_Momentum_Microscope", quiet=True)
     if monitor_is_signal:
         assert "I0" not in da.coords
+        assert da.pint.units == "V"
     else:
         np.testing.assert_array_equal(da.I0.values, monitor)
         np.testing.assert_array_equal(da.sd11iamp7.values, monitor * 3)
         assert da.sd11iamp7.dims == ("eV",)
+        assert da.sd11iamp7.pint.units == "V"
+        assert da.panda_scannable.pint.units == "V"
         assert "checkbeam" not in da.coords
-        np.testing.assert_allclose(
-            da.norm_by_I0().pint.dequantify().values, 10 / monitor
-        )
+        assert da.I0.pint.units == "V"
+        normed = da.norm_by_I0()
+        np.testing.assert_allclose(normed.pint.dequantify().values, 10 / monitor)
+        assert normed.pint.units == "count / V"
 
 
 @pytest.mark.parametrize(

@@ -880,6 +880,41 @@ def test_norm_by_I0_broadcasts_over_higher_dims():
     )
 
 
+def _I0_scan(I0, I0_units=None):
+    data = xr.DataArray(
+        np.full(len(I0), 10.0), dims="eV", coords={"eV": np.arange(len(I0))}
+    ).assign_coords(I0=("eV", np.asarray(I0, dtype=float)))
+    return data.pint.quantify({None: "count", "I0": I0_units})
+
+
+@pytest.mark.parametrize("I0_units", [None, "V"])
+def test_norm_by_I0_offset(I0_units):
+    data = _I0_scan([0.07, 0.08], I0_units)
+    offsets = [-0.001]
+    if I0_units:
+        # a pint offset in other units, and the mean I0 of a dark scan
+        offsets += [
+            -1 * pint_xarray.unit_registry("mV"),
+            _I0_scan([-0.001] * 3, "V").I0.mean(),
+        ]
+    for offset in offsets:
+        normed = norm_by_I0(data, I0_offset=offset)
+        np.testing.assert_allclose(
+            normed.pint.dequantify().values, 10 / np.array([0.071, 0.081])
+        )
+        assert "I0 offset" in normed.history.get(-1)["record"]
+    if I0_units:
+        assert normed.pint.units == "count / V"
+
+
+@pytest.mark.parametrize(
+    "I0, offset", [([0.07, -0.001], 0), ([0.07, 0.0], 0), ([0.07, 0.001], 0.002)]
+)
+def test_norm_by_I0_non_positive_raises(I0, offset):
+    with pytest.raises(ValueError, match="<= 0"):
+        norm_by_I0(_I0_scan(I0, "V"), I0_offset=offset)
+
+
 def test_norm_by_I0_without_I0_raises():
     data = xr.DataArray(np.ones((2, 2)), dims=("eV", "theta_par"))
     with pytest.raises(ValueError, match="No I0 coordinate"):

@@ -2560,21 +2560,32 @@ def flat_field_correction(data, reference, threshold=0.05, mask=None, fill=1):
     return corrected
 
 
-def norm_by_I0(data):
+def norm_by_I0(data, I0_offset=0):
     """Normalise data by the I0 (photon flux) monitor recorded during the scan.
 
     Requires an ``I0`` coordinate. Should be applied before any step that integrates over or interpolates
-    along the scan dimensions, as these drop the ``I0`` coordinate.
+    along the scan dimensions, as these drop the ``I0`` coordinate. The units of the result are those of the
+    data divided by those of I0 (e.g. ``count/V``), marking it as I0-normalised.
 
     Parameters
     ----------
     data : xarray.DataArray
         The data to be normalised, with an ``I0`` coordinate.
+    I0_offset : float or pint.Quantity, optional
+        Zero offset of the I0 monitor, subtracted from I0 before dividing, e.g. the mean I0 reading of a
+        beam-off (dark) scan recorded at the same amplifier gain. A float is taken to be in the units of I0.
+        Defaults to 0.
 
     Returns
     -------
     norm_data : xarray.DataArray
-        The data divided by I0, broadcast over any dimensions I0 does not span.
+        The data divided by (I0 - I0_offset), broadcast over any dimensions I0 does not span.
+
+    Raises
+    ------
+    ValueError
+        If there is no ``I0`` coordinate, or if (I0 - I0_offset) is <= 0 anywhere, where normalising is
+        meaningless (e.g. beam off, or a signal below the monitor's zero offset).
 
     Examples
     --------
@@ -2585,6 +2596,10 @@ def norm_by_I0(data):
         data = pks.load('i09-2-7200.nxs')
         data_norm = data.norm_by_I0()
 
+        # Correct for the monitor zero offset, measured from a beam-off scan
+        dark = pks.load('i09-2-7262.nxs')
+        data_norm = data.norm_by_I0(I0_offset=dark.I0.mean())
+
     """
     if "I0" not in data.coords:
         raise ValueError(
@@ -2592,9 +2607,25 @@ def norm_by_I0(data):
             "by operations that integrate over or interpolate along the scan dimensions."
         )
 
-    norm_data = data / data.coords["I0"]
+    I0 = data.coords["I0"]
+    if isinstance(I0_offset, xr.DataArray):
+        I0_offset = I0_offset.data
+    if isinstance(I0.data, pint.Quantity) and not isinstance(I0_offset, pint.Quantity):
+        I0_offset = I0_offset * I0.data.units
+    I0 = I0 - I0_offset
+    if np.any(getattr(I0.data, "magnitude", I0.data) <= 0):
+        raise ValueError(
+            f"I0 - I0_offset is <= 0 for some points (min I0 = {data.coords['I0'].min().data}), so "
+            "normalising by it is meaningless. Check the beam was on, and pass the monitor zero offset "
+            "(e.g. from a beam-off scan) as `I0_offset`."
+        )
+
+    norm_data = data / I0
 
     # Update the history
-    norm_data = norm_data.history.assign("Data normalised by I0")
+    record = "Data normalised by I0"
+    if np.any(I0_offset != 0):
+        record += f" after subtracting an I0 offset of {I0_offset}"
+    norm_data = norm_data.history.assign(record)
 
     return norm_data

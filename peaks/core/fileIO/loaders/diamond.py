@@ -1051,11 +1051,13 @@ class I09MomentumMicroscopeLoader(DiamondNXSLoader, BaseARPESDataLoader):
         "Benergy": "eV",
         "jenergy": "keV",
     }
-    # TODO: set units of the I0 monitor once confirmed (not recorded in the file, so currently unitless)
+    # Drain currents (Femto amplifier channels, e.g. sd11iamp7) are read as the amplifier output voltage (no units
+    # in the file). The current is value / gain [V/A], but the gain is not recorded, so they are kept in V
+    # panda_scannable: PandA mean of the sample drain amplifier output over the counting window (matches sd11iamp7)
+    # assumes PandA is always wired to the sample drain amplifier
+    _drain_current_pattern = r"s[a-z]\d+iamp\d+|panda_scannable"
+    _drain_current_units = "V"
     _I0_monitor = "sm6iamp27"  # SM6 mirror drain current
-    _drain_current_pattern = (
-        r"s[a-z]\d+iamp\d+"  # Femto amplifier channels, e.g. sd11iamp7
-    )
     _analyser_include_in_metadata_warn = ["eV", "step_size", "dwell"]
     _hdf5_metadata_fixed_units = {
         f"entry/instrument/{name}/value": "eV"
@@ -1309,9 +1311,11 @@ class I09MomentumMicroscopeLoader(DiamondNXSLoader, BaseARPESDataLoader):
         da = da.assign_coords({dim: coords[dim] for dim in dims if dim in coords})
         if I0 is not None:
             da = da.assign_coords(I0=(dims[:scan_rank], I0))
+            units["I0"] = cls._drain_current_units
         da = da.assign_coords(
             {key: (dims[:scan_rank], values) for key, values in scan_streams.items()}
         )
+        units.update(dict.fromkeys(scan_streams, cls._drain_current_units))
 
         # Rename to peaks conventions, with the binding energy in E-EF
         if "Benergy" in da.dims:
@@ -1333,6 +1337,8 @@ class I09MomentumMicroscopeLoader(DiamondNXSLoader, BaseARPESDataLoader):
         }
         if det_addr:
             units["spectrum"] = "counts"
+        elif re.fullmatch(cls._drain_current_pattern, signal_addr.rsplit("/", 1)[1]):
+            units["spectrum"] = cls._drain_current_units
 
         # Load array into memory if lazy loading not required
         if not (lazy or (lazy is None and da.size > opts.FileIO.lazy_size)):
