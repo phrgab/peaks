@@ -1,0 +1,6 @@
+extend = "../../pyproject.toml"
+
+[lint.per-file-ignores]
+# same exemption the repo gives tests/**
+"test_*.py" = ["D103"]
+"bench_*.py" = ["D103"]
