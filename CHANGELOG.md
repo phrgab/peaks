@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Parsing analyser slit identifiers when numeric ([PR#89](https://github.com/phrgab/peaks/pull/89))
+- The 2D display panel kept stale signal connections each time its data changed (switching scans, or moving the 4D panel crosshair). This could keep closed panels and their data in memory, and made **Copy** run several times
+- The hidden 2D sub-panels of the 4D display panel were never freed after the panel closed
 
 ### Changed
 

@@ -343,6 +343,9 @@ class _Disp4D(QtWidgets.QMainWindow):
         layout.addLayout(right_column)
         # Add the 2D panel - initialise with the first slice
         data_explorer_disp2d = _Disp2D([data_to_plot], None, None)
+        # Own the (never shown) shell window so it is destroyed with this panel
+        data_explorer_disp2d.setParent(self, QtCore.Qt.WindowType.Window)
+        data_explorer_disp2d.hide()
         data_explorer_widget = data_explorer_disp2d.centralWidget()
         right_column.addWidget(data_explorer_widget)
         # Hide the unnecessary controls from disp2d

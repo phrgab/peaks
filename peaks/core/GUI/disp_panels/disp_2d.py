@@ -572,9 +572,9 @@ class _Disp2D(QtWidgets.QMainWindow):
     def _change_data(self):
         """Change the selected data array."""
         # Disconnect signals
-        for signal in self.connected_plot_signals[:]:
-            signal.disconnect()
-            self.connected_plot_signals.remove(signal)
+        for signal, slot in self.connected_plot_signals:
+            signal.disconnect(slot)
+        self.connected_plot_signals = []
 
         # Set data
         self._set_data()
@@ -884,51 +884,54 @@ class _Disp2D(QtWidgets.QMainWindow):
     # ##############################
     # Signal connections
     # ##############################
+    def _connect(self, signal, slot):
+        """Connect a slot and record it so that `_change_data` can disconnect it.
+
+        Slots are disconnected individually: a bare ``signal.disconnect()`` does not
+        release PyQt's references to partial slots, which kept old viewers alive.
+        """
+        signal.connect(slot)
+        self.connected_plot_signals.append((signal, slot))
+
     def _connect_signals_crosshairs(self):
         # Update when crosshair moves
         for i, xh_ in enumerate(self.xhs):
             signal = xh_.xh.sigPositionChanged
-            signal.connect(partial(self._update_DC, i))  # Update DC plots
-            signal.connect(partial(self._update_DC_crosshair_span, i))  # Follow DC span
-            signal.connect(self._update_cursor_stats_text)  # Update label
-            self.connected_plot_signals.append(signal)
+            self._connect(signal, partial(self._update_DC, i))  # Update DC plots
+            self._connect(signal, partial(self._update_DC_crosshair_span, i))
+            self._connect(signal, self._update_cursor_stats_text)  # Update label
 
         # Update when show/hide crosshair boxes toggled
         for i, checkbox in enumerate(self.show_DCs_checkboxes):
-            checkbox.stateChanged.connect(partial(self._show_hide_DCs, i))
-            self.connected_plot_signals.append(checkbox.stateChanged)
+            self._connect(checkbox.stateChanged, partial(self._show_hide_DCs, i))
 
         # Update when show/hide mirror checkbox toggled
-        signal = self.show_mirror_checkbox.stateChanged
-        signal.connect(self._show_hide_mirror)
-        self.connected_plot_signals.append(signal)
+        self._connect(self.show_mirror_checkbox.stateChanged, self._show_hide_mirror)
 
     def _connect_signals_DCspan_change(self):
         # Update when span ranges changed
         for i in range(2):
-            signal = self.DC_width_selectors[i].valueChanged
-            signal.connect(partial(self._update_DC_width, i))
-            self.connected_plot_signals.append(signal)
+            self._connect(
+                self.DC_width_selectors[i].valueChanged,
+                partial(self._update_DC_width, i),
+            )
 
         # Update with integrate all selection
         for i in range(2):
-            signal = self.DC_span_all_checkboxes[i].stateChanged
-            signal.connect(partial(self._update_DC_int, i))
-            self.connected_plot_signals.append(signal)
+            self._connect(
+                self.DC_span_all_checkboxes[i].stateChanged,
+                partial(self._update_DC_int, i),
+            )
 
     def _connect_signals_align(self):
         # Connect centre data button
-        self.align_button.clicked.connect(self._align_data)
-        self.connected_plot_signals.append(self.align_button.clicked)
+        self._connect(self.align_button.clicked, self._align_data)
         # Connect copy button
-        self.copy_button.clicked.connect(self._copy_norm_values)
+        self._connect(self.copy_button.clicked, self._copy_norm_values)
 
     def _connect_key_press_signals(self):
-        signals = [self.graphics_layout.keyPressed, self.graphics_layout.keyReleased]
-        fns = [self._key_press_event, self._key_release_event]
-        for signal, fn in zip(signals, fns, strict=True):
-            signal.connect(fn)
-            self.connected_plot_signals.append(signal)
+        self._connect(self.graphics_layout.keyPressed, self._key_press_event)
+        self._connect(self.graphics_layout.keyReleased, self._key_release_event)
 
     def _key_press_event(self, event):
         # First deal with the modifiers
