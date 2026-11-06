@@ -1,4 +1,0 @@
-{"path": "native-A", "size": "medium", "platform": "xcb", "event_plus_paint": {"n": 150, "median_ms": 8.42, "p95_ms": 10.27, "max_ms": 11.96}, "viewport_paints": 149, "final_pos": [246.791, 296.122]}
-{"path": "native-A", "size": "large", "platform": "xcb", "event_plus_paint": {"n": 150, "median_ms": 8.95, "p95_ms": 10.29, "max_ms": 11.88}, "viewport_paints": 149, "final_pos": [704.511, 1184.487]}
-{"path": "native-B", "size": "medium", "platform": "xcb", "event_plus_paint": {"n": 150, "median_ms": 12.81, "p95_ms": 16.05, "max_ms": 20.71}, "viewport_paints": 297, "final_pos": [-0.468, -9.451]}
-{"path": "native-B", "size": "large", "platform": "xcb", "event_plus_paint": {"n": 150, "median_ms": 13.07, "p95_ms": 16.79, "max_ms": 27.24}, "viewport_paints": 292, "final_pos": [-0.468, -9.442]}
