@@ -1,6 +1,13 @@
 # PyQtGraph viewers in Jupyter and marimo with `jupyter-rfb`: feasibility study
 
-Experimental and self-contained. Nothing in `peaks/` was changed. Delete this folder to remove it.
+Experimental and self-contained. Nothing in `peaks/` was changed by the study itself.
+
+> **Now integrated:** the adapter is in `peaks/core/GUI/GUI_utils/notebook_rfb.py` as the
+> optional `pks.opts.gui.backend = "notebook"` backend; see
+> `docs/source/explanations/gui_backends.md`. This folder is kept as the reference
+> measurements. `bench_headless.py rfb P` and `bench_browser.py --configs P-medium` measure
+> the production backend, and `e2e_lifecycle.py` checks its lifecycle in a real browser
+> (results under "Production backend" below).
 
 **Result:** the existing peaks `_Disp2D` runs unmodified inside JupyterLab and marimo.
 Dragging its own crosshair updates its own two cuts at a delivered 30 FPS (58 FPS with a
@@ -241,6 +248,29 @@ synthetic. A manual check on a desktop browser is still needed.
 
 Items 1–3 stay inside the adapter and need no changes to the plotting or numerical code, except
 the Help dialog.
+
+## Production backend (integrated)
+
+Same VM and versions as above, run on 2026-11-06.
+
+* **No regression.** Headless, per drag step (median): prototype B 13.0–13.1 ms vs production
+  13.1–13.2 ms at DPR 1, and 22.0–22.3 ms for both at DPR 2
+  (`results/headless_rfb_production.jsonl`). Browser, JupyterLab: prototype B-medium 29.1/30.0
+  FPS, 76 ms median latency; production P-medium 29.2/29.9 FPS, 79 ms; P-large 30.1/30.0 FPS,
+  77 ms (same run, `results/browser_jupyter_production.jsonl`). `marimo run` P-medium: 29.5/29.8
+  FPS, 60 ms (`results/browser_marimo_production.jsonl`). The 30 FPS cap is still jupyter_rfb's
+  20 ms move throttle. The JS throttle patch was not carried over.
+* **Lifecycle** (`e2e_lifecycle.py`, headless Chromium): JupyterLab 13/13 and `marimo edit`
+  12/12 checks. Covered: same-cell replacement with restored crosshair, visibility and levels;
+  identical code in another cell is not replaced; automatic suspension at `max_viewers=1`
+  leaves a static image (`results/jupyterlab_suspended.png`); a suspended cell re-runs live;
+  Suspend/Close buttons; cell deletion (JupyterLab). With `--coexist` under Xvfb (4/4),
+  a native window and an inline viewer share a kernel with `%gui qt6`. Only the native window
+  is mapped, the inline viewer still responds, and `pks.gui.close_all()` closes both.
+* **Destruction needs a real Qt event loop pass.** PyQt releases slot proxies with
+  `deleteLater()`, which `processEvents()` never runs when no loop is active. Without that
+  pass, closed viewers and their data stayed alive. The backend now runs a zero-length
+  `QEventLoop` per frame (about 3 µs) and when closing.
 
 ## Recommendation
 

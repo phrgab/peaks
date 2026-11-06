@@ -1,6 +1,7 @@
 """Server-side timing of a continuous crosshair drag, RFB path vs native Qt window.
 
-    QT_QPA_PLATFORM=offscreen python bench_headless.py rfb      # RFB pipeline (no browser)
+    QT_QPA_PLATFORM=offscreen python bench_headless.py rfb [A,B,P]  # RFB pipeline
+    (A: pyqtgraph.jupyter, B: prototype QWidgetRFB, P: production notebook backend)
     xvfb-run -s "-screen 0 1920x1080x24" python bench_headless.py native
 
 Per drag step the RFB path does: handle_event (Qt dispatch + cut update) -> get_frame
@@ -53,6 +54,21 @@ def bench_rfb(kind, size, dpr):
     if kind == "A":
         view = CutViewerRFB(img=make_image(*SIZES[size]))
         width, height = 650, 600
+    elif kind == "P":  # production backend: data.disp(backend="notebook")
+        view = make_dataarray(*SIZES[size]).disp(backend="notebook")
+        width, height = 650, 770
+        view.event_times, view.frame_times = Timer(), Timer()
+        handle, render = view.handle_event, view.get_frame
+
+        def timed_handle(event):
+            with view.event_times():
+                handle(event)
+
+        def timed_frame():
+            with view.frame_times():
+                return render()
+
+        view.handle_event, view.get_frame = timed_handle, timed_frame
     else:
         view = QWidgetRFB(_Disp2D([make_dataarray(*SIZES[size])], None, "eV"))
         width, height = 650, 770
@@ -201,7 +217,8 @@ def bench_native(kind, size):
 
 if __name__ == "__main__":
     mode = sys.argv[1]
-    for kind in ("A", "B"):
+    kinds = sys.argv[2].split(",") if len(sys.argv) > 2 else ("A", "B")
+    for kind in kinds:
         for size in SIZES:
             if mode == "rfb":
                 for dpr in (1.0, 2.0):

@@ -44,9 +44,25 @@ if {kind!r} == "A":
         x, y = target_pos_standalone(view.gfxView, view.v)
         return dict(xh_px=[x, y], view_range=view.v.image_plot.getViewBox().viewRange(),
                     widget_size=list(view.logical_size))
-else:
-    from qwidget_rfb import disp_rfb
-    view = disp_rfb(make_dataarray(*SIZES[{size!r}]))
+elif {kind!r} == "P":  # production backend
+    import peaks as pks
+    from common import Timer
+    view = make_dataarray(*SIZES[{size!r}]).disp(backend="notebook")
+    view.event_times, view.frame_times = Timer(), Timer()
+    _h, _f = view.handle_event, view.get_frame
+    def _th(e):
+        with view.event_times():
+            _h(e)
+    def _tf():
+        with view.frame_times():
+            return _f()
+    view.handle_event, view.get_frame = _th, _tf
+    view.timing_summary = lambda: dict(handle_event=view.event_times.summary(),
+        get_frame=view.frame_times.summary(), rfb_stats=view.get_stats())
+if {kind!r} in ("B", "P"):
+    if {kind!r} == "B":
+        from qwidget_rfb import disp_rfb
+        view = disp_rfb(make_dataarray(*SIZES[{size!r}]))
     def _status_extra():
         w = view.widget
         x, y = target_pos_disp2d(w)
