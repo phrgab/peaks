@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Inline notebook backend for the interactive display panels in JupyterLab and marimo: `pks.opts.gui.backend = "notebook"` or `data.disp(backend="notebook")` (optional `notebook` extra). Inline viewers have Suspend/Close controls, are suspended to a static image when `opts.gui.max_viewers` needs room, and are replaced (with their settings restored) when their cell is re-run
+- Inline notebook backend for the interactive display panels in JupyterLab and marimo: `pks.opts.gui.backend = "notebook"` or `data.disp(backend="notebook")` (optional `notebook` extra). Inline viewers have Suspend/Close controls, are suspended to a static image when `opts.gui.max_viewers` needs room, and are replaced (with their settings restored) when their cell is re-run. Inline, held keys repeat, Cmd acts as Control on a Mac, and a **Help** button shows the keyboard shortcuts
 - `pks.gui.suspend_all()`, `pks.gui.close_all()` and `pks.gui.viewers()` to manage open viewers, including native windows
 
 ### Fixed
@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Parsing analyser slit identifiers when numeric ([PR#89](https://github.com/phrgab/peaks/pull/89))
 - The 2D display panel kept stale signal connections each time its data changed (switching scans, or moving the 4D panel crosshair). This could keep closed panels and their data in memory, and made **Copy** run several times
 - The hidden 2D sub-panels of the 4D display panel were never freed after the panel closed
+- Typo in the 2D display panel's keyboard help
 
 ### Changed
 

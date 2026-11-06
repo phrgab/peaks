@@ -514,3 +514,48 @@ def test_marimo_internals_changed_falls_back_to_no_replacement(monkeypatch):
     state = {"hooks": set()}
     assert notebook_cells._marimo_cell(state) is None
     assert "c1" not in state["marimo_cells"]
+
+
+def test_held_keys_repeat_and_cmd_acts_as_control():
+    """Held-key repeats move the crosshair and are acknowledged one at a time.
+
+    Cmd (browser "Meta") selects crosshair 1, as Control does and as Cmd does natively
+    on a Mac.
+    """
+    view = inline()
+    sent = []
+    view.send = lambda msg, *a: sent.append(msg)
+    view.handle_event(ev("resize", width=650, height=770, pixel_ratio=1.0))
+    view.handle_event(ev("pointer_down", 250, 250, 1, (1,)))  # focus the plot
+    view.handle_event(ev("pointer_up", 250, 250, 1, ()))
+    w = view.widget
+    csr0, csr1 = w.xhs[0].get_pos(), w.xhs[1].get_pos()
+    step = w.step_sizes[1]
+
+    cmd = ("Meta",)
+    view.handle_event(ev("key_down", key="Meta", modifiers=cmd))
+    view.handle_event(ev("key_down", key="ArrowRight", modifiers=cmd))
+    for _ in range(3):
+        view.handle_event(ev("key_down", key="ArrowRight", modifiers=cmd, repeat=True))
+    view.handle_event(ev("key_up", key="ArrowRight", modifiers=cmd))
+    view.handle_event(ev("key_up", key="Meta"))
+
+    assert w.xhs[0].get_pos() == csr0
+    assert w.xhs[1].get_pos()[1] == pytest.approx(csr1[1] + 4 * step)
+    assert [m["type"] for m in sent] == ["peaks_key_ack"] * 3
+
+    view.handle_event(ev("key_down", key="ArrowRight"))  # Cmd released: crosshair 0
+    assert w.xhs[0].get_pos()[1] == pytest.approx(csr0[1] + step)
+
+
+def test_repeat_after_suspend_is_still_acknowledged():
+    view = inline()
+    sent = []
+    view.send = lambda msg, *a: sent.append(msg)
+    view.suspend()
+    view.handle_event(ev("key_down", key="ArrowRight", repeat=True))
+    assert sent[-1] == {"type": "peaks_key_ack"}
+
+
+def test_help_text_sent_to_browser():
+    assert "Key Binding" in inline()._peaks_help

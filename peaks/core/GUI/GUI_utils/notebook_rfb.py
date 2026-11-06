@@ -33,6 +33,7 @@ _KEYS = {
     "ArrowRight": "Right",
     " ": "Space",
     "Enter": "Return",
+    "Meta": "Control",  # Cmd on a Mac, which Qt treats as Control natively
 }
 # Longest side of the image kept for a suspended viewer (device pixels)
 _STATIC_MAX_SIDE = 1600
@@ -50,6 +51,13 @@ def _wrapped_esm():
         + r"""
 const BAR_CSS = 'display:flex;gap:6px;align-items:center;font:12px sans-serif;' +
   'padding:2px 0 4px 0;color:var(--jp-ui-font-color2,#666)'
+const HELP_CSS = 'display:none;position:absolute;top:4px;left:4px;z-index:10;' +
+  'max-width:min(560px,90%);max-height:90%;overflow:auto;background:#fff;color:#222;' +
+  'border:1px solid #999;border-radius:4px;padding:8px 12px;font:13px sans-serif;' +
+  'box-shadow:0 2px 8px rgba(0,0,0,.3)'
+// Resend held keys at most this long after an unacknowledged repeat (ms)
+const REPEAT_TIMEOUT = 1000
+const FOCUS_CONTAINER = '#rendercanvas-focus-element-container'
 export default () => {
   const inner = rfbWidget()
   return {
@@ -69,9 +77,26 @@ export default () => {
       }
       const suspendButton = button('Suspend', 'peaks_suspend')
       button('Close', 'peaks_close')
+      const live = document.createElement('div')
+      live.style.position = 'relative'
+      const help = document.createElement('div')
+      help.style.cssText = HELP_CSS
+      const helpButton = button('Help', null)
+      helpButton.onclick = () => {
+        help.style.display = help.style.display === 'none' ? 'block' : 'none'
+      }
+      const helpText = model.get('_peaks_help')
+      if (helpText) {
+        help.innerHTML = helpText
+        const hide = document.createElement('button')
+        hide.textContent = 'Close help'
+        hide.style.cssText = 'margin-top:8px;font:12px sans-serif'
+        hide.onclick = () => { help.style.display = 'none' }
+        help.appendChild(hide)
+        live.appendChild(help)
+      }
       const label = document.createElement('span')
       bar.appendChild(label)
-      const live = document.createElement('div')
       const img = document.createElement('img')
       img.style.cssText = 'display:block;max-width:100%;opacity:0.85'
       el.append(bar, live, img)
@@ -85,6 +110,7 @@ export default () => {
         bar.style.display = mode === 'closed' ? 'none' : 'flex'
         live.style.display = mode === 'live' ? '' : 'none'
         suspendButton.style.display = mode === 'live' ? '' : 'none'
+        helpButton.style.display = mode === 'live' && helpText ? '' : 'none'
         const src = mode === 'suspended' ? model.get('_peaks_static') : ''
         img.style.display = src ? 'block' : 'none'
         if (src) {
@@ -97,9 +123,39 @@ export default () => {
           ? 'Suspended (static image). Re-run the cell to restore interactivity.'
           : ''
       }
+      // jupyter_rfb ignores held-key repeats; send them, one at a time. Its key
+      // input lives outside the output (on document.body), so remember the input
+      // this viewer focuses when clicked.
+      let ownFocus = null
+      const onPointerDown = () => setTimeout(() => {
+        const active = document.activeElement
+        if (active && active.closest && active.closest(FOCUS_CONTAINER)) {
+          ownFocus = active
+        }
+      }, 0)
+      live.addEventListener('pointerdown', onPointerDown, true)
+      let repeatPending = false
+      let repeatSent = 0
+      const onKeyDown = (ev) => {
+        if (!ev.repeat || ev.target !== ownFocus) return
+        if (model.get('_peaks_mode') !== 'live') return
+        const now = performance.now()
+        if (repeatPending && now - repeatSent < REPEAT_TIMEOUT) return
+        repeatPending = true
+        repeatSent = now
+        model.send({
+          type: 'key_down',
+          key: KEY_MAP[ev.key] || ev.key,
+          modifiers: getModifiers(ev),
+          repeat: true
+        })
+      }
+      document.addEventListener('keydown', onKeyDown, true)
       const onMessage = (msg) => {
         if (msg.type === 'peaks_copy' && navigator.clipboard) {
           navigator.clipboard.writeText(msg.text).catch(() => {})
+        } else if (msg.type === 'peaks_key_ack') {
+          repeatPending = false
         }
       }
       model.on('change:_peaks_mode', update)
@@ -110,6 +166,8 @@ export default () => {
         model.off('change:_peaks_mode', update)
         model.off('change:_peaks_static', update)
         model.off('msg:custom', onMessage)
+        document.removeEventListener('keydown', onKeyDown, true)
+        live.removeEventListener('pointerdown', onPointerDown, true)
         if (cleanupInner) cleanupInner()
       }
     }
@@ -124,6 +182,12 @@ def _qt_key(name):
     qt_name = _KEYS.get(name, name.upper() if len(name) == 1 else name)
     key = getattr(QtCore.Qt.Key, f"Key_{qt_name}", None)
     return key, (name if len(name) == 1 else "")
+
+
+def _modifiers(event):
+    """Qt modifiers of a browser event, with Meta (Cmd on a Mac) as Control."""
+    names = event.get("modifiers", ())
+    return get_modifiers(tuple("Control" if m == "Meta" else m for m in names))
 
 
 def is_inline(widget):
@@ -181,6 +245,7 @@ class QWidgetRFB(RemoteFrameBuffer):
     _esm = _wrapped_esm()
     _peaks_mode = Unicode("live").tag(sync=True)
     _peaks_static = Unicode("").tag(sync=True)
+    _peaks_help = Unicode("").tag(sync=True)  # HTML for the toolbar Help button
 
     def __init__(self, widget, **kwargs):
         self._app = QtWidgets.QApplication.instance()
@@ -195,6 +260,7 @@ class QWidgetRFB(RemoteFrameBuffer):
         self._app.processEvents()
         kwargs.setdefault("css_width", f"{widget.width()}px")
         kwargs.setdefault("css_height", f"{widget.height()}px")
+        kwargs.setdefault("_peaks_help", getattr(widget, "help_text", ""))
         super().__init__(**kwargs)
         self.widget = widget
         self._window = widget.windowHandle()
@@ -303,6 +369,16 @@ class QWidgetRFB(RemoteFrameBuffer):
             from peaks.core.GUI.GUI_utils import qt_runtime
 
             return qt_runtime.close_viewer(self, keep_state=True, frontend=False)
+        if event.get("repeat"):
+            # The browser sends the next held-key repeat after this acknowledgement,
+            # so repeats never queue up behind a slow viewer.
+            try:
+                return self._handle_input(typ, event)
+            finally:
+                self.send({"type": "peaks_key_ack"})
+        return self._handle_input(typ, event)
+
+    def _handle_input(self, typ, event):
         if self.widget is None or self.status != "active":
             return  # late events after suspension or closing
         self._check_thread()
@@ -327,7 +403,7 @@ class QWidgetRFB(RemoteFrameBuffer):
                 gpos,
                 btn,
                 get_buttons(event["buttons"]),
-                get_modifiers(event["modifiers"]),
+                _modifiers(event),
             )
         elif typ == "wheel":
             pos, gpos = self._pos(event)
@@ -337,7 +413,7 @@ class QWidgetRFB(RemoteFrameBuffer):
                 QtCore.QPoint(),
                 QtCore.QPoint(-int(event["dx"]), -int(event["dy"])),
                 get_buttons(event.get("buttons", ())),
-                get_modifiers(event["modifiers"]),
+                _modifiers(event),
                 QtCore.Qt.ScrollPhase.NoScrollPhase,
                 False,
             )
@@ -350,8 +426,9 @@ class QWidgetRFB(RemoteFrameBuffer):
                 if typ == "key_down"
                 else QtCore.QEvent.Type.KeyRelease,
                 key,
-                get_modifiers(event["modifiers"]),
+                _modifiers(event),
                 text,
+                bool(event.get("repeat")),
             )
         else:
             return
