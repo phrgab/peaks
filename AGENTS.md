@@ -472,8 +472,10 @@ functions and as accessor methods (e.g. `data.smooth(...)`).
 - parameters:
   - primary_dim: str, tuple, or list (optional, default=None) — dimension(s) to treat as the primary axis; for 4D data pass two dims; defaults to conventional peaks ARPES layout
   - exclude_from_centering: str, tuple, list, or None (optional, default='eV') — dimension(s) excluded from auto-centering in the viewer
-- returns: None (renders an interactive Panel widget in the notebook)
+  - backend: str (optional, default=None) — 'qt' (native pop-out window) or 'notebook' (inline in JupyterLab/marimo; needs the `notebook` extra); defaults to `pks.opts.gui.backend` ('qt')
+- returns: None for native windows; for the notebook backend, the inline viewer widget (display it as the cell's last expression; has `.suspend()` and `.close()`)
 - when_to_use: Exploratory data inspection for any dimensionality; navigating 3D or 4D cubes interactively; comparing a stack of 2D dispersions side-by-side
+- notes: `pks.opts.gui.max_viewers` (default 1) limits live viewers of both backends; the oldest inline viewer is suspended to make room. Re-running a notebook cell replaces its inline viewer and restores its settings. `pks.gui.suspend_all()` / `pks.gui.close_all()` manage all viewers.
 - family: display
 - strategy: interactive_gui
 - cost: low
