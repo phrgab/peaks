@@ -6,13 +6,18 @@ by sending QMouseEvent/QWheelEvent/QKeyEvent to its QWindow, so Qt itself picks 
 child under the pointer and keeps drag grabs. No Qt event loop runs; pending Qt events
 are serviced with ``processEvents()``. Everything must run on the QApplication thread.
 
+Popups (menus, dropdowns) and non-blocking dialogs opened by the viewer are separate
+Qt windows. They are kept off the desktop too, drawn over the viewer's frame, and
+receive its input while open. Blocking dialogs (``exec()``) are rejected instead.
+
 The same anywidget works in JupyterLab and marimo. It adds a small toolbar (Suspend,
-Close) and a static-image mode used once the Qt widget has been released.
+Close, Help) and a static-image mode used once the Qt widget has been released.
 
 Viewer bookkeeping (limits, suspension, same-cell replacement) lives in
 :mod:`peaks.core.GUI.GUI_utils.qt_runtime`; this module stays generic over QWidget.
 """
 
+import asyncio
 import base64
 import gc
 import weakref
@@ -37,6 +42,12 @@ _KEYS = {
 }
 # Longest side of the image kept for a suspended viewer (device pixels)
 _STATIC_MAX_SIDE = 1600
+# Height of the title strip drawn above an inline dialog (css px)
+_DIALOG_TITLE = 22
+# Redraw this long after input while a popup is open: submenus open on a Qt timer (s)
+_OVERLAY_REDRAW_DELAY = 0.35
+# The inline viewer whose input or drawing Qt is processing; it owns new popups
+_dispatching = None
 
 
 def _wrapped_esm():
@@ -190,16 +201,15 @@ def _modifiers(event):
     return get_modifiers(tuple("Control" if m == "Meta" else m for m in names))
 
 
-def is_inline(widget):
-    """Return whether ``widget`` belongs to an inline (never mapped) viewer window."""
-    window = widget.window() if widget is not None else None
-    return window is not None and window.testAttribute(
-        QtCore.Qt.WidgetAttribute.WA_DontShowOnScreen
-    )
+def _is_popup(window):
+    return window.windowType() == QtCore.Qt.WindowType.Popup
 
 
-def _close_popups():
-    """Close popups opened by an inline viewer; they cannot be rendered inline."""
+def _close_foreign_popups():
+    """Close popups in Qt's popup mode, which would take the viewer's input unseen.
+
+    Popups adopted by a viewer are never shown on screen, so never enter popup mode.
+    """
     for _ in range(10):  # guard against a popup that refuses to close
         popup = QtWidgets.QApplication.activePopupWidget()
         if popup is None:
@@ -207,31 +217,56 @@ def _close_popups():
         popup.close()
 
 
-class _InlineDialogGuard(QtCore.QObject):
-    """Reject modal dialogs opened by inline viewers, which would block the kernel.
+class _InlineWindowGuard(QtCore.QObject):
+    """Keep windows opened by inline viewers off the desktop, and adopt them.
 
-    ``QDialog.exec()`` runs a nested event loop that no browser event can reach. The
-    dialog is rejected from a zero-delay timer, which fires inside that nested loop,
-    and the message text is reported in the notebook instead.
+    Popups and non-blocking dialogs (``QDialog.open()``) are drawn inline by the
+    viewer that opened them. ``QDialog.exec()`` instead runs a nested event loop that
+    no browser event can reach: such dialogs are rejected from a zero-delay timer,
+    which fires inside that loop, and their message is reported in the notebook.
+
+    ``WA_DontShowOnScreen`` is set at Polish, before Qt first shows the window.
+    Setting it later makes Qt register a modal dialog without unregistering it.
     """
 
     def eventFilter(self, obj, event):  # noqa: N802 (Qt API)
-        """Intercept the Show event of dialogs that belong to inline viewers."""
-        if (
-            event.type() == QtCore.QEvent.Type.Show
-            and isinstance(obj, QtWidgets.QDialog)
-            and is_inline(obj.parentWidget())
-        ):
-            text = obj.text() if isinstance(obj, QtWidgets.QMessageBox) else ""
-            QtCore.QTimer.singleShot(0, obj.reject)
-            from peaks.core.utils.misc import analysis_warning
-
-            analysis_warning(
-                f"{obj.windowTitle()}: {text}" if text else obj.windowTitle(),
-                warn_type="info",
-                title="Dialog not available in notebook mode",
-            )
+        """Intercept new windows of inline viewers at Polish and Show."""
+        typ = event.type()
+        if typ not in (QtCore.QEvent.Type.Polish, QtCore.QEvent.Type.Show):
+            return False
+        if not isinstance(obj, QtWidgets.QWidget) or not obj.isWindow():
+            return False
+        owner = _dispatching or QWidgetRFB._owner_of(obj.parentWidget())
+        if owner is None or obj is owner.widget:
+            return False
+        dialog = isinstance(obj, QtWidgets.QDialog)
+        blocking = (
+            dialog and obj.windowModality() == QtCore.Qt.WindowModality.ApplicationModal
+        )
+        hidden = obj.testAttribute(QtCore.Qt.WidgetAttribute.WA_DontShowOnScreen)
+        if typ == QtCore.QEvent.Type.Polish:
+            if not blocking:
+                obj.setAttribute(QtCore.Qt.WidgetAttribute.WA_DontShowOnScreen, True)
+        elif blocking or (dialog and not hidden):
+            _reject_blocking_dialog(obj)
+        else:
+            if not hidden:  # e.g. a menu first polished outside a viewer event
+                obj.setAttribute(QtCore.Qt.WidgetAttribute.WA_DontShowOnScreen, True)
+            if (_is_popup(obj) or dialog) and obj not in owner._overlays:
+                owner._overlays.append(obj)
         return False
+
+
+def _reject_blocking_dialog(dialog):
+    text = dialog.text() if isinstance(dialog, QtWidgets.QMessageBox) else ""
+    QtCore.QTimer.singleShot(0, dialog.reject)
+    from peaks.core.utils.misc import analysis_warning
+
+    analysis_warning(
+        f"{dialog.windowTitle()}: {text}" if text else dialog.windowTitle(),
+        warn_type="info",
+        title="Dialog not available in notebook mode",
+    )
 
 
 class QWidgetRFB(RemoteFrameBuffer):
@@ -243,6 +278,7 @@ class QWidgetRFB(RemoteFrameBuffer):
     """
 
     _esm = _wrapped_esm()
+    _views = weakref.WeakSet()  # live inline viewers, to find a window's owner
     _peaks_mode = Unicode("live").tag(sync=True)
     _peaks_static = Unicode("").tag(sync=True)
     _peaks_help = Unicode("").tag(sync=True)  # HTML for the toolbar Help button
@@ -252,10 +288,9 @@ class QWidgetRFB(RemoteFrameBuffer):
         self._check_thread()
         widget.setAttribute(QtCore.Qt.WidgetAttribute.WA_DontShowOnScreen, True)
         if isinstance(widget, QtWidgets.QMainWindow):
-            # Menus are separate (unrendered) popup windows
-            widget.menuBar().hide()
-        for view_box in widget.findChildren(pg.ViewBox):
-            view_box.setMenuEnabled(False)  # context menus are unrendered popups
+            widget.menuBar().hide()  # the toolbar's Help button replaces it
+        for view in widget.findChildren(pg.GraphicsView):
+            view.sceneObj.contextMenu = []  # Export... opens a separate window
         widget.show()
         self._app.processEvents()
         kwargs.setdefault("css_width", f"{widget.width()}px")
@@ -266,6 +301,8 @@ class QWidgetRFB(RemoteFrameBuffer):
         self._window = widget.windowHandle()
         self._pixel_ratio = 1.0
         self._scale = (1.0, 1.0)  # widget px per browser css px
+        self._overlays = []  # popups and dialogs drawn over the frame, bottom first
+        QWidgetRFB._views.add(self)
         # Lifecycle, managed by qt_runtime
         self.backend = "notebook"
         self.status = "active"
@@ -275,6 +312,15 @@ class QWidgetRFB(RemoteFrameBuffer):
         """Return a short description of the viewer."""
         name = type(self.widget).__name__ if self.widget is not None else "viewer"
         return f"<peaks notebook {name} ({self.status})>"
+
+    @classmethod
+    def _owner_of(cls, widget):
+        """The live inline viewer containing ``widget``, or None."""
+        window = widget.window() if widget is not None else None
+        for view in list(cls._views):
+            if view.widget is not None and view.widget is window:
+                return view
+        return None
 
     def _check_thread(self):
         if QtCore.QThread.currentThread() != self._app.thread():
@@ -297,7 +343,7 @@ class QWidgetRFB(RemoteFrameBuffer):
 
         qt_runtime.close_viewer(self)
 
-    def _render(self):
+    def _render(self, overlays=True):
         """Render the whole widget (controls included) into a QImage and its buffer."""
         dpr = self._pixel_ratio
         w, h = self.widget.width(), self.widget.height()
@@ -306,12 +352,87 @@ class QWidgetRFB(RemoteFrameBuffer):
         img.setDevicePixelRatio(dpr)
         painter = QtGui.QPainter(img)
         self.widget.render(painter)
+        if overlays:
+            for window in self._live_overlays():
+                self._paint_overlay(painter, window)
         painter.end()
         return img, buf
 
+    # ----- popups and dialogs drawn over the frame
+
+    def _live_overlays(self):
+        """Open popups and dialogs of this viewer: dialogs first, in opening order."""
+        from PyQt6 import sip
+
+        self._overlays = [
+            o for o in self._overlays if not sip.isdeleted(o) and o.isVisible()
+        ]
+        return sorted(self._overlays, key=_is_popup)
+
+    def _local(self, window):
+        """Geometry of ``window`` in this viewer's widget coordinates."""
+        origin = self.widget.mapToGlobal(QtCore.QPoint(0, 0))
+        return window.geometry().translated(-origin)
+
+    def _place_overlays(self):
+        """Move open popups and dialogs inside the viewer, so they are drawn whole."""
+        width, height = self.widget.width(), self.widget.height()
+        for window in self._live_overlays():
+            rect = self._local(window)
+            top = 0 if _is_popup(window) else _DIALOG_TITLE
+            dx = max(-rect.left(), min(0, width - rect.right() - 1))
+            dy = max(top - rect.top(), min(0, height - rect.bottom() - 1))
+            if dx or dy:
+                window.move(window.pos() + QtCore.QPoint(dx, dy))
+
+    def _paint_overlay(self, painter, window):
+        rect = self._local(window)
+        if not _is_popup(window):  # a dialog has no window frame of its own
+            title = QtCore.QRect(
+                rect.left() - 1,
+                rect.top() - _DIALOG_TITLE,
+                rect.width() + 2,
+                _DIALOG_TITLE,
+            )
+            painter.fillRect(title, QtGui.QColor("#d8d8d8"))
+            painter.setPen(QtGui.QColor("#202020"))
+            painter.drawText(
+                title.adjusted(8, 0, -8, 0),
+                QtCore.Qt.AlignmentFlag.AlignVCenter,
+                window.windowTitle(),
+            )
+            painter.setPen(QtGui.QColor("#808080"))
+            painter.drawRect(title.united(rect.adjusted(-1, 0, 0, 0)))
+        window.render(painter, rect.topLeft())
+
+    def _input_target(self, pos, gpos):
+        """The QWindow and position that should receive pointer input.
+
+        Like a real popup's mouse grab (or a modal dialog), the topmost open popup or
+        dialog takes all input, in its own coordinates: a popup closes itself on a
+        click outside it, and a menu passes moves over its parent menu on.
+        """
+        overlays = self._live_overlays()
+        if not overlays:
+            return self._window, pos
+        top = overlays[-1]
+        return top.windowHandle(), QtCore.QPointF(top.mapFromGlobal(gpos))
+
+    def _redraw_later(self):
+        """Draw again once Qt timers (e.g. opening a submenu) have run."""
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+        loop.call_later(_OVERLAY_REDRAW_DELAY, self._redraw_if_live)
+
+    def _redraw_if_live(self):
+        if self.widget is not None and self.status == "active":
+            self.request_draw()
+
     def render_image(self, max_side=_STATIC_MAX_SIDE):
-        """Return the current widget appearance as PNG bytes."""
-        image, _ = self._render()
+        """Return the current widget appearance as PNG bytes (without popups)."""
+        image, _ = self._render(overlays=False)
         if max(image.width(), image.height()) > max_side:
             image = image.scaled(
                 max_side,
@@ -333,6 +454,9 @@ class QWidgetRFB(RemoteFrameBuffer):
         """Destroy the Qt widget tree and drop all frame buffers."""
         if self.widget is None:
             return
+        for window in self._live_overlays():
+            window.close()  # e.g. pyqtgraph menus have no Qt parent
+        self._overlays = []
         ref = destroy_widget(self.widget)
         self.widget = self._window = None
         self._rfb_cancel_lossless_draw()
@@ -353,10 +477,12 @@ class QWidgetRFB(RemoteFrameBuffer):
         """Render the whole widget (controls included) into an RGBX array."""
         if self.widget is None or self.status != "active":
             return None
-        run_qt_events()  # pending layout/update requests, timers, deferred deletes
-        if self.widget is None:  # released while processing events
-            return None
-        return self._render()[1]
+        with _dispatch(self):
+            run_qt_events()  # pending layout/update requests, timers, deferred deletes
+            if self.widget is None:  # released while processing events
+                return None
+            self._place_overlays()
+            return self._render()[1]
 
     def handle_event(self, event):
         """Translate a jupyter_rfb event into Qt events on the widget's QWindow."""
@@ -382,6 +508,10 @@ class QWidgetRFB(RemoteFrameBuffer):
         if self.widget is None or self.status != "active":
             return  # late events after suspension or closing
         self._check_thread()
+        with _dispatch(self):
+            self._dispatch_input(typ, event)
+
+    def _dispatch_input(self, typ, event):
         if typ == "resize":
             self._pixel_ratio = event["pixel_ratio"]
             self.widget.resize(int(event["width"]), int(event["height"]))
@@ -393,8 +523,10 @@ class QWidgetRFB(RemoteFrameBuffer):
                 self.widget.height() / max(event["height"], 1),
             )
             return  # base class already requested a draw
+        target = self._window
         if typ in _TYPES:
             pos, gpos = self._pos(event)
+            target, pos = self._input_target(pos, gpos)
             btn = MBLUT.get(event["button"], QtCore.Qt.MouseButton.NoButton)
             qev = QtGui.QMouseEvent(
                 _TYPES[typ],
@@ -407,6 +539,7 @@ class QWidgetRFB(RemoteFrameBuffer):
             )
         elif typ == "wheel":
             pos, gpos = self._pos(event)
+            target, pos = self._input_target(pos, gpos)
             qev = QtGui.QWheelEvent(
                 pos,
                 gpos,
@@ -421,6 +554,9 @@ class QWidgetRFB(RemoteFrameBuffer):
             key, text = _qt_key(event["key"])
             if key is None:
                 return
+            overlays = self._live_overlays()
+            if overlays:  # the topmost popup or dialog has the keyboard
+                target = overlays[-1].windowHandle()
             qev = QtGui.QKeyEvent(
                 QtCore.QEvent.Type.KeyPress
                 if typ == "key_down"
@@ -432,11 +568,16 @@ class QWidgetRFB(RemoteFrameBuffer):
             )
         else:
             return
-        QtWidgets.QApplication.sendEvent(self._window, qev)
+        QtWidgets.QApplication.sendEvent(target, qev)
         self._app.processEvents()
-        _close_popups()
-        if self.widget is not None:
-            self.request_draw()
+        if self.widget is None:
+            return
+        _close_foreign_popups()
+        overlays = self._live_overlays()
+        self._place_overlays()
+        self.request_draw()
+        if overlays:
+            self._redraw_later()
 
     def _pos(self, event):
         """Window-local and global position; QGraphicsScene hit-tests wheel via global.
@@ -446,6 +587,21 @@ class QWidgetRFB(RemoteFrameBuffer):
         """
         pos = QtCore.QPointF(event["x"] * self._scale[0], event["y"] * self._scale[1])
         return pos, self.widget.mapToGlobal(pos)
+
+
+class _dispatch:  # noqa: N801 (used as a context manager)
+    """Mark ``view`` as the viewer whose input or drawing Qt is processing."""
+
+    def __init__(self, view):
+        self.view = view
+
+    def __enter__(self):
+        global _dispatching
+        self.previous, _dispatching = _dispatching, self.view
+
+    def __exit__(self, *exc):
+        global _dispatching
+        _dispatching = self.previous
 
 
 def destroy_widget(widget):

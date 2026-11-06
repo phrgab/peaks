@@ -559,3 +559,138 @@ def test_repeat_after_suspend_is_still_acknowledged():
 
 def test_help_text_sent_to_browser():
     assert "Key Binding" in inline()._peaks_help
+
+
+# ----- popups and dialogs drawn inline
+
+
+def click(view, x, y, button=1):
+    view.handle_event(ev("pointer_move", x, y))
+    view.handle_event(ev("pointer_down", x, y, button, (button,)))
+    view.handle_event(ev("pointer_up", x, y, button, ()))
+
+
+def widget_centre(view, widget):
+    """Centre of a child QWidget, in the viewer's coordinates."""
+    return widget.mapTo(view.widget, widget.rect().center())
+
+
+def scene_centre(view, item):
+    gv = item.scene().views()[0]
+    return gv.mapTo(view.widget, gv.mapFromScene(item.sceneBoundingRect().center()))
+
+
+def action_centre(view, menu, action):
+    rect = menu.actionGeometry(action).translated(view._local(menu).topLeft())
+    return rect.center()
+
+
+def wait_qt_timers(view, seconds=0.4):
+    time.sleep(seconds)
+    view.get_frame()  # runs Qt timers, as each browser frame does
+
+
+def test_colour_map_menu_inline():
+    view = inline()
+    view.handle_event(ev("resize", width=650, height=770, pixel_ratio=1.0))
+    before = view.get_frame().copy()
+    p = scene_centre(view, view.widget.colorbar)
+    click(view, p.x(), p.y(), button=2)
+
+    [menu] = view._live_overlays()
+    assert "local" in [a.text() for a in menu.actions()]
+    rect = view._local(menu)
+    assert QtCore.QRect(0, 0, 650, 770).contains(rect)  # kept inside the viewer
+    frame = view.get_frame()
+    area = np.s_[rect.top() : rect.bottom(), rect.left() : rect.right()]
+    assert np.abs(frame[area].astype(int) - before[area]).mean() > 5  # drawn over
+
+    # Hover a submenu, let its timer open it, pick the first colour map
+    local = next(a for a in menu.actions() if a.text() == "local")
+    q = action_centre(view, menu, local)
+    view.handle_event(ev("pointer_move", q.x(), q.y()))
+    wait_qt_timers(view)
+    sub = view._live_overlays()[-1]
+    assert sub is not menu
+    first = next(a for a in sub.actions() if not a.isSeparator())
+    q = action_centre(view, sub, first)
+    click(view, q.x(), q.y())
+    assert view._live_overlays() == []
+    assert view.widget.colorbar.colorMap().name == "cividis"
+
+
+def test_plot_menu_inline_without_export():
+    view = inline()
+    view.handle_event(ev("resize", width=650, height=770, pixel_ratio=1.0))
+    p = scene_centre(view, view.widget.image_plot.getViewBox())
+    click(view, p.x(), p.y(), button=2)
+    [menu] = view._live_overlays()
+    texts = [a.text() for a in menu.actions()]
+    assert "View All" in texts and "Export..." not in texts
+    click(view, 5, 5)  # outside: closes the menu
+    assert view._live_overlays() == []
+
+
+def roi_view():
+    view = make_nd(("x1", "x2", "eV", "theta_par"), (8, 9, 40, 50)).disp(
+        backend="notebook"
+    )
+    view.handle_event(ev("resize", width=900, height=700, pixel_ratio=1.0))
+    w = view.widget
+    w.centralWidget().setCurrentIndex(1)
+    for name in ("a", "b"):
+        w.ROI_store[name] = {"x1": [-5.0, 5.0, 0.0], "x2": [-5.0, -5.0, 5.0]}
+        w.roi_list_box.addItem(name)
+    view.get_frame()
+    return view
+
+
+@pytest.mark.parametrize("answer, remaining", [("Yes", 0), ("No", 2)])
+def test_confirmation_dialog_inline(answer, remaining):
+    view = roi_view()
+    w = view.widget
+    p = widget_centre(view, w.clear_ROI_store_button)
+    click(view, p.x(), p.y())
+
+    [dialog] = view._live_overlays()
+    assert isinstance(dialog, QtWidgets.QMessageBox)
+    assert dialog.testAttribute(QtCore.Qt.WidgetAttribute.WA_DontShowOnScreen)
+    assert view.get_frame() is not None
+    click(view, 5, 5)  # outside the dialog: blocked, as for a modal dialog
+    assert view._live_overlays() == [dialog]
+
+    button = dialog.button(getattr(QtWidgets.QMessageBox.StandardButton, answer))
+    q = view._local(dialog).topLeft() + button.mapTo(dialog, button.rect().center())
+    click(view, q.x(), q.y())
+    assert view._live_overlays() == []
+    assert w.roi_list_box.count() == remaining == len(w.ROI_store)
+
+
+def test_confirmation_dialog_native_does_not_block():
+    record = native(make_nd(("x1", "x2", "eV", "theta_par"), (8, 9, 40, 50)))
+    w = record.widget
+    w.ROI_store["a"] = {"x1": [-5.0, 5.0, 0.0], "x2": [-5.0, -5.0, 5.0]}
+    w.roi_list_box.addItem("a")
+    w.clear_ROI_store_button.click()  # returns at once: the dialog is not modal-exec
+    [dialog] = [d for d in w.findChildren(QtWidgets.QMessageBox) if d.isVisible()]
+    dialog.button(QtWidgets.QMessageBox.StandardButton.Yes).click()
+    assert w.roi_list_box.count() == 0 and w.ROI_store == {}
+
+
+def test_dropdown_inline():
+    view = make_nd(("polar", "theta_par", "eV"), (30, 60, 80)).disp(backend="notebook")
+    view.handle_event(ev("resize", width=900, height=700, pixel_ratio=1.0))
+    view.get_frame()
+    combo = view.widget.alignment_aid
+    assert combo.count() > 1
+    p = widget_centre(view, combo)
+    click(view, p.x(), p.y())
+    [popup] = view._live_overlays()
+    items = combo.view()
+    index = items.model().index(combo.count() - 1, 0)
+    q = view._local(popup).topLeft() + items.viewport().mapTo(
+        popup, items.visualRect(index).center()
+    )
+    click(view, q.x(), q.y())
+    assert view._live_overlays() == []
+    assert combo.currentIndex() == combo.count() - 1

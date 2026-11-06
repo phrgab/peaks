@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Inline notebook backend for the interactive display panels in JupyterLab and marimo: `pks.opts.gui.backend = "notebook"` or `data.disp(backend="notebook")` (optional `notebook` extra). Inline viewers have Suspend/Close controls, are suspended to a static image when `opts.gui.max_viewers` needs room, and are replaced (with their settings restored) when their cell is re-run. Inline, held keys repeat, Cmd acts as Control on a Mac, and a **Help** button shows the keyboard shortcuts
+- Inline notebook backend for the interactive display panels in JupyterLab and marimo: `pks.opts.gui.backend = "notebook"` or `data.disp(backend="notebook")` (optional `notebook` extra). Inline viewers have Suspend/Close controls, are suspended to a static image when `opts.gui.max_viewers` needs room, and are replaced (with their settings restored) when their cell is re-run. Inline, held keys repeat, Cmd acts as Control on a Mac, a **Help** button shows the keyboard shortcuts, and right-click menus, dropdowns and dialogs are drawn inside the viewer
 - `pks.gui.suspend_all()`, `pks.gui.close_all()` and `pks.gui.viewers()` to manage open viewers, including native windows
 
 ### Fixed
@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Typo in the 2D display panel's keyboard help
 
 ### Changed
+
+- The 4D display panel's ROI messages and *Clear all ROIs* confirmation no longer block the Python session while open
 
 ### Removed
 
