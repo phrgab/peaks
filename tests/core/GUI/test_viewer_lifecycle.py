@@ -6,6 +6,7 @@ Native windows are created on Qt's offscreen platform (never mapped).
 
 import gc
 import os
+import sys
 import time
 import weakref
 
@@ -491,3 +492,25 @@ def test_copy_goes_to_browser():
     view.widget.copy_button.click()
     assert sent and sent[0]["type"] == "peaks_copy"
     assert sent[0]["text"].startswith(".metadata.set_normal_emission(")
+
+
+def test_marimo_internals_changed_falls_back_to_no_replacement(monkeypatch):
+    """If marimo's private lifecycle API breaks, viewers still open, unreplaced."""
+    import types
+
+    from peaks.core.GUI.GUI_utils import notebook_cells
+
+    class Registry:
+        def add(self, item):
+            raise AttributeError("marimo internals changed")
+
+    context = types.SimpleNamespace(cell_id="c1", cell_lifecycle_registry=Registry())
+    ctx_mod = types.ModuleType("marimo._runtime.context")
+    ctx_mod.get_context = lambda: context
+    for name in ("marimo", "marimo._runtime"):
+        monkeypatch.setitem(sys.modules, name, types.ModuleType(name))
+    monkeypatch.setitem(sys.modules, "marimo._runtime.context", ctx_mod)
+
+    state = {"hooks": set()}
+    assert notebook_cells._marimo_cell(state) is None
+    assert "c1" not in state["marimo_cells"]

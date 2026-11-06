@@ -84,7 +84,11 @@ def _marimo_cell(state):
         return None
     registered = state.setdefault("marimo_cells", set())
     if cell_id not in registered:
-        context.cell_lifecycle_registry.add(_marimo_lifecycle_item(cell_id, registered))
+        try:
+            item = _marimo_lifecycle_item(cell_id, registered)
+            context.cell_lifecycle_registry.add(item)
+        except Exception:  # marimo internals changed: fall back to no replacement
+            return None
         registered.add(cell_id)
     # One id per run: the lifecycle item resets the run when it is disposed
     return cell_id, "marimo"
