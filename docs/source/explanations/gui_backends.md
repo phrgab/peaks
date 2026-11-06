@@ -1,3 +1,4 @@
+(gui-backends)=
 # Interactive viewers in notebooks
 
 The interactive display panels (`data.disp()`) are PyQtGraph/Qt GUIs. They can be shown
@@ -9,6 +10,11 @@ in two ways:
 | `"notebook"` | Inline, in the JupyterLab or marimo cell output | No |
 
 Both use the same viewers, with the same crosshairs, cuts, ROIs and keyboard controls.
+
+Both run in the Python kernel. This is different from `data.iplot()`, which makes a
+Bokeh plot drawn by the browser. Such plots are kept when a notebook is saved or
+exported, but have none of the display panels' tools. See
+{ref}`quick-interactive-plots`.
 
 ## Native windows (default)
 
