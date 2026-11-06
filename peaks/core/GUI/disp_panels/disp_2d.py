@@ -4,7 +4,6 @@ from functools import partial
 
 import numpy as np
 import pint
-import pyperclip
 import pyqtgraph as pg
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtWidgets import (
@@ -25,7 +24,7 @@ from peaks.core.metadata.metadata_methods import DARK_BG_PALETTE, display_metada
 from peaks.core.process.tools import estimate_sym_point, sym
 
 
-def _disp_2d(data, primary_dim, exclude_from_centering):
+def _disp_2d(data, primary_dim, exclude_from_centering, backend=None):
     """Display a 2D interactive display panel.
 
     Parameters
@@ -39,12 +38,16 @@ def _disp_2d(data, primary_dim, exclude_from_centering):
     exclude_from_centering : str or tuple of str or list of str or None
         The dimension to exclude from centering. Default is 'eV'.
 
+    backend : {"qt", "notebook"}, optional
+        GUI backend; defaults to ``opts.gui.backend``.
+
     """
-    qt_runtime.show_viewer(
+    return qt_runtime.show_viewer(
         _Disp2D,
         data,
         primary_dim,
         exclude_from_centering,
+        backend=backend,
     )
 
 
@@ -874,7 +877,9 @@ class _Disp2D(QtWidgets.QMainWindow):
             for k, v in norm_values.items()
         }
         try:
-            pyperclip.copy(f".metadata.set_normal_emission({norm_values_to_return})")
+            qt_runtime.copy_text(
+                self, f".metadata.set_normal_emission({norm_values_to_return})"
+            )
         except Exception as e:
             print(
                 f"Could not access the system clipboard: {e}. "
@@ -993,6 +998,95 @@ class _Disp2D(QtWidgets.QMainWindow):
             for xh in self.xh_visible_store:
                 xh.set_visible(True)
             self.xh_visible_store = []
+
+    # ##############################
+    # Lightweight viewer state (in-session notebook re-runs)
+    # ##############################
+    def get_state(self):
+        """Return the user-adjustable view settings as plain Python values."""
+        return {
+            "version": 1,
+            "viewer": "2D",
+            "dims": list(self.dims),
+            "scan": self.scans_list.currentRow(),
+            "n_scans": len(self.data_arrays),
+            "crosshairs": [[float(v) for v in xh.get_pos()] for xh in self.xhs],
+            "visible": [cb.isChecked() for cb in self.show_DCs_checkboxes],
+            "mirror": self.show_mirror_checkbox.isChecked(),
+            "widths": [sb.value() for sb in self.DC_width_selectors],
+            "span_all": [cb.isChecked() for cb in self.DC_span_all_checkboxes],
+            "locks": [self.cscale_lock.isChecked(), self.range_lock.isChecked()],
+            "view_range": qt_runtime.view_range(self.image_plot),
+            **qt_runtime.colour_state(self.colorbar),
+        }
+
+    def set_state(self, state):
+        """Apply settings from :meth:`get_state`, skipping any that do not fit the data."""
+        if state.get("version") != 1 or state.get("viewer") != "2D":
+            return
+        same_scans = state["n_scans"] == len(self.data_arrays)
+        steps = [
+            (
+                "scan",
+                lambda: same_scans and self.scans_list.setCurrentRow(state["scan"]),
+            ),
+            (
+                "locks",
+                lambda: [
+                    cb.setChecked(v)
+                    for cb, v in zip(
+                        (self.cscale_lock, self.range_lock), state["locks"], strict=True
+                    )
+                ],
+            ),
+            (
+                "visible",
+                lambda: [
+                    cb.setChecked(v)
+                    for cb, v in zip(
+                        self.show_DCs_checkboxes, state["visible"], strict=True
+                    )
+                ],
+            ),
+            ("mirror", lambda: self.show_mirror_checkbox.setChecked(state["mirror"])),
+            ("colours", lambda: qt_runtime.set_colour_state(self.colorbar, state)),
+        ]
+        if state["dims"] == list(self.dims):  # coordinate-based settings
+            steps += [
+                (
+                    "widths",
+                    lambda: [
+                        sb.setValue(v)
+                        for sb, v in zip(
+                            self.DC_width_selectors, state["widths"], strict=True
+                        )
+                    ],
+                ),
+                (
+                    "crosshairs",
+                    lambda: [
+                        xh.set_pos(pos)
+                        for xh, pos in zip(self.xhs, state["crosshairs"], strict=True)
+                        if self._check_crosshair_in_range(pos)
+                    ],
+                ),
+                (
+                    "span_all",
+                    lambda: [
+                        cb.setChecked(v)
+                        for cb, v in zip(
+                            self.DC_span_all_checkboxes, state["span_all"], strict=True
+                        )
+                    ],
+                ),
+                (
+                    "view_range",
+                    lambda: qt_runtime.set_view_range(
+                        self.image_plot, state["view_range"]
+                    ),
+                ),
+            ]
+        qt_runtime.apply_state_steps(steps)
 
     # ##############################
     # Helper functions

@@ -3,7 +3,6 @@
 from functools import partial
 
 import numpy as np
-import pyperclip
 import pyqtgraph as pg
 from PyQt6 import QtCore, QtWidgets
 from PyQt6.QtWidgets import (
@@ -22,7 +21,7 @@ from ..GUI_utils import (
 from .disp_2d import _Disp2D
 
 
-def _disp_4d(data, primary_dim):
+def _disp_4d(data, primary_dim, backend=None):
     """Display a 4D interactive display panel.
 
     Parameters
@@ -33,11 +32,15 @@ def _disp_4d(data, primary_dim):
     primary_dim : tuple of str or list of str
         The primary dimensions for the viewer, will be shown on main data explorer map panel.
 
+    backend : {"qt", "notebook"}, optional
+        GUI backend; defaults to ``opts.gui.backend``.
+
     """
-    qt_runtime.show_viewer(
+    return qt_runtime.show_viewer(
         _Disp4D,
         data,
         primary_dim,
+        backend=backend,
     )
 
 
@@ -394,7 +397,7 @@ class _Disp4D(QtWidgets.QMainWindow):
         """Copy the ROI store to the clipboard."""
         text = f".attrs['ROI']={str(self.ROI_store)}"
         try:
-            pyperclip.copy(text)
+            qt_runtime.copy_text(self, text)
         except Exception as e:
             print(
                 f"Could not access the system clipboard: {e}. "
@@ -839,6 +842,74 @@ class _Disp4D(QtWidgets.QMainWindow):
         nearest_indexes = np.arange(left, right)[sorted_indexes[:n]]
         start, end = nearest_indexes.min(), nearest_indexes.max() + 1
         return slice(start, end)
+
+    # Lightweight viewer state (in-session notebook re-runs)
+    def get_state(self):
+        """Return the user-adjustable view settings as plain Python values."""
+
+        def roi_points(roi):
+            pts = [roi.mapSceneToParent(p[1]) for p in roi.getSceneHandlePositions()]
+            return [[float(p.x()), float(p.y())] for p in pts]
+
+        return {
+            "version": 1,
+            "viewer": "4D",
+            "dims": list(self.dims),
+            "tab": self.centralWidget().currentIndex(),
+            "primary_xh": [float(v) for v in self.primary_dims_xh.get_pos()],
+            "explorer": self.data_explorer_disp2d.get_state(),
+            "roi_view": self.roi_disp2d.get_state(),
+            "roi_dim01": roi_points(self.roi_dim01),
+            "roi_dim23": roi_points(self.roi_dim23),
+            "roi_store": {
+                k: {d: [float(x) for x in v] for d, v in roi.items()}
+                for k, roi in self.ROI_store.items()
+            },
+        }
+
+    def set_state(self, state):
+        """Apply settings from :meth:`get_state`, skipping any that do not fit the data."""
+        if state.get("version") != 1 or state.get("viewer") != "4D":
+            return
+
+        def set_roi(roi, points):
+            roi.setPos([0, 0])
+            roi.setAngle(0)
+            roi.setPoints(points)
+
+        def in_range(pos):
+            return all(
+                min(self.ranges[i]) <= pos[i] <= max(self.ranges[i]) for i in range(2)
+            )
+
+        steps = [
+            ("tab", lambda: self.centralWidget().setCurrentIndex(state["tab"])),
+        ]
+        if state["dims"] == list(self.dims):
+            steps += [
+                (
+                    "primary_xh",
+                    lambda: (
+                        in_range(state["primary_xh"])
+                        and self.primary_dims_xh.set_pos(state["primary_xh"])
+                    ),
+                ),
+                (
+                    "explorer",
+                    lambda: self.data_explorer_disp2d.set_state(state["explorer"]),
+                ),
+                ("roi_view", lambda: self.roi_disp2d.set_state(state["roi_view"])),
+                ("roi_dim01", lambda: set_roi(self.roi_dim01, state["roi_dim01"])),
+                ("roi_dim23", lambda: set_roi(self.roi_dim23, state["roi_dim23"])),
+            ]
+        steps.append(("roi_store", lambda: self._restore_ROI_store(state["roi_store"])))
+        qt_runtime.apply_state_steps(steps)
+
+    def _restore_ROI_store(self, store):
+        for name, roi in store.items():
+            if name not in self.ROI_store:
+                self.ROI_store[name] = roi
+                self.roi_list_box.addItem(name)
 
     def _set_ROI_default_pos(self, dim0, dim1):
         return [

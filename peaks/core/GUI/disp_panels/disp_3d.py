@@ -4,7 +4,6 @@ from functools import partial
 
 import numpy as np
 import pint
-import pyperclip
 import pyqtgraph as pg
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtWidgets import (
@@ -24,7 +23,7 @@ from peaks.core.metadata.metadata_methods import DARK_BG_PALETTE, display_metada
 from peaks.core.process.tools import estimate_sym_point, sym
 
 
-def _disp_3d(data, primary_dim, exclude_from_centering):
+def _disp_3d(data, primary_dim, exclude_from_centering, backend=None):
     """Display a 3D interactive display panel.
 
     Parameters
@@ -38,12 +37,16 @@ def _disp_3d(data, primary_dim, exclude_from_centering):
     exclude_from_centering : str or tuple of str or list of str or None
         The dimension to exclude from centering. Default is 'eV'.
 
+    backend : {"qt", "notebook"}, optional
+        GUI backend; defaults to ``opts.gui.backend``.
+
     """
-    qt_runtime.show_viewer(
+    return qt_runtime.show_viewer(
         _Disp3D,
         data,
         primary_dim,
         exclude_from_centering,
+        backend=backend,
     )
 
 
@@ -880,7 +883,9 @@ class _Disp3D(QtWidgets.QMainWindow):
             for k, v in norm_values.items()
         }
         try:
-            pyperclip.copy(f".metadata.set_normal_emission({norm_values_to_return})")
+            qt_runtime.copy_text(
+                self, f".metadata.set_normal_emission({norm_values_to_return})"
+            )
         except Exception as e:
             print(
                 f"Could not access the system clipboard: {e}. "
@@ -981,6 +986,72 @@ class _Disp3D(QtWidgets.QMainWindow):
     # ##############################
     # Helper functions
     # ##############################
+    # Lightweight viewer state (in-session notebook re-runs)
+    def get_state(self):
+        """Return the user-adjustable view settings as plain Python values."""
+        return {
+            "version": 1,
+            "viewer": "3D",
+            "dims": list(self.dims),
+            "positions": [sb.value() for sb in self.cursor_positions_selection],
+            "widths": [sb.value() for sb in self.cursor_widths_selection],
+            "mirror": self.mirror_checkbox.isChecked(),
+            "rotation": self.rotation_selection.value(),
+            "alignment_aid": self.alignment_aid.currentIndex(),
+            "alignment_aid_size": self.alignment_aid_size.value(),
+            "cscale_lock": self.cscale_lock.isChecked(),
+            "view_ranges": [qt_runtime.view_range(p) for p in self.image_plots],
+            **qt_runtime.colour_state(self.colorbar),
+        }
+
+    def set_state(self, state):
+        """Apply settings from :meth:`get_state`, skipping any that do not fit the data."""
+        if state.get("version") != 1 or state.get("viewer") != "3D":
+            return
+
+        def set_in_range(boxes, values):
+            for box, value in zip(boxes, values, strict=True):
+                if box.minimum() <= value <= box.maximum():
+                    box.setValue(value)
+
+        steps = [
+            ("mirror", lambda: self.mirror_checkbox.setChecked(state["mirror"])),
+            ("rotation", lambda: self.rotation_selection.setValue(state["rotation"])),
+            (
+                "alignment_aid",
+                lambda: self.alignment_aid.setCurrentIndex(state["alignment_aid"]),
+            ),
+            (
+                "alignment_aid_size",
+                lambda: self.alignment_aid_size.setValue(state["alignment_aid_size"]),
+            ),
+            ("cscale_lock", lambda: self.cscale_lock.setChecked(state["cscale_lock"])),
+            ("colours", lambda: qt_runtime.set_colour_state(self.colorbar, state)),
+        ]
+        if state["dims"] == list(self.dims):
+            steps += [
+                (
+                    "widths",
+                    lambda: set_in_range(self.cursor_widths_selection, state["widths"]),
+                ),
+                (
+                    "positions",
+                    lambda: set_in_range(
+                        self.cursor_positions_selection, state["positions"]
+                    ),
+                ),
+                (
+                    "view_ranges",
+                    lambda: [
+                        qt_runtime.set_view_range(p, r)
+                        for p, r in zip(
+                            self.image_plots, state["view_ranges"], strict=True
+                        )
+                    ],
+                ),
+            ]
+        qt_runtime.apply_state_steps(steps)
+
     def _get_active_dim_nos(self, i):
         return [dim_no for dim_no in range(3) if dim_no != i]
 
