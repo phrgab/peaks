@@ -365,6 +365,10 @@ class QWidgetRFB(RemoteFrameBuffer):
         """Show ``widget`` inline, at ``zoom`` or else fitted to the output's width."""
         self._app = QtWidgets.QApplication.instance()
         self._check_thread()
+        try:  # the Qt thread's event loop, for messages arriving on other threads
+            self._loop = asyncio.get_running_loop()
+        except RuntimeError:
+            self._loop = None
         widget.setAttribute(QtCore.Qt.WidgetAttribute.WA_DontShowOnScreen, True)
         if isinstance(widget, QtWidgets.QMainWindow):
             widget.menuBar().hide()  # the toolbar's Help button replaces it
@@ -410,6 +414,21 @@ class QWidgetRFB(RemoteFrameBuffer):
             if view.widget is not None and view.widget is window:
                 return view
         return None
+
+    def _handle_msg(self, msg):
+        """Handle a frontend message (input event or synced trait) on the Qt thread.
+
+        JupyterLab 4.4+ sends widget messages over a kernel subshell when the kernel
+        has them (ipykernel 7+), so they arrive on another thread. Qt widgets must
+        only be used from the Qt thread: hand them to its event loop.
+        """
+        if (
+            self._loop is not None
+            and QtCore.QThread.currentThread() != self._app.thread()
+        ):
+            self._loop.call_soon_threadsafe(super()._handle_msg, msg)
+            return
+        super()._handle_msg(msg)
 
     def _check_thread(self):
         if QtCore.QThread.currentThread() != self._app.thread():

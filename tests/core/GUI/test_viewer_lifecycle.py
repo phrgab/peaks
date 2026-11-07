@@ -226,6 +226,28 @@ def test_close_during_drag():
     view.close()
 
 
+def test_messages_from_another_thread_run_on_qt_thread():
+    """JupyterLab sends widget messages over a kernel subshell (another thread)."""
+    import asyncio
+    import threading
+
+    async def main():
+        view = inline()
+        handled = []
+        view.handle_event = lambda e: handled.append(threading.current_thread())
+        data = {"method": "custom", "content": {"type": "show"}}
+        msg = {"content": {"data": data}, "buffers": []}
+        thread = threading.Thread(target=view._handle_msg, args=(msg,))
+        thread.start()
+        thread.join()
+        assert handled == []  # not on the subshell thread
+        await asyncio.sleep(0.01)
+        assert handled == [threading.main_thread()]
+        view.close()
+
+    asyncio.run(main())
+
+
 def test_quick_pointer_moves_not_dropped():
     """The last of several quick moves reaches pyqtgraph (hover state, drag ends)."""
     view = inline()
