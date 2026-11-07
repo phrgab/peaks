@@ -73,8 +73,8 @@ viewer.suspend()
 viewer.close()
 
 pks.gui.suspend_all()  # all live inline viewers; native windows are not affected
-pks.gui.close_all()    # every peaks viewer, including native windows
-pks.gui.viewers()      # open and suspended viewers, oldest first
+pks.gui.close_all()  # every peaks viewer, including native windows
+pks.gui.viewers()  # open and suspended viewers, oldest first
 ```
 
 `suspend()` and `close()` can be called repeatedly. Native windows cannot be suspended.
