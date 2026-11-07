@@ -299,6 +299,84 @@ class TestRadialCuts:
         assert result.sizes["azi"] == 91
         assert result.sizes["k"] == 100
 
+    @staticmethod
+    def _arc(dims=("ky", "kx")):
+        """Unit-radius arc on the +kx side only (|phi from +kx| <= 30 deg)."""
+        kx = np.linspace(-2, 2, 401)
+        ky = np.linspace(-2, 2, 401)
+        KX, KY = np.meshgrid(kx, ky)
+        ring = 1000 * np.exp(-((np.sqrt(KX**2 + KY**2) - 1) ** 2) / 0.001)
+        phi = np.degrees(np.arctan2(KY, KX))
+        values = ring * (np.abs(phi) <= 30)  # array axes are (ky, kx)
+        da = _simulate_fake_scan(values, dims=("ky", "kx"), x=kx, y=ky)
+        return da.transpose(*dims)
+
+    def test_radial_cuts_azi_zero_points_along_named_dim(self):
+        da = self._arc()  # stored with ky first, so the default puts azi=0 along +ky
+        result = da.radial_cuts(radius=1.5, kx=0, ky=0, azi_zero="kx").pint.dequantify()
+        # Analytic: the arc spans azi in [0, 30] U [330, 360] measured from +kx
+        peak = result.sel(azi=0).idxmax("k").item()
+        assert peak == pytest.approx(1.0, abs=1e-2)
+        assert result.sel(azi=0).max() > 500
+        assert result.sel(azi=90).max() < 1e-6
+        assert result.sel(azi=180).max() < 1e-6
+        # And the default (azi=0 along +ky) misses it
+        default = da.radial_cuts(radius=1.5, kx=0, ky=0).pint.dequantify()
+        assert default.sel(azi=0).max() < 1e-6
+        assert default.sel(azi=90).max() > 500
+
+    def test_radial_cuts_azi_direction_mirrors(self):
+        kx = np.linspace(-2, 2, 401)
+        ky = np.linspace(-2, 2, 401)
+        KX, KY = np.meshgrid(kx, ky)
+        ring = 1000 * np.exp(-((np.sqrt(KX**2 + KY**2) - 1) ** 2) / 0.001)
+        phi = np.degrees(np.arctan2(KY, KX)) % 360
+        da = _simulate_fake_scan(
+            ring * (phi >= 20) * (phi <= 70), dims=("ky", "kx"), x=kx, y=ky
+        )
+        fwd = da.radial_cuts(radius=1.5, kx=0, ky=0).pint.dequantify()
+        rev = da.radial_cuts(radius=1.5, kx=0, ky=0, azi_direction=-1)
+        rev = rev.pint.dequantify()
+        np.testing.assert_allclose(
+            rev.values, fwd.values[:, ::-1], atol=1e-10
+        )  # cut at phi equals default cut at 360 - phi
+
+    def test_radial_cuts_explicit_azi_zero_independent_of_dim_order(self):
+        da = self._arc(dims=("ky", "kx"))
+        a = da.radial_cuts(radius=1.5, kx=0.1, ky=-0.1, azi_zero="kx")
+        b = da.transpose().radial_cuts(radius=1.5, kx=0.1, ky=-0.1, azi_zero="kx")
+        np.testing.assert_allclose(
+            a.pint.dequantify().transpose("k", "azi").values,
+            b.pint.dequantify().transpose("k", "azi").values,
+            atol=1e-10,
+        )
+
+    @pytest.mark.parametrize(
+        "kwargs, match",
+        [
+            ({"azi_zero": "theta_par"}, "azi_zero"),
+            ({"azi_zero": "eV"}, "azi_zero"),
+            ({"azi_direction": 0}, "azi_direction"),
+            ({"azi_direction": 2}, "azi_direction"),
+        ],
+    )
+    def test_radial_cuts_invalid_convention_raises(self, kwargs, match):
+        with pytest.raises(ValueError, match=match):
+            self._arc().radial_cuts(**kwargs)
+
+    @pytest.mark.parametrize("bad", ["theta_par", "kX", "num_azis", "radious"])
+    def test_radial_cuts_unknown_kwarg_raises(self, bad):
+        with pytest.raises(ValueError, match=bad) as err:
+            self._arc().radial_cuts(kx=0, ky=0, **{bad: 0})
+        assert "kx" in str(err.value) and "ky" in str(err.value)
+
+    def test_radial_cuts_history_records_convention(self):
+        result = self._arc().radial_cuts(azi_zero="kx", azi_direction=-1)
+        record = result.attrs["_analysis_history"].records[-1].record
+        assert "azi_zero='kx'" in record
+        assert "azi_direction=-1" in record
+        assert "+kx" in record and "-ky" in record
+
 
 class TestExtractCut:
     @pytest.fixture
