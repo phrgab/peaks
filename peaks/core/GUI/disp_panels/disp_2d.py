@@ -276,8 +276,8 @@ class _Disp2D(QtWidgets.QMainWindow):
                     <td style='padding: 5px; font-weight: normal;'>Arrow keys</td>
                   </tr>
                   <tr>
-                    <td style='padding: 5px; font-weight: normal;'>Move c_rosshair 1</td>
-                    <td style='padding: 5px; font-weight: normal;'>{self.key_modifiers_characters["move_csr2"]} + Arrow keys</td>
+                    <td style='padding: 5px; font-weight: normal;'>Move crosshair 1</td>
+                    <td style='padding: 5px; font-weight: normal;'>{self.key_modifiers_characters["move_csr2"]} (Cmd on a Mac) + Arrow keys</td>
                   </tr>
                   <tr>
                     <td style='padding: 5px; font-weight: normal;'>Move all crosshairs</td>

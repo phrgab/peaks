@@ -335,17 +335,17 @@ def _show_notebook_viewer(viewer_factory, *args, **kwargs):
 
 
 def _install_dialog_guard(app, state, notebook_rfb):
-    """Install (once) the filter that stops modal dialogs blocking the kernel."""
+    """Install (once) the filter that keeps inline viewers' windows inline."""
     if "dialog_guard" not in state:
-        state["dialog_guard"] = notebook_rfb._InlineDialogGuard()
+        state["dialog_guard"] = notebook_rfb._InlineWindowGuard()
         app.installEventFilter(state["dialog_guard"])
         if app.platformName() == "offscreen":
             QtCore.qInstallMessageHandler(_quiet_offscreen_messages)
 
 
 def _quiet_offscreen_messages(mode, context, message):
-    """Drop the offscreen plugin's harmless propagateSizeHints() notice."""
-    if "propagateSizeHints" not in message:
+    """Drop the offscreen plugin's harmless notices (e.g. raise(), grabbing)."""
+    if "This plugin does not support" not in message:
         sys.__stderr__.write(message + "\n")
 
 

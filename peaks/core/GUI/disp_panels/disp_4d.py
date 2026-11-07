@@ -598,12 +598,9 @@ class _Disp4D(QtWidgets.QMainWindow):
                 ROI_dict_A.keys()
             ) != set(self.dims[2:]):
                 selected_items[0].setSelected(False)
-                QtWidgets.QMessageBox.warning(
-                    self,
+                self._message(
                     "ROI cannot be displayed",
                     "ROI definition incompatible with current view.",
-                    QtWidgets.QMessageBox.StandardButton.Ok,
-                    QtWidgets.QMessageBox.StandardButton.Ok,
                 )
                 return
             new_data_to_plot = self.data.mask_data(ROI_dict_A).values
@@ -618,12 +615,9 @@ class _Disp4D(QtWidgets.QMainWindow):
             ):
                 for item in selected_items:
                     item.setSelected(False)
-                QtWidgets.QMessageBox.warning(
-                    self,
+                self._message(
                     "ROI cannot be displayed",
                     "ROI definitions incompatible with each other or current view.",
-                    QtWidgets.QMessageBox.StandardButton.Ok,
-                    QtWidgets.QMessageBox.StandardButton.Ok,
                 )
                 return
             new_data_to_plot = (
@@ -753,23 +747,47 @@ class _Disp4D(QtWidgets.QMainWindow):
 
     def _remove_all_ROIs_from_list(self):
         """Remove all ROIs from the list."""
-        items = [self.roi_list_box.item(i) for i in range(self.roi_list_box.count())]
+        buttons = QtWidgets.QMessageBox.StandardButton
 
-        # Create a confirmation dialog
-        reply = QtWidgets.QMessageBox.question(
-            self,
+        def remove_all(reply):
+            if reply != buttons.Yes:
+                return
+            while self.roi_list_box.count():
+                item = self.roi_list_box.takeItem(0)
+                del self.ROI_store[item.text()]
+
+        self._message(
             "Confirm Deletion",
             "Are you sure you want to delete all ROI(s)?",
-            QtWidgets.QMessageBox.StandardButton.Yes
-            | QtWidgets.QMessageBox.StandardButton.No,
-            QtWidgets.QMessageBox.StandardButton.No,
+            QtWidgets.QMessageBox.Icon.Question,
+            buttons.Yes | buttons.No,
+            default=buttons.No,
+            on_reply=remove_all,
         )
 
-        # If the user confirms, proceed with deletion
-        if reply == QtWidgets.QMessageBox.StandardButton.Yes:
-            for item in items:
-                del self.ROI_store[item.text()]
-                self.roi_list_box.takeItem(self.roi_list_box.row(item))
+    def _message(
+        self,
+        title,
+        text,
+        icon=QtWidgets.QMessageBox.Icon.Warning,
+        buttons=QtWidgets.QMessageBox.StandardButton.Ok,
+        default=None,
+        on_reply=None,
+    ):
+        """Show a message box without blocking: ``on_reply`` gets the button clicked.
+
+        Unlike ``QMessageBox.question()`` etc., ``open()`` runs no nested event loop,
+        so the same dialog also works in an inline notebook viewer.
+        """
+        box = QtWidgets.QMessageBox(icon, title, text, buttons, self)
+        box.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose)
+        if default is not None:
+            box.setDefaultButton(default)
+        if on_reply is not None:
+            box.finished.connect(
+                lambda result: on_reply(QtWidgets.QMessageBox.StandardButton(result))
+            )
+        box.open()
 
     def _select_ROI_from_list(self):
         selected_items = self.roi_list_box.selectedItems()

@@ -48,13 +48,16 @@ followed by `viewer`) to display it. In marimo there is no need to wrap it in
 `mo.ui.anywidget`.
 
 Click the viewer once before using the keyboard or the mouse wheel. The browser only
-forwards those events to a focused widget.
+forwards those events to a focused widget. On a Mac, use Cmd where the viewers use
+Control (e.g. Cmd + arrow keys to move crosshair 1), as in a native window.
 
-Each inline viewer has two buttons above it:
+Each inline viewer has buttons above it:
 
 * **Suspend** keeps a static image of the viewer in the notebook and releases the Qt
   viewer and its memory. Re-run the cell to make it interactive again.
 * **Close** releases everything and clears the output.
+* **Help** shows the keyboard shortcuts (2D and 3D viewers), which native windows show
+  from their menu bar.
 
 The same is available from Python:
 
@@ -123,15 +126,16 @@ machine, native windows and inline viewers can be used in the same kernel.
 
 ## Limitations
 
-* Menus, right-click menus and dialogs are separate windows and are not shown inline.
-  The menu bar and plot context menus are disabled in notebook mode. Any dialog that a
-  viewer opens is closed automatically, and its message is shown in the notebook, so
-  it cannot block the kernel. *Clear all ROIs* in the 4D viewer asks for confirmation,
-  so it does nothing inline; remove ROIs individually instead.
+* Right-click menus (e.g. the colour bar's colour maps), dropdowns and the viewers'
+  dialogs are drawn inside the inline viewer, which passes them its input while they
+  are open. The menu bar is replaced by the **Help** button, and *Export...* is removed
+  from the plot menus, as it opens a separate window.
+* A dialog that blocks until it is answered (`QDialog.exec()`) cannot be shown inline:
+  it is closed automatically and its message is shown in the notebook instead, so it
+  cannot block the kernel. The peaks viewers do not use such dialogs inline.
 * **Copy** buttons copy to the browser clipboard, and the copied text is also printed
   below the viewer.
-* Holding a key down moves a crosshair by one step only (no auto-repeat), and Qt cursor
-  shapes and tooltips are not shown.
+* Qt cursor shapes and tooltips are not shown.
 * About 30 frames per second while dragging. The browser widget (jupyter_rfb) forwards
   at most one pointer move per 20 ms. Higher-DPI screens send larger frames
   (about 240 kB per frame at 2× scaling), which matters for remote kernels.
