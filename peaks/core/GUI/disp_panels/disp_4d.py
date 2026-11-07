@@ -4,7 +4,7 @@ from functools import partial
 
 import numpy as np
 import pyqtgraph as pg
-from PyQt6 import QtCore, QtWidgets
+from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -42,6 +42,150 @@ def _disp_4d(data, primary_dim, backend=None):
         primary_dim,
         backend=backend,
     )
+
+
+_SHIFT = QtCore.Qt.KeyboardModifier.ShiftModifier
+
+
+class _PolygonROI(pg.PolyLineROI):
+    """Closed polygon ROI with extra mouse gestures.
+
+    Drag inside to move it, drag an edge to move that edge along its on-screen
+    normal, Shift-click an edge or corner to add or remove a corner.
+
+    The outline is drawn and hit-tested here rather than by pyqtgraph's segment
+    items, which are hidden: their hit area is skewed when the axes have very
+    different scales (e.g. eV vs theta_par) and then swallows drags of the interior.
+    """
+
+    EDGE_PX = 4  # half-width of the grabbable band around each edge, in pixels
+
+    def __init__(self, positions):
+        super().__init__(
+            positions=positions,
+            pen=pg.mkPen((204, 51, 153), width=2.5),
+            hoverPen=pg.mkPen((255, 255, 0), width=2.5),  # default 1 px is hard to see
+            handlePen=pg.mkPen((204, 51, 153), width=2),
+            closed=True,
+        )
+        self._edge = None  # edge being dragged
+        self._hover_edge = None  # edge under the mouse
+
+    def addSegment(self, h1, h2, index=None):
+        super().addSegment(h1, h2, index)
+        for seg in self.segments:
+            seg.hide()  # hidden items take no mouse events; outline drawn in paint()
+
+    def addHandle(self, info, index=None):
+        h = super().addHandle(info, index=index)
+        h.sigClicked.connect(self._handle_clicked)
+        return h
+
+    def _handle_clicked(self, handle, ev):
+        """Shift-click a corner to remove it (keeping at least 3)."""
+        if (
+            ev.button() == QtCore.Qt.MouseButton.LeftButton
+            and ev.modifiers() & _SHIFT
+            and self.checkRemoveHandle(handle)
+        ):
+            # Defer: the handle is still inside its own click handler
+            QtCore.QTimer.singleShot(0, partial(self.removeHandle, handle))
+
+    # Geometry, in screen pixels where it matters
+    def _device(self):
+        view = self.getViewWidget()
+        return None if view is None else self.deviceTransform(view.viewportTransform())
+
+    def _polygon(self):
+        return QtGui.QPolygonF([h.pos() for h in self.getHandles()])
+
+    def paint(self, p, *args):
+        p.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing, self._antialias)
+        # Highlight just the edge that a drag would move, else the whole outline
+        edge = self._edge or self._hover_edge
+        whole = self.mouseHovering and edge is None
+        p.setPen(self.hoverPen if whole else self.pen)
+        p.drawPolygon(self._polygon())
+        if edge is not None and edge in self.segments:
+            p.setPen(self.hoverPen)
+            p.drawLine(*(h.pos() for h in edge.endpoints))
+
+    def hoverEvent(self, ev):
+        super().hoverEvent(ev)
+        edge = None if ev.isExit() else self._edge_at(ev.pos())
+        if edge is not self._hover_edge:
+            self._hover_edge = edge
+            self.update()
+
+    def shape(self):
+        """The polygon plus an EDGE_PX band around its outline."""
+        path = QtGui.QPainterPath()
+        path.addPolygon(self._polygon())
+        path.closeSubpath()
+        dt = self._device()
+        if dt is None:
+            return path
+        stroker = QtGui.QPainterPathStroker()
+        stroker.setWidth(2 * self.EDGE_PX)
+        dev = dt.map(path)
+        return dt.inverted()[0].map(stroker.createStroke(dev).united(dev))
+
+    def viewTransformChanged(self):
+        super().viewTransformChanged()
+        self.prepareGeometryChange()  # shape depends on the pixel size
+
+    def _edge_at(self, pos):
+        """Return the segment within EDGE_PX pixels of ``pos`` (ROI coords), or None."""
+        dt = self._device()
+        if dt is None:
+            return None
+        q = dt.map(pos)
+        best, best_dist = None, self.EDGE_PX
+        for seg in self.segments:
+            a, b = (dt.map(h.pos()) for h in seg.endpoints)
+            d = b - a
+            length2 = QtCore.QPointF.dotProduct(d, d)
+            if not length2:
+                continue
+            t = np.clip(QtCore.QPointF.dotProduct(q - a, d) / length2, 0, 1)
+            r = q - (a + d * t)
+            dist = np.hypot(r.x(), r.y())
+            if dist <= best_dist:
+                best, best_dist = seg, dist
+        return best
+
+    # Mouse
+    def mouseDragEvent(self, ev):
+        if ev.isStart():
+            self._edge = None
+            if ev.button() == QtCore.Qt.MouseButton.LeftButton:
+                self._edge = self._edge_at(ev.buttonDownPos())
+            if self._edge is not None:
+                self._edge_start = [h.scenePos() for h in self._edge.endpoints]
+                d = self._edge_start[1] - self._edge_start[0]
+                self._normal = QtCore.QPointF(-d.y(), d.x()) / np.hypot(d.x(), d.y())
+        if self._edge is None:
+            super().mouseDragEvent(ev)  # move the whole ROI
+            return
+        ev.accept()
+        shift = ev.scenePos() - ev.buttonDownScenePos()
+        offset = self._normal * QtCore.QPointF.dotProduct(shift, self._normal)
+        for h, p in zip(self._edge.endpoints, self._edge_start, strict=True):
+            self.movePoint(h, p + offset, finish=False, coords="scene")
+        if ev.isFinish():
+            self._edge = None
+            self.update()
+            self.stateChangeFinished()
+
+    def mouseClickEvent(self, ev):
+        # Shift-click on an edge adds a corner there
+        if ev.button() == QtCore.Qt.MouseButton.LeftButton and ev.modifiers() & _SHIFT:
+            seg = self._edge_at(ev.pos())
+            if seg is not None:
+                ev.accept()
+                self.segmentClicked(seg, pos=ev.pos())
+                return
+        super().mouseClickEvent(ev)
 
 
 class _Disp4D(QtWidgets.QMainWindow):
@@ -134,13 +278,14 @@ class _Disp4D(QtWidgets.QMainWindow):
         ) = self._build_primary_dims_explorer_plot(left_column_layout)
         xh.set_visible(False)
         # Add a ROI
-        self.roi_dim01 = pg.PolyLineROI(
-            positions=self._set_ROI_default_pos(0, 1),
-            pen=pg.mkPen((204, 51, 153), width=2.5),
-            handlePen=pg.mkPen((204, 51, 153), width=2),
-            closed=True,
-        )
+        self.roi_dim01 = _PolygonROI(self._set_ROI_default_pos(0, 1))
         self.primary_dims_roi_plot.addItem(self.roi_dim01)
+        hint = QLabel(
+            "ROI: drag inside to move, drag an edge to move it in/out, drag a corner "
+            "to reshape. Shift-click an edge/corner to add/remove a corner."
+        )
+        hint.setWordWrap(True)
+        left_column_layout.addWidget(hint)
         self._build_roi_controls(left_column_layout)
 
         left_column_layout.addStretch()
@@ -560,12 +705,7 @@ class _Disp4D(QtWidgets.QMainWindow):
         """Add the ROI to the right plot."""
         if ROI_points is None:
             ROI_points = self._set_ROI_default_pos(2, 3)
-        self.roi_dim23 = pg.PolyLineROI(
-            positions=ROI_points,
-            pen=pg.mkPen((204, 51, 153), width=2.5),
-            handlePen=pg.mkPen((204, 51, 153), width=2),
-            closed=True,
-        )
+        self.roi_dim23 = _PolygonROI(ROI_points)
         self.roi_disp2d.image_plot.addItem(self.roi_dim23)
 
     def _get_ROI_from_plot(self):
