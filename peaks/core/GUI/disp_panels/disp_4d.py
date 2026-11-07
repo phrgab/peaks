@@ -457,9 +457,16 @@ class _Disp4D(QtWidgets.QMainWindow):
     def _update_dim01_slider_position(self):
         """Update the slider positions based on the crosshair position."""
         pos = self.primary_dims_xh.get_pos()
+        changed = False
         for i in range(2):
             index = self._find_nearest_sorted(self.coarsened_coords[i], pos[i])
-            self.dim01_sliders[i].setValue(index)
+            slider = self.dim01_sliders[i]
+            changed |= index != slider.value()
+            # Block valueChanged so a diagonal move redraws once, not once per slider
+            with QtCore.QSignalBlocker(slider):
+                slider.setValue(index)
+        if changed:
+            self._update_data_explorer_disp2d()
         self._update_primary_dim_cursor_stats()
 
     def _update_dim01_binning(self, dim_no):
@@ -503,7 +510,7 @@ class _Disp4D(QtWidgets.QMainWindow):
             data_2d = data_2d.compute()
 
         self.data_explorer_disp2d.data_arrays[0].data = data_2d
-        self.data_explorer_disp2d._change_data()
+        self.data_explorer_disp2d._refresh_data()
 
         # print(f"Time to update 2D plot: {time.perf_counter() - st}")
 
@@ -654,10 +661,9 @@ class _Disp4D(QtWidgets.QMainWindow):
         dimA = self.dims[0] if plot_no == 0 else self.dims[2]
         dimB = self.dims[1] if plot_no == 0 else self.dims[3]
         for ROI in ROIs:
-            dimA_data = ROI[dimA]
-            dimA_data.extend([dimA_data[0]])
-            dimB_data = ROI[dimB]
-            dimB_data.extend([dimB_data[0]])
+            # New lists: extending in place would corrupt the stored ROI
+            dimA_data = [*ROI[dimA], ROI[dimA][0]]
+            dimB_data = [*ROI[dimB], ROI[dimB][0]]
 
             if plot_no == 0:
                 line_plot = pg.PlotDataItem(
@@ -706,17 +712,17 @@ class _Disp4D(QtWidgets.QMainWindow):
         data : np.ndarray
             The data to display.
         """
-        if not resest_ROI:
-            pts_scene = self.roi_dim23.getSceneHandlePositions()
-            ROI_points = [self.roi_dim23.mapSceneToParent(pt[1]) for pt in pts_scene]
         self.roi_disp2d.data_arrays[0].data = data
-        self.roi_disp2d._change_data()
+        self.roi_disp2d._refresh_data()
 
-        # Re-add the ROI to the right plot
+        # Drop outlines, as the old full redraw (plot.clear()) did
+        for i in self.display_ROIs_23:
+            self.roi_disp2d.image_plot.removeItem(i)
+        self.display_ROIs_23 = []
         if resest_ROI:
-            self._add_ROI_to_disp2d()
-        else:
-            self._add_ROI_to_disp2d(ROI_points)
+            self.roi_dim23.setPos([0, 0])
+            self.roi_dim23.setAngle(0)
+            self.roi_dim23.setPoints(self._set_ROI_default_pos(2, 3))
 
     def _add_ROI_to_list(self):
         """Add the current ROI to the list."""

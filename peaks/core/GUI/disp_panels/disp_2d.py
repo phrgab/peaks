@@ -631,6 +631,21 @@ class _Disp2D(QtWidgets.QMainWindow):
         # Mark as initialized
         self.init = True
 
+    def _refresh_data(self):
+        """Redraw after the current array's values changed in place (same coords).
+
+        Much cheaper than `_change_data`, which rebuilds every plot item.
+        """
+        self.image_item.setImage(self.current_data.values, autoLevels=False)
+        if not self.cscale_lock.isChecked():
+            self.c_min = float(self.current_data.min())
+            self.c_max = float(self.current_data.max())
+            self.colorbar.lo_lim, self.colorbar.hi_lim = self.c_min, self.c_max
+            self.colorbar.setLevels((self.c_min, self.c_max))
+        for i in range(self.num_xhs):
+            self._update_DC(i)
+        self._update_cursor_stats_text()
+
     def _update_DC(self, xh_no):
         """Update the DC plots when the crosshair is moved."""
         # Get the xh number and related plots
