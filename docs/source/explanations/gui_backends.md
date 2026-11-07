@@ -58,6 +58,12 @@ Each inline viewer has buttons above it:
 * **Close** releases everything and clears the output.
 * **Help** shows the keyboard shortcuts (2D and 3D viewers), which native windows show
   from their menu bar.
+* **−** and **+** zoom the viewer out and in (50% to 150%), keeping its layout, and
+  **Fit** scales it to the width of the output. A new viewer is fitted, scaled down if
+  needed but never up. If you chose a zoom yourself, re-running the cell keeps it.
+
+Dragging the viewer's bottom-right corner resizes it instead: the plots and controls
+are rearranged to the new size, at the current zoom.
 
 The same is available from Python:
 

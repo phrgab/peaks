@@ -28,7 +28,7 @@ from jupyter_rfb import RemoteFrameBuffer
 from jupyter_rfb.widget import JS
 from PyQt6 import QtCore, QtGui, QtWidgets
 from pyqtgraph.jupyter.GraphicsView import MBLUT, TYPLUT, get_buttons, get_modifiers
-from traitlets import Unicode
+from traitlets import Float, Unicode
 
 _TYPES = {**TYPLUT, "double_click": QtCore.QEvent.Type.MouseButtonDblClick}
 _KEYS = {
@@ -40,6 +40,11 @@ _KEYS = {
     "Enter": "Return",
     "Meta": "Control",  # Cmd on a Mac, which Qt treats as Control natively
 }
+# Zoom levels of the toolbar's zoom buttons; Fit may choose any value from _MIN_FIT
+_ZOOM_STEPS = (0.5, 0.67, 0.75, 0.8, 0.9, 1.0, 1.1, 1.25, 1.5)
+_MIN_FIT = 0.25
+# Border of jupyter_rfb's view around the frame (css px, both sides together)
+_VIEW_BORDER = 2
 # Longest side of the image kept for a suspended viewer (device pixels)
 _STATIC_MAX_SIDE = 1600
 # Height of the title strip drawn above an inline dialog (css px)
@@ -152,6 +157,23 @@ export default () => {
         help.appendChild(hide)
         live.appendChild(help)
       }
+      // Zoom: scale the viewer (its layout is kept); Fit to the output's width
+      const zoomOut = button('\u2212', null)
+      const zoomLabel = document.createElement('span')
+      zoomLabel.style.cssText = 'min-width:3.2em;text-align:center'
+      bar.appendChild(zoomLabel)
+      const zoomIn = button('+', null)
+      const fitButton = button('Fit', null)
+      zoomOut.title = 'Zoom out'
+      zoomIn.title = 'Zoom in'
+      fitButton.title = 'Fit to the width of the output'
+      zoomOut.onclick = () => model.send({ type: 'peaks_zoom', step: -1 })
+      zoomIn.onclick = () => model.send({ type: 'peaks_zoom', step: 1 })
+      const fit = () => {
+        if (el.clientWidth > 0) model.send({ type: 'peaks_fit', available: el.clientWidth })
+      }
+      fitButton.onclick = fit
+      const zoomControls = [zoomOut, zoomLabel, zoomIn, fitButton]
       const label = document.createElement('span')
       bar.appendChild(label)
       const img = document.createElement('img')
@@ -168,6 +190,9 @@ export default () => {
         live.style.display = mode === 'live' ? '' : 'none'
         suspendButton.style.display = mode === 'live' ? '' : 'none'
         helpButton.style.display = mode === 'live' && helpText ? '' : 'none'
+        for (const c of zoomControls) c.style.display = mode === 'live' ? '' : 'none'
+        const zoom = model.get('_peaks_zoom')
+        zoomLabel.textContent = zoom ? `${Math.round(zoom * 100)}%` : ''
         const src = mode === 'suspended' ? model.get('_peaks_static') : ''
         img.style.display = src ? 'block' : 'none'
         if (src) {
@@ -217,11 +242,17 @@ export default () => {
       }
       model.on('change:_peaks_mode', update)
       model.on('change:_peaks_static', update)
+      model.on('change:_peaks_zoom', update)
       model.on('msg:custom', onMessage)
       update()
+      // Not zoomed yet: fit to the output, once it has been laid out
+      if (!model.get('_peaks_zoom') && model.get('_peaks_mode') === 'live') {
+        requestAnimationFrame(fit)
+      }
       return () => {
         model.off('change:_peaks_mode', update)
         model.off('change:_peaks_static', update)
+        model.off('change:_peaks_zoom', update)
         model.off('msg:custom', onMessage)
         document.removeEventListener('keydown', onKeyDown, true)
         live.removeEventListener('pointerdown', onPointerDown, true)
@@ -328,8 +359,10 @@ class QWidgetRFB(RemoteFrameBuffer):
     _peaks_mode = Unicode("live").tag(sync=True)
     _peaks_static = Unicode("").tag(sync=True)
     _peaks_help = Unicode("").tag(sync=True)  # HTML for the toolbar Help button
+    _peaks_zoom = Float(0.0).tag(sync=True)  # 0 until fitted to the output
 
-    def __init__(self, widget, **kwargs):
+    def __init__(self, widget, zoom=None, **kwargs):
+        """Show ``widget`` inline, at ``zoom`` or else fitted to the output's width."""
         self._app = QtWidgets.QApplication.instance()
         self._check_thread()
         widget.setAttribute(QtCore.Qt.WidgetAttribute.WA_DontShowOnScreen, True)
@@ -339,14 +372,22 @@ class QWidgetRFB(RemoteFrameBuffer):
             view.sceneObj.contextMenu = []  # Export... opens a separate window
         widget.show()
         self._app.processEvents()
-        kwargs.setdefault("css_width", f"{widget.width()}px")
-        kwargs.setdefault("css_height", f"{widget.height()}px")
+        scale = zoom or 1.0
+        kwargs.setdefault(
+            "css_width", f"{round(widget.width() * scale) + _VIEW_BORDER}px"
+        )
+        kwargs.setdefault(
+            "css_height", f"{round(widget.height() * scale) + _VIEW_BORDER}px"
+        )
+        kwargs.setdefault("_peaks_zoom", zoom or 0.0)
         kwargs.setdefault("_peaks_help", getattr(widget, "help_text", ""))
         super().__init__(**kwargs)
         self.widget = widget
         self._window = widget.windowHandle()
         self._pixel_ratio = 1.0
         self._scale = (1.0, 1.0)  # widget px per browser css px
+        self.zoom = scale  # browser css px per widget px
+        self.zoom_chosen = zoom is not None  # by the user, rather than fitted
         self._overlays = []  # popups and dialogs drawn over the frame, bottom first
         self._overlay_redraw = None  # pending timer handle while overlays are open
         QWidgetRFB._views.add(self)
@@ -558,6 +599,10 @@ class QWidgetRFB(RemoteFrameBuffer):
             return self.suspend()
         if typ == "peaks_close":
             return self.close()
+        if typ == "peaks_zoom":
+            return self._step_zoom(event.get("step", 0))
+        if typ == "peaks_fit":
+            return self._fit(event.get("available", 0))
         if typ == "close":  # frontend model closed (e.g. marimo cell re-run)
             from peaks.core.GUI.GUI_utils import qt_runtime
 
@@ -581,8 +626,11 @@ class QWidgetRFB(RemoteFrameBuffer):
 
     def _dispatch_input(self, typ, event):
         if typ == "resize":
-            self._pixel_ratio = event["pixel_ratio"]
-            self.widget.resize(int(event["width"]), int(event["height"]))
+            # The widget keeps its layout size at any zoom; frames match the screen
+            self._pixel_ratio = event["pixel_ratio"] * self.zoom
+            self.widget.resize(
+                round(event["width"] / self.zoom), round(event["height"] / self.zoom)
+            )
             self._app.processEvents()
             # The widget may refuse to shrink below its minimum size; the frame is
             # then scaled by the browser, so scale pointer coordinates to match.
@@ -659,6 +707,34 @@ class QWidgetRFB(RemoteFrameBuffer):
         self.request_draw()
         if overlays:
             self._redraw_later()
+
+    # ----- zoom
+
+    def _set_zoom(self, zoom, chosen):
+        """Show the widget ``zoom`` times its size, keeping its layout."""
+        if self.widget is None:
+            return
+        self.zoom, self.zoom_chosen = zoom, chosen
+        self._peaks_zoom = zoom
+        # The browser then sends a resize event, which sets the frame resolution
+        self.css_width = f"{round(self.widget.width() * zoom) + _VIEW_BORDER}px"
+        self.css_height = f"{round(self.widget.height() * zoom) + _VIEW_BORDER}px"
+
+    def _step_zoom(self, step):
+        if step > 0:
+            zoom = next((z for z in _ZOOM_STEPS if z > self.zoom + 1e-3), None)
+        else:
+            zoom = next((z for z in _ZOOM_STEPS[::-1] if z < self.zoom - 1e-3), None)
+        if zoom is not None:
+            self._set_zoom(zoom, chosen=True)
+
+    def _fit(self, available):
+        """Zoom out (never in) to fit ``available`` css px of width."""
+        if self.widget is None or available <= 0:
+            return
+        fit = (available - _VIEW_BORDER) / self.widget.width()
+        zoom = max(_MIN_FIT, min(1.0, int(fit * 100) / 100))
+        self._set_zoom(zoom, chosen=False)
 
     def _pos(self, event):
         """Window-local and global position; QGraphicsScene hit-tests wheel via global.

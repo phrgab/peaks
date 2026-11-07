@@ -742,3 +742,55 @@ def test_pointer_moves_acknowledged_and_unchanged_frames_skipped():
     assert view.get_frame() is None
     view.widget.colorbar.setLevels(values=(0.2, 0.3))
     assert view.get_frame() is not None
+
+
+# ----- zoom
+
+
+def test_zoom_fits_output_and_keeps_layout():
+    view = inline()
+    w = view.widget
+    size = (w.width(), w.height())
+    assert view._peaks_zoom == 0  # the browser asks for a fit once laid out
+    assert view.css_width == f"{size[0] + 2}px"  # plus the view's border
+
+    view.handle_event(ev("peaks_fit", available=500))
+    zoom = view.zoom
+    assert zoom == view._peaks_zoom < 1 and not view.zoom_chosen
+    css = int(view.css_width[:-2])
+    assert css <= 500
+    # The browser then reports the new size (inside the border), at a Retina ratio
+    view.handle_event(
+        ev("resize", width=css - 2, height=round(size[1] * zoom), pixel_ratio=2.0)
+    )
+    assert abs(w.width() - size[0]) <= 1 and abs(w.height() - size[1]) <= 1
+    frame = view.get_frame()
+    assert frame.shape[1] == pytest.approx(2 * (css - 2), abs=2)  # screen resolution
+    pos, _ = view._pos(ev("pointer_move", 100, 100))
+    assert pos.x() == pytest.approx(100 / zoom, rel=0.01)
+
+    view.handle_event(ev("peaks_fit", available=5000))
+    assert view.zoom == 1.0  # never zoomed in to fit
+
+
+def test_zoom_buttons_and_rerun(monkeypatch):
+    cells = Cells(monkeypatch)
+    cells.run("A")
+    view = inline()
+    view.handle_event(ev("peaks_fit", available=500))
+    fitted = view.zoom
+    cells.run("A")
+    view = inline()
+    assert view.zoom == 1.0 and view._peaks_zoom == 0  # fitted zoom is not kept
+
+    view.handle_event(ev("peaks_zoom", step=-1))
+    view.handle_event(ev("peaks_zoom", step=-1))
+    assert view.zoom == 0.8 and view.zoom_chosen
+    cells.run("A")
+    view = inline()
+    assert view.zoom == view._peaks_zoom == 0.8  # chosen zoom is kept
+    assert view.css_width == f"{round(view.widget.width() * 0.8) + 2}px"
+    for _ in range(10):
+        view.handle_event(ev("peaks_zoom", step=1))
+    assert view.zoom == 1.5
+    assert fitted < 1

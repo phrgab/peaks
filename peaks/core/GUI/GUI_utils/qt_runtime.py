@@ -324,7 +324,7 @@ def _show_notebook_viewer(viewer_factory, *args, **kwargs):
             )
 
     try:
-        view = notebook_rfb.QWidgetRFB(widget)
+        view = notebook_rfb.QWidgetRFB(widget, zoom=(saved or {}).get("zoom"))
     except Exception:
         notebook_rfb.destroy_widget(widget)
         raise
@@ -356,7 +356,10 @@ def _capture_state(record):
     if record.cell_key is None or widget is None or not hasattr(widget, "get_state"):
         return
     try:
-        state["cell_states"][record.cell_key] = widget.get_state()
+        saved = widget.get_state()
+        if getattr(record, "zoom_chosen", False):  # else fit the new viewer again
+            saved["zoom"] = record.zoom
+        state["cell_states"][record.cell_key] = saved
     except Exception as e:  # state is a convenience; never block suspension
         analysis_warning(
             f"Could not save the viewer settings: {e}",
