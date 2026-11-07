@@ -388,6 +388,7 @@ class QWidgetRFB(RemoteFrameBuffer):
         self._scale = (1.0, 1.0)  # widget px per browser css px
         self.zoom = scale  # browser css px per widget px
         self.zoom_chosen = zoom is not None  # by the user, rather than fitted
+        self._stale_size = None  # a browser size to ignore after a zoom change
         self._overlays = []  # popups and dialogs drawn over the frame, bottom first
         self._overlay_redraw = None  # pending timer handle while overlays are open
         QWidgetRFB._views.add(self)
@@ -505,6 +506,28 @@ class QWidgetRFB(RemoteFrameBuffer):
             return self._window, pos
         top = overlays[-1]
         return top.windowHandle(), QtCore.QPointF(top.mapFromGlobal(gpos))
+
+    def _send_final_release(self, target, release):
+        """Send the release of the last held button to ``target`` (a QWindow).
+
+        A press makes Qt send all mouse input, hover moves included, to the pressed
+        widget until the last button is released. Qt does not end this at the
+        release in windows with WA_DontShowOnScreen, as inline viewers have, so
+        hover moves would keep going to the last clicked widget. Clear the
+        attribute for the release, so Qt ends it (and sends enter/leave events).
+
+        Only for the viewer's own window: toggling it on a shown popup menu stops
+        the menu acting on the release.
+        """
+        if target is not self._window:
+            QtWidgets.QApplication.sendEvent(target, release)
+            return
+        attr = QtCore.Qt.WidgetAttribute.WA_DontShowOnScreen
+        self.widget.setAttribute(attr, False)
+        try:
+            QtWidgets.QApplication.sendEvent(target, release)
+        finally:
+            self.widget.setAttribute(attr, True)
 
     def _redraw_later(self):
         """Draw periodically while popups or dialogs are open.
@@ -626,6 +649,10 @@ class QWidgetRFB(RemoteFrameBuffer):
 
     def _dispatch_input(self, typ, event):
         if typ == "resize":
+            size = (event["width"], event["height"])
+            if size == self._stale_size:
+                return  # the size from before a zoom change, sent before the new one
+            self._stale_size = None
             # The widget keeps its layout size at any zoom; frames match the screen
             self._pixel_ratio = event["pixel_ratio"] * self.zoom
             self.widget.resize(
@@ -682,22 +709,39 @@ class QWidgetRFB(RemoteFrameBuffer):
             )
         else:
             return
-        if qev is not None:
+        if qev is not None and typ == "pointer_move":
+            # Moves are already paced by acknowledgements. pyqtgraph would drop one
+            # within 10 ms of the last, often the final one, leaving hover state and
+            # drags at an earlier position.
+            rate_limit = pg.getConfigOption("mouseRateLimit")
+            pg.setConfigOption("mouseRateLimit", 0)
+            try:
+                QtWidgets.QApplication.sendEvent(target, qev)
+            finally:
+                pg.setConfigOption("mouseRateLimit", rate_limit)
+        elif qev is not None and typ == "pointer_up" and not qev.buttons():
+            self._send_final_release(target, qev)
+        elif qev is not None:
             QtWidgets.QApplication.sendEvent(target, qev)
         if typ == "double_click":
             # The browser sends it after the second release, so Qt would see a press
             # (a double-click) that is never released: e.g. a spin box arrow would
-            # keep stepping. Release it, as after a native double-click.
+            # keep stepping. Release it, as after a native double-click. Send it to
+            # the widget directly: Qt routes a release only to a pressed widget, and
+            # a double-click event does not mark one.
+            owner = self.widget if target is self._window else self._live_overlays()[-1]
+            child = owner.childAt(pos.toPoint()) or owner
+            local = QtCore.QPointF(child.mapFrom(owner, pos.toPoint()))
             release = QtGui.QMouseEvent(
                 QtCore.QEvent.Type.MouseButtonRelease,
-                pos,
+                local,
                 pos,
                 gpos,
                 btn,
                 QtCore.Qt.MouseButton.NoButton,
                 _modifiers(event),
             )
-            QtWidgets.QApplication.sendEvent(target, release)
+            QtWidgets.QApplication.sendEvent(child, release)
         self._app.processEvents()
         if self.widget is None:
             return
@@ -714,6 +758,17 @@ class QWidgetRFB(RemoteFrameBuffer):
         """Show the widget ``zoom`` times its size, keeping its layout."""
         if self.widget is None:
             return
+        old = (
+            round(self.widget.width() * self.zoom),
+            round(self.widget.height() * self.zoom),
+        )
+        if old != (
+            round(self.widget.width() * zoom),
+            round(self.widget.height() * zoom),
+        ):
+            # The browser may still report the old size once: at the new zoom, that
+            # would resize the widget (e.g. to 3x its size when zooming to 1/3)
+            self._stale_size = old
         self.zoom, self.zoom_chosen = zoom, chosen
         self._peaks_zoom = zoom
         # The browser then sends a resize event, which sets the frame resolution

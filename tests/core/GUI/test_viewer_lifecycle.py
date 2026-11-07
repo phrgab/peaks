@@ -226,6 +226,47 @@ def test_close_during_drag():
     view.close()
 
 
+def test_quick_pointer_moves_not_dropped():
+    """The last of several quick moves reaches pyqtgraph (hover state, drag ends)."""
+    view = inline()
+    view.handle_event(ev("resize", width=650, height=770, pixel_ratio=1.0))
+    seen = []
+    view.widget.image_plot.scene().sigMouseMoved.connect(seen.append)
+    for k in range(6):  # well within pyqtgraph's 10 ms mouseRateLimit
+        view.handle_event(ev("pointer_move", 200 + 5 * k, 200))
+    gv = view.widget.graphics_layout
+    final = gv.mapFromScene(seen[-1])
+    assert gv.mapTo(view.widget, final).x() == pytest.approx(225, abs=1)
+    assert len(seen) == 6
+    view.close()
+
+
+@pytest.mark.parametrize("final_release", ["click", "double_click"])
+def test_hover_after_click_reaches_widget_under_cursor(final_release):
+    """After a click, hover moves go to the widget under the cursor, not the clicked one."""
+    view = inline()
+    view.handle_event(ev("resize", width=650, height=770, pixel_ratio=1.0))
+    w = view.widget
+    box = w.show_DCs_checkboxes[2]
+    bx, by = (lambda p: (p.x(), p.y()))(box.mapTo(w, box.rect().center()))
+    view.handle_event(ev("pointer_down", bx, by, 1, (1,)))
+    view.handle_event(ev("pointer_up", bx, by, 1, ()))
+    if final_release == "double_click":
+        view.handle_event(ev("pointer_down", bx, by, 1, (1,)))
+        view.handle_event(ev("pointer_up", bx, by, 1, ()))
+        view.handle_event(ev("double_click", bx, by, 1, ()))
+    view.handle_event(ev("resize", width=600, height=700, pixel_ratio=2.0))  # relayout
+    seen = []
+    w.image_plot.scene().sigMouseMoved.connect(seen.append)
+    gv = w.graphics_layout
+    centre = gv.mapTo(w, gv.mapFromScene(w.image_plot.sceneBoundingRect().center()))
+    sx, sy = view._scale
+    view.handle_event(ev("pointer_move", centre.x() / sx, centre.y() / sy))
+    assert seen, "hover move went to the clicked checkbox, not the plot"
+    assert w.testAttribute(QtCore.Qt.WidgetAttribute.WA_DontShowOnScreen)
+    view.close()
+
+
 def test_native_suspend_rejected_and_close():
     nat = native()
     with pytest.raises(TypeError):
@@ -759,6 +800,9 @@ def test_zoom_fits_output_and_keeps_layout():
     assert zoom == view._peaks_zoom < 1 and not view.zoom_chosen
     css = int(view.css_width[:-2])
     assert css <= 500
+    # The browser may first report the old size, which must not resize the widget
+    view.handle_event(ev("resize", width=size[0], height=size[1], pixel_ratio=2.0))
+    assert (w.width(), w.height()) == size
     # The browser then reports the new size (inside the border), at a Retina ratio
     view.handle_event(
         ev("resize", width=css - 2, height=round(size[1] * zoom), pixel_ratio=2.0)
