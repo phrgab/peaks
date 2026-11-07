@@ -58,6 +58,12 @@ Each inline viewer has buttons above it:
 * **Close** releases everything and clears the output.
 * **Help** shows the keyboard shortcuts (2D and 3D viewers), which native windows show
   from their menu bar.
+* **−** and **+** zoom the viewer out and in (50% to 150%), keeping its layout, and
+  **Fit** scales it to the width of the output. A new viewer is fitted, scaled down if
+  needed but never up. If you chose a zoom yourself, re-running the cell keeps it.
+
+Dragging the viewer's bottom-right corner resizes it instead: the plots and controls
+are rearranged to the new size, at the current zoom.
 
 The same is available from Python:
 
@@ -67,8 +73,8 @@ viewer.suspend()
 viewer.close()
 
 pks.gui.suspend_all()  # all live inline viewers; native windows are not affected
-pks.gui.close_all()    # every peaks viewer, including native windows
-pks.gui.viewers()      # open and suspended viewers, oldest first
+pks.gui.close_all()  # every peaks viewer, including native windows
+pks.gui.viewers()  # open and suspended viewers, oldest first
 ```
 
 `suspend()` and `close()` can be called repeatedly. Native windows cannot be suspended.
@@ -137,7 +143,9 @@ machine, native windows and inline viewers can be used in the same kernel.
   below the viewer.
 * Qt cursor shapes and tooltips are not shown.
 * About 30 frames per second while dragging. The browser widget (jupyter_rfb) forwards
-  at most one pointer move per 20 ms. Higher-DPI screens send larger frames
+  at most one pointer move per 20 ms, and only once the previous one has been handled,
+  so a slow viewer (e.g. a large 3D dataset) updates less often rather than lagging
+  behind the pointer. Higher-DPI screens send larger frames
   (about 240 kB per frame at 2× scaling), which matters for remote kernels.
 * Suspended viewers are kept as images only while the kernel runs. After saving and
   reopening a notebook, the outputs are not restored.

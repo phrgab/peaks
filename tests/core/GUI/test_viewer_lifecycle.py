@@ -694,3 +694,103 @@ def test_dropdown_inline():
     click(view, q.x(), q.y())
     assert view._live_overlays() == []
     assert combo.currentIndex() == combo.count() - 1
+
+
+# ----- browser input quirks
+
+
+def view_3d():
+    view = make_nd(("polar", "theta_par", "eV"), (30, 60, 80)).disp(backend="notebook")
+    view.handle_event(ev("resize", width=1200, height=700, pixel_ratio=1.0))
+    view.get_frame()
+    return view
+
+
+def test_wheel_scrolls_metadata_box():
+    """An ignored wheel event passes on to the parent, e.g. from a label to its scroll area."""
+    view = view_3d()
+    w = view.widget
+    w.cursor_stats.setText("<br>".join(f"line {i}" for i in range(100)))
+    view.get_frame()
+    area = w.cursor_stats.parentWidget().parentWidget()
+    p = widget_centre(view, area)
+    view.handle_event(ev("wheel", p.x(), p.y(), dx=0, dy=240))
+    assert area.verticalScrollBar().value() > 0
+
+
+def test_double_click_on_spin_box_arrow_is_released():
+    """The browser's double-click follows the second release: it must be released too."""
+    view = view_3d()
+    box = view.widget.cursor_positions_selection[0]
+    p = box.mapTo(view.widget, QtCore.QPoint(box.width() - 5, box.height() - 4))
+    for _ in range(2):
+        click(view, p.x(), p.y())
+    view.handle_event(ev("double_click", p.x(), p.y(), 1, ()))
+    value = box.value()
+    for _ in range(3):
+        wait_qt_timers(view, 0.3)  # a held spin box arrow repeats on a Qt timer
+    assert box.value() == value
+
+
+def test_pointer_moves_acknowledged_and_unchanged_frames_skipped():
+    view = inline()
+    sent = []
+    view.send = lambda msg, *a: sent.append(msg)
+    view.handle_event(ev("pointer_move", 5, 5))
+    assert sent == [{"type": "peaks_move_ack"}]
+    view._rfb_last_frame = view.get_frame()
+    assert view.get_frame() is None
+    view.widget.colorbar.setLevels(values=(0.2, 0.3))
+    assert view.get_frame() is not None
+
+
+# ----- zoom
+
+
+def test_zoom_fits_output_and_keeps_layout():
+    view = inline()
+    w = view.widget
+    size = (w.width(), w.height())
+    assert view._peaks_zoom == 0  # the browser asks for a fit once laid out
+    assert view.css_width == f"{size[0] + 2}px"  # plus the view's border
+
+    view.handle_event(ev("peaks_fit", available=500))
+    zoom = view.zoom
+    assert zoom == view._peaks_zoom < 1 and not view.zoom_chosen
+    css = int(view.css_width[:-2])
+    assert css <= 500
+    # The browser then reports the new size (inside the border), at a Retina ratio
+    view.handle_event(
+        ev("resize", width=css - 2, height=round(size[1] * zoom), pixel_ratio=2.0)
+    )
+    assert abs(w.width() - size[0]) <= 1 and abs(w.height() - size[1]) <= 1
+    frame = view.get_frame()
+    assert frame.shape[1] == pytest.approx(2 * (css - 2), abs=2)  # screen resolution
+    pos, _ = view._pos(ev("pointer_move", 100, 100))
+    assert pos.x() == pytest.approx(100 / zoom, rel=0.01)
+
+    view.handle_event(ev("peaks_fit", available=5000))
+    assert view.zoom == 1.0  # never zoomed in to fit
+
+
+def test_zoom_buttons_and_rerun(monkeypatch):
+    cells = Cells(monkeypatch)
+    cells.run("A")
+    view = inline()
+    view.handle_event(ev("peaks_fit", available=500))
+    fitted = view.zoom
+    cells.run("A")
+    view = inline()
+    assert view.zoom == 1.0 and view._peaks_zoom == 0  # fitted zoom is not kept
+
+    view.handle_event(ev("peaks_zoom", step=-1))
+    view.handle_event(ev("peaks_zoom", step=-1))
+    assert view.zoom == 0.8 and view.zoom_chosen
+    cells.run("A")
+    view = inline()
+    assert view.zoom == view._peaks_zoom == 0.8  # chosen zoom is kept
+    assert view.css_width == f"{round(view.widget.width() * 0.8) + 2}px"
+    for _ in range(10):
+        view.handle_event(ev("peaks_zoom", step=1))
+    assert view.zoom == 1.5
+    assert fitted < 1

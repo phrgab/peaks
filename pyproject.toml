@@ -93,6 +93,8 @@ docs = [
         "pydata-sphinx-theme (>=0.16,<1)",
         ]
 dev = ["ruff","pre-commit","nbstripout","pytest"]
+# Browser tests of the inline viewers (pytest -m browser); then: playwright install chromium
+browser-tests = ["peaks-arpes[notebook]", "pytest", "playwright", "jupyterlab", "marimo"]
 
 [tool.ruff]
 line-length = 89
@@ -113,6 +115,9 @@ convention = "numpy"
 
 [tool.pytest]
 filterwarnings = ["ignore::pint.UnitStrippedWarning"]
+markers = [
+    "browser: drives inline viewers in JupyterLab and marimo with Chromium (opt-in: pytest -m browser)",
+]
 
 [tool.flit.module]
 name = "peaks"
