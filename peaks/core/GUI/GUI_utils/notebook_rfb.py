@@ -44,8 +44,8 @@ _KEYS = {
 _STATIC_MAX_SIDE = 1600
 # Height of the title strip drawn above an inline dialog (css px)
 _DIALOG_TITLE = 22
-# Redraw this long after input while a popup is open: submenus open on a Qt timer (s)
-_OVERLAY_REDRAW_DELAY = 0.35
+# Redraw this often while a popup is open: submenus open and switch on Qt timers (s)
+_OVERLAY_REDRAW_DELAY = 0.15
 # The inline viewer whose input or drawing Qt is processing; it owns new popups
 _dispatching = None
 
@@ -66,13 +66,59 @@ const HELP_CSS = 'display:none;position:absolute;top:4px;left:4px;z-index:10;' +
   'max-width:min(560px,90%);max-height:90%;overflow:auto;background:#fff;color:#222;' +
   'border:1px solid #999;border-radius:4px;padding:8px 12px;font:13px sans-serif;' +
   'box-shadow:0 2px 8px rgba(0,0,0,.3)'
-// Resend held keys at most this long after an unacknowledged repeat (ms)
-const REPEAT_TIMEOUT = 1000
+// Send held keys and pointer moves at most this long after an unacknowledged one (ms)
+const ACK_TIMEOUT = 1000
 const FOCUS_CONTAINER = '#rendercanvas-focus-element-container'
 export default () => {
   const inner = rfbWidget()
   return {
-    initialize (ctx) { return inner.initialize(ctx) },
+    initialize (ctx) {
+      // Send pointer moves one at a time, each after the kernel has handled the
+      // previous one, and only the latest: a slow viewer never falls behind.
+      const model = ctx.model
+      let moveSent = 0
+      let pendingMove = null
+      const sendMove = (msg) => {
+        moveSent = performance.now()
+        model.send(msg)
+      }
+      const send = (msg, ...rest) => {
+        if (msg && msg.type === 'pointer_move') {
+          if (moveSent && performance.now() - moveSent < ACK_TIMEOUT) {
+            pendingMove = msg
+          } else {
+            sendMove(msg)
+          }
+          return
+        }
+        if (pendingMove) { // keep the order, e.g. the last move before a release
+          sendMove(pendingMove)
+          pendingMove = null
+        }
+        return model.send(msg, ...rest)
+      }
+      const onAck = (msg) => {
+        if (msg.type !== 'peaks_move_ack') return
+        moveSent = 0
+        if (pendingMove) {
+          sendMove(pendingMove)
+          pendingMove = null
+        }
+      }
+      model.on('msg:custom', onAck)
+      const proxy = new Proxy(model, {
+        get (target, name) {
+          if (name === 'send') return send
+          const value = target[name]
+          return typeof value === 'function' ? value.bind(target) : value
+        }
+      })
+      const cleanupInner = inner.initialize({ ...ctx, model: proxy })
+      return () => {
+        model.off('msg:custom', onAck)
+        if (cleanupInner) cleanupInner()
+      }
+    },
     render (ctx) {
       const { model, el } = ctx
       const bar = document.createElement('div')
@@ -151,7 +197,7 @@ export default () => {
         if (!ev.repeat || ev.target !== ownFocus) return
         if (model.get('_peaks_mode') !== 'live') return
         const now = performance.now()
-        if (repeatPending && now - repeatSent < REPEAT_TIMEOUT) return
+        if (repeatPending && now - repeatSent < ACK_TIMEOUT) return
         repeatPending = true
         repeatSent = now
         model.send({
@@ -302,6 +348,7 @@ class QWidgetRFB(RemoteFrameBuffer):
         self._pixel_ratio = 1.0
         self._scale = (1.0, 1.0)  # widget px per browser css px
         self._overlays = []  # popups and dialogs drawn over the frame, bottom first
+        self._overlay_redraw = None  # pending timer handle while overlays are open
         QWidgetRFB._views.add(self)
         # Lifecycle, managed by qt_runtime
         self.backend = "notebook"
@@ -419,16 +466,28 @@ class QWidgetRFB(RemoteFrameBuffer):
         return top.windowHandle(), QtCore.QPointF(top.mapFromGlobal(gpos))
 
     def _redraw_later(self):
-        """Draw again once Qt timers (e.g. opening a submenu) have run."""
+        """Draw periodically while popups or dialogs are open.
+
+        Qt timers (e.g. opening or switching a submenu) only run when a frame is
+        drawn; unchanged frames are not sent.
+        """
+        if self._overlay_redraw is not None:
+            return
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
             return
-        loop.call_later(_OVERLAY_REDRAW_DELAY, self._redraw_if_live)
+        self._overlay_redraw = loop.call_later(
+            _OVERLAY_REDRAW_DELAY, self._redraw_overlays
+        )
 
-    def _redraw_if_live(self):
-        if self.widget is not None and self.status == "active":
-            self.request_draw()
+    def _redraw_overlays(self):
+        self._overlay_redraw = None
+        if self.widget is None or self.status != "active":
+            return
+        self.request_draw()
+        if self._live_overlays():
+            self._redraw_later()
 
     def render_image(self, max_side=_STATIC_MAX_SIDE):
         """Return the current widget appearance as PNG bytes (without popups)."""
@@ -482,7 +541,15 @@ class QWidgetRFB(RemoteFrameBuffer):
             if self.widget is None:  # released while processing events
                 return None
             self._place_overlays()
-            return self._render()[1]
+            frame = self._render()[1]
+        last = self._rfb_last_frame
+        if (
+            last is not None
+            and last.shape == frame.shape
+            and np.array_equal(last, frame)
+        ):
+            return None  # e.g. hovering over nothing, or a menu waiting for input
+        return frame
 
     def handle_event(self, event):
         """Translate a jupyter_rfb event into Qt events on the widget's QWindow."""
@@ -495,13 +562,14 @@ class QWidgetRFB(RemoteFrameBuffer):
             from peaks.core.GUI.GUI_utils import qt_runtime
 
             return qt_runtime.close_viewer(self, keep_state=True, frontend=False)
-        if event.get("repeat"):
-            # The browser sends the next held-key repeat after this acknowledgement,
-            # so repeats never queue up behind a slow viewer.
+        if event.get("repeat") or typ == "pointer_move":
+            # The browser sends the next held-key repeat or pointer move after this
+            # acknowledgement, so they never queue up behind a slow viewer.
             try:
                 return self._handle_input(typ, event)
             finally:
-                self.send({"type": "peaks_key_ack"})
+                ack = "peaks_key_ack" if event.get("repeat") else "peaks_move_ack"
+                self.send({"type": ack})
         return self._handle_input(typ, event)
 
     def _handle_input(self, typ, event):
@@ -538,18 +606,16 @@ class QWidgetRFB(RemoteFrameBuffer):
                 _modifiers(event),
             )
         elif typ == "wheel":
-            pos, gpos = self._pos(event)
-            target, pos = self._input_target(pos, gpos)
-            qev = QtGui.QWheelEvent(
-                pos,
+            _, gpos = self._pos(event)
+            overlays = self._live_overlays()
+            _send_wheel(
+                overlays[-1] if overlays else self.widget,
                 gpos,
-                QtCore.QPoint(),
                 QtCore.QPoint(-int(event["dx"]), -int(event["dy"])),
                 get_buttons(event.get("buttons", ())),
                 _modifiers(event),
-                QtCore.Qt.ScrollPhase.NoScrollPhase,
-                False,
             )
+            qev = None
         elif typ in ("key_down", "key_up"):
             key, text = _qt_key(event["key"])
             if key is None:
@@ -568,7 +634,22 @@ class QWidgetRFB(RemoteFrameBuffer):
             )
         else:
             return
-        QtWidgets.QApplication.sendEvent(target, qev)
+        if qev is not None:
+            QtWidgets.QApplication.sendEvent(target, qev)
+        if typ == "double_click":
+            # The browser sends it after the second release, so Qt would see a press
+            # (a double-click) that is never released: e.g. a spin box arrow would
+            # keep stepping. Release it, as after a native double-click.
+            release = QtGui.QMouseEvent(
+                QtCore.QEvent.Type.MouseButtonRelease,
+                pos,
+                pos,
+                gpos,
+                btn,
+                QtCore.Qt.MouseButton.NoButton,
+                _modifiers(event),
+            )
+            QtWidgets.QApplication.sendEvent(target, release)
         self._app.processEvents()
         if self.widget is None:
             return
@@ -587,6 +668,35 @@ class QWidgetRFB(RemoteFrameBuffer):
         """
         pos = QtCore.QPointF(event["x"] * self._scale[0], event["y"] * self._scale[1])
         return pos, self.widget.mapToGlobal(pos)
+
+
+def _send_wheel(root, gpos, angle, buttons, modifiers):
+    """Send a wheel event to the widget under ``gpos`` in ``root``, then its parents.
+
+    Qt passes an ignored wheel event on to the parent widget only for events from the
+    window system, which Python cannot create; e.g. a label in a scroll area would
+    otherwise swallow it.
+    """
+    widget = root.childAt(root.mapFromGlobal(gpos).toPoint()) or root
+    while widget is not None:
+        ev = QtGui.QWheelEvent(
+            widget.mapFromGlobal(gpos),
+            gpos,
+            QtCore.QPoint(),
+            angle,
+            buttons,
+            modifiers,
+            QtCore.Qt.ScrollPhase.NoScrollPhase,
+            False,
+        )
+        QtWidgets.QApplication.sendEvent(widget, ev)
+        if (
+            ev.isAccepted()
+            or widget.isWindow()
+            or widget.testAttribute(QtCore.Qt.WidgetAttribute.WA_NoMousePropagation)
+        ):
+            return
+        widget = widget.parentWidget()
 
 
 class _dispatch:  # noqa: N801 (used as a context manager)

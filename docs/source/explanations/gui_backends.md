@@ -137,7 +137,9 @@ machine, native windows and inline viewers can be used in the same kernel.
   below the viewer.
 * Qt cursor shapes and tooltips are not shown.
 * About 30 frames per second while dragging. The browser widget (jupyter_rfb) forwards
-  at most one pointer move per 20 ms. Higher-DPI screens send larger frames
+  at most one pointer move per 20 ms, and only once the previous one has been handled,
+  so a slow viewer (e.g. a large 3D dataset) updates less often rather than lagging
+  behind the pointer. Higher-DPI screens send larger frames
   (about 240 kB per frame at 2× scaling), which matters for remote kernels.
 * Suspended viewers are kept as images only while the kernel runs. After saving and
   reopening a notebook, the outputs are not restored.

@@ -694,3 +694,51 @@ def test_dropdown_inline():
     click(view, q.x(), q.y())
     assert view._live_overlays() == []
     assert combo.currentIndex() == combo.count() - 1
+
+
+# ----- browser input quirks
+
+
+def view_3d():
+    view = make_nd(("polar", "theta_par", "eV"), (30, 60, 80)).disp(backend="notebook")
+    view.handle_event(ev("resize", width=1200, height=700, pixel_ratio=1.0))
+    view.get_frame()
+    return view
+
+
+def test_wheel_scrolls_metadata_box():
+    """An ignored wheel event passes on to the parent, e.g. from a label to its scroll area."""
+    view = view_3d()
+    w = view.widget
+    w.cursor_stats.setText("<br>".join(f"line {i}" for i in range(100)))
+    view.get_frame()
+    area = w.cursor_stats.parentWidget().parentWidget()
+    p = widget_centre(view, area)
+    view.handle_event(ev("wheel", p.x(), p.y(), dx=0, dy=240))
+    assert area.verticalScrollBar().value() > 0
+
+
+def test_double_click_on_spin_box_arrow_is_released():
+    """The browser's double-click follows the second release: it must be released too."""
+    view = view_3d()
+    box = view.widget.cursor_positions_selection[0]
+    p = box.mapTo(view.widget, QtCore.QPoint(box.width() - 5, box.height() - 4))
+    for _ in range(2):
+        click(view, p.x(), p.y())
+    view.handle_event(ev("double_click", p.x(), p.y(), 1, ()))
+    value = box.value()
+    for _ in range(3):
+        wait_qt_timers(view, 0.3)  # a held spin box arrow repeats on a Qt timer
+    assert box.value() == value
+
+
+def test_pointer_moves_acknowledged_and_unchanged_frames_skipped():
+    view = inline()
+    sent = []
+    view.send = lambda msg, *a: sent.append(msg)
+    view.handle_event(ev("pointer_move", 5, 5))
+    assert sent == [{"type": "peaks_move_ack"}]
+    view._rfb_last_frame = view.get_frame()
+    assert view.get_frame() is None
+    view.widget.colorbar.setLevels(values=(0.2, 0.3))
+    assert view.get_frame() is not None
