@@ -641,8 +641,10 @@ functions and as accessor methods (e.g. `data.smooth(...)`).
   - num_azi: int (optional, default=361) — number of evenly spaced azimuthal angles between 0° and 360°
   - num_points: int (optional, default=200) — number of radial points per cut
   - radius: float (optional, default=2) — maximum radial distance in data axis units
-  - \*\*centre_kwargs: float — centre of the radial fan, e.g. kx=0.1, ky=0.0
-- returns: xr.DataArray — radial cuts stacked along an azimuthal_angle dimension
+  - azi_zero: str (optional, default=None) — dim that azi = 0 points along (+ direction); None uses the first non-eV dim in data.dims, so the result then depends on dim order (k-converted maps usually have ky first)
+  - azi_direction: int (optional, default=1) — +1: azi increases towards + the other dim; -1: towards − the other dim. Usual anticlockwise angle from +kx: azi_zero="kx", azi_direction=1
+  - \*\*centre_kwargs: float — centre of the radial fan, e.g. kx=0.1, ky=0.0; only the two non-eV dim names are accepted, any other keyword raises ValueError
+- returns: xr.DataArray — radial cuts with dims (k, azi), plus eV if present; azi in degrees from 0 to 360 inclusive (first and last cuts duplicate); k in axis units, named k even for angle input
 - when_to_use: Warping square Fermi surfaces to circular geometry; azimuthal analysis of Fermi surface maps
 - addresses: coordinate_transform
 - effects: extracts_radial_profile

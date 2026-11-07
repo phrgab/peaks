@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `radial_cuts` azimuth convention is now documented and configurable via the new `azi_zero` and `azi_direction` options ([PR#91](https://github.com/phrgab/peaks/pull/91))
+
 ### Removed
 
 ## [0.5.4] - 2026-10-09
