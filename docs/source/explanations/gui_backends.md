@@ -1,7 +1,8 @@
 (gui-backends)=
 # Interactive viewers in notebooks
 
-The interactive display panels (`data.disp()`) are PyQtGraph/Qt GUIs. They can be shown
+The interactive display panels ({py:func}`data.disp() <peaks.core.GUI.disp_panels.disp.disp>`) are
+[PyQtGraph](https://pyqtgraph.readthedocs.io)/Qt GUIs. They can be shown
 in two ways:
 
 | Backend | Where the viewer appears | Default |
@@ -11,7 +12,8 @@ in two ways:
 
 Both use the same viewers, with the same crosshairs, cuts, ROIs and keyboard controls.
 
-Both run in the Python kernel. This is different from `data.iplot()`, which makes a
+Both run in the Python kernel. This is different from
+{py:class}`data.iplot() <peaks.core.GUI.iplot.hvplot.HVPlotAccessor>`, which makes a
 Bokeh plot drawn by the browser. Such plots are kept when a notebook is saved or
 exported, but have none of the display panels' tools. See
 {ref}`quick-interactive-plots`.
@@ -25,7 +27,7 @@ data.disp()
 ```
 
 In Jupyter or IPython, Qt event-loop integration (`%gui qt6`) is enabled automatically.
-In a script, `disp()` blocks until the window is closed.
+In a script, {py:func}`~peaks.core.GUI.disp_panels.disp.disp` blocks until the window is closed.
 
 ## Inline notebook viewers
 
@@ -42,10 +44,12 @@ pks.opts.gui.backend = "notebook"
 data.disp()
 ```
 
-or for a single call, `data.disp(backend="notebook")`. The viewer is the value returned
-by `disp()`. Leave it as the last expression of the cell (or `viewer = data.disp()`
+(see {py:attr}`~peaks.core.options.GuiOptions.backend`), or for a single call,
+`data.disp(backend="notebook")`. The viewer, a {py:class}`~peaks.core.GUI.GUI_utils.notebook_rfb.QWidgetRFB` (a
+{py:class}`jupyter_rfb.RemoteFrameBuffer` widget), is the value returned by
+{py:func}`~peaks.core.GUI.disp_panels.disp.disp`. Leave it as the last expression of the cell (or `viewer = data.disp()`
 followed by `viewer`) to display it. In marimo there is no need to wrap it in
-`mo.ui.anywidget`.
+[`mo.ui.anywidget`](https://docs.marimo.io/api/inputs/anywidget/).
 
 Click the viewer once before using the keyboard or the mouse wheel. The browser only
 forwards those events to a focused widget. On a Mac, use Cmd where the viewers use
@@ -77,16 +81,19 @@ pks.gui.close_all()  # every peaks viewer, including native windows
 pks.gui.viewers()  # open and suspended viewers, oldest first
 ```
 
-`suspend()` and `close()` can be called repeatedly. Native windows cannot be suspended.
+{py:meth}`~peaks.core.GUI.GUI_utils.notebook_rfb.QWidgetRFB.suspend` and {py:meth}`~peaks.core.GUI.GUI_utils.notebook_rfb.QWidgetRFB.close` can be called repeatedly.
+See also {py:mod}`peaks.gui`. Native windows cannot be suspended.
 
 ## The viewer limit
 
-`pks.opts.gui.max_viewers` (default 1, `None` for no limit) is one limit on the number
+{py:attr}`pks.opts.gui.max_viewers <peaks.core.options.GuiOptions.max_viewers>`
+(default 1, `None` for no limit) is one limit on the number
 of **live** Qt viewers, native and inline together. Suspended viewers do not count.
 
 When a new viewer would exceed the limit, the oldest live inline viewer is suspended to
 make room. Native windows are never suspended or closed automatically. If no inline
-viewer can be suspended, `TooManyDisplayPanelsError` is raised.
+viewer can be suspended,
+{py:exc}`~peaks.core.GUI.GUI_utils.qt_runtime.TooManyDisplayPanelsError` is raised.
 
 | New viewer | Viewer already open (limit reached) | Result |
 |---|---|---|
@@ -110,7 +117,7 @@ supplied data and restores the previous settings where they still fit:
 Settings are skipped if they do not fit the new data, for example a crosshair outside
 the new axis range or data with different dimensions. Settings are kept in memory for
 the current kernel session only. They are discarded when the viewer is closed with
-**Close**, `close()` or `pks.gui.close_all()`, or when the cell is deleted.
+**Close**, {py:meth}`~peaks.core.GUI.GUI_utils.notebook_rfb.QWidgetRFB.close` or {py:func}`pks.gui.close_all() <peaks.gui.close_all>`, or when the cell is deleted.
 
 Cells are identified by the notebook frontend:
 
@@ -126,7 +133,7 @@ Cells are identified by the notebook frontend:
 On a Linux machine with no display, the notebook backend starts Qt with its
 `offscreen` platform. The Qt platform is fixed when the Qt application is created, so
 native windows are then unavailable for the rest of the kernel session. Changing
-`pks.opts.gui.backend` does not change this. To choose explicitly, set
+{py:attr}`pks.opts.gui.backend <peaks.core.options.GuiOptions.backend>` does not change this. To choose explicitly, set
 `QT_QPA_PLATFORM` (e.g. `offscreen`) before the first viewer is created. On a desktop
 machine, native windows and inline viewers can be used in the same kernel.
 
@@ -142,7 +149,7 @@ machine, native windows and inline viewers can be used in the same kernel.
 * **Copy** buttons copy to the browser clipboard, and the copied text is also printed
   below the viewer.
 * Qt cursor shapes and tooltips are not shown.
-* About 30 frames per second while dragging. The browser widget (jupyter_rfb) forwards
+* About 30 frames per second while dragging. The browser widget ([jupyter_rfb](https://jupyter-rfb.readthedocs.io)) forwards
   at most one pointer move per 20 ms, and only once the previous one has been handled,
   so a slow viewer (e.g. a large 3D dataset) updates less often rather than lagging
   behind the pointer. Higher-DPI screens send larger frames
