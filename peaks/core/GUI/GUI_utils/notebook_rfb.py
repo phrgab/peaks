@@ -668,8 +668,12 @@ class QWidgetRFB(RemoteFrameBuffer):
 
     def _dispatch_input(self, typ, event):
         if typ == "resize":
-            size = (event["width"], event["height"])
-            if size == self._stale_size:
+            stale = self._stale_size
+            # At a fractional pixel ratio, sizes arrive as e.g. 650.67 for 650 css px
+            if stale and all(
+                abs(a - b) < 1
+                for a, b in zip((event["width"], event["height"]), stale, strict=True)
+            ):
                 return  # the size from before a zoom change, sent before the new one
             self._stale_size = None
             # The widget keeps its layout size at any zoom; frames match the screen

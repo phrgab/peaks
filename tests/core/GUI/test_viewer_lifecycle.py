@@ -822,8 +822,11 @@ def test_zoom_fits_output_and_keeps_layout():
     assert zoom == view._peaks_zoom < 1 and not view.zoom_chosen
     css = int(view.css_width[:-2])
     assert css <= 500
-    # The browser may first report the old size, which must not resize the widget
-    view.handle_event(ev("resize", width=size[0], height=size[1], pixel_ratio=2.0))
+    # The browser may first report the old size, which must not resize the widget;
+    # at a fractional pixel ratio it comes as physical px / ratio
+    view.handle_event(
+        ev("resize", width=size[0] + 2 / 3, height=size[1] + 2 / 3, pixel_ratio=1.5)
+    )
     assert (w.width(), w.height()) == size
     # The browser then reports the new size (inside the border), at a Retina ratio
     view.handle_event(
