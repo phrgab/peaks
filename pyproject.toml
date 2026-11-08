@@ -40,7 +40,6 @@ dependencies = [
         "pyqt6 (>=6.7,<7)",
         "pyqtgraph (>=0.13,<1)",
         "scikit-image (>=0.24,<1)",
-        "pyperclip (>=1.9,<2)",
         "lmfit (>=1.3,<2)",
         "pydantic (>=2.9,<3)",
         "termcolor (>=2.5,<3)",
@@ -81,6 +80,7 @@ structure = [
         "trimesh (>4.6,<5)",
 ]
 ML = ["scikit-learn (>=1.3,<2)"]
+notebook = ["jupyter_rfb (>=1.0,<2)", "simplejpeg (>=1.7,<2)"]
 docs = [
         "sphinx (>=8.2,<10)",
         "sphinx-copybutton (>=0.5,<1)",
@@ -92,6 +92,8 @@ docs = [
         "pydata-sphinx-theme (>=0.16,<1)",
         ]
 dev = ["ruff","pre-commit","nbstripout","pytest"]
+# Browser tests of the inline viewers (pytest -m browser); then: playwright install chromium
+browser-tests = ["peaks-arpes[notebook]", "pytest", "playwright", "jupyterlab", "marimo"]
 
 [tool.ruff]
 line-length = 89
@@ -112,6 +114,9 @@ convention = "numpy"
 
 [tool.pytest]
 filterwarnings = ["ignore::pint.UnitStrippedWarning"]
+markers = [
+    "browser: drives inline viewers in JupyterLab and marimo with Chromium (opt-in: pytest -m browser)",
+]
 
 [tool.flit.module]
 name = "peaks"

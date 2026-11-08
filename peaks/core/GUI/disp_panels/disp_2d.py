@@ -4,7 +4,6 @@ from functools import partial
 
 import numpy as np
 import pint
-import pyperclip
 import pyqtgraph as pg
 from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtWidgets import (
@@ -25,7 +24,7 @@ from peaks.core.metadata.metadata_methods import DARK_BG_PALETTE, display_metada
 from peaks.core.process.tools import estimate_sym_point, sym
 
 
-def _disp_2d(data, primary_dim, exclude_from_centering):
+def _disp_2d(data, primary_dim, exclude_from_centering, backend=None):
     """Display a 2D interactive display panel.
 
     Parameters
@@ -39,12 +38,16 @@ def _disp_2d(data, primary_dim, exclude_from_centering):
     exclude_from_centering : str or tuple of str or list of str or None
         The dimension to exclude from centering. Default is 'eV'.
 
+    backend : {"qt", "notebook"}, optional
+        GUI backend; defaults to ``opts.gui.backend``.
+
     """
-    qt_runtime.show_viewer(
+    return qt_runtime.show_viewer(
         _Disp2D,
         data,
         primary_dim,
         exclude_from_centering,
+        backend=backend,
     )
 
 
@@ -273,8 +276,8 @@ class _Disp2D(QtWidgets.QMainWindow):
                     <td style='padding: 5px; font-weight: normal;'>Arrow keys</td>
                   </tr>
                   <tr>
-                    <td style='padding: 5px; font-weight: normal;'>Move c_rosshair 1</td>
-                    <td style='padding: 5px; font-weight: normal;'>{self.key_modifiers_characters["move_csr2"]} + Arrow keys</td>
+                    <td style='padding: 5px; font-weight: normal;'>Move crosshair 1</td>
+                    <td style='padding: 5px; font-weight: normal;'>{self.key_modifiers_characters["move_csr2"]} (Cmd on a Mac) + Arrow keys</td>
                   </tr>
                   <tr>
                     <td style='padding: 5px; font-weight: normal;'>Move all crosshairs</td>
@@ -572,9 +575,9 @@ class _Disp2D(QtWidgets.QMainWindow):
     def _change_data(self):
         """Change the selected data array."""
         # Disconnect signals
-        for signal in self.connected_plot_signals[:]:
-            signal.disconnect()
-            self.connected_plot_signals.remove(signal)
+        for signal, slot in self.connected_plot_signals:
+            signal.disconnect(slot)
+        self.connected_plot_signals = []
 
         # Set data
         self._set_data()
@@ -627,6 +630,21 @@ class _Disp2D(QtWidgets.QMainWindow):
 
         # Mark as initialized
         self.init = True
+
+    def _refresh_data(self):
+        """Redraw after the current array's values changed in place (same coords).
+
+        Much cheaper than `_change_data`, which rebuilds every plot item.
+        """
+        self.image_item.setImage(self.current_data.values, autoLevels=False)
+        if not self.cscale_lock.isChecked():
+            self.c_min = float(self.current_data.min())
+            self.c_max = float(self.current_data.max())
+            self.colorbar.lo_lim, self.colorbar.hi_lim = self.c_min, self.c_max
+            self.colorbar.setLevels((self.c_min, self.c_max))
+        for i in range(self.num_xhs):
+            self._update_DC(i)
+        self._update_cursor_stats_text()
 
     def _update_DC(self, xh_no):
         """Update the DC plots when the crosshair is moved."""
@@ -874,7 +892,11 @@ class _Disp2D(QtWidgets.QMainWindow):
             for k, v in norm_values.items()
         }
         try:
-            pyperclip.copy(f".metadata.set_normal_emission({norm_values_to_return})")
+            qt_runtime.copy_text(
+                self,
+                f".metadata.set_normal_emission({norm_values_to_return})",
+                "Normal emission copied to clipboard",
+            )
         except Exception as e:
             print(
                 f"Could not access the system clipboard: {e}. "
@@ -884,51 +906,54 @@ class _Disp2D(QtWidgets.QMainWindow):
     # ##############################
     # Signal connections
     # ##############################
+    def _connect(self, signal, slot):
+        """Connect a slot and record it so that `_change_data` can disconnect it.
+
+        Slots are disconnected individually: a bare ``signal.disconnect()`` does not
+        release PyQt's references to partial slots, which kept old viewers alive.
+        """
+        signal.connect(slot)
+        self.connected_plot_signals.append((signal, slot))
+
     def _connect_signals_crosshairs(self):
         # Update when crosshair moves
         for i, xh_ in enumerate(self.xhs):
             signal = xh_.xh.sigPositionChanged
-            signal.connect(partial(self._update_DC, i))  # Update DC plots
-            signal.connect(partial(self._update_DC_crosshair_span, i))  # Follow DC span
-            signal.connect(self._update_cursor_stats_text)  # Update label
-            self.connected_plot_signals.append(signal)
+            self._connect(signal, partial(self._update_DC, i))  # Update DC plots
+            self._connect(signal, partial(self._update_DC_crosshair_span, i))
+            self._connect(signal, self._update_cursor_stats_text)  # Update label
 
         # Update when show/hide crosshair boxes toggled
         for i, checkbox in enumerate(self.show_DCs_checkboxes):
-            checkbox.stateChanged.connect(partial(self._show_hide_DCs, i))
-            self.connected_plot_signals.append(checkbox.stateChanged)
+            self._connect(checkbox.stateChanged, partial(self._show_hide_DCs, i))
 
         # Update when show/hide mirror checkbox toggled
-        signal = self.show_mirror_checkbox.stateChanged
-        signal.connect(self._show_hide_mirror)
-        self.connected_plot_signals.append(signal)
+        self._connect(self.show_mirror_checkbox.stateChanged, self._show_hide_mirror)
 
     def _connect_signals_DCspan_change(self):
         # Update when span ranges changed
         for i in range(2):
-            signal = self.DC_width_selectors[i].valueChanged
-            signal.connect(partial(self._update_DC_width, i))
-            self.connected_plot_signals.append(signal)
+            self._connect(
+                self.DC_width_selectors[i].valueChanged,
+                partial(self._update_DC_width, i),
+            )
 
         # Update with integrate all selection
         for i in range(2):
-            signal = self.DC_span_all_checkboxes[i].stateChanged
-            signal.connect(partial(self._update_DC_int, i))
-            self.connected_plot_signals.append(signal)
+            self._connect(
+                self.DC_span_all_checkboxes[i].stateChanged,
+                partial(self._update_DC_int, i),
+            )
 
     def _connect_signals_align(self):
         # Connect centre data button
-        self.align_button.clicked.connect(self._align_data)
-        self.connected_plot_signals.append(self.align_button.clicked)
+        self._connect(self.align_button.clicked, self._align_data)
         # Connect copy button
-        self.copy_button.clicked.connect(self._copy_norm_values)
+        self._connect(self.copy_button.clicked, self._copy_norm_values)
 
     def _connect_key_press_signals(self):
-        signals = [self.graphics_layout.keyPressed, self.graphics_layout.keyReleased]
-        fns = [self._key_press_event, self._key_release_event]
-        for signal, fn in zip(signals, fns, strict=True):
-            signal.connect(fn)
-            self.connected_plot_signals.append(signal)
+        self._connect(self.graphics_layout.keyPressed, self._key_press_event)
+        self._connect(self.graphics_layout.keyReleased, self._key_release_event)
 
     def _key_press_event(self, event):
         # First deal with the modifiers
@@ -990,6 +1015,95 @@ class _Disp2D(QtWidgets.QMainWindow):
             for xh in self.xh_visible_store:
                 xh.set_visible(True)
             self.xh_visible_store = []
+
+    # ##############################
+    # Lightweight viewer state (in-session notebook re-runs)
+    # ##############################
+    def get_state(self):
+        """Return the user-adjustable view settings as plain Python values."""
+        return {
+            "version": 1,
+            "viewer": "2D",
+            "dims": list(self.dims),
+            "scan": self.scans_list.currentRow(),
+            "n_scans": len(self.data_arrays),
+            "crosshairs": [[float(v) for v in xh.get_pos()] for xh in self.xhs],
+            "visible": [cb.isChecked() for cb in self.show_DCs_checkboxes],
+            "mirror": self.show_mirror_checkbox.isChecked(),
+            "widths": [sb.value() for sb in self.DC_width_selectors],
+            "span_all": [cb.isChecked() for cb in self.DC_span_all_checkboxes],
+            "locks": [self.cscale_lock.isChecked(), self.range_lock.isChecked()],
+            "view_range": qt_runtime.view_range(self.image_plot),
+            **qt_runtime.colour_state(self.colorbar),
+        }
+
+    def set_state(self, state):
+        """Apply settings from :meth:`get_state`, skipping any that do not fit the data."""
+        if state.get("version") != 1 or state.get("viewer") != "2D":
+            return
+        same_scans = state["n_scans"] == len(self.data_arrays)
+        steps = [
+            (
+                "scan",
+                lambda: same_scans and self.scans_list.setCurrentRow(state["scan"]),
+            ),
+            (
+                "locks",
+                lambda: [
+                    cb.setChecked(v)
+                    for cb, v in zip(
+                        (self.cscale_lock, self.range_lock), state["locks"], strict=True
+                    )
+                ],
+            ),
+            (
+                "visible",
+                lambda: [
+                    cb.setChecked(v)
+                    for cb, v in zip(
+                        self.show_DCs_checkboxes, state["visible"], strict=True
+                    )
+                ],
+            ),
+            ("mirror", lambda: self.show_mirror_checkbox.setChecked(state["mirror"])),
+            ("colours", lambda: qt_runtime.set_colour_state(self.colorbar, state)),
+        ]
+        if state["dims"] == list(self.dims):  # coordinate-based settings
+            steps += [
+                (
+                    "widths",
+                    lambda: [
+                        sb.setValue(v)
+                        for sb, v in zip(
+                            self.DC_width_selectors, state["widths"], strict=True
+                        )
+                    ],
+                ),
+                (
+                    "crosshairs",
+                    lambda: [
+                        xh.set_pos(pos)
+                        for xh, pos in zip(self.xhs, state["crosshairs"], strict=True)
+                        if self._check_crosshair_in_range(pos)
+                    ],
+                ),
+                (
+                    "span_all",
+                    lambda: [
+                        cb.setChecked(v)
+                        for cb, v in zip(
+                            self.DC_span_all_checkboxes, state["span_all"], strict=True
+                        )
+                    ],
+                ),
+                (
+                    "view_range",
+                    lambda: qt_runtime.set_view_range(
+                        self.image_plot, state["view_range"]
+                    ),
+                ),
+            ]
+        qt_runtime.apply_state_steps(steps)
 
     # ##############################
     # Helper functions

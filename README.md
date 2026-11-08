@@ -85,6 +85,7 @@ _Journal of Open Source Software_ **11**, 10440 (2026)\
 
 - **structure** - required for the use of the `bz` module, for e.g. plotting Brillouin zones on the data;
 - **ML** - required for the use of the machine learning module;
+- **notebook** - required for showing the interactive display panels inline in JupyterLab or marimo (`pks.opts.gui.backend = "notebook"`);
 - **dev** - optional development dependencies, used for e.g. linting the code and installing pre-commit hooks.
 - **docs** - optional dependencies for building local copies of the documentation.
 

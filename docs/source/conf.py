@@ -67,6 +67,7 @@ intersphinx_mapping = {
     "pydantic": ("https://docs.pydantic.dev/latest", None),
     "pint": ("https://pint.readthedocs.io/en/stable/", None),
     "pint-xarray": ("https://pint-xarray.readthedocs.io/en/stable/", None),
+    "jupyter_rfb": ("https://jupyter-rfb.readthedocs.io/en/stable/", None),
 }
 
 source_suffix = [".rst", ".md"]

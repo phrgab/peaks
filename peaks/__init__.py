@@ -58,6 +58,7 @@ from peaks.core.fileIO.loaders import *
 from peaks.core.fileIO.data_loading import load
 from peaks.core.fitting.fit import load_fit
 from peaks.core.options import opts
+from peaks import gui
 from peaks.core.display.plotting import (
     plot_grid,
     plot_DCs,

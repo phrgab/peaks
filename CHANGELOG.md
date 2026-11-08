@@ -9,13 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Inline notebook backend for the display panels in JupyterLab and marimo: `pks.opts.gui.backend = "notebook"` or `data.disp(backend="notebook")` (optional `notebook` extra) ([PR#93](https://github.com/phrgab/peaks/pull/93))
+- `pks.gui.suspend_all()`, `pks.gui.close_all()` and `pks.gui.viewers()` to manage open display panels ([PR#93](https://github.com/phrgab/peaks/pull/93))
+
 ### Fixed
 
 - Parsing analyser slit identifiers when numeric ([PR#89](https://github.com/phrgab/peaks/pull/89))
+- Closed display panels could stay in memory, and **Copy** could run several times ([PR#93](https://github.com/phrgab/peaks/pull/93))
+- The 4D display panel's crosshair lagged behind its sliders ([PR#93](https://github.com/phrgab/peaks/pull/93))
 
 ### Changed
 
+- The 4D display panel's ROI messages and confirmations no longer block the Python session ([PR#93](https://github.com/phrgab/peaks/pull/93))
+
 ### Removed
+
+- The `pyperclip` dependency: native display panels copy with Qt's clipboard ([PR#93](https://github.com/phrgab/peaks/pull/93))
 
 ## [0.5.4] - 2026-10-09
 
