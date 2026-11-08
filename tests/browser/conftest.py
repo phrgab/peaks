@@ -11,6 +11,7 @@ kernel writes the values to ``status.json``, which the test reads.
 
 import json
 import os
+import re
 import socket
 import subprocess
 import sys
@@ -41,6 +42,22 @@ def _free_port():
         return s.getsockname()[1]
 
 
+def _wait(condition, timeout):
+    """Poll ``condition`` until it is true (True) or ``timeout`` seconds pass (False)."""
+    end = time.time() + timeout
+    while not condition():
+        if time.time() > end:
+            return False
+        time.sleep(0.1)
+    return True
+
+
+def _started(prompt, before):
+    """Whether a cell's prompt shows it queued or run since it read ``before``."""
+    # Not just any change: the prompt may still be rendering ("" -> "[ ]:")
+    return prompt != before and re.search(r"\[(\d+|\*)\]", prompt) is not None
+
+
 def _marimo_app(cells):
     src = "import marimo\n\napp = marimo.App()\n"
     for name, code in cells:
@@ -69,9 +86,17 @@ class Notebook:
     def run(self, i):
         """Run cell ``i`` and wait until the kernel is idle."""
         if self.frontend == "jupyter":
-            self.cell(i).locator(".jp-InputArea-editor").click()
-            self.page.keyboard.press("Control+Enter")
-            time.sleep(0.5)
+            prompt = self.cell(i).locator(".jp-InputPrompt")
+            before = prompt.inner_text()
+            for _ in range(3):  # a key press can be lost while JupyterLab starts up
+                self.cell(i).locator(".jp-InputArea-editor").click()
+                self.page.keyboard.press("Control+Enter")
+                if _wait(lambda: _started(prompt.inner_text(), before), 5):
+                    break
+            else:
+                raise TimeoutError(f"cell {i} did not start running")
+            if not _wait(lambda: "*" not in prompt.inner_text(), 180):
+                raise TimeoutError(f"cell {i} did not finish running")
             self.page.wait_for_selector(IDLE, state="attached", timeout=180000)
             time.sleep(0.5)
         else:
