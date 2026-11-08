@@ -472,19 +472,14 @@ def close_all():
 
 
 def copy_text(widget, text):
-    """Copy text to the clipboard: the browser's for inline viewers, else the host's.
-
-    Raises if the host clipboard is unavailable, so callers can show the text.
-    """
+    """Copy text to the clipboard: the browser's for inline viewers, else the host's."""
     window = widget.window()
     for record in viewers():
         if record.backend == "notebook" and record.widget is window:
             record.send({"type": "peaks_copy", "text": text})
             record.print(f"Copied to the clipboard: {text}")
             return
-    import pyperclip
-
-    pyperclip.copy(text)
+    QtWidgets.QApplication.clipboard().setText(text)
 
 
 # ----- helpers for viewer get_state()/set_state()

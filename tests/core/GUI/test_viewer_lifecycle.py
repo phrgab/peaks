@@ -578,6 +578,12 @@ def test_copy_goes_to_browser():
     assert sent[0]["text"].startswith(".metadata.set_normal_emission(")
 
 
+def test_copy_from_native_window_uses_qt_clipboard():
+    native().widget.copy_button.click()
+    text = QtWidgets.QApplication.clipboard().text()
+    assert text.startswith(".metadata.set_normal_emission(")
+
+
 def test_marimo_internals_changed_falls_back_to_no_replacement(monkeypatch):
     """If marimo's private lifecycle API breaks, viewers still open, unreplaced."""
     import types

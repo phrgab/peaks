@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- The `pyperclip` dependency: native display panels copy with Qt's clipboard ([PR#XX](https://github.com/phrgab/peaks/pull/XX))
+
 ## [0.5.4] - 2026-10-09
 
 ### Added
