@@ -555,7 +555,13 @@ class QWidgetRFB(RemoteFrameBuffer):
         return window.geometry().translated(-origin)
 
     def _place_overlays(self):
-        """Move open popups and dialogs inside the viewer, so they are drawn whole."""
+        """Move open popups and dialogs inside the viewer, so they are drawn whole.
+
+        Also move their QWindow there: with WA_DontShowOnScreen, widget moves do not
+        reach it, and a new popup's QWindow starts at a stale position. On macOS,
+        QWidget.mapFromGlobal maps through the QWindow, so pointer input (ours, and
+        a menu's to its parent menu) would miss a popup the first time it opens.
+        """
         width, height = self.widget.width(), self.widget.height()
         for window in self._live_overlays():
             rect = self._local(window)
@@ -564,6 +570,9 @@ class QWidgetRFB(RemoteFrameBuffer):
             dy = max(top - rect.top(), min(0, height - rect.bottom() - 1))
             if dx or dy:
                 window.move(window.pos() + QtCore.QPoint(dx, dy))
+            handle = window.windowHandle()
+            if handle is not None and handle.position() != window.pos():
+                handle.setPosition(window.pos())
 
     def _paint_overlay(self, painter, window):
         rect = self._local(window)

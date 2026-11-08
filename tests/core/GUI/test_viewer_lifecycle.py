@@ -703,6 +703,28 @@ def test_colour_map_menu_inline():
     assert view.widget.colorbar.colorMap().name == "cividis"
 
 
+def test_popup_windows_are_where_they_are_drawn_on_first_opening():
+    """On macOS, QWidget.mapFromGlobal maps through the QWindow: it must be in place.
+
+    A new popup's QWindow starts at a stale position (widget moves do not reach it
+    with WA_DontShowOnScreen), so pointer input missed each menu the first time.
+    """
+    view = inline()
+    view.handle_event(ev("resize", width=650, height=770, pixel_ratio=1.0))
+    p = scene_centre(view, view.widget.colorbar)
+    click(view, p.x(), p.y(), button=2)
+    [menu] = view._live_overlays()
+    local = next(a for a in menu.actions() if a.text() == "local")
+    q = action_centre(view, menu, local)
+    view.handle_event(ev("pointer_move", q.x(), q.y()))
+    wait_qt_timers(view)  # opens the submenu, for the first time
+    for popup in view._live_overlays():
+        assert popup.windowHandle().position() == popup.pos()
+        centre = popup.rect().center()
+        native = popup.windowHandle().mapFromGlobal(popup.mapToGlobal(centre))
+        assert native == centre
+
+
 def test_submenu_opened_from_qt_event_loop_is_drawn_inline():
     """With %gui qt, a submenu's delay timer fires in Qt's loop, outside any input."""
     view = inline()
