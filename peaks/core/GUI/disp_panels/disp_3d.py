@@ -884,7 +884,9 @@ class _Disp3D(QtWidgets.QMainWindow):
         }
         try:
             qt_runtime.copy_text(
-                self, f".metadata.set_normal_emission({norm_values_to_return})"
+                self,
+                f".metadata.set_normal_emission({norm_values_to_return})",
+                "Normal emission copied to clipboard",
             )
         except Exception as e:
             print(

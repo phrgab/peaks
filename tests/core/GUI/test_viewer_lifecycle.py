@@ -576,12 +576,18 @@ def test_copy_goes_to_browser():
     view.widget.copy_button.click()
     assert sent and sent[0]["type"] == "peaks_copy"
     assert sent[0]["text"].startswith(".metadata.set_normal_emission(")
+    toast = view.widget.findChild(QtWidgets.QLabel, "peaks_toast")
+    assert toast.text() == "Normal emission copied to clipboard"
 
 
 def test_copy_from_native_window_uses_qt_clipboard():
-    native().widget.copy_button.click()
+    w = native().widget
+    w.copy_button.click()
     text = QtWidgets.QApplication.clipboard().text()
     assert text.startswith(".metadata.set_normal_emission(")
+    w.copy_button.click()  # a repeat click replaces the message rather than stacking
+    QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
+    assert len(w.findChildren(QtWidgets.QLabel, "peaks_toast")) == 1
 
 
 def test_marimo_internals_changed_falls_back_to_no_replacement(monkeypatch):

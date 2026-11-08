@@ -471,15 +471,49 @@ def close_all():
         state["cell_states"].clear()
 
 
-def copy_text(widget, text):
-    """Copy text to the clipboard: the browser's for inline viewers, else the host's."""
+_TOAST_MS = 1000
+
+
+def copy_text(widget, text, message="Copied to clipboard"):
+    """Copy text to the clipboard: the browser's for inline viewers, else the host's.
+
+    ``message`` is shown briefly over the viewer.
+    """
     window = widget.window()
     for record in viewers():
         if record.backend == "notebook" and record.widget is window:
             record.send({"type": "peaks_copy", "text": text})
-            record.print(f"Copied to the clipboard: {text}")
+            _show_toast(window, message)
+            # Inline viewers only run Qt timers when a frame is drawn
+            import asyncio
+
+            try:
+                asyncio.get_running_loop().call_later(
+                    _TOAST_MS / 1000 + 0.05, record.request_draw
+                )
+            except RuntimeError:  # no event loop, e.g. in tests
+                pass
             return
     QtWidgets.QApplication.clipboard().setText(text)
+    _show_toast(window, message)
+
+
+def _show_toast(window, message):
+    """Show ``message`` over the top centre of ``window`` for ``_TOAST_MS``."""
+    old = window.findChild(QtWidgets.QLabel, "peaks_toast")
+    if old is not None:
+        old.deleteLater()
+    label = QtWidgets.QLabel(message, window)
+    label.setObjectName("peaks_toast")
+    label.setStyleSheet(
+        "background: rgba(40, 40, 40, 220); color: white;"
+        "padding: 6px 12px; border-radius: 6px;"
+    )
+    label.adjustSize()
+    label.move((window.width() - label.width()) // 2, 12)
+    label.show()
+    label.raise_()
+    QtCore.QTimer.singleShot(_TOAST_MS, label.deleteLater)
 
 
 # ----- helpers for viewer get_state()/set_state()

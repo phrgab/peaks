@@ -540,7 +540,7 @@ class _Disp4D(QtWidgets.QMainWindow):
         """Copy the ROI store to the clipboard."""
         text = f".attrs['ROI']={str(self.ROI_store)}"
         try:
-            qt_runtime.copy_text(self, text)
+            qt_runtime.copy_text(self, text, "ROIs copied to clipboard")
         except Exception as e:
             print(
                 f"Could not access the system clipboard: {e}. "
