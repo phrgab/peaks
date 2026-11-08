@@ -83,8 +83,9 @@ def _wake_kernel():
     a kernel subshell. Quit that Qt loop when such work is due; ipykernel runs it and
     then re-enters the Qt loop.
 
-    Checked only for a while after each frontend message (``_kick_kernel_waker``) or
-    while a popup is open, so an idle viewer costs nothing.
+    Checked only for a while after each frontend message (``_kick_kernel_waker``),
+    while a popup is open or a lossless redraw is pending, so an idle viewer costs
+    nothing.
     """
     views = [v for v in QWidgetRFB._views if v.status == "active"]
     qt_loop = getattr(QtWidgets.QApplication.instance(), "qt_event_loop", None)
@@ -92,7 +93,10 @@ def _wake_kernel():
         if any(v._loop and _asyncio_work_due(v._loop) for v in views):
             qt_loop.quit()
     idle = time.monotonic() - _waker_last_kick > _WAKER_IDLE
-    if idle and not any(v._live_overlays() for v in views):
+    # A pending lossless redraw (jupyter_rfb's sharp frame after a JPEG) would else
+    # wait for the next frontend message, leaving a blurry frame
+    busy = any(v._live_overlays() or v._rfb_lossless_draw_info for v in views)
+    if idle and not busy:
         _kernel_waker.stop()
 
 
