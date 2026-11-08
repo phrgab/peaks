@@ -703,6 +703,74 @@ def test_colour_map_menu_inline():
     assert view.widget.colorbar.colorMap().name == "cividis"
 
 
+def test_submenu_opened_from_qt_event_loop_is_drawn_inline():
+    """With %gui qt, a submenu's delay timer fires in Qt's loop, outside any input."""
+    view = inline()
+    view.handle_event(ev("resize", width=650, height=770, pixel_ratio=1.0))
+    p = scene_centre(view, view.widget.colorbar)
+    click(view, p.x(), p.y(), button=2)
+    [menu] = view._live_overlays()
+    sub = next(a for a in menu.actions() if a.text() == "local").menu()
+    sub.popup(menu.mapToGlobal(QtCore.QPoint(menu.width(), 0)))  # not dispatching
+    assert view._live_overlays() == [menu, sub]
+    assert sub.testAttribute(QtCore.Qt.WidgetAttribute.WA_DontShowOnScreen)
+    assert QtWidgets.QApplication.activePopupWidget() is None  # not on the desktop
+
+
+def test_kernel_qt_loop_is_left_for_due_asyncio_work():
+    """With %gui qt the kernel waits in app.qt_event_loop; asyncio work must run."""
+    from types import SimpleNamespace
+
+    view = inline()
+    app = QtWidgets.QApplication.instance()
+    app.qt_event_loop = QtCore.QEventLoop()
+    view._loop = SimpleNamespace(_ready=[], _scheduled=[], time=lambda: 0)
+    try:
+        QtCore.QTimer.singleShot(400, app.qt_event_loop.quit)  # fallback
+        start = time.perf_counter()
+        app.qt_event_loop.exec()
+        assert time.perf_counter() - start > 0.3  # nothing due: kept waiting
+
+        view._loop._ready.append("callback")
+        QtCore.QTimer.singleShot(1000, app.qt_event_loop.quit)  # fallback
+        start = time.perf_counter()
+        app.qt_event_loop.exec()
+        assert time.perf_counter() - start < 0.2
+    finally:
+        del app.qt_event_loop
+
+
+def test_kernel_waker_stops_when_idle(monkeypatch):
+    """The waker's timer only runs for a while after frontend messages."""
+    import threading
+
+    from peaks.core.GUI.GUI_utils import notebook_rfb
+
+    monkeypatch.setattr(notebook_rfb, "_WAKER_IDLE", 0.1)
+    view = inline()
+    waker = notebook_rfb._kernel_waker
+
+    def wait(seconds):
+        end = time.monotonic() + seconds
+        while time.monotonic() < end:
+            QtWidgets.QApplication.processEvents()
+            time.sleep(0.005)
+
+    assert waker.isActive()
+    wait(0.3)
+    assert not waker.isActive()  # idle: no more checks
+
+    view._handle_msg({"content": {"data": {}}})  # e.g. a frame acknowledgement
+    assert waker.isActive()
+    wait(0.3)
+    assert not waker.isActive()
+
+    # Messages on a kernel subshell arrive on another thread
+    threading.Thread(target=notebook_rfb._kick_kernel_waker).start()
+    wait(0.05)
+    assert waker.isActive()
+
+
 def test_plot_menu_inline_without_export():
     view = inline()
     view.handle_event(ev("resize", width=650, height=770, pixel_ratio=1.0))

@@ -3,11 +3,14 @@
 Opt-in: ``pytest -m browser``. See ``conftest.py`` for how notebooks are driven.
 """
 
+import io
 import shutil
 import subprocess
 import time
 
+import numpy as np
 import pytest
+from PIL import Image
 
 pytestmark = pytest.mark.browser
 
@@ -133,6 +136,8 @@ def state():
         out["entries"] = {a.text(): action_at(v, top, a.text()) for a in top.actions() if a.text()}
         second = top.actionGeometry(top.actions()[1]).translated(v._local(top).topLeft())
         out["second"] = css(v, second.center())  # the first may be the current map
+        third = top.actionGeometry(top.actions()[2]).translated(v._local(top).topLeft())
+        out["third"] = css(v, third.center())
     return out
 """
 
@@ -178,6 +183,68 @@ def test_nested_colour_map_menu(notebook, frontend):
     nb.click(1, third["second"])
     t = nb.probe()
     assert t["menus"] == 0 and t["cmap"] != s["cmap"]
+
+
+@pytest.mark.skipif(
+    not __import__("os").environ.get("DISPLAY"),
+    reason="needs an X display (e.g. xvfb-run)",
+)
+def test_colour_map_menus_after_a_native_window(notebook):
+    """A native window enables %gui qt: the kernel then waits in Qt's event loop.
+
+    Browser events, frames and the submenus Qt opens from its delay timers must
+    still be handled promptly, without a cell running in between. Positions are
+    probed first; the menus are then used like a user would, three times.
+    """
+    native = "data.disp(backend='qt')\npks.gui.close_all()"
+    nb = notebook(
+        "jupyter", PANEL_2D_SETUP, [native, show("data", "jupyter")], qt_platform="xcb"
+    )
+    nb.run(1)
+    nb.run(2)
+    s = nb.probe()
+    nb.click(2, s["colorbar"], button="right")
+    entry = nb.probe()["entries"]["matplotlib"]
+    nb.hover(2, entry)
+    sub = nb.probe()
+    assert sub["menus"] == 2
+    seq = sub["entries"]["Sequential"]
+    nb.hover(2, seq)
+    third = nb.probe()
+    assert third["menus"] == 3
+    targets = [third["second"], third["third"]]
+    cmaps, frames = [], []
+    for k in range(2):
+        nb.click(2, targets[k])
+        cmaps.append(nb.probe()["cmap"])
+        if k == 0:
+            nb.click(2, s["colorbar"], button="right")
+            nb.hover(2, entry)
+            nb.hover(2, seq)
+    assert cmaps[0] != cmaps[1]
+    for k in range(4):  # no cell runs from here
+        target = targets[k % 2]
+        nb.click(2, s["colorbar"], button="right")
+        nb.hover(2, entry, wait=0.5)
+        nb.hover(2, [seq[0] - 20, seq[1]], wait=0.1)
+        nb.hover(2, seq, wait=0.5)
+        nb.hover(2, [target[0], seq[1]], wait=0.2)  # into the submenu, then down
+        nb.hover(2, target, wait=0.3)
+        nb.page.mouse.down()
+        nb.page.mouse.up()
+        time.sleep(1.0)
+        nb.page.mouse.move(0, 0)  # hover elsewhere: frames reflect the colour map
+        time.sleep(2.0)  # for jupyter_rfb's lossless redraw, sent after a JPEG frame
+        png = nb.page.screenshot(clip=nb.canvas(2))
+        frames.append(np.asarray(Image.open(io.BytesIO(png)).convert("RGB"), float))
+
+    def diff(a, b):  # mean difference (0-255)
+        return np.abs(frames[a] - frames[b]).mean()
+
+    # The two colour maps differ by ~5; a stale (JPEG) frame by ~3
+    assert diff(0, 2) < 0.5 and diff(1, 3) < 0.5 and diff(0, 1) > 2
+    t = nb.probe()
+    assert t["menus"] == 0 and t["cmap"] == cmaps[1]
 
 
 # ----- wheel, double-click and dragging (3D)

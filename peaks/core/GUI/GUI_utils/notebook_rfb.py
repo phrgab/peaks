@@ -4,7 +4,10 @@ The widget is shown with ``WA_DontShowOnScreen`` (laid out and painted by Qt, ne
 mapped to the desktop), rendered into a QImage for each frame, and fed browser input
 by sending QMouseEvent/QWheelEvent/QKeyEvent to its QWindow, so Qt itself picks the
 child under the pointer and keeps drag grabs. No Qt event loop runs; pending Qt events
-are serviced with ``processEvents()``. Everything must run on the QApplication thread.
+are serviced with ``processEvents()``, unless IPython's Qt integration is on (``%gui
+qt``, enabled by any native viewer): the kernel then waits in Qt's event loop, which is
+left whenever asyncio work is due (see ``_wake_kernel``). Everything must run on the
+QApplication thread.
 
 Popups (menus, dropdowns) and non-blocking dialogs opened by the viewer are separate
 Qt windows. They are kept off the desktop too, drawn over the viewer's frame, and
@@ -20,6 +23,7 @@ Viewer bookkeeping (limits, suspension, same-cell replacement) lives in
 import asyncio
 import base64
 import gc
+import time
 import weakref
 
 import numpy as np
@@ -51,8 +55,68 @@ _STATIC_MAX_SIDE = 1600
 _DIALOG_TITLE = 22
 # Redraw this often while a popup is open: submenus open and switch on Qt timers (s)
 _OVERLAY_REDRAW_DELAY = 0.15
+# How often, and how long after the last frontend message, to check whether the
+# kernel's asyncio loop has work while IPython runs Qt's event loop (ms, s)
+_WAKER_INTERVAL = 15
+_WAKER_IDLE = 2.0
 # The inline viewer whose input or drawing Qt is processing; it owns new popups
 _dispatching = None
+
+
+def _asyncio_work_due(loop):
+    """Whether ``loop`` has callbacks ready or timers due."""
+    # shortcut: asyncio private attributes; if they change, assume work is due
+    ready = getattr(loop, "_ready", None)
+    scheduled = getattr(loop, "_scheduled", None)
+    if ready is None or scheduled is None:
+        return True
+    return bool(ready) or bool(scheduled and scheduled[0].when() <= loop.time())
+
+
+def _wake_kernel():
+    """Let the kernel's asyncio loop run while IPython runs Qt's event loop.
+
+    With IPython's Qt integration (``%gui qt``, enabled by any native viewer), the
+    kernel waits in Qt's event loop between messages and only leaves it for activity
+    on its shell socket. Work scheduled on the asyncio loop then waits: jupyter_rfb's
+    frame draws, the redraws while a menu is open, and browser messages arriving on
+    a kernel subshell. Quit that Qt loop when such work is due; ipykernel runs it and
+    then re-enters the Qt loop.
+
+    Checked only for a while after each frontend message (``_kick_kernel_waker``) or
+    while a popup is open, so an idle viewer costs nothing.
+    """
+    views = [v for v in QWidgetRFB._views if v.status == "active"]
+    qt_loop = getattr(QtWidgets.QApplication.instance(), "qt_event_loop", None)
+    if qt_loop is not None and qt_loop.isRunning():
+        if any(v._loop and _asyncio_work_due(v._loop) for v in views):
+            qt_loop.quit()
+    idle = time.monotonic() - _waker_last_kick > _WAKER_IDLE
+    if idle and not any(v._live_overlays() for v in views):
+        _kernel_waker.stop()
+
+
+_kernel_waker = None  # QTimer running _wake_kernel
+_waker_last_kick = 0.0  # time.monotonic() of the last frontend message
+
+
+def _kick_kernel_waker():
+    """Run ``_wake_kernel`` for the next ``_WAKER_IDLE`` s. Callable from any thread."""
+    global _kernel_waker, _waker_last_kick
+    _waker_last_kick = time.monotonic()
+    app = QtWidgets.QApplication.instance()
+    if QtCore.QThread.currentThread() != app.thread():
+        if _kernel_waker is not None:  # created with the first viewer
+            QtCore.QMetaObject.invokeMethod(
+                _kernel_waker, "start", QtCore.Qt.ConnectionType.QueuedConnection
+            )
+        return
+    if _kernel_waker is None:
+        _kernel_waker = QtCore.QTimer()
+        _kernel_waker.setInterval(_WAKER_INTERVAL)
+        _kernel_waker.timeout.connect(_wake_kernel)
+    if not _kernel_waker.isActive():
+        _kernel_waker.start()
 
 
 def _wrapped_esm():
@@ -369,6 +433,7 @@ class QWidgetRFB(RemoteFrameBuffer):
             self._loop = asyncio.get_running_loop()
         except RuntimeError:
             self._loop = None
+        _kick_kernel_waker()
         widget.setAttribute(QtCore.Qt.WidgetAttribute.WA_DontShowOnScreen, True)
         if isinstance(widget, QtWidgets.QMainWindow):
             widget.menuBar().hide()  # the toolbar's Help button replaces it
@@ -408,10 +473,16 @@ class QWidgetRFB(RemoteFrameBuffer):
 
     @classmethod
     def _owner_of(cls, widget):
-        """The live inline viewer containing ``widget``, or None."""
+        """The live inline viewer containing ``widget``, or None.
+
+        Includes its popups, as a submenu opened from Qt's own event loop (``%gui qt``)
+        by a delay timer, outside any of the viewer's input, has its menu as parent.
+        """
         window = widget.window() if widget is not None else None
         for view in list(cls._views):
-            if view.widget is not None and view.widget is window:
+            if view.widget is not None and (
+                view.widget is window or window in view._overlays
+            ):
                 return view
         return None
 
@@ -422,6 +493,7 @@ class QWidgetRFB(RemoteFrameBuffer):
         has them (ipykernel 7+), so they arrive on another thread. Qt widgets must
         only be used from the Qt thread: hand them to its event loop.
         """
+        _kick_kernel_waker()
         if (
             self._loop is not None
             and QtCore.QThread.currentThread() != self._app.thread()
