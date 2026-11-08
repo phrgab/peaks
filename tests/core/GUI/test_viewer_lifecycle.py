@@ -548,6 +548,27 @@ def test_3d_4d_inline_lifecycle_and_state(monkeypatch, dims, shape):
     assert live() == []
 
 
+def test_4d_slider_drag_moves_crosshair_to_its_value():
+    view = make_nd(("x1", "x2", "eV", "theta_par"), (8, 9, 40, 50)).disp(
+        backend="notebook"
+    )
+    w = view.widget
+    slider = w.dim01_sliders[1]
+    slider.setSliderDown(True)  # as while dragging its handle
+    for index in (2, 5, 7):  # a quick drag: only some positions are seen
+        slider.setSliderPosition(index)
+    slider.setSliderDown(False)
+    assert slider.value() == 7
+    assert w.primary_dims_xh.get_pos()[1] == pytest.approx(w.coarsened_coords[1][7])
+    # The 2D panel shows the cut there (no binning)
+    shown = w.data_explorer_disp2d.data_arrays[0].data
+    np.testing.assert_allclose(shown, w.data.data[w.dim01_sliders[0].value(), 7])
+    slider.triggerAction(QtWidgets.QAbstractSlider.SliderAction.SliderPageStepSub)
+    assert w.primary_dims_xh.get_pos()[1] == pytest.approx(
+        w.coarsened_coords[1][slider.value()]
+    )  # clicking the groove moves the crosshair too
+
+
 def test_copy_goes_to_browser():
     view = inline()
     sent = []

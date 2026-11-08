@@ -518,11 +518,9 @@ class _Disp4D(QtWidgets.QMainWindow):
             # Set binning for cursors
             signal = self.dim01_binning_boxes[i].valueChanged
             signal.connect(partial(self._update_dim01_binning, i))
-            # Update plot when slider changes
+            # Move xh and update plot when the slider changes. Not on sliderMoved:
+            # Qt emits it before the value changes, so xh would lag a step behind
             signal = self.dim01_sliders[i].valueChanged
-            signal.connect(self._update_data_explorer_disp2d)
-            # Move xh when slider dragged
-            signal = self.dim01_sliders[i].sliderMoved
             signal.connect(self._update_primary_dim_xhs_from_sliders)
 
         # Set key press signals
@@ -674,6 +672,7 @@ class _Disp4D(QtWidgets.QMainWindow):
 
         # Reconnect signal
         signal.connect(self._update_dim01_slider_position)
+        self._update_data_explorer_disp2d()
 
     def _key_press_event(self, event):
         """Move the primary-dims crosshair by one step with the arrow keys."""
