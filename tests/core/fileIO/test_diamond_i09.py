@@ -218,3 +218,41 @@ def test_i09_manipulator_motors(tmp_path):
     assert manipulator.sz2.local_name == "sz2"
     assert manipulator.polar.value is None
     assert not hasattr(manipulator, "es3x")
+
+
+@pytest.mark.parametrize(
+    "detector, axis, expected",
+    [
+        (True, "Kenergy", {"analyser_eV", "analyser_dwell", "analyser_step_size"}),
+        (True, "dummy_a", {"analyser_eV", "analyser_dwell"}),  # fixed-energy scan
+        (False, "sm3fpitch", set()),  # drain-current / mirror scan
+    ],
+)
+def test_i09_analyser_metadata_warnings(tmp_path, monkeypatch, detector, axis, expected):
+    import peaks as pks
+    from peaks.core.fileIO.loaders.diamond import I09MomentumMicroscopeLoader
+
+    warned = []
+    monkeypatch.setattr(
+        I09MomentumMicroscopeLoader,
+        "_warn_metadata",
+        classmethod(lambda cls, metadata, keys: warned.extend(keys)),
+    )
+    fpath = tmp_path / "scan.nxs"
+    with h5py.File(fpath, "w") as f:
+        f["entry/diamond_scan/scan_rank"] = 1
+        f["entry"].attrs["default"] = "scan"
+        nxdata = f.create_group("entry/scan")
+        nxdata.attrs.update(signal="signal", axes=[axis])
+        nxdata[axis] = np.linspace(100, 101, 5)
+        nxdata["signal"] = np.ones(5)
+        if detector:
+            group = f.create_group("entry/instrument/dld_total")
+            group.attrs["scan_role"] = "detector"
+            group["fixed_roi_total"] = np.ones(5)
+        else:
+            f["entry/instrument/sm6iamp27/value"] = np.ones(5)
+
+    pks.load(str(fpath), loc="Diamond_I09_Momentum_Microscope")
+    assert {key for key in warned if key.startswith("analyser_")} == expected
+    assert "temperature_sample" not in warned

@@ -1073,7 +1073,10 @@ class I09MomentumMicroscopeLoader(DiamondNXSLoader, BaseARPESDataLoader):
     _drain_current_pattern = r"s[a-z]\d+iamp\d+|panda_scannable"
     _drain_current_units = "V"
     _I0_monitor = "sm6iamp27"  # SM6 mirror drain current
+    # Only warned for the scan types they apply to, see _load_metadata
     _analyser_include_in_metadata_warn = ["eV", "step_size", "dwell"]
+    # Sample temperature not yet recorded at I09-2 (placeholder string in the file)
+    _temperature_exclude_from_metadata_warn = BaseARPESDataLoader._temperature_attributes
     _hdf5_metadata_fixed_units = {
         f"entry/instrument/{name}/value": "eV"
         for name in ["Kenergy", "kenergy", "Benergy"]
@@ -1177,7 +1180,8 @@ class I09MomentumMicroscopeLoader(DiamondNXSLoader, BaseARPESDataLoader):
                 ),
             }
         )
-        return parsed_metadata, warn_list
+        relevant = metadata_dict.get("_i09_analyser_warn", [])
+        return parsed_metadata, [w for w in warn_list if w in relevant]
 
     @staticmethod
     def _is_live_view_image(fpath):
@@ -1193,7 +1197,21 @@ class I09MomentumMicroscopeLoader(DiamondNXSLoader, BaseARPESDataLoader):
         """Load the metadata from a GDA scan file; live-view images have none."""
         if cls._is_live_view_image(fpath):
             return {}
-        return super()._load_metadata(fpath)
+        metadata = super()._load_metadata(fpath)
+        # Analyser fields apply only to detector scans (not drain-current or mirror scans), step size only when
+        # sweeping the kinetic energy
+        with h5py.File(fpath, "r") as f:
+            nxdata = f["entry"][cls._parse_nxs_axis_attr(f["entry"].attrs["default"])]
+            axes = {
+                cls._parse_nxs_axis_attr(a) for a in np.atleast_1d(nxdata.attrs["axes"])
+            }
+            relevant = []
+            if _i09_detector_addr(f):
+                relevant = ["eV", "dwell"]
+                if axes & {"Kenergy", "kenergy"}:
+                    relevant.append("step_size")
+        metadata["_i09_analyser_warn"] = [f"analyser_{key}" for key in relevant]
+        return metadata
 
     @classmethod
     def _load_live_view_image(cls, fpath):
