@@ -192,3 +192,29 @@ def test_i09_map_dim_order(tmp_path):
     da = pks.load(str(fpath), loc="Diamond_I09_Momentum_Microscope", quiet=True)
     # Constant energy maps (detector_y, detector_x) are the outer dims, as for deflector maps
     assert da.dims == ("detector_y", "eV", "detector_x")
+
+
+def test_i09_manipulator_motors(tmp_path):
+    import peaks as pks
+
+    fpath = tmp_path / "scan.nxs"
+    with h5py.File(fpath, "w") as f:
+        f["entry/diamond_scan/scan_rank"] = 1
+        f["entry"].attrs["default"] = "dld_total"
+        nxdata = f.create_group("entry/dld_total")
+        nxdata.attrs.update(signal="fixed_roi_total", axes=["Kenergy"])
+        nxdata["Kenergy"] = np.linspace(100, 101, 5)
+        detector = f.create_group("entry/instrument/dld_total")
+        detector.attrs["scan_role"] = "detector"
+        detector["fixed_roi_total"] = np.full(5, 10.0)
+        for i, motor in enumerate(["sx1", "sx2", "sx3", "sz1", "sz2", "es3x"]):
+            f[f"entry/instrument/{motor}/value"] = float(i)
+            f[f"entry/instrument/{motor}/value"].attrs["units"] = "mm"
+
+    manipulator = pks.load(
+        str(fpath), loc="Diamond_I09_Momentum_Microscope", quiet=True
+    ).metadata.manipulator
+    assert manipulator.sz2.value == 4 * pks.ureg.mm
+    assert manipulator.sz2.local_name == "sz2"
+    assert manipulator.polar.value is None
+    assert not hasattr(manipulator, "es3x")

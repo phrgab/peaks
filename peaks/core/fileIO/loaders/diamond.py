@@ -1054,6 +1054,12 @@ class I09MomentumMicroscopeLoader(DiamondNXSLoader, BaseARPESDataLoader):
         "eV",
         "detector_x",
     ]
+    # No compound rotation/translation axes yet: record the physical motors. sx1-3 move the sample towards
+    # the microscope (combined: focus, polar, tilt); sz1-2 across its view (combined: z, azi). es3x (whole
+    # end-station) is not a sample motion, so omitted
+    _i09_motors = ["sx1", "sx2", "sx3", "sz1", "sz2"]
+    _manipulator_axes = ["polar", "tilt", "azi", "x1", "x2", "x3", *_i09_motors]
+    _manipulator_name_conventions = {motor: motor for motor in _i09_motors}
     _scannable_units = {
         "Kenergy": "eV",
         "kenergy": "eV",
@@ -1075,6 +1081,10 @@ class I09MomentumMicroscopeLoader(DiamondNXSLoader, BaseARPESDataLoader):
 
     _hdf5_metadata_key_mappings = {
         "scan_command": "entry/diamond_scan/scan_command",
+        **{
+            f"manipulator_{motor}": f"entry/instrument/{motor}/value"
+            for motor in _i09_motors
+        },
         # Schmitt et al., arXiv:2406.00771
         "analyser_model": "FIXED_VALUE:SPECS Phoibos 225 hybrid (hemisphere + ToF) momentum microscope",
         # Round hemisphere apertures, e.g. "D0.5" = 0.5 mm diameter
