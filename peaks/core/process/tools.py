@@ -2465,8 +2465,10 @@ def flat_field_correction(data, reference, threshold=0.05, mask=None, fill=1):
     """Divide data by a normalised flat-field (detector sensitivity) reference.
 
     The reference is normalised to the mean over its illuminated pixels, and the data divided by it, broadcasting
-    over any data dimensions not in the reference. If a data dimension is an integer fraction of the reference size
-    (e.g. detector binning), the reference is binned to match.
+    over any data dimensions not in the reference. Data cropped from the detector image (pixel coordinates a
+    subset of the reference's) are matched to the reference pixel by pixel. Otherwise, if a data dimension is an
+    integer fraction of the reference size (e.g. detector binning), the reference is binned to match; this
+    assumes the data span the full detector, so apply the correction before cropping binned data.
 
     Parameters
     ----------
@@ -2477,8 +2479,9 @@ def flat_field_correction(data, reference, threshold=0.05, mask=None, fill=1):
         The raw flat-field reference. Its dimensions must be a subset of those of ``data``.
 
     threshold : float, optional
-        Pixels with ``reference > threshold * max(reference)`` are treated as illuminated. Ignored if ``mask`` is
-        given. Defaults to 0.05.
+        Pixels with ``reference > threshold * P`` are treated as illuminated, where ``P`` is the 99.9th
+        percentile of the reference (robust to hot pixels, unlike the maximum). Ignored if ``mask`` is given.
+        Defaults to 0.05.
 
     mask : xarray.DataArray, optional
         Boolean mask of illuminated pixels, with the same dimensions and shape as ``reference``. Defaults to None,
@@ -2514,24 +2517,43 @@ def flat_field_correction(data, reference, threshold=0.05, mask=None, fill=1):
     ref = reference.pint.dequantify().drop_attrs()
     custom_mask = mask is not None
     if not custom_mask:
-        mask = ref > threshold * ref.max()
+        # Percentile, not max: a few hot pixels would otherwise raise the threshold
+        mask = ref > threshold * float(ref.quantile(0.999))
     mask = mask & (ref > 0)
-    # Normalise at full resolution so binned and unbinned data are scaled identically
+    # Normalise at full resolution so binned, cropped and full data are scaled identically
     ref = ref / ref.where(mask).mean()
 
-    # Bin the reference to match binned data; a bin is illuminated only if all its pixels are
-    binning = {}
+    # Match the reference to cropped or binned data
+    crop, binning = {}, {}
     for dim in ref.dims:
         n_ref, n_data = ref.sizes[dim], data.sizes[dim]
-        if n_ref % n_data:
-            raise ValueError(
-                f"Data size along {dim} ({n_data}) is not an integer fraction of the reference size ({n_ref})."
-            )
-        if n_ref != n_data:
+        coords = data[dim].values
+        on_pixels = np.isin(coords, ref[dim].values).all()
+        # Detector-binned data are loaded on pixel indices 0..n-1; data re-binned in peaks leave the pixel grid
+        if (
+            n_ref != n_data
+            and not n_ref % n_data
+            and (not on_pixels or np.array_equal(coords, np.arange(n_data)))
+        ):
             binning[dim] = n_ref // n_data
+        elif on_pixels:
+            crop[dim] = coords
+        else:
+            raise ValueError(
+                f"Data along {dim} are neither on the reference pixels nor an integer binning of the reference "
+                f"size ({n_data} vs {n_ref} pixels)."
+            )
+    ref, mask = ref.sel(crop), mask.sel(crop)
     if binning:
+        # A bin is illuminated only if all its pixels are
         ref = ref.coarsen(binning).mean()
         mask = mask.coarsen(binning).all()
+        analysis_warning(
+            f"Flat-field reference binned by {binning} to match the data size. This assumes the data span the "
+            "full detector: if they were cropped before binning, the correction will be misaligned.",
+            title="Analysis warning",
+            warn_type="warning",
+        )
 
     factors = ref.where(mask, fill)
 

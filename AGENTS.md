@@ -437,11 +437,11 @@ functions and as accessor methods (e.g. `data.smooth(...)`).
 
 ### flat_field_correction
 
-- description: Divide data by a normalised flat-field (detector sensitivity) reference. The reference is normalised to the mean over its illuminated pixels and broadcast over any data dimensions it lacks; if the data is binned along a detector dimension by an integer factor, the reference is binned to match.
+- description: Divide data by a normalised flat-field (detector sensitivity) reference. The reference is normalised to the mean over its illuminated pixels and broadcast over any data dimensions it lacks. Data cropped from the detector image are matched to the reference pixel by pixel; data binned by an integer factor get a reference binned to match (with a warning: this assumes the data span the full detector).
 - function: xr.DataArray accessor .flat_field_correction()
 - parameters:
   - reference: xr.DataArray (required) — raw flat-field reference; its dims must be a subset of the data dims
-  - threshold: float (optional, default=0.05) — pixels above threshold × max(reference) are treated as illuminated
+  - threshold: float (optional, default=0.05) — pixels above threshold × 99.9th percentile of the reference (robust to hot pixels) are treated as illuminated
   - mask: xr.DataArray (optional, default=None) — boolean mask of illuminated pixels, same shape as reference; overrides threshold
   - fill: float (optional, default=1) — correction factor outside the mask and where the reference is <= 0; 1 leaves those pixels uncorrected, np.nan blanks them
 - returns: xr.DataArray — corrected data in the original units

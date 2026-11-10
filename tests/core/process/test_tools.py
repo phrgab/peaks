@@ -855,8 +855,34 @@ def test_flat_field_correction_custom_mask():
 def test_flat_field_correction_bad_shape_raises():
     ref = _flat_field_reference()
     data = _simulate_fake_scan(np.ones((500, 1212)), dims=("detector_y", "detector_x"))
-    with pytest.raises(ValueError, match="integer fraction"):
+    data = data.assign_coords(detector_y=data.detector_y + 0.5)  # off the pixel grid
+    with pytest.raises(ValueError, match="integer binning"):
         flat_field_correction(data, ref)
+
+
+def test_flat_field_correction_cropped_data():
+    ref = _flat_field_reference()
+    data = _simulate_fake_scan(3 * ref.pint.dequantify().values, dims=ref.dims)
+    # Reviewer's case: a crop that happens to be an integer fraction of the detector size
+    region = {"detector_y": slice(300, 906), "detector_x": slice(400, 700)}
+    cropped = flat_field_correction(data.isel(region), ref)
+    np.testing.assert_allclose(
+        cropped.pint.dequantify().values,
+        flat_field_correction(data, ref).isel(region).pint.dequantify().values,
+    )
+
+
+def test_flat_field_correction_ignores_hot_pixels():
+    ref = _flat_field_reference()
+    hot = ref.copy()
+    hot[605, 300] = 100 * ref.max()
+    data = _simulate_fake_scan(np.ones((1212, 1212)), dims=("detector_y", "detector_x"))
+    illuminated = [
+        ~np.isnan(flat_field_correction(data, r, fill=np.nan).pint.dequantify().values)
+        for r in (ref, hot)
+    ]
+    # Same illuminated region: the hot pixel does not raise the threshold
+    np.testing.assert_array_equal(*illuminated)
 
 
 def test_norm_by_I0_broadcasts_over_higher_dims():
