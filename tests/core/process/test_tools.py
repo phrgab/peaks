@@ -904,7 +904,7 @@ def test_norm_by_I0_offset(I0_units):
         )
         assert "I0 offset" in normed.history.get(-1)["record"]
     if I0_units:
-        assert normed.pint.units == "count / V"
+        assert normed.pint.units == pint_xarray.unit_registry.Unit("count / V")
 
 
 @pytest.mark.parametrize(

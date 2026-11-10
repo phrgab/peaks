@@ -129,18 +129,18 @@ def test_i09_I0_coord(tmp_path, monitor_is_signal):
     da = pks.load(str(fpath), loc="Diamond_I09_Momentum_Microscope", quiet=True)
     if monitor_is_signal:
         assert "I0" not in da.coords
-        assert da.pint.units == "V"
+        assert da.pint.units == pks.ureg.Unit("V")
     else:
         np.testing.assert_array_equal(da.I0.values, monitor)
         np.testing.assert_array_equal(da.sd11iamp7.values, monitor * 3)
         assert da.sd11iamp7.dims == ("eV",)
-        assert da.sd11iamp7.pint.units == "V"
-        assert da.panda_scannable.pint.units == "V"
+        assert da.sd11iamp7.pint.units == pks.ureg.Unit("V")
+        assert da.panda_scannable.pint.units == pks.ureg.Unit("V")
         assert "checkbeam" not in da.coords
-        assert da.I0.pint.units == "V"
+        assert da.I0.pint.units == pks.ureg.Unit("V")
         normed = da.norm_by_I0()
         np.testing.assert_allclose(normed.pint.dequantify().values, 10 / monitor)
-        assert normed.pint.units == "count / V"
+        assert normed.pint.units == pks.ureg.Unit("count / V")
 
 
 @pytest.mark.parametrize(
