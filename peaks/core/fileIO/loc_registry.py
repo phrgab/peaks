@@ -196,27 +196,21 @@ class IdentifyLoc:
 
         # Open the file (read only)
         with h5py.File(fname, "r") as f:
-            # Bloch nexus
-            bloch_definition = BaseHDF5DataLoader._extract_hdf5_value(
-                f, "entry/definition"
-            )
-            bloch_instrument = BaseHDF5DataLoader._extract_hdf5_value(
-                f, "entry/instrument/name"
-            )
-            # .nxs files at Diamond and Alba contain approximately the same identifier format
-            identifier = BaseHDF5DataLoader._extract_hdf5_value(
-                f, "entry1/instrument/name"
+            definition = BaseHDF5DataLoader._extract_hdf5_value(f, "entry/definition")
+            # Instrument name: under `entry` (e.g. Bloch, Diamond I09-2) or `entry1` (e.g. Diamond I05, Alba)
+            instrument = (
+                BaseHDF5DataLoader._extract_hdf5_value(f, "entry/instrument/name")
+                or BaseHDF5DataLoader._extract_hdf5_value(f, "entry1/instrument/name")
+                or ""
             )
 
-        if bloch_definition == "NXarpes" and bloch_instrument == "ARPES":
+        if definition == "NXarpes" and instrument == "ARPES":
             return "MAXIV_Bloch_A_New"
-        if bloch_instrument == "i09-2":
+        if instrument == "i09-2":
             return "Diamond_I09_Momentum_Microscope"
-        # From the identifier, determine the location
-        identifier = identifier or ""
-        if "i05-1" in identifier:
+        if "i05-1" in instrument:
             return "Diamond_I05_Nano-ARPES"
-        elif "i05" in identifier:
+        elif "i05" in instrument:
             return "Diamond_I05_ARPES"
         # Fallback if no relevant identifier is found
         IdentifyLoc._default_handler(fname)
