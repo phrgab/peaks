@@ -1045,6 +1045,15 @@ class I09MomentumMicroscopeLoader(DiamondNXSLoader, BaseARPESDataLoader):
     _analyser_name_conventions = {"eV": "Kenergy", "hv": "jenergy"}
     # Other energy scannables also loaded as eV: kenergy (kinetic readback), Benergy (binding energy, positive)
     _eV_scannables = ["kenergy", "Benergy"]
+    # Detector axes ordered like (deflector_perp, eV, theta_par), so disp shows constant energy maps top-left
+    _desired_dim_order = [
+        *BaseARPESDataLoader._desired_dim_order[
+            : BaseARPESDataLoader._desired_dim_order.index("eV")
+        ],
+        "detector_y",
+        "eV",
+        "detector_x",
+    ]
     _scannable_units = {
         "Kenergy": "eV",
         "kenergy": "eV",

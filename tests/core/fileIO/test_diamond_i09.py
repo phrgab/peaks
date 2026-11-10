@@ -173,3 +173,22 @@ def test_i09_energy_axis_to_eV(tmp_path, axis, sign, eV_type):
         sorted(sign * energy[[0, -1]]),
     )
     assert da.metadata.analyser.scan.eV_type == eV_type
+
+
+def test_i09_map_dim_order(tmp_path):
+    import peaks as pks
+
+    fpath = tmp_path / "scan.nxs"
+    with h5py.File(fpath, "w") as f:
+        f["entry/diamond_scan/scan_rank"] = 1
+        f["entry"].attrs["default"] = "dld"
+        nxdata = f.create_group("entry/dld")
+        nxdata.attrs.update(signal="data", axes=["Kenergy", ".", "."])
+        nxdata["Kenergy"] = np.linspace(100, 101, 3)
+        detector = f.create_group("entry/instrument/dld")
+        detector.attrs["scan_role"] = "detector"
+        detector["data"] = np.ones((3, 4, 5))
+
+    da = pks.load(str(fpath), loc="Diamond_I09_Momentum_Microscope", quiet=True)
+    # Constant energy maps (detector_y, detector_x) are the outer dims, as for deflector maps
+    assert da.dims == ("detector_y", "eV", "detector_x")
