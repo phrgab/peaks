@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Small updates to tutorials ([PR#90](https://github.com/phrgab/peaks/pull/90))
 - Changes to the tutorial data (removed `ExampleData.nano_focus_w_I0norm`; added I09 example data and flatfield corrections) ([PR#90](https://github.com/phrgab/peaks/pull/90))
+- `radial_cuts` azimuth convention is now documented and configurable via the new `azi_zero` and `azi_direction` options ([PR#91](https://github.com/phrgab/peaks/pull/91))
 
 ### Removed
 
