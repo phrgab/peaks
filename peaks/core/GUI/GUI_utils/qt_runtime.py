@@ -10,6 +10,7 @@ restores their lightweight settings.
 
 import gc
 import os
+import re
 import sys
 import weakref
 from contextlib import contextmanager
@@ -513,19 +514,18 @@ def run_qt_events():
     loop.exec()
 
 
-_TOAST_MS = 3000
-_TOAST_MAX_TEXT = 300  # longer copied text is cut short in the toast
+_TOAST_MS = 1000
+_FAILED_TOAST_MS = 6000
+_TOAST_MAX_TEXT = 300  # longer text is cut short in the toast
 
 
 def copy_text(widget, text, message="Copied to clipboard"):
     """Copy text to the clipboard: the browser's for inline viewers, else the host's.
 
-    ``message`` and the copied text are shown briefly over the viewer, so the text
-    can still be read off if the clipboard is blocked.
+    ``message`` is shown briefly over the viewer. If the host clipboard fails, the
+    text is shown instead, to copy by hand (inline viewers show a browser dialog).
     """
     window = widget.window()
-    shown = text if len(text) <= _TOAST_MAX_TEXT else text[:_TOAST_MAX_TEXT] + "…"
-    message = f"{message}:\n{shown}"
     for record in viewers():
         if record.backend == "notebook" and record.widget is window:
             record.send({"type": "peaks_copy", "text": text})
@@ -540,12 +540,31 @@ def copy_text(widget, text, message="Copied to clipboard"):
             except RuntimeError:  # no event loop, e.g. in tests
                 pass
             return
-    QtWidgets.QApplication.clipboard().setText(text)
-    _show_toast(window, message)
+    clipboard = QtWidgets.QApplication.clipboard()
+    try:
+        clipboard.setText(text)
+        copied = clipboard.text() == text  # setText can fail silently
+    except Exception:
+        _show_copy_failed(window, text)
+        raise
+    if copied:
+        _show_toast(window, message)
+    else:
+        _show_copy_failed(window, text)
 
 
-def _show_toast(window, message):
-    """Show ``message`` over the top centre of ``window`` for ``_TOAST_MS``."""
+def _show_copy_failed(window, text):
+    """Show ``text`` over ``window`` to copy by hand, with decimals rounded to 3 dp."""
+    text = re.sub(r"\d+\.\d{4,}", lambda m: f"{float(m[0]):.3f}", text)
+    if len(text) > _TOAST_MAX_TEXT:
+        text = text[:_TOAST_MAX_TEXT] + "…"
+    _show_toast(
+        window, f"Clipboard not available, copy by hand:\n{text}", _FAILED_TOAST_MS
+    )
+
+
+def _show_toast(window, message, ms=_TOAST_MS):
+    """Show ``message`` over the top centre of ``window`` for ``ms``."""
     old = window.findChild(QtWidgets.QLabel, "peaks_toast")
     if old is not None:
         old.deleteLater()
@@ -561,7 +580,7 @@ def _show_toast(window, message):
     label.move((window.width() - label.width()) // 2, 12)
     label.show()
     label.raise_()
-    QtCore.QTimer.singleShot(_TOAST_MS, label.deleteLater)
+    QtCore.QTimer.singleShot(ms, label.deleteLater)
 
 
 # ----- helpers for viewer get_state()/set_state()

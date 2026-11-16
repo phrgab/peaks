@@ -18,7 +18,7 @@ pytest.importorskip("jupyter_rfb")
 if not (os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")):
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PyQt6 import QtCore, QtWidgets, sip  # noqa: E402
+from PyQt6 import QtCore, QtGui, QtWidgets, sip  # noqa: E402
 
 import peaks as pks  # noqa: E402
 from peaks.core.GUI.GUI_utils import notebook_cells, qt_runtime  # noqa: E402
@@ -577,7 +577,7 @@ def test_copy_goes_to_browser():
     assert sent and sent[0]["type"] == "peaks_copy"
     assert sent[0]["text"].startswith(".metadata.set_normal_emission(")
     toast = view.widget.findChild(QtWidgets.QLabel, "peaks_toast")
-    assert toast.text() == f"Normal emission copied to clipboard:\n{sent[0]['text']}"
+    assert toast.text() == "Normal emission copied to clipboard"
 
 
 def test_copy_from_native_window_uses_qt_clipboard():
@@ -588,6 +588,20 @@ def test_copy_from_native_window_uses_qt_clipboard():
     w.copy_button.click()  # a repeat click replaces the message rather than stacking
     QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
     assert len(w.findChildren(QtWidgets.QLabel, "peaks_toast")) == 1
+
+
+def test_copy_failure_shows_text_rounded(monkeypatch):
+    def blocked(self, text):
+        raise RuntimeError("clipboard blocked")
+
+    monkeypatch.setattr(QtGui.QClipboard, "setText", blocked)
+    w = native().widget
+    w._get_norm_values = lambda: {"polar": 1.23456789, "tilt": -0.5}
+    w.copy_button.click()  # the panel also prints the text
+    toast = w.findChild(QtWidgets.QLabel, "peaks_toast")
+    assert toast.text().startswith("Clipboard not available")
+    assert "1.235" in toast.text() and "1.2345" not in toast.text()
+    assert "-0.5" in toast.text()
 
 
 def test_typing_punctuation_inline():
