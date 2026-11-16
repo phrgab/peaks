@@ -10,7 +10,9 @@ from peaks.core.process.tools import (
     correct_swept_scan_bad_pixels,
     drift_correction,
     estimate_sym_point,
+    flat_field_correction,
     merge_data,
+    norm_by_I0,
 )
 from peaks.core.utils.sample_data import ExampleData
 
@@ -767,3 +769,179 @@ class TestToolsPreserveUnits:
         fake_disp.attrs["_calibration"] = ARPESCalibrationModel(EF_correction=16.7)
         result = merge_data([fake_disp, fake_disp], offsets=[0, 12])
         assert result.data.units == fake_disp.data.units
+
+
+def _flat_field_reference():
+    # Vignetted gaussian sensitivity on a 1212x1212 detector, zero outside a disc
+    y, x = np.mgrid[:1212, :1212] - 605.5
+    sensitivity = np.exp(-(x**2 + y**2) / 600**2)
+    sensitivity[x**2 + y**2 > 500**2] = 0
+    sensitivity[600, 600] = 0  # dead pixel inside the illuminated region
+    return _simulate_fake_scan(
+        sensitivity * 1000, dims=("detector_y", "detector_x"), unit="count"
+    )
+
+
+def test_flat_field_correction_flattens_uniform_signal():
+    ref = _flat_field_reference()
+    data = _simulate_fake_scan(
+        3 * ref.pint.dequantify(), dims=("detector_y", "detector_x")
+    )
+    corrected = flat_field_correction(data, ref)
+
+    illuminated = ref.pint.dequantify() > 0.05 * float(ref.max().pint.dequantify())
+    values = corrected.pint.dequantify().values
+    assert np.ptp(values[illuminated]) < 1e-9
+    assert corrected.pint.units == data.pint.units
+    assert corrected.name == data.name
+    assert set(corrected.attrs) == set(data.attrs)
+    assert len(corrected.history.get()) == len(data.history.get()) + 1
+    assert corrected.history.get(-1)["record"]["threshold"] == 0.05
+
+
+@pytest.mark.parametrize("fill", [1, np.nan])
+def test_flat_field_correction_fill(fill):
+    ref = _flat_field_reference()
+    data = _simulate_fake_scan(np.ones((1212, 1212)), dims=("detector_y", "detector_x"))
+    values = flat_field_correction(data, ref, fill=fill).pint.dequantify().values
+    # Outside the disc and at the dead pixel
+    np.testing.assert_equal(values[0, 0], fill)
+    np.testing.assert_equal(values[600, 600], fill)
+
+
+def test_flat_field_correction_binned_data():
+    ref = _flat_field_reference()
+    raw = 3 * ref.pint.dequantify().values
+    full = flat_field_correction(
+        _simulate_fake_scan(raw, dims=("detector_y", "detector_x")), ref
+    )
+    binned = flat_field_correction(
+        _simulate_fake_scan(
+            raw.reshape(606, 2, 1212).mean(1), dims=("detector_y", "detector_x")
+        ),
+        ref,
+    )
+    # Only compare bins fully inside the illuminated region
+    inside = (raw > 0.05 * raw.max()).reshape(606, 2, 1212).all(1)
+    full_binned = full.pint.dequantify().coarsen(detector_y=2).mean().values
+    np.testing.assert_allclose(
+        binned.pint.dequantify().values[inside], full_binned[inside], rtol=1e-6
+    )
+
+
+def test_flat_field_correction_broadcasts_and_stays_lazy():
+    ref = _flat_field_reference()
+    raw = np.stack([ref.pint.dequantify().values * i for i in (1, 2, 3)])
+    data = _simulate_fake_scan(raw, dims=("eV", "detector_y", "detector_x")).chunk(
+        {"eV": 1}
+    )
+    corrected = flat_field_correction(data, ref)
+    assert corrected.dims == data.dims
+    assert corrected.chunks is not None
+    values = corrected.pint.dequantify().values
+    np.testing.assert_allclose(values[2, 605, 605] / values[0, 605, 605], 3)
+
+
+def test_flat_field_correction_custom_mask():
+    ref = _flat_field_reference()
+    data = _simulate_fake_scan(np.ones((1212, 1212)), dims=("detector_y", "detector_x"))
+    mask = xr.zeros_like(ref.pint.dequantify(), dtype=bool)
+    mask[500:700, 500:700] = True
+    corrected = flat_field_correction(data, ref, mask=mask)
+    assert corrected.pint.dequantify().values[100, 600] == 1
+    assert corrected.history.get(-1)["record"]["custom mask"]
+
+
+def test_flat_field_correction_bad_shape_raises():
+    ref = _flat_field_reference()
+    data = _simulate_fake_scan(np.ones((500, 1212)), dims=("detector_y", "detector_x"))
+    data = data.assign_coords(detector_y=data.detector_y + 0.5)  # off the pixel grid
+    with pytest.raises(ValueError, match="integer binning"):
+        flat_field_correction(data, ref)
+
+
+def test_flat_field_correction_cropped_data():
+    ref = _flat_field_reference()
+    data = _simulate_fake_scan(3 * ref.pint.dequantify().values, dims=ref.dims)
+    # Reviewer's case: a crop that happens to be an integer fraction of the detector size
+    region = {"detector_y": slice(300, 906), "detector_x": slice(400, 700)}
+    cropped = flat_field_correction(data.isel(region), ref)
+    np.testing.assert_allclose(
+        cropped.pint.dequantify().values,
+        flat_field_correction(data, ref).isel(region).pint.dequantify().values,
+    )
+
+
+def test_flat_field_correction_ignores_hot_pixels():
+    ref = _flat_field_reference()
+    hot = ref.copy()
+    hot[605, 300] = 100 * ref.max()
+    data = _simulate_fake_scan(np.ones((1212, 1212)), dims=("detector_y", "detector_x"))
+    illuminated = [
+        ~np.isnan(flat_field_correction(data, r, fill=np.nan).pint.dequantify().values)
+        for r in (ref, hot)
+    ]
+    # Same illuminated region: the hot pixel does not raise the threshold
+    np.testing.assert_array_equal(*illuminated)
+
+
+def test_norm_by_I0_broadcasts_over_higher_dims():
+    rng = np.random.default_rng(0)
+    values = rng.random((3, 4, 5, 6))
+    I0 = rng.random((3, 4)) + 1
+    data = xr.DataArray(
+        values, dims=("x1", "x2", "eV", "theta_par"), name="spectrum"
+    ).assign_coords(I0=(("x1", "x2"), I0))
+    data = data.pint.quantify("count")
+    normed = norm_by_I0(data)
+    np.testing.assert_allclose(
+        normed.pint.dequantify().values, values / I0[:, :, None, None]
+    )
+    assert normed.pint.units == data.pint.units
+    assert normed.history.get(-1)["record"] == "Data normalised by I0"
+    # I0 coordinate stays aligned when slicing before normalising
+    np.testing.assert_allclose(
+        norm_by_I0(data.isel(x1=1)).pint.dequantify().values,
+        values[1] / I0[1, :, None, None],
+    )
+
+
+def _I0_scan(I0, I0_units=None):
+    data = xr.DataArray(
+        np.full(len(I0), 10.0), dims="eV", coords={"eV": np.arange(len(I0))}
+    ).assign_coords(I0=("eV", np.asarray(I0, dtype=float)))
+    return data.pint.quantify({None: "count", "I0": I0_units})
+
+
+@pytest.mark.parametrize("I0_units", [None, "V"])
+def test_norm_by_I0_offset(I0_units):
+    data = _I0_scan([0.07, 0.08], I0_units)
+    offsets = [-0.001]
+    if I0_units:
+        # a pint offset in other units, and the mean I0 of a dark scan
+        offsets += [
+            -1 * pint_xarray.unit_registry("mV"),
+            _I0_scan([-0.001] * 3, "V").I0.mean(),
+        ]
+    for offset in offsets:
+        normed = norm_by_I0(data, I0_offset=offset)
+        np.testing.assert_allclose(
+            normed.pint.dequantify().values, 10 / np.array([0.071, 0.081])
+        )
+        assert "I0 offset" in normed.history.get(-1)["record"]
+    if I0_units:
+        assert normed.pint.units == pint_xarray.unit_registry.Unit("count / V")
+
+
+@pytest.mark.parametrize(
+    "I0, offset", [([0.07, -0.001], 0), ([0.07, 0.0], 0), ([0.07, 0.001], 0.002)]
+)
+def test_norm_by_I0_non_positive_raises(I0, offset):
+    with pytest.raises(ValueError, match="<= 0"):
+        norm_by_I0(_I0_scan(I0, "V"), I0_offset=offset)
+
+
+def test_norm_by_I0_without_I0_raises():
+    data = xr.DataArray(np.ones((2, 2)), dims=("eV", "theta_par"))
+    with pytest.raises(ValueError, match="No I0 coordinate"):
+        norm_by_I0(data)

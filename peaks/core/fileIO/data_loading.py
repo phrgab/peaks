@@ -157,6 +157,11 @@ def load(
             disp2 = pks.load('disp2')
             FM2 = pks.load('FM2')
     """
+    if "norm_by_I0" in kwargs:
+        raise TypeError(
+            "The `norm_by_I0` option of `load` has been removed in v0.5.5. Load the data, then call `data.norm_by_I0()`."
+        )
+
     load_opts = {
         "lazy": lazy,
         "loc": loc,
