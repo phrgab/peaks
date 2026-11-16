@@ -662,15 +662,12 @@ class _Disp3D(QtWidgets.QMainWindow):
 
     def _update_cursor_boxes(self, xh_no):
         """Update the cursor boxes when the crosshair is moved."""
-        x, y = self.xhs[xh_no].get_pos()
-        active_dim_nos = self._get_active_dim_nos(xh_no)
-        self.cursor_positions_selection[active_dim_nos[0]].setValue(x)
         pos = self.xhs[xh_no].get_pos()
         for dim_no, value in zip(self._get_active_dim_nos(xh_no), pos, strict=True):
             box = self.cursor_positions_selection[dim_no]
-            # Skip if unchanged
+            # Skip if unchanged: setValue would reformat text being typed (-1 -> -1.000)
             if abs(box.value() - value) > 10 ** -box.decimals() / 2:
-         box.setValue(value)
+                box.setValue(value)
 
     def _update_xh_positions(self, dim_changed):
         """Update the crosshair positions when the cursor boxes are changed."""

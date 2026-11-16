@@ -8,8 +8,10 @@ automatically. Re-running a notebook cell replaces the inline viewers it created
 restores their lightweight settings.
 """
 
+import gc
 import os
 import sys
+import weakref
 from contextlib import contextmanager
 from functools import partial
 
@@ -326,7 +328,7 @@ def _show_notebook_viewer(viewer_factory, *args, **kwargs):
     try:
         view = notebook_rfb.QWidgetRFB(widget, zoom=(saved or {}).get("zoom"))
     except Exception:
-        notebook_rfb.destroy_widget(widget)
+        destroy_widget(widget)
         raise
     view.cell_key = key
     state["viewers"][id(view)] = view
@@ -406,11 +408,6 @@ def close_viewer(record, keep_state=False, frontend=True):
     state = _existing_state()
     if record.backend == "qt":
         if record.widget is not None:
-            from peaks.core.GUI.GUI_utils.notebook_rfb import (
-                destroy_widget,
-                flush_deletes,
-            )
-
             # `destroyed` removes the record from the registry
             ref = destroy_widget(record.widget)
             record.widget = None
@@ -471,15 +468,64 @@ def close_all():
         state["cell_states"].clear()
 
 
-_TOAST_MS = 1000
+def destroy_widget(widget):
+    """Close a top-level widget and delete its C++ object tree immediately.
+
+    Returns a weak reference to the Python wrapper; drop all other references, then
+    call :func:`flush_deletes` with it.
+    """
+    from PyQt6 import sip
+
+    ref = weakref.ref(widget)
+    if not sip.isdeleted(widget):
+        widget.close()
+    if not sip.isdeleted(widget):  # WA_DeleteOnClose only posts a deferred delete
+        sip.delete(widget)
+    return ref
+
+
+def flush_deletes(ref, attempts=5):
+    """Process deferred deletions until the object behind ``ref`` is freed.
+
+    PyQt releases the slot proxies that hold a viewer's bound methods and closures
+    (and through them its data) with ``deleteLater()``. Without a running Qt event
+    loop these need explicit event processing, which cascades over several passes.
+    Returns whether the object was freed.
+    """
+    for _ in range(attempts):
+        if ref() is None:
+            return True
+        run_qt_events()
+        if ref() is not None:
+            gc.collect()
+    return ref() is None
+
+
+def run_qt_events():
+    """Run Qt's event loop once, without blocking.
+
+    Unlike ``processEvents()``, an event loop also performs the deferred deletions
+    (``deleteLater()``) posted while no loop was running, e.g. the PyQt slot proxies
+    released by ``disconnect()``. Without this they accumulate in notebook mode.
+    """
+    loop = QtCore.QEventLoop()
+    QtCore.QTimer.singleShot(0, loop.quit)
+    loop.exec()
+
+
+_TOAST_MS = 3000
+_TOAST_MAX_TEXT = 300  # longer copied text is cut short in the toast
 
 
 def copy_text(widget, text, message="Copied to clipboard"):
     """Copy text to the clipboard: the browser's for inline viewers, else the host's.
 
-    ``message`` is shown briefly over the viewer.
+    ``message`` and the copied text are shown briefly over the viewer, so the text
+    can still be read off if the clipboard is blocked.
     """
     window = widget.window()
+    shown = text if len(text) <= _TOAST_MAX_TEXT else text[:_TOAST_MAX_TEXT] + "…"
+    message = f"{message}:\n{shown}"
     for record in viewers():
         if record.backend == "notebook" and record.widget is window:
             record.send({"type": "peaks_copy", "text": text})
@@ -505,6 +551,8 @@ def _show_toast(window, message):
         old.deleteLater()
     label = QtWidgets.QLabel(message, window)
     label.setObjectName("peaks_toast")
+    label.setWordWrap(True)
+    label.setMaximumWidth(max(window.width() - 24, 100))
     label.setStyleSheet(
         "background: rgba(40, 40, 40, 220); color: white;"
         "padding: 6px 12px; border-radius: 6px;"

@@ -146,8 +146,10 @@ machine, native windows and inline viewers can be used in the same kernel.
 * A dialog that blocks until it is answered (`QDialog.exec()`) cannot be shown inline:
   it is closed automatically and its message is shown in the notebook instead, so it
   cannot block the kernel. The peaks viewers do not use such dialogs inline.
-* **Copy** buttons copy to the browser clipboard, and the copied text is also printed
-  below the viewer.
+* **Copy** buttons copy to the browser clipboard, and the copied text is also shown
+  briefly over the viewer. Where the browser blocks clipboard access (e.g. a Jupyter
+  server reached over plain `http`), the text is shown in a browser dialog to copy by
+  hand.
 * Qt cursor shapes and tooltips are not shown.
 * About 30 frames per second while dragging. The browser widget ([jupyter_rfb](https://jupyter-rfb.readthedocs.io)) forwards
   at most one pointer move per 20 ms, and only once the previous one has been handled,

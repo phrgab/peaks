@@ -577,7 +577,7 @@ def test_copy_goes_to_browser():
     assert sent and sent[0]["type"] == "peaks_copy"
     assert sent[0]["text"].startswith(".metadata.set_normal_emission(")
     toast = view.widget.findChild(QtWidgets.QLabel, "peaks_toast")
-    assert toast.text() == "Normal emission copied to clipboard"
+    assert toast.text() == f"Normal emission copied to clipboard:\n{sent[0]['text']}"
 
 
 def test_copy_from_native_window_uses_qt_clipboard():
@@ -588,6 +588,22 @@ def test_copy_from_native_window_uses_qt_clipboard():
     w.copy_button.click()  # a repeat click replaces the message rather than stacking
     QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
     assert len(w.findChildren(QtWidgets.QLabel, "peaks_toast")) == 1
+
+
+def test_typing_punctuation_inline():
+    """Keys without a Qt ``Key_<char>`` name, e.g. "-" and ".", still type."""
+    view = inline(make_nd(("polar", "theta_par", "eV"), (30, 60, 80)))
+    view.handle_event(ev("resize", width=900, height=700, pixel_ratio=1.0))
+    view.get_frame()
+    box = view.widget.cursor_positions_selection[1]
+    p = widget_centre(view, box)
+    click(view, p.x(), p.y())
+    box.lineEdit().selectAll()
+    for key in "-1.2":
+        view.handle_event(ev("key_down", key=key))
+        view.handle_event(ev("key_up", key=key))
+    view.handle_event(ev("key_down", key="Enter"))
+    assert box.value() == pytest.approx(-1.2)
 
 
 def test_marimo_internals_changed_falls_back_to_no_replacement(monkeypatch):
@@ -705,8 +721,11 @@ def test_colour_map_menu_inline():
     local = next(a for a in menu.actions() if a.text() == "local")
     q = action_centre(view, menu, local)
     view.handle_event(ev("pointer_move", q.x(), q.y()))
-    wait_qt_timers(view)
-    sub = view._live_overlays()[-1]
+    for _ in range(10):  # the submenu delay is style-dependent (slower on macOS)
+        wait_qt_timers(view, 0.2)
+        sub = view._live_overlays()[-1]
+        if sub is not menu:
+            break
     assert sub is not menu
     first = next(a for a in sub.actions() if not a.isSeparator())
     q = action_centre(view, sub, first)

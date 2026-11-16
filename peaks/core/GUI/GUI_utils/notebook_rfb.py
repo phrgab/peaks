@@ -22,7 +22,6 @@ Viewer bookkeeping (limits, suspension, same-cell replacement) lives in
 
 import asyncio
 import base64
-import gc
 import time
 import weakref
 
@@ -33,6 +32,12 @@ from jupyter_rfb.widget import JS
 from PyQt6 import QtCore, QtGui, QtWidgets
 from pyqtgraph.jupyter.GraphicsView import MBLUT, TYPLUT, get_buttons, get_modifiers
 from traitlets import Float, Unicode
+
+from peaks.core.GUI.GUI_utils.qt_runtime import (
+    destroy_widget,
+    flush_deletes,
+    run_qt_events,
+)
 
 _TYPES = {**TYPLUT, "double_click": QtCore.QEvent.Type.MouseButtonDblClick}
 _KEYS = {
@@ -301,9 +306,32 @@ export default () => {
         })
       }
       document.addEventListener('keydown', onKeyDown, true)
+      // navigator.clipboard exists only on https/localhost pages (and may be
+      // refused); then try the older execCommand, else show the text to copy by hand.
+      const legacyCopy = (text) => {
+        const focused = document.activeElement
+        const area = document.createElement('textarea')
+        area.value = text
+        area.style.position = 'fixed'
+        area.style.opacity = '0'
+        document.body.appendChild(area)
+        area.select()
+        let ok = false
+        try { ok = document.execCommand('copy') } catch (e) {}
+        area.remove()
+        if (focused && focused.focus) focused.focus()
+        if (!ok) window.prompt('Clipboard not available. Copy this text:', text)
+      }
+      const copyText = (text) => {
+        if (navigator.clipboard && window.isSecureContext) {
+          navigator.clipboard.writeText(text).catch(() => legacyCopy(text))
+        } else {
+          legacyCopy(text)
+        }
+      }
       const onMessage = (msg) => {
-        if (msg.type === 'peaks_copy' && navigator.clipboard) {
-          navigator.clipboard.writeText(msg.text).catch(() => {})
+        if (msg.type === 'peaks_copy') {
+          copyText(msg.text)
         } else if (msg.type === 'peaks_key_ack') {
           repeatPending = false
         }
@@ -954,48 +982,3 @@ class _dispatch:  # noqa: N801 (used as a context manager)
     def __exit__(self, *exc):
         global _dispatching
         _dispatching = self.previous
-
-
-def destroy_widget(widget):
-    """Close a top-level widget and delete its C++ object tree immediately.
-
-    Returns a weak reference to the Python wrapper; drop all other references, then
-    call :func:`flush_deletes` with it.
-    """
-    from PyQt6 import sip
-
-    ref = weakref.ref(widget)
-    if not sip.isdeleted(widget):
-        widget.close()
-    if not sip.isdeleted(widget):  # WA_DeleteOnClose only posts a deferred delete
-        sip.delete(widget)
-    return ref
-
-
-def flush_deletes(ref, attempts=5):
-    """Process deferred deletions until the object behind ``ref`` is freed.
-
-    PyQt releases the slot proxies that hold a viewer's bound methods and closures
-    (and through them its data) with ``deleteLater()``. Without a running Qt event
-    loop these need explicit event processing, which cascades over several passes.
-    Returns whether the object was freed.
-    """
-    for _ in range(attempts):
-        if ref() is None:
-            return True
-        run_qt_events()
-        if ref() is not None:
-            gc.collect()
-    return ref() is None
-
-
-def run_qt_events():
-    """Run Qt's event loop once, without blocking.
-
-    Unlike ``processEvents()``, an event loop also performs the deferred deletions
-    (``deleteLater()``) posted while no loop was running, e.g. the PyQt slot proxies
-    released by ``disconnect()``. Without this they accumulate in notebook mode.
-    """
-    loop = QtCore.QEventLoop()
-    QtCore.QTimer.singleShot(0, loop.quit)
-    loop.exec()
