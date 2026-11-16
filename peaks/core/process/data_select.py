@@ -399,31 +399,76 @@ def tot(data, spatial_int=False):
 
 
 @dequantify_quantify_wrapper
-def radial_cuts(data, num_azi=361, num_points=200, radius=2, **centre_kwargs):
-    """Extract radial cuts of a Fermi surface slice or cube as a function of azimuthal angle, about some central point.
+def radial_cuts(
+    data,
+    num_azi=361,
+    num_points=200,
+    radius=2,
+    azi_zero=None,
+    azi_direction=1,
+    **centre_kwargs,
+):
+    """Extract radial cuts of a Fermi surface slice or cube as a function of azimuthal
+    angle, about some central point.
+
+    The cuts are taken in the plane of the two non-energy dimensions. The azimuthal angle
+    φ (``azi``, in degrees) is measured from the positive ``azi_zero`` axis, and the cut at
+    φ samples the points::
+
+        centre + k * (û₀ cos φ + s û₁ sin φ),    0 <= k <= radius
+
+    where û₀ is the unit vector along ``azi_zero``, û₁ the unit vector along the other
+    non-energy dimension, and s = ``azi_direction``.
 
     Parameters
     ----------
     data : xarray.DataArray
-        Data to extract radial cuts from.
+        Data to extract radial cuts from. Must have exactly two non-energy dimensions,
+        optionally with an additional ``eV`` dimension (the cuts are broadcast over it).
 
     num_azi : int, optional
-        Number of evenly spaced azi values between 0 and 360 degrees to take radial cuts. Defaults to 361.
+        Number of evenly spaced azi values from 0 to 360 degrees. Both ends are included,
+        so the first and last cuts are duplicates. Defaults to 361 (1 degree steps).
 
     num_points : int, optional
         Number of evenly spaced points to sample along a cut. Defaults to 200.
 
     radius : float, optional
-        Maximum radius to take cuts up to. Defaults to 2.
+        Maximum radius to take cuts up to, in the units of the two axes (which are assumed
+        to share units). Defaults to 2.
+
+    azi_zero : str, optional
+        The non-energy dimension that φ = 0 points along (in its positive direction).
+        Defaults to None, which uses the first non-energy dimension in ``data.dims``. With
+        the default the result depends on the dimension order, so ``.transpose()`` changes
+        it; k-converted Fermi surface maps usually have ``ky`` first, putting φ = 0 along
+        +ky. Set ``azi_zero`` explicitly for a result independent of the dimension order.
+
+    azi_direction : int, optional
+        ``1`` (default): φ increases from +``azi_zero`` towards + the other dimension.
+        ``-1``: towards - the other dimension. For example, the usual anticlockwise angle
+        from +kx on a plot with kx horizontal is ``azi_zero="kx", azi_direction=1``,
+        whatever order the dimensions are stored in.
 
     **centre_kwargs : float, optional
-        Used to define centre of rotations in the format dim = coord, e.g. k_par = 1.2 sets the k_par centre as 1.2.
-        Default centre of rotation is (0, 0).
+        Centre of rotation in the format dim=coord, in axis units, e.g.
+        ``kx=0.1, ky=-0.2``. Only the two non-energy dimension names are accepted; any
+        other keyword (a wrong dimension name or a misspelled argument such as
+        ``num_azis``) raises a ValueError. A dimension that is not given is centred at 0.
 
     Returns
     -------
     data_to_return : xarray.DataArray
-        Radial cuts against azi.
+        Radial cuts with dimensions ``k`` (distance from the centre in axis units; always
+        named ``k``, even for angle-space input) and ``azi`` (degrees), plus ``eV`` if
+        present.
+
+    Raises
+    ------
+    ValueError
+        If ``azi_zero`` is not one of the two non-energy dimensions, if ``azi_direction``
+        is not 1 or -1, or if ``centre_kwargs`` contains a key that is not one of the two
+        non-energy dimensions.
 
     Examples
     --------
@@ -435,12 +480,20 @@ def radial_cuts(data, num_azi=361, num_points=200, radius=2, **centre_kwargs):
 
         FS1 = FM.MDC(E=-0, dE=0.01)
 
-        # Extract radial cuts (radius = 15) at azi values in 2 degree increments, using a centre of
-        # rotation (theta_par, ana_polar) = (-2, -5)
-        FS1_radial_cuts_1 = FS1.radial_cuts(num_azi=181, num_points=300, radius=15, theta_par=-2, ana_polar=-5)
+        # Extract radial cuts (radius = 15) at azi values in 2 degree increments about
+        # (theta_par, ana_polar) = (-2, -5), with azi = 0 along +theta_par and azi
+        # increasing towards +ana_polar
+        FS1_radial_cuts_1 = FS1.radial_cuts(
+            num_azi=181,
+            num_points=300,
+            radius=15,
+            azi_zero="theta_par",
+            theta_par=-2,
+            ana_polar=-5,
+        )
 
-        # Extract radial cuts (radius = 2) at azi values in 1 degree increments, using a centre of
-        # rotation (coord_1, coord_2) = (0, 0)
+        # Extract radial cuts (radius = 2) at azi values in 1 degree increments about
+        # (0, 0), with azi = 0 along the first non-energy dimension of FS1
         FS1_radial_cuts_2 = FS1.radial_cuts()
 
     """
@@ -457,6 +510,18 @@ def radial_cuts(data, num_azi=361, num_points=200, radius=2, **centre_kwargs):
     ang0_coord = angle_dims[0]
     ang1_coord = angle_dims[1]
 
+    # Azimuth convention
+    if azi_zero is None:
+        azi_zero = ang0_coord
+    if azi_zero not in angle_dims:
+        raise ValueError(
+            f"azi_zero must be one of the non-energy dimensions {angle_dims}, "
+            f"got {azi_zero!r}."
+        )
+    if azi_direction not in (1, -1):
+        raise ValueError(f"azi_direction must be 1 or -1, got {azi_direction!r}.")
+    azi_other = ang1_coord if azi_zero == ang0_coord else ang0_coord
+
     # Check for user-defined centre of rotations
     ang0_centre = centre_kwargs.get(ang0_coord)
     if not ang0_centre:
@@ -464,20 +529,32 @@ def radial_cuts(data, num_azi=361, num_points=200, radius=2, **centre_kwargs):
     ang1_centre = centre_kwargs.get(ang1_coord)
     if not ang1_centre:
         ang1_centre = 0
+    unexpected = [key for key in centre_kwargs if key not in angle_dims]
+    if unexpected:
+        raise ValueError(
+            f"Unexpected keyword argument(s) {unexpected}. Only the centre of rotation "
+            f"can be given as keyword arguments, using the dimension names {angle_dims}."
+        )
 
     # Define coordinates to be sampled
     azi_angles = np.linspace(0, 360, num_azi)
     k_values = np.linspace(0, radius, num_points)
 
+    # Unit-radius offsets along azi_zero and the other dim, keyed by dim name
+    offsets = {
+        azi_zero: np.cos(np.radians(azi_angles)),
+        azi_other: azi_direction * np.sin(np.radians(azi_angles)),
+    }
+
     # Calculate the values for interpolation
     ang0_values = np.linspace(
         0 + ang0_centre,
-        (np.cos(np.radians(azi_angles)) * radius) + ang0_centre,
+        (offsets[ang0_coord] * radius) + ang0_centre,
         num_points,
     )
     ang1_values = np.linspace(
         0 + ang1_centre,
-        (np.sin(np.radians(azi_angles)) * radius) + ang1_centre,
+        (offsets[ang1_coord] * radius) + ang1_centre,
         num_points,
     )
 
@@ -517,7 +594,13 @@ def radial_cuts(data, num_azi=361, num_points=200, radius=2, **centre_kwargs):
 
     # Update attributes and analysis history
     interpolated_data.attrs = copy.deepcopy(data.attrs)
-    interpolated_data.history.add("Radial cuts taken as a function of azi")
+    sign = "+" if azi_direction == 1 else "-"
+    interpolated_data.history.add(
+        f"Radial cuts taken as a function of azi (azi=0 along +{azi_zero}, increasing "
+        f"towards {sign}{azi_other}; azi_zero={azi_zero!r}, "
+        f"azi_direction={azi_direction}; centre {ang0_coord}={ang0_centre}, "
+        f"{ang1_coord}={ang1_centre}; radius={radius})"
+    )
 
     return interpolated_data
 

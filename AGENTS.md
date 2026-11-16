@@ -435,6 +435,37 @@ functions and as accessor methods (e.g. `data.smooth(...)`).
 - strategy: fft_filtering
 - cost: low
 
+### flat_field_correction
+
+- description: Divide data by a normalised flat-field (detector sensitivity) reference. The reference is normalised to the mean over its illuminated pixels and broadcast over any data dimensions it lacks. Data cropped from the detector image are matched to the reference pixel by pixel; data binned by an integer factor get a reference binned to match (with a warning: this assumes the data span the full detector).
+- function: xr.DataArray accessor .flat_field_correction()
+- parameters:
+  - reference: xr.DataArray (required) — raw flat-field reference; its dims must be a subset of the data dims
+  - threshold: float (optional, default=0.05) — pixels above threshold × 99.9th percentile of the reference (robust to hot pixels) are treated as illuminated
+  - mask: xr.DataArray (optional, default=None) — boolean mask of illuminated pixels, same shape as reference; overrides threshold
+  - fill: float (optional, default=1) — correction factor outside the mask and where the reference is <= 0; 1 leaves those pixels uncorrected, np.nan blanks them
+- returns: xr.DataArray — corrected data in the original units
+- when_to_use: Momentum microscope / detector images with non-uniform detector sensitivity (e.g. I09 DLD data with a flat-field .tif); 1D transmission corrections
+- addresses: detector_nonuniformity
+- effects: removes_artefact
+- family: artefact_removal
+- strategy: flat_field_division
+- cost: low
+
+### norm_by_I0
+
+- description: Normalise data by the I0 (photon flux) monitor recorded during the scan. Uses the `I0` coordinate attached at load where the beamline records an I0 monitor (Diamond I05 `current`, I09 `sm6iamp27`); I0 is broadcast over dimensions it does not span (e.g. a per-energy I0 over the detector image, or a per-position I0 over each spectrum of a spatial map).
+- function: xr.DataArray accessor .norm_by_I0()
+- parameters:
+  - I0_offset: float or pint.Quantity (optional, default=0) — I0 monitor zero offset subtracted before dividing, e.g. the mean I0 of a beam-off scan; floats are in I0 units. Raises if I0 − I0_offset ≤ 0 anywhere
+- returns: xr.DataArray divided by (I0 − I0_offset), in data units / I0 units (e.g. count/V for I09, where I0 is the amplifier output voltage; the gain is not recorded)
+- when_to_use: Correcting for photon flux variation along a scan (energy, hv, spatial or focus scans); apply before integrating over or interpolating along the scan dimensions (e.g. DOS, k_convert), which drop the `I0` coordinate
+- addresses: intensity_variation
+- effects: normalises_intensity
+- family: normalization
+- strategy: monitor_division
+- cost: low
+
 ### drop_nan_borders
 
 - description: Trim all-NaN rows/columns from the edges of each dimension of a DataArray or Dataset.
@@ -643,8 +674,10 @@ functions and as accessor methods (e.g. `data.smooth(...)`).
   - num_azi: int (optional, default=361) — number of evenly spaced azimuthal angles between 0° and 360°
   - num_points: int (optional, default=200) — number of radial points per cut
   - radius: float (optional, default=2) — maximum radial distance in data axis units
-  - \*\*centre_kwargs: float — centre of the radial fan, e.g. kx=0.1, ky=0.0
-- returns: xr.DataArray — radial cuts stacked along an azimuthal_angle dimension
+  - azi_zero: str (optional, default=None) — dim that azi = 0 points along (+ direction); None uses the first non-eV dim in data.dims, so the result then depends on dim order (k-converted maps usually have ky first)
+  - azi_direction: int (optional, default=1) — +1: azi increases towards + the other dim; -1: towards − the other dim. Usual anticlockwise angle from +kx: azi_zero="kx", azi_direction=1
+  - \*\*centre_kwargs: float — centre of the radial fan, e.g. kx=0.1, ky=0.0; only the two non-eV dim names are accepted, any other keyword raises ValueError
+- returns: xr.DataArray — radial cuts with dims (k, azi), plus eV if present; azi in degrees from 0 to 360 inclusive (first and last cuts duplicate); k in axis units, named k even for angle input
 - when_to_use: Warping square Fermi surfaces to circular geometry; azimuthal analysis of Fermi surface maps
 - addresses: coordinate_transform
 - effects: extracts_radial_profile
