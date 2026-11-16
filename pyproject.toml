@@ -47,6 +47,7 @@ dependencies = [
         "h5netcdf (>=1.4,<2)",
         "zarr (>=3.0,<4)",
         "uncertainties (>=3.0,!=3.2.4)",
+        "imagecodecs (>=2025.3.30)",
         ]
 dynamic = ["version"]
 
