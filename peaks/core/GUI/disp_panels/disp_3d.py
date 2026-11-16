@@ -665,7 +665,12 @@ class _Disp3D(QtWidgets.QMainWindow):
         x, y = self.xhs[xh_no].get_pos()
         active_dim_nos = self._get_active_dim_nos(xh_no)
         self.cursor_positions_selection[active_dim_nos[0]].setValue(x)
-        self.cursor_positions_selection[active_dim_nos[1]].setValue(y)
+        pos = self.xhs[xh_no].get_pos()
+        for dim_no, value in zip(self._get_active_dim_nos(xh_no), pos, strict=True):
+            box = self.cursor_positions_selection[dim_no]
+            # Skip if unchanged
+            if abs(box.value() - value) > 10 ** -box.decimals() / 2:
+         box.setValue(value)
 
     def _update_xh_positions(self, dim_changed):
         """Update the crosshair positions when the cursor boxes are changed."""

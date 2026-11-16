@@ -337,7 +337,10 @@ def _qt_key(name):
     """Map a browser ``KeyboardEvent.key`` to (Qt.Key, text)."""
     qt_name = _KEYS.get(name, name.upper() if len(name) == 1 else name)
     key = getattr(QtCore.Qt.Key, f"Key_{qt_name}", None)
-    return key, (name if len(name) == 1 else "")
+    text = name if len(name) == 1 else ""
+    if key is None and text:
+        key = QtCore.Qt.Key.Key_unknown
+    return key, text
 
 
 def _modifiers(event):
