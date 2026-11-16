@@ -590,6 +590,41 @@ def test_copy_from_native_window_uses_qt_clipboard():
     assert len(w.findChildren(QtWidgets.QLabel, "peaks_toast")) == 1
 
 
+def test_inline_focused_text_box_is_outlined():
+    """Qt draws no caret in an inline viewer: the box with the keyboard is outlined,
+    and a caret is drawn over it."""
+    import pyqtgraph as pg
+
+    view = inline(make_nd(("polar", "theta_par", "eV"), (30, 60, 80)))
+    view.handle_event(ev("resize", width=900, height=700, pixel_ratio=1.0))
+    view.get_frame()
+
+    def mark(name):
+        o = view.widget.findChild(QtWidgets.QFrame, f"peaks_focus_{name}")
+        return o if o is not None and o.isVisible() else None
+
+    def outline():
+        return mark("outline")
+
+    assert outline() is None
+    for box in view.widget.cursor_positions_selection[:2]:
+        p = widget_centre(view, box)
+        click(view, p.x(), p.y())
+        view.get_frame()
+        rect = QtCore.QRect(box.mapTo(view.widget, QtCore.QPoint(0, 0)), box.size())
+        assert outline().geometry().contains(rect)
+        assert rect.contains(mark("caret").geometry())
+    x = mark("caret").x()
+    view.handle_event(ev("key_down", key="Home"))
+    view.get_frame()
+    assert mark("caret").x() < x  # the caret follows the text cursor
+    gv = view.widget.findChildren(pg.GraphicsView)[0]
+    p = widget_centre(view, gv)
+    click(view, p.x(), p.y())  # the plot takes the keyboard
+    view.get_frame()
+    assert outline() is None and mark("caret") is None
+
+
 def test_copy_failure_shows_text_rounded(monkeypatch):
     def blocked(self, text):
         raise RuntimeError("clipboard blocked")

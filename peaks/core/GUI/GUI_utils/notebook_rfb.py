@@ -60,6 +60,13 @@ _STATIC_MAX_SIDE = 1600
 _DIALOG_TITLE = 22
 # Redraw this often while a popup is open: submenus open and switch on Qt timers (s)
 _OVERLAY_REDRAW_DELAY = 0.15
+# The text input that has the keyboard gets an outline and a caret drawn over it: Qt
+# draws no caret in an inline viewer, as its hidden window never becomes active
+_TEXT_INPUTS = (QtWidgets.QLineEdit, QtWidgets.QAbstractSpinBox)
+_FOCUS_MARKS = {  # name: style sheet
+    "outline": "border: 2px solid #1e88e5; border-radius: 3px; background: transparent;",
+    "caret": "background: black;",  # 2 px wide to survive lossy frames
+}
 # How often, and how long after the last frontend message, to check whether the
 # kernel's asyncio loop has work while IPython runs Qt's event loop (ms, s)
 _WAKER_INTERVAL = 15
@@ -494,6 +501,7 @@ class QWidgetRFB(RemoteFrameBuffer):
         self.zoom_chosen = zoom is not None  # by the user, rather than fitted
         self._stale_size = None  # a browser size to ignore after a zoom change
         self._overlays = []  # popups and dialogs drawn over the frame, bottom first
+        self._focus_marks = {}  # QFrames drawn over the focused text input
         self._overlay_redraw = None  # pending timer handle while overlays are open
         QWidgetRFB._views.add(self)
         # Lifecycle, managed by qt_runtime
@@ -715,6 +723,7 @@ class QWidgetRFB(RemoteFrameBuffer):
         for window in self._live_overlays():
             window.close()  # e.g. pyqtgraph menus have no Qt parent
         self._overlays = []
+        self._focus_marks = {}  # deleted with their window
         ref = destroy_widget(self.widget)
         self.widget = self._window = None
         self._rfb_cancel_lossless_draw()
@@ -729,6 +738,43 @@ class QWidgetRFB(RemoteFrameBuffer):
         self._output_context.close()
         RemoteFrameBuffer.close(self)
 
+    def _mark_focus(self):
+        """Outline the text input that has the keyboard and draw its caret."""
+        from PyQt6 import sip
+
+        overlays = self._live_overlays()
+        focus = (overlays[-1] if overlays else self.widget).focusWidget()
+        edit = focus
+        if isinstance(focus, QtWidgets.QAbstractSpinBox):
+            edit = focus.findChild(QtWidgets.QLineEdit)
+        if not isinstance(focus, _TEXT_INPUTS) or edit is None or not focus.isVisible():
+            for mark in self._focus_marks.values():
+                if not sip.isdeleted(mark):
+                    mark.hide()
+            return
+        window = focus.window()
+        box = QtCore.QRect(focus.mapTo(window, QtCore.QPoint(0, 0)), focus.size())
+        caret = edit.inputMethodQuery(QtCore.Qt.InputMethodQuery.ImCursorRectangle)
+        caret = caret.translated(edit.mapTo(window, QtCore.QPoint(0, 0)))
+        # Qt pads the cursor rectangle on both sides
+        caret = QtCore.QRect(caret.center().x(), caret.top(), 2, caret.height())
+        geometry = {"outline": box.adjusted(-2, -2, 2, 2), "caret": caret & box}
+        for name, rect in geometry.items():
+            mark = self._focus_marks.get(name)
+            if mark is None or sip.isdeleted(mark) or mark.parent() is not window:
+                if mark is not None and not sip.isdeleted(mark):
+                    mark.deleteLater()
+                mark = self._focus_marks[name] = QtWidgets.QFrame(window)
+                mark.setObjectName(f"peaks_focus_{name}")
+                mark.setStyleSheet(_FOCUS_MARKS[name])
+                mark.setAttribute(
+                    QtCore.Qt.WidgetAttribute.WA_TransparentForMouseEvents, True
+                )
+                mark.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+            mark.setGeometry(rect)
+            mark.setVisible(not rect.isEmpty())
+            mark.raise_()
+
     # ----- jupyter_rfb interface
 
     def get_frame(self):
@@ -740,6 +786,7 @@ class QWidgetRFB(RemoteFrameBuffer):
             if self.widget is None:  # released while processing events
                 return None
             self._place_overlays()
+            self._mark_focus()
             frame = self._render()[1]
         last = self._rfb_last_frame
         if (
