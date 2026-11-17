@@ -10,7 +10,7 @@ restores their lightweight settings.
 
 import gc
 import os
-import re
+import re  # noqa: F401
 import sys
 import weakref
 from contextlib import contextmanager
@@ -505,10 +505,15 @@ def flush_deletes(ref, attempts=5):
 def run_qt_events():
     """Run Qt's event loop once, without blocking.
 
+    ``processEvents()`` fires any timers that are already due. Needed because the loop
+    below exits on its first pass; some event dispatchers, e.g. qt's offscreen on mac,
+    finish the pass before they check the times.
+
     Unlike ``processEvents()``, an event loop also performs the deferred deletions
     (``deleteLater()``) posted while no loop was running, e.g. the PyQt slot proxies
     released by ``disconnect()``. Without this they accumulate in notebook mode.
     """
+    QtWidgets.QApplication.processEvents()
     loop = QtCore.QEventLoop()
     QtCore.QTimer.singleShot(0, loop.quit)
     loop.exec()
@@ -546,7 +551,7 @@ def copy_text(widget, text, message="Copied to clipboard"):
         copied = clipboard.text() == text  # setText can fail silently
     except Exception:
         _show_copy_failed(window, text)
-        raise
+        return
     if copied:
         _show_toast(window, message)
     else:
@@ -554,13 +559,18 @@ def copy_text(widget, text, message="Copied to clipboard"):
 
 
 def _show_copy_failed(window, text):
-    """Show ``text`` over ``window`` to copy by hand, with decimals rounded to 3 dp."""
-    text = re.sub(r"\d+\.\d{4,}", lambda m: f"{float(m[0]):.3f}", text)
-    if len(text) > _TOAST_MAX_TEXT:
-        text = text[:_TOAST_MAX_TEXT] + "…"
-    _show_toast(
-        window, f"Clipboard not available, copy by hand:\n{text}", _FAILED_TOAST_MS
+    """Show ``text`` in a non-blocking window, selectable to copy by hand."""
+    box = QtWidgets.QMessageBox(
+        QtWidgets.QMessageBox.Icon.Information,
+        "Clipboard not available",  # this is the window title of the message box, not shown on macOS
+        f"Clipboard not available. Copy this text by hand:\n\n{text}",
+        QtWidgets.QMessageBox.StandardButton.Ok,
+        window,
     )
+    box.setTextFormat(QtCore.Qt.TextFormat.PlainText)  # show the text exactly as is
+    box.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.TextSelectableByMouse)
+    box.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose)
+    box.open()
 
 
 def _show_toast(window, message, ms=_TOAST_MS):

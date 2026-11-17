@@ -64,8 +64,8 @@ _OVERLAY_REDRAW_DELAY = 0.15
 # draws no caret in an inline viewer, as its hidden window never becomes active
 _TEXT_INPUTS = (QtWidgets.QLineEdit, QtWidgets.QAbstractSpinBox)
 _FOCUS_MARKS = {  # name: style sheet
-    "outline": "border: 2px solid #1e88e5; border-radius: 3px; background: transparent;",
-    "caret": "background: black;",  # 2 px wide to survive lossy frames
+    "outline": "border: 2px solid #88CCEE; border-radius: 2px; background: transparent;",
+    "caret": "background: #44AA99;",  # 2 px wide to survive lossy frames
 }
 # How often, and how long after the last frontend message, to check whether the
 # kernel's asyncio loop has work while IPython runs Qt's event loop (ms, s)
