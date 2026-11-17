@@ -503,6 +503,7 @@ class QWidgetRFB(RemoteFrameBuffer):
         self._overlays = []  # popups and dialogs drawn over the frame, bottom first
         self._focus_marks = {}  # QFrames drawn over the focused text input
         self._overlay_redraw = None  # pending timer handle while overlays are open
+        self._lossy_frame = False  # the browser shows a JPEG frame
         QWidgetRFB._views.add(self)
         # Lifecycle, managed by qt_runtime
         self.backend = "notebook"
@@ -794,8 +795,16 @@ class QWidgetRFB(RemoteFrameBuffer):
             and last.shape == frame.shape
             and np.array_equal(last, frame)
         ):
+            # request_draw() cancelled the sharp redraw due after a JPEG frame
+            if self._lossy_frame and self._rfb_lossless_draw_info is None:
+                self._rfb_schedule_lossless_draw(last)
             return None  # e.g. hovering over nothing, or a menu waiting for input
         return frame
+
+    def _rfb_send_frame(self, array, is_lossless_redraw=False):
+        super()._rfb_send_frame(array, is_lossless_redraw)
+        # jupyter_rfb schedules a lossless redraw after each JPEG frame only
+        self._lossy_frame = self._rfb_lossless_draw_info is not None
 
     def handle_event(self, event):
         """Translate a jupyter_rfb event into Qt events on the widget's QWindow."""

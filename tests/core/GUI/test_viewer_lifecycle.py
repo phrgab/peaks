@@ -4,6 +4,7 @@ Browser events are injected through ``handle_event`` as jupyter_rfb delivers the
 Native windows are created on Qt's offscreen platform (never mapped).
 """
 
+import asyncio
 import gc
 import os
 import sys
@@ -996,6 +997,23 @@ def test_pointer_moves_acknowledged_and_unchanged_frames_skipped():
     assert view.get_frame() is None
     view.widget.colorbar.setLevels(values=(0.2, 0.3))
     assert view.get_frame() is not None
+
+
+def test_unchanged_frame_keeps_lossless_redraw():
+    async def run():
+        view = inline()
+        view.send = lambda *a: None
+        view._rfb_send_frame(view.get_frame())  # a JPEG frame: a PNG follows
+        assert view._rfb_lossless_draw_info
+        view.request_draw()  # e.g. a pointer move; cancels the PNG
+        assert view.get_frame() is None
+        assert view._rfb_lossless_draw_info
+        view._rfb_lossless_draw()
+        view.request_draw()
+        assert view.get_frame() is None
+        assert view._rfb_lossless_draw_info is None  # already sharp
+
+    asyncio.run(run())
 
 
 # ----- zoom
