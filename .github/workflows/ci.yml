@@ -18,7 +18,7 @@ jobs:
           python-version: "3.13"
           cache: "pip"
       - name: Install linting packages
-        run: pip install ruff nbstripout
+        run: pip install ruff==0.17.4 nbstripout  # same ruff as .pre-commit-config.yaml
       - name: Ruff linting
         run: |
           ruff check . --fix

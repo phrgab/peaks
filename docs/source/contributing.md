@@ -64,6 +64,18 @@ pytest
 
 This will also be run in CI for merge requests, and only passing tests will usually be merged. The current test suite covers core functionality with coverage expanding progressively. If your contribution adds new features or fixes bugs, please include corresponding tests where practical.
 
+### Inline display panels in a browser
+
+The inline display panels (the `notebook` GUI backend) are also tested in real JupyterLab and marimo sessions, driven by a headless Chromium browser. These tests are skipped by a plain `pytest`. To run them:
+
+```bash
+pip install -e ".[browser-tests]"
+playwright install chromium
+pytest -m browser tests/browser
+```
+
+They take about five minutes. Run them under `xvfb-run -a` on Linux to include the test that shows a native window next to an inline panel. In CI, these tests and the other GUI tests run when files under `peaks/core/GUI`, `tests/core/GUI` or `tests/browser` change, and can also be started manually (the *GUI tests* workflow).
+
 ## Linting and Formatting
 
 ### Ruff (black-compatible) code style

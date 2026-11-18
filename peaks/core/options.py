@@ -170,6 +170,8 @@ class FileIOOptions:
 
 
 _DEFAULT_MAX_VIEWERS = 1
+_DEFAULT_BACKEND = "qt"
+_BACKENDS = ("qt", "notebook")
 
 
 class GuiOptions:
@@ -177,7 +179,14 @@ class GuiOptions:
 
     This class allows setting the maximum number of display panels or other GUIs
     that may be open simultaneously. Setting ``max_viewers`` to ``None`` disables
-    the limit. The reset method restores the default display options.
+    the limit. The limit is shared by native Qt windows and live inline notebook
+    viewers; when it is reached, the oldest live inline viewer is suspended to make
+    room. Native windows are never closed automatically.
+
+    ``backend`` selects where new viewers are shown: ``"qt"`` (default) opens a
+    native pop-out window, ``"notebook"`` embeds the viewer in the notebook output
+    (JupyterLab or marimo; requires the ``notebook`` extra). The reset method
+    restores the default display options.
 
     Examples
     --------
@@ -191,6 +200,9 @@ class GuiOptions:
         # Disable the display panel limit
         pks.opts.gui.max_viewers = None
 
+        # Show viewers inline in a JupyterLab or marimo notebook
+        pks.opts.gui.backend = "notebook"
+
         # Show display options
         pks.opts.gui
 
@@ -203,6 +215,7 @@ class GuiOptions:
 
     def __init__(self):
         self._max_viewers = _DEFAULT_MAX_VIEWERS
+        self._backend = _DEFAULT_BACKEND
 
     @property
     def max_viewers(self):
@@ -226,9 +239,25 @@ class GuiOptions:
     def max_viewers(self):
         self._max_viewers = _DEFAULT_MAX_VIEWERS
 
+    @property
+    def backend(self):
+        """Return the backend used for new viewers: ``"qt"`` or ``"notebook"``."""
+        return self._backend
+
+    @backend.setter
+    def backend(self, value):
+        if value not in _BACKENDS:
+            raise ValueError(f"GUI backend must be one of {_BACKENDS}, not {value!r}.")
+        self._backend = value
+
+    @backend.deleter
+    def backend(self):
+        self._backend = _DEFAULT_BACKEND
+
     def reset(self):
         """Reset display options to their defaults."""
         self._max_viewers = _DEFAULT_MAX_VIEWERS
+        self._backend = _DEFAULT_BACKEND
 
     def __repr__(self):
         """Return a string representation of the display options."""
@@ -238,6 +267,8 @@ class GuiOptions:
         """Set display options."""
         if "max_viewers" in kwargs:
             self.max_viewers = kwargs.pop("max_viewers")
+        if "backend" in kwargs:
+            self.backend = kwargs.pop("backend")
 
         if kwargs:
             raise ValueError(

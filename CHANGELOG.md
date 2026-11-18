@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- (Alpha) Inline notebook backend for the display panels in JupyterLab and marimo: `pks.opts.gui.backend = "notebook"` or `data.disp(backend="notebook")` (optional `notebook` extra) ([PR#93](https://github.com/phrgab/peaks/pull/93))
+- `pks.gui.suspend_all()`, `pks.gui.close_all()` and `pks.gui.viewers()` to manage open display panels ([PR#93](https://github.com/phrgab/peaks/pull/93))
 - `flat_field_correction` for dividing data by a normalised detector flat-field reference ([PR#90](https://github.com/phrgab/peaks/pull/90))
 - (Alpha) Support for loading Momentum Microscope data from Diamond beamline I09 ([PR#90](https://github.com/phrgab/peaks/pull/90))
 - `norm_by_I0` for normalising data by an I0 monitor, stored by the Diamond I05 and I09 loaders as an `I0` coordinate ([PR#90](https://github.com/phrgab/peaks/pull/90))
@@ -16,16 +18,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Parsing analyser slit identifiers when numeric ([PR#89](https://github.com/phrgab/peaks/pull/89))
+- Closed display panels could stay in memory, and **Copy** could run several times ([PR#93](https://github.com/phrgab/peaks/pull/93))
+- The 4D display panel's crosshair lagged behind its sliders ([PR#93](https://github.com/phrgab/peaks/pull/93))
 
 ### Changed
 
 - Small updates to tutorials ([PR#90](https://github.com/phrgab/peaks/pull/90))
 - Changes to the tutorial data (removed `ExampleData.nano_focus_w_I0norm`; added I09 example data and flatfield corrections) ([PR#90](https://github.com/phrgab/peaks/pull/90))
 - `radial_cuts` azimuth convention is now documented and configurable via the new `azi_zero` and `azi_direction` options ([PR#91](https://github.com/phrgab/peaks/pull/91))
+- The 4D display panel's ROI messages and confirmations no longer block the Python session ([PR#93](https://github.com/phrgab/peaks/pull/93))
 
 ### Removed
 
 - `norm_by_I0` option of `load` for Diamond I05 data; use `data.norm_by_I0()` after loading instead ([PR#90](https://github.com/phrgab/peaks/pull/90))
+- The `pyperclip` dependency: native display panels copy with Qt's clipboard ([PR#93](https://github.com/phrgab/peaks/pull/93))
 
 ## [0.5.4] - 2026-10-09
 

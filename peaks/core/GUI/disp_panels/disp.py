@@ -3,7 +3,7 @@
 import xarray as xr
 
 
-def disp(data, primary_dim=None, exclude_from_centering="eV"):
+def disp(data, primary_dim=None, exclude_from_centering="eV", backend=None):
     """GUI data viewer for 2D, 3D, or 4D data. Click on the Help menu of the GUI to see keyboard shortcuts.
     Default display mode is based on the conventional `peaks` data structure for ARPES data, but can be modified by
     passing the relevant parameters in the function call.
@@ -25,6 +25,17 @@ def disp(data, primary_dim=None, exclude_from_centering="eV"):
 
     exclude_from_centering : str or tuple of str or list of str or None, optional
         The dimension to exclude from centering for 2D and 3D data. Default is 'eV'.
+
+    backend : {"qt", "notebook"}, optional
+        Where to show the viewer: ``"qt"`` opens a native window, ``"notebook"`` embeds it
+        in the JupyterLab or marimo cell output. Defaults to ``pks.opts.gui.backend``
+        (``"qt"`` unless changed).
+
+    Returns
+    -------
+    QWidgetRFB or None
+        The inline viewer for the notebook backend (display it as the cell's last
+        expression; it has ``.suspend()`` and ``.close()`` methods), otherwise None.
 
     Examples
     --------
@@ -63,6 +74,17 @@ def disp(data, primary_dim=None, exclude_from_centering="eV"):
 
         # In a new cell
         disp2.disp()
+
+    To show viewers inline in a JupyterLab or marimo notebook instead of in pop-out windows::
+
+        pks.opts.gui.backend = "notebook"  # or data.disp(backend="notebook")
+        data.disp()
+
+    The inline viewer has Suspend and Close buttons. Re-running the cell replaces its
+    viewer and restores its crosshairs, ranges and colour settings. When
+    ``opts.gui.max_viewers`` is reached, the oldest inline viewer is suspended (kept as
+    a static image) to make room; native windows are never closed automatically.
+    ``pks.gui.suspend_all()`` and ``pks.gui.close_all()`` act on all viewers.
 
     In a regular Python script, ``disp`` starts the Qt event loop and blocks until the display window is closed::
 
@@ -126,7 +148,10 @@ def disp(data, primary_dim=None, exclude_from_centering="eV"):
         from peaks.core.GUI.disp_panels.disp_2d import _disp_2d
 
         return _disp_2d(
-            data, primary_dim=primary_dim, exclude_from_centering=exclude_from_centering
+            data,
+            primary_dim=primary_dim,
+            exclude_from_centering=exclude_from_centering,
+            backend=backend,
         )
 
     elif isinstance(data, xr.DataArray):
@@ -140,6 +165,7 @@ def disp(data, primary_dim=None, exclude_from_centering="eV"):
                 [data],
                 primary_dim=primary_dim,
                 exclude_from_centering=exclude_from_centering,
+                backend=backend,
             )
         elif ndim == 3:
             from peaks.core.GUI.disp_panels.disp_3d import _disp_3d
@@ -148,11 +174,14 @@ def disp(data, primary_dim=None, exclude_from_centering="eV"):
                 data.pint.dequantify(),
                 primary_dim=primary_dim,
                 exclude_from_centering=exclude_from_centering,
+                backend=backend,
             )
         elif ndim == 4:
             from peaks.core.GUI.disp_panels.disp_4d import _disp_4d
 
-            return _disp_4d(data.pint.dequantify(), primary_dim=primary_dim)
+            return _disp_4d(
+                data.pint.dequantify(), primary_dim=primary_dim, backend=backend
+            )
         else:
             raise ValueError(
                 "Number of dimensions not supported for interactive display. "

@@ -1,7 +1,7 @@
 repos:
 - repo: https://github.com/astral-sh/ruff-pre-commit
   # Ruff version.
-  rev: v0.12.4
+  rev: v0.17.4
   hooks:
     # Run the linter.
     - id: ruff-check
@@ -9,7 +9,7 @@ repos:
       args: [ --fix ]
     # Run the formatter.
     - id: ruff-format
-      types_or: [ python, pyi ]
+      types_or: [ python, pyi, markdown ]  # CI also formats code in .md
 - repo: https://github.com/kynan/nbstripout
   rev: 0.8.1
   hooks:

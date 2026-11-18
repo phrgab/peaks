@@ -3,9 +3,8 @@
 from functools import partial
 
 import numpy as np
-import pyperclip
 import pyqtgraph as pg
-from PyQt6 import QtCore, QtWidgets
+from PyQt6 import QtCore, QtGui, QtWidgets
 from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -22,7 +21,7 @@ from ..GUI_utils import (
 from .disp_2d import _Disp2D
 
 
-def _disp_4d(data, primary_dim):
+def _disp_4d(data, primary_dim, backend=None):
     """Display a 4D interactive display panel.
 
     Parameters
@@ -33,12 +32,160 @@ def _disp_4d(data, primary_dim):
     primary_dim : tuple of str or list of str
         The primary dimensions for the viewer, will be shown on main data explorer map panel.
 
+    backend : {"qt", "notebook"}, optional
+        GUI backend; defaults to ``opts.gui.backend``.
+
     """
-    qt_runtime.show_viewer(
+    return qt_runtime.show_viewer(
         _Disp4D,
         data,
         primary_dim,
+        backend=backend,
     )
+
+
+_SHIFT = QtCore.Qt.KeyboardModifier.ShiftModifier
+
+
+class _PolygonROI(pg.PolyLineROI):
+    """Closed polygon ROI with extra mouse gestures.
+
+    Drag inside to move it, drag an edge to move that edge along its on-screen
+    normal, Shift-click an edge or corner to add or remove a corner.
+
+    The outline is drawn and hit-tested here rather than by pyqtgraph's segment
+    items, which are hidden: their hit area is skewed when the axes have very
+    different scales (e.g. eV vs theta_par) and then swallows drags of the interior.
+    """
+
+    EDGE_PX = 4  # half-width of the grabbable band around each edge, in pixels
+
+    def __init__(self, positions):
+        super().__init__(
+            positions=positions,
+            pen=pg.mkPen((204, 51, 153), width=2.5),
+            hoverPen=pg.mkPen((255, 255, 0), width=2.5),  # default 1 px is hard to see
+            handlePen=pg.mkPen((204, 51, 153), width=2),
+            closed=True,
+        )
+        self._edge = None  # edge being dragged
+        self._hover_edge = None  # edge under the mouse
+
+    def addSegment(self, h1, h2, index=None):
+        super().addSegment(h1, h2, index)
+        for seg in self.segments:
+            seg.hide()  # hidden items take no mouse events; outline drawn in paint()
+
+    def addHandle(self, info, index=None):
+        h = super().addHandle(info, index=index)
+        h.sigClicked.connect(self._handle_clicked)
+        return h
+
+    def _handle_clicked(self, handle, ev):
+        """Shift-click a corner to remove it (keeping at least 3)."""
+        if (
+            ev.button() == QtCore.Qt.MouseButton.LeftButton
+            and ev.modifiers() & _SHIFT
+            and self.checkRemoveHandle(handle)
+        ):
+            # Defer: the handle is still inside its own click handler
+            QtCore.QTimer.singleShot(0, partial(self.removeHandle, handle))
+
+    # Geometry, in screen pixels where it matters
+    def _device(self):
+        view = self.getViewWidget()
+        return None if view is None else self.deviceTransform(view.viewportTransform())
+
+    def _polygon(self):
+        return QtGui.QPolygonF([h.pos() for h in self.getHandles()])
+
+    def paint(self, p, *args):
+        p.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing, self._antialias)
+        # Highlight just the edge that a drag would move, else the whole outline
+        edge = self._edge or self._hover_edge
+        whole = self.mouseHovering and edge is None
+        p.setPen(self.hoverPen if whole else self.pen)
+        p.drawPolygon(self._polygon())
+        if edge is not None and edge in self.segments:
+            p.setPen(self.hoverPen)
+            p.drawLine(*(h.pos() for h in edge.endpoints))
+
+    def hoverEvent(self, ev):
+        super().hoverEvent(ev)
+        edge = None if ev.isExit() else self._edge_at(ev.pos())
+        if edge is not self._hover_edge:
+            self._hover_edge = edge
+            self.update()
+
+    def shape(self):
+        """The polygon plus an EDGE_PX band around its outline."""
+        path = QtGui.QPainterPath()
+        path.addPolygon(self._polygon())
+        path.closeSubpath()
+        dt = self._device()
+        if dt is None:
+            return path
+        stroker = QtGui.QPainterPathStroker()
+        stroker.setWidth(2 * self.EDGE_PX)
+        dev = dt.map(path)
+        return dt.inverted()[0].map(stroker.createStroke(dev).united(dev))
+
+    def viewTransformChanged(self):
+        super().viewTransformChanged()
+        self.prepareGeometryChange()  # shape depends on the pixel size
+
+    def _edge_at(self, pos):
+        """Return the segment within EDGE_PX pixels of ``pos`` (ROI coords), or None."""
+        dt = self._device()
+        if dt is None:
+            return None
+        q = dt.map(pos)
+        best, best_dist = None, self.EDGE_PX
+        for seg in self.segments:
+            a, b = (dt.map(h.pos()) for h in seg.endpoints)
+            d = b - a
+            length2 = QtCore.QPointF.dotProduct(d, d)
+            if not length2:
+                continue
+            t = np.clip(QtCore.QPointF.dotProduct(q - a, d) / length2, 0, 1)
+            r = q - (a + d * t)
+            dist = np.hypot(r.x(), r.y())
+            if dist <= best_dist:
+                best, best_dist = seg, dist
+        return best
+
+    # Mouse
+    def mouseDragEvent(self, ev):
+        if ev.isStart():
+            self._edge = None
+            if ev.button() == QtCore.Qt.MouseButton.LeftButton:
+                self._edge = self._edge_at(ev.buttonDownPos())
+            if self._edge is not None:
+                self._edge_start = [h.scenePos() for h in self._edge.endpoints]
+                d = self._edge_start[1] - self._edge_start[0]
+                self._normal = QtCore.QPointF(-d.y(), d.x()) / np.hypot(d.x(), d.y())
+        if self._edge is None:
+            super().mouseDragEvent(ev)  # move the whole ROI
+            return
+        ev.accept()
+        shift = ev.scenePos() - ev.buttonDownScenePos()
+        offset = self._normal * QtCore.QPointF.dotProduct(shift, self._normal)
+        for h, p in zip(self._edge.endpoints, self._edge_start, strict=True):
+            self.movePoint(h, p + offset, finish=False, coords="scene")
+        if ev.isFinish():
+            self._edge = None
+            self.update()
+            self.stateChangeFinished()
+
+    def mouseClickEvent(self, ev):
+        # Shift-click on an edge adds a corner there
+        if ev.button() == QtCore.Qt.MouseButton.LeftButton and ev.modifiers() & _SHIFT:
+            seg = self._edge_at(ev.pos())
+            if seg is not None:
+                ev.accept()
+                self.segmentClicked(seg, pos=ev.pos())
+                return
+        super().mouseClickEvent(ev)
 
 
 class _Disp4D(QtWidgets.QMainWindow):
@@ -131,13 +278,14 @@ class _Disp4D(QtWidgets.QMainWindow):
         ) = self._build_primary_dims_explorer_plot(left_column_layout)
         xh.set_visible(False)
         # Add a ROI
-        self.roi_dim01 = pg.PolyLineROI(
-            positions=self._set_ROI_default_pos(0, 1),
-            pen=pg.mkPen((204, 51, 153), width=2.5),
-            handlePen=pg.mkPen((204, 51, 153), width=2),
-            closed=True,
-        )
+        self.roi_dim01 = _PolygonROI(self._set_ROI_default_pos(0, 1))
         self.primary_dims_roi_plot.addItem(self.roi_dim01)
+        hint = QLabel(
+            "ROI: drag inside to move, drag an edge to move it in/out, drag a corner "
+            "to reshape. Shift-click an edge/corner to add/remove a corner."
+        )
+        hint.setWordWrap(True)
+        left_column_layout.addWidget(hint)
         self._build_roi_controls(left_column_layout)
 
         left_column_layout.addStretch()
@@ -343,6 +491,9 @@ class _Disp4D(QtWidgets.QMainWindow):
         layout.addLayout(right_column)
         # Add the 2D panel - initialise with the first slice
         data_explorer_disp2d = _Disp2D([data_to_plot], None, None)
+        # Own the (never shown) shell window so it is destroyed with this panel
+        data_explorer_disp2d.setParent(self, QtCore.Qt.WindowType.Window)
+        data_explorer_disp2d.hide()
         data_explorer_widget = data_explorer_disp2d.centralWidget()
         right_column.addWidget(data_explorer_widget)
         # Hide the unnecessary controls from disp2d
@@ -367,11 +518,9 @@ class _Disp4D(QtWidgets.QMainWindow):
             # Set binning for cursors
             signal = self.dim01_binning_boxes[i].valueChanged
             signal.connect(partial(self._update_dim01_binning, i))
-            # Update plot when slider changes
+            # Move xh and update plot when the slider changes. Not on sliderMoved:
+            # Qt emits it before the value changes, so xh would lag a step behind
             signal = self.dim01_sliders[i].valueChanged
-            signal.connect(self._update_data_explorer_disp2d)
-            # Move xh when slider dragged
-            signal = self.dim01_sliders[i].sliderMoved
             signal.connect(self._update_primary_dim_xhs_from_sliders)
 
         # Set key press signals
@@ -391,7 +540,7 @@ class _Disp4D(QtWidgets.QMainWindow):
         """Copy the ROI store to the clipboard."""
         text = f".attrs['ROI']={str(self.ROI_store)}"
         try:
-            pyperclip.copy(text)
+            qt_runtime.copy_text(self, text, "ROIs copied to clipboard")
         except Exception as e:
             print(
                 f"Could not access the system clipboard: {e}. "
@@ -451,9 +600,16 @@ class _Disp4D(QtWidgets.QMainWindow):
     def _update_dim01_slider_position(self):
         """Update the slider positions based on the crosshair position."""
         pos = self.primary_dims_xh.get_pos()
+        changed = False
         for i in range(2):
             index = self._find_nearest_sorted(self.coarsened_coords[i], pos[i])
-            self.dim01_sliders[i].setValue(index)
+            slider = self.dim01_sliders[i]
+            changed |= index != slider.value()
+            # Block valueChanged so a diagonal move redraws once, not once per slider
+            with QtCore.QSignalBlocker(slider):
+                slider.setValue(index)
+        if changed:
+            self._update_data_explorer_disp2d()
         self._update_primary_dim_cursor_stats()
 
     def _update_dim01_binning(self, dim_no):
@@ -497,7 +653,7 @@ class _Disp4D(QtWidgets.QMainWindow):
             data_2d = data_2d.compute()
 
         self.data_explorer_disp2d.data_arrays[0].data = data_2d
-        self.data_explorer_disp2d._change_data()
+        self.data_explorer_disp2d._refresh_data()
 
         # print(f"Time to update 2D plot: {time.perf_counter() - st}")
 
@@ -516,6 +672,7 @@ class _Disp4D(QtWidgets.QMainWindow):
 
         # Reconnect signal
         signal.connect(self._update_dim01_slider_position)
+        self._update_data_explorer_disp2d()
 
     def _key_press_event(self, event):
         """Move the primary-dims crosshair by one step with the arrow keys."""
@@ -547,12 +704,7 @@ class _Disp4D(QtWidgets.QMainWindow):
         """Add the ROI to the right plot."""
         if ROI_points is None:
             ROI_points = self._set_ROI_default_pos(2, 3)
-        self.roi_dim23 = pg.PolyLineROI(
-            positions=ROI_points,
-            pen=pg.mkPen((204, 51, 153), width=2.5),
-            handlePen=pg.mkPen((204, 51, 153), width=2),
-            closed=True,
-        )
+        self.roi_dim23 = _PolygonROI(ROI_points)
         self.roi_disp2d.image_plot.addItem(self.roi_dim23)
 
     def _get_ROI_from_plot(self):
@@ -592,12 +744,9 @@ class _Disp4D(QtWidgets.QMainWindow):
                 ROI_dict_A.keys()
             ) != set(self.dims[2:]):
                 selected_items[0].setSelected(False)
-                QtWidgets.QMessageBox.warning(
-                    self,
+                self._message(
                     "ROI cannot be displayed",
                     "ROI definition incompatible with current view.",
-                    QtWidgets.QMessageBox.StandardButton.Ok,
-                    QtWidgets.QMessageBox.StandardButton.Ok,
                 )
                 return
             new_data_to_plot = self.data.mask_data(ROI_dict_A).values
@@ -612,12 +761,9 @@ class _Disp4D(QtWidgets.QMainWindow):
             ):
                 for item in selected_items:
                     item.setSelected(False)
-                QtWidgets.QMessageBox.warning(
-                    self,
+                self._message(
                     "ROI cannot be displayed",
                     "ROI definitions incompatible with each other or current view.",
-                    QtWidgets.QMessageBox.StandardButton.Ok,
-                    QtWidgets.QMessageBox.StandardButton.Ok,
                 )
                 return
             new_data_to_plot = (
@@ -654,10 +800,9 @@ class _Disp4D(QtWidgets.QMainWindow):
         dimA = self.dims[0] if plot_no == 0 else self.dims[2]
         dimB = self.dims[1] if plot_no == 0 else self.dims[3]
         for ROI in ROIs:
-            dimA_data = ROI[dimA]
-            dimA_data.extend([dimA_data[0]])
-            dimB_data = ROI[dimB]
-            dimB_data.extend([dimB_data[0]])
+            # New lists: extending in place would corrupt the stored ROI
+            dimA_data = [*ROI[dimA], ROI[dimA][0]]
+            dimB_data = [*ROI[dimB], ROI[dimB][0]]
 
             if plot_no == 0:
                 line_plot = pg.PlotDataItem(
@@ -706,17 +851,17 @@ class _Disp4D(QtWidgets.QMainWindow):
         data : np.ndarray
             The data to display.
         """
-        if not resest_ROI:
-            pts_scene = self.roi_dim23.getSceneHandlePositions()
-            ROI_points = [self.roi_dim23.mapSceneToParent(pt[1]) for pt in pts_scene]
         self.roi_disp2d.data_arrays[0].data = data
-        self.roi_disp2d._change_data()
+        self.roi_disp2d._refresh_data()
 
-        # Re-add the ROI to the right plot
+        # Drop outlines, as the old full redraw (plot.clear()) did
+        for i in self.display_ROIs_23:
+            self.roi_disp2d.image_plot.removeItem(i)
+        self.display_ROIs_23 = []
         if resest_ROI:
-            self._add_ROI_to_disp2d()
-        else:
-            self._add_ROI_to_disp2d(ROI_points)
+            self.roi_dim23.setPos([0, 0])
+            self.roi_dim23.setAngle(0)
+            self.roi_dim23.setPoints(self._set_ROI_default_pos(2, 3))
 
     def _add_ROI_to_list(self):
         """Add the current ROI to the list."""
@@ -747,23 +892,47 @@ class _Disp4D(QtWidgets.QMainWindow):
 
     def _remove_all_ROIs_from_list(self):
         """Remove all ROIs from the list."""
-        items = [self.roi_list_box.item(i) for i in range(self.roi_list_box.count())]
+        buttons = QtWidgets.QMessageBox.StandardButton
 
-        # Create a confirmation dialog
-        reply = QtWidgets.QMessageBox.question(
-            self,
+        def remove_all(reply):
+            if reply != buttons.Yes:
+                return
+            while self.roi_list_box.count():
+                item = self.roi_list_box.takeItem(0)
+                del self.ROI_store[item.text()]
+
+        self._message(
             "Confirm Deletion",
             "Are you sure you want to delete all ROI(s)?",
-            QtWidgets.QMessageBox.StandardButton.Yes
-            | QtWidgets.QMessageBox.StandardButton.No,
-            QtWidgets.QMessageBox.StandardButton.No,
+            QtWidgets.QMessageBox.Icon.Question,
+            buttons.Yes | buttons.No,
+            default=buttons.No,
+            on_reply=remove_all,
         )
 
-        # If the user confirms, proceed with deletion
-        if reply == QtWidgets.QMessageBox.StandardButton.Yes:
-            for item in items:
-                del self.ROI_store[item.text()]
-                self.roi_list_box.takeItem(self.roi_list_box.row(item))
+    def _message(
+        self,
+        title,
+        text,
+        icon=QtWidgets.QMessageBox.Icon.Warning,
+        buttons=QtWidgets.QMessageBox.StandardButton.Ok,
+        default=None,
+        on_reply=None,
+    ):
+        """Show a message box without blocking: ``on_reply`` gets the button clicked.
+
+        Unlike ``QMessageBox.question()`` etc., ``open()`` runs no nested event loop,
+        so the same dialog also works in an inline notebook viewer.
+        """
+        box = QtWidgets.QMessageBox(icon, title, text, buttons, self)
+        box.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose)
+        if default is not None:
+            box.setDefaultButton(default)
+        if on_reply is not None:
+            box.finished.connect(
+                lambda result: on_reply(QtWidgets.QMessageBox.StandardButton(result))
+            )
+        box.open()
 
     def _select_ROI_from_list(self):
         selected_items = self.roi_list_box.selectedItems()
@@ -836,6 +1005,74 @@ class _Disp4D(QtWidgets.QMainWindow):
         nearest_indexes = np.arange(left, right)[sorted_indexes[:n]]
         start, end = nearest_indexes.min(), nearest_indexes.max() + 1
         return slice(start, end)
+
+    # Lightweight viewer state (in-session notebook re-runs)
+    def get_state(self):
+        """Return the user-adjustable view settings as plain Python values."""
+
+        def roi_points(roi):
+            pts = [roi.mapSceneToParent(p[1]) for p in roi.getSceneHandlePositions()]
+            return [[float(p.x()), float(p.y())] for p in pts]
+
+        return {
+            "version": 1,
+            "viewer": "4D",
+            "dims": list(self.dims),
+            "tab": self.centralWidget().currentIndex(),
+            "primary_xh": [float(v) for v in self.primary_dims_xh.get_pos()],
+            "explorer": self.data_explorer_disp2d.get_state(),
+            "roi_view": self.roi_disp2d.get_state(),
+            "roi_dim01": roi_points(self.roi_dim01),
+            "roi_dim23": roi_points(self.roi_dim23),
+            "roi_store": {
+                k: {d: [float(x) for x in v] for d, v in roi.items()}
+                for k, roi in self.ROI_store.items()
+            },
+        }
+
+    def set_state(self, state):
+        """Apply settings from :meth:`get_state`, skipping any that do not fit the data."""
+        if state.get("version") != 1 or state.get("viewer") != "4D":
+            return
+
+        def set_roi(roi, points):
+            roi.setPos([0, 0])
+            roi.setAngle(0)
+            roi.setPoints(points)
+
+        def in_range(pos):
+            return all(
+                min(self.ranges[i]) <= pos[i] <= max(self.ranges[i]) for i in range(2)
+            )
+
+        steps = [
+            ("tab", lambda: self.centralWidget().setCurrentIndex(state["tab"])),
+        ]
+        if state["dims"] == list(self.dims):
+            steps += [
+                (
+                    "primary_xh",
+                    lambda: (
+                        in_range(state["primary_xh"])
+                        and self.primary_dims_xh.set_pos(state["primary_xh"])
+                    ),
+                ),
+                (
+                    "explorer",
+                    lambda: self.data_explorer_disp2d.set_state(state["explorer"]),
+                ),
+                ("roi_view", lambda: self.roi_disp2d.set_state(state["roi_view"])),
+                ("roi_dim01", lambda: set_roi(self.roi_dim01, state["roi_dim01"])),
+                ("roi_dim23", lambda: set_roi(self.roi_dim23, state["roi_dim23"])),
+            ]
+        steps.append(("roi_store", lambda: self._restore_ROI_store(state["roi_store"])))
+        qt_runtime.apply_state_steps(steps)
+
+    def _restore_ROI_store(self, store):
+        for name, roi in store.items():
+            if name not in self.ROI_store:
+                self.ROI_store[name] = roi
+                self.roi_list_box.addItem(name)
 
     def _set_ROI_default_pos(self, dim0, dim1):
         return [
