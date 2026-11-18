@@ -17,7 +17,7 @@ To load data, use the load function::
 
 """
 
-__version__ = "0.6.0"
+__version__ = "0.6.1.dev"
 
 # Set some default xarray options
 import xarray as xr
